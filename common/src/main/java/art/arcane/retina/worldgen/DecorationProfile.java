@@ -136,7 +136,7 @@ final class DecorationProfile {
                 var members = membership.get(placed);
                 for (int id : selected) {
                     var recipe = recipes.get(id).getAsJsonObject();
-                    if (Set.of("end_island","end_chorus").contains(recipe.get("kind").getAsString())) {
+                    if (Set.of("end_island","end_chorus","end_spikes").contains(recipe.get("kind").getAsString())) {
                         var ids = new JsonArray(); for (int b = members.nextSetBit(0); b >= 0; b = members.nextSetBit(b+1)) ids.add(b);
                         recipe.getAsJsonObject(recipe.get("kind").getAsString()).add("biomes",ids);
                     }
@@ -273,6 +273,20 @@ final class DecorationProfile {
             platform.add(material(Blocks.COBBLESTONE.defaultBlockState()));
             data.add("platform", platform);
             emit(path, p, chance, "void_platform", data, selected);
+        } else if (end && feature instanceof EndSpikeFeature spikeFeature) {
+            if (depth!=0 || !EndPlacementProfile.supported(p.program) || p.program.asList().stream().map(JsonElement::getAsJsonObject).anyMatch(op->Set.of("minecraft:in_square","minecraft:fixed_placement").contains(op.get("type").getAsString()))) { unsupported.add("end_spikes:placement_or_nested_root"); return; }
+            var spikes=EndSpikeProfile.geometry(spikeFeature);
+            if(spikes==null) {unsupported.add("end_spikes:geometry");return;}
+            int reach=EndPlacementProfile.reach(p.program,spikes.remove("geometry_reach").getAsInt());
+            var bars=new JsonArray();var connections=List.of(BlockStateProperties.NORTH,BlockStateProperties.SOUTH,BlockStateProperties.WEST,BlockStateProperties.EAST);
+            for(int bits=0;bits<16;bits++) {
+                var state=Blocks.IRON_BARS.defaultBlockState();for(int i=0;i<4;i++)state=state.setValue(connections.get(i),(bits&(1<<i))!=0);bars.add(material(state));
+            }
+            spikes.add("bars",bars);spikes.addProperty("obsidian",material(Blocks.OBSIDIAN.defaultBlockState()));spikes.addProperty("air",material(Blocks.AIR.defaultBlockState()));
+            spikes.addProperty("bedrock",material(Blocks.BEDROCK.defaultBlockState()));spikes.addProperty("fire",material(Blocks.FIRE.defaultBlockState()));
+            spikes.addProperty("step",generationStep);spikes.addProperty("index",featureIndex);spikes.add("placement",p.program.deepCopy());spikes.add("biomes",new JsonArray());
+            var data=new JsonObject();data.add("end_spikes",spikes);data.addProperty("reach",reach);
+            var root=p.copy();root.program=new JsonArray();emit(path,root,chance,"end_spikes",data,selected);
         } else if (end && feature instanceof ChorusPlantFeature) {
             if (!EndPlacementProfile.supported(p.program)) { unsupported.add("end_chorus:placement"); return; }
             var chorus = new JsonObject(); var plants = new JsonArray(); var flowers = new JsonArray();
@@ -522,7 +536,7 @@ final class DecorationProfile {
     }
     private static void finishFeature(JsonObject recipe,LinkedHashMap<BlockState,Integer> palette) {
             switch(recipe.get("kind").getAsString()) {
-                case "end_island", "end_chorus" -> finishProgram(recipe.getAsJsonObject(recipe.get("kind").getAsString()).getAsJsonArray("placement"),palette);
+                case "end_island", "end_chorus", "end_spikes" -> finishProgram(recipe.getAsJsonObject(recipe.get("kind").getAsString()).getAsJsonArray("placement"),palette);
                 case "nether_feature" -> NetherFeatureProfile.finish(recipe.getAsJsonObject("nether"),palette);
                 case "flat_lake" -> {
                     for (String key : List.of("can_place_feature", "can_replace_with_air_or_fluid", "can_replace_with_barrier", "solid", "liquid"))
