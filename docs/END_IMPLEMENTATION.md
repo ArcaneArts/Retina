@@ -93,7 +93,7 @@ End performance results or a performance acceptance distribution.
 comparison helpers and the cleanup ownership/evidence behavior. The optional LZ4
 dependency case may skip when the codec packages are unavailable.
 
-## Remaining delivery sequence
+## Terrain cycle
 
 ### Cycle 2a: seeded island primitive
 
@@ -130,6 +130,63 @@ generate full regions.
 This primitive is not yet wired into production generation. Blended noise,
 density shaping/interpolation, native profile export, and complete floating-island
 terrain remain in cycle 2. No End performance or automatic activation is claimed.
+
+### Cycle 2b: exact blended noise and dense graph reference
+
+`native/src/end/blended.rs` initializes the actual three smeared Perlin stacks
+(16 lower, 16 upper, 8 main) from the world seed and registered noise parameters.
+It retains the offsets, permutations, octave order/weights, coordinate wrapping,
+vertical smear, and scalar/bulk arithmetic orders. Actual 26.3 bytecode for
+`BitRandomSource.nextDouble` uses `l2f`, `fmul`, `f2d`: the result is float-rounded
+before widening to double. End noise preserves that rounding locally. Existing
+Overworld/Nether structure random behavior is unchanged.
+
+The independent capture checks seven seeds and three parameter sets, including
+codec-edge values and far coordinates. All **4,200 scalar** and **5,145 bulk**
+values match native float bits exactly. The observed source scalar/bulk values
+are identical at shared points; the harness records that observation rather than
+requiring an assumed difference. Reference payload:
+`6c95425895d2b88b954cfcb93b9bf0a2df8f416fe942c1c8fd59309d3b5bef9b`.
+
+`native/src/end/density.rs` adds the dense reference for the vanilla End graph:
+islands plus seeded noise, both vertical gradients, endpoint-preserving blends,
+0.64 scaling, 8×4×8 interpolation and squeeze. Scalar queries use vanilla's scalar
+interpolator; bulk columns use Z/X interpolation and accumulated Y steps. All
+14,280 original scalar density bits match, as do the original sixteen columns.
+
+The additional terrain reference uses **four complete chunks**, covering central
+terrain, void and positive/negative outer-island coordinates over two seeds. All
+131,072 bulk density float bits, 262,144 stored base-block decisions and 6,144
+height queries match. The 128-block noise range leaves upper dimension storage air.
+Reference payload:
+`65d50e96f5d129b0809a7ba262c5f5586b2427d178d10259c8a35d26d65261c7`.
+
+Reproduce the additional reference captures and comparisons:
+
+```sh
+./gradlew --no-daemon -PretinaHostOnly \
+  :common:endBlendedReferenceTest :common:endTerrainReferenceTest \
+  -x :packageNative -x :buildNative
+cargo run --release --locked --manifest-path native/Cargo.toml \
+  --target-dir build/native-target --example end_blended_compare \
+  -- build/end/blended-reference.json
+cargo run --release --locked --manifest-path native/Cargo.toml \
+  --target-dir build/native-target --example end_density_compare \
+  -- build/end/terrain-reference.json
+```
+
+Compact extracts keep 147 blended sample records, 120 scalar graph values and
+sixteen columns in the normal native regression suite. The optimized unit suite
+passes 304 tests with zero failures; 75 optional fixtures remain ignored. The
+island comparisons still match after sharing permutation initialization.
+
+These are CPU reference primitives and independent source comparisons. They do
+not generate MCA files or initialize the GPU. Native profile/region integration,
+GPU acceleration, features, structures, gameplay, automatic activation and full
+End performance acceptance remain unfinished. `VanillaDensity` explicitly models
+the vanilla graph; it is not a silent substitute for arbitrary custom graphs.
+
+## Remaining delivery sequence
 
 1. End profile, exact seeded terrain, floating-island queries and biome selection.
 2. Native End features and initial arena.
