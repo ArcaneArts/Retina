@@ -95,6 +95,42 @@ dependency case may skip when the codec packages are unavailable.
 
 ## Remaining delivery sequence
 
+### Cycle 2a: seeded island primitive
+
+`native/src/end.rs` implements the 26.3 outer-island and central-island field and
+the five-biome selector. It reuses the existing Java-compatible 48-bit random
+generator without changing its behavior for existing callers. Island setup retains
+all 17,292 discarded random draws, the six draws for zero-scale simplex offsets,
+and the actual permutation shuffle. Simplex arithmetic remains f64; island sizes,
+distance arithmetic and field outputs retain vanilla's f32 rounding. Island
+coordinates use truncating division/remainder; biome chunk coordinates use floor.
+
+Additional independent source capture:
+
+```sh
+./gradlew --no-daemon -PretinaHostOnly :common:endIslandReferenceTest \
+  -x :packageNative -x :buildNative
+cargo run --release --locked --manifest-path native/Cargo.toml \
+  --example end_reference_compare -- build/end/island-reference.json
+```
+
+The example can also consume cycle 1's `reference.json`. It checks exact field
+float bits and biome identities, plus raw outer-field and simplex seed-center bits
+when present. The added capture has 1,792 points across seven seeds, including
+negative seeds and both signed-64-bit extremes, with world-border and f32-boundary
+coordinates. Its reference payload hash is
+`c1534f951f8f3631835c84cfcbc8fa5a1e9d6ca52f79e8684e3fb84025dde192`.
+Both corpora match: 952 original samples plus 1,792 expanded samples. A compact
+37-point extract of the actual captures is checked into the ordinary Rust unit
+suite to prevent regression; it retains both capture hashes and the exact bits.
+The optimized native unit suite passes 301 tests with zero failures; 75 optional
+fixtures remain ignored. These primitive comparisons do not initialize a GPU or
+generate full regions.
+
+This primitive is not yet wired into production generation. Blended noise,
+density shaping/interpolation, native profile export, and complete floating-island
+terrain remain in cycle 2. No End performance or automatic activation is claimed.
+
 1. End profile, exact seeded terrain, floating-island queries and biome selection.
 2. Native End features and initial arena.
 3. End cities, ships, markers and saved structure metadata.

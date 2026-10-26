@@ -1,0 +1,399 @@
+{
+  "minecraft": "26.3",
+  "reference_payload_sha256": [
+    "c1534f951f8f3631835c84cfcbc8fa5a1e9d6ca52f79e8684e3fb84025dde192",
+    "e2179090a9b6143fb2fec1b81ce036d7d6ae695d05dce30ee791d0d9a677f501"
+  ],
+  "scope": "Actual Minecraft scalar and biome captures; float bit patterns unmodified",
+  "seeds": [
+    {
+      "seed": 0,
+      "samples": [
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": -1085187175,
+          "island_bits": 1050673152,
+          "outer_bits": 1050673152,
+          "xz": [
+            -30000000,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": -1098338792,
+          "island_bits": -1092503000,
+          "outer_bits": -1092503000,
+          "xz": [
+            -30000000,
+            -1
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": -1098338792,
+          "island_bits": -1092503000,
+          "outer_bits": -1092503000,
+          "xz": [
+            -30000000,
+            0
+          ]
+        },
+        {
+          "biome": "minecraft:end_midlands",
+          "center_bits": -1092651015,
+          "island_bits": 1048380004,
+          "outer_bits": 1048380004,
+          "xz": [
+            -30000000,
+            511
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 1,
+      "samples": [
+        {
+          "biome": "minecraft:end_midlands",
+          "center_bits": 1049144856,
+          "island_bits": 1051721728,
+          "outer_bits": 1051721728,
+          "xz": [
+            -30000000,
+            -1
+          ]
+        },
+        {
+          "biome": "minecraft:end_midlands",
+          "center_bits": 1049144856,
+          "island_bits": 1051721728,
+          "outer_bits": 1051721728,
+          "xz": [
+            -30000000,
+            0
+          ]
+        },
+        {
+          "biome": "minecraft:end_midlands",
+          "center_bits": 1056086439,
+          "island_bits": 1045681412,
+          "outer_bits": 1045681412,
+          "xz": [
+            -30000000,
+            511
+          ]
+        },
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": 1043976542,
+          "island_bits": 1052770304,
+          "outer_bits": 1052770304,
+          "xz": [
+            -16777217,
+            -1
+          ]
+        },
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": -1083327394,
+          "island_bits": 1058013184,
+          "outer_bits": 1058013184,
+          "xz": [
+            -30000000,
+            -513
+          ]
+        }
+      ]
+    },
+    {
+      "seed": -1,
+      "samples": [
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": 1056697536,
+          "island_bits": -1085886612,
+          "outer_bits": -1085886612,
+          "xz": [
+            -30000000,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": 1056086439,
+          "island_bits": -1088890074,
+          "outer_bits": -1088890074,
+          "xz": [
+            -30000000,
+            511
+          ]
+        },
+        {
+          "biome": "minecraft:end_barrens",
+          "center_bits": 1060718755,
+          "island_bits": -1107802256,
+          "outer_bits": -1107802256,
+          "xz": [
+            -16777217,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": -1096645160,
+          "island_bits": 1052770304,
+          "outer_bits": 1052770304,
+          "xz": [
+            -16777217,
+            -1
+          ]
+        }
+      ]
+    },
+    {
+      "seed": -9223372036854775808,
+      "samples": [
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": -1085187175,
+          "island_bits": 1050673152,
+          "outer_bits": 1050673152,
+          "xz": [
+            -30000000,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": -1098338792,
+          "island_bits": -1092503000,
+          "outer_bits": -1092503000,
+          "xz": [
+            -30000000,
+            -1
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": -1098338792,
+          "island_bits": -1092503000,
+          "outer_bits": -1092503000,
+          "xz": [
+            -30000000,
+            0
+          ]
+        },
+        {
+          "biome": "minecraft:end_midlands",
+          "center_bits": -1092651015,
+          "island_bits": 1048380004,
+          "outer_bits": 1048380004,
+          "xz": [
+            -30000000,
+            511
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 9223372036854775807,
+      "samples": [
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": 1056697536,
+          "island_bits": -1085886612,
+          "outer_bits": -1085886612,
+          "xz": [
+            -30000000,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": 1056086439,
+          "island_bits": -1088890074,
+          "outer_bits": -1088890074,
+          "xz": [
+            -30000000,
+            511
+          ]
+        },
+        {
+          "biome": "minecraft:end_barrens",
+          "center_bits": 1060718755,
+          "island_bits": -1107802256,
+          "outer_bits": -1107802256,
+          "xz": [
+            -16777217,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": -1096645160,
+          "island_bits": 1052770304,
+          "outer_bits": 1052770304,
+          "xz": [
+            -16777217,
+            -1
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 42,
+      "samples": [
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": 1029899813,
+          "island_bits": 1057226752,
+          "outer_bits": 1057226752,
+          "xz": [
+            -30000000,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": -1095784717,
+          "island_bits": -1088708718,
+          "outer_bits": -1088708718,
+          "xz": [
+            -30000000,
+            -1
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": -1095784717,
+          "island_bits": -1088708718,
+          "outer_bits": -1088708718,
+          "xz": [
+            -30000000,
+            0
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "center_bits": 1063534693,
+          "island_bits": -1093097412,
+          "outer_bits": -1093097412,
+          "xz": [
+            -30000000,
+            511
+          ]
+        },
+        {
+          "biome": "minecraft:end_midlands",
+          "island_bits": -1115684864,
+          "xz": [
+            -16777217,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "island_bits": -1086156590,
+          "xz": [
+            -16777217,
+            -1
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "island_bits": -1086156590,
+          "xz": [
+            -16777217,
+            0
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "island_bits": -1098383360,
+          "xz": [
+            -16777217,
+            511
+          ]
+        }
+      ]
+    },
+    {
+      "seed": 123456789,
+      "samples": [
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": 1056697536,
+          "island_bits": 1051699902,
+          "outer_bits": 1051699902,
+          "xz": [
+            -30000000,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": 1056807080,
+          "island_bits": 1051721728,
+          "outer_bits": 1051721728,
+          "xz": [
+            -30000000,
+            -1
+          ]
+        },
+        {
+          "biome": "minecraft:end_midlands",
+          "center_bits": 1056807080,
+          "island_bits": 1051721728,
+          "outer_bits": 1051721728,
+          "xz": [
+            -30000000,
+            0
+          ]
+        },
+        {
+          "biome": "minecraft:end_highlands",
+          "center_bits": 1056713342,
+          "island_bits": 1057996851,
+          "outer_bits": 1057996851,
+          "xz": [
+            -30000000,
+            511
+          ]
+        },
+        {
+          "biome": "minecraft:end_midlands",
+          "island_bits": 1015021568,
+          "xz": [
+            -16777217,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "island_bits": -1112112400,
+          "xz": [
+            -16777217,
+            511
+          ]
+        },
+        {
+          "biome": "minecraft:small_end_islands",
+          "island_bits": -1093244760,
+          "xz": [
+            -4097,
+            -513
+          ]
+        },
+        {
+          "biome": "minecraft:end_midlands",
+          "island_bits": 1042284544,
+          "xz": [
+            -4097,
+            -1
+          ]
+        }
+      ]
+    }
+  ]
+}

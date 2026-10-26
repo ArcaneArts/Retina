@@ -733,6 +733,18 @@ tasks.register('endReferenceTest', JavaExec) {
     args rootProject.layout.buildDirectory.dir('end/reference').get().asFile.absolutePath
 }
 
+tasks.register('endIslandReferenceTest', JavaExec) {
+    group = 'verification'
+    description = 'Capture vanilla End island, simplex and biome values for signed seeds and far/negative coordinates.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndIslandReferenceTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '256m'
+    args rootProject.layout.buildDirectory.file('end/island-reference.json').get().asFile.absolutePath
+}
+
 tasks.register('flatTest', JavaExec) {
     group = 'verification'
     description = 'Check native flat presets, exact layers, deferred fills and source preservation.'

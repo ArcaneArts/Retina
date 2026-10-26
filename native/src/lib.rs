@@ -30,6 +30,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::{Mutex, RwLock};
 
 pub mod decoration;
+pub mod end;
 mod features;
 pub mod flat;
 pub mod geology;
