@@ -63,8 +63,8 @@ pub enum IntConfig {
 }
 #[derive(Clone, Deserialize)]
 pub struct WeightedInt {
-    data: IntProvider,
-    weight: u32,
+    pub(crate) data: IntProvider,
+    pub(crate) weight: u32,
 }
 impl IntProvider {
     pub(super) fn sample(&self, rng: &mut Rng) -> i32 {

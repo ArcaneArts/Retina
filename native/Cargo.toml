@@ -39,6 +39,7 @@ smallvec = { version = "1", features = ["union"] }
 # The library is loaded dynamically by Java; do not require initial-exec TLS
 # or enable process-wide malloc interposition.
 mimalloc = { version = "=0.1.52", optional = true, default-features = false, features = ["local_dynamic_tls"] }
+sha2 = "0.10"
 
 [dev-dependencies]
 libc = "0.2"

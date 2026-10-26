@@ -180,6 +180,11 @@ impl WorldProfile {
             lighting.validate(profile.materials.len())?;
         }
         for recipe in &profile.decorations {
+            if let crate::decoration::Kind::EndIsland { end_island } = &recipe.feature {
+                if profile.end.is_none() || end_island.biomes.iter().any(|&b| b as usize >= profile.biomes.len()) {
+                    return Err("End island recipes require a compatible End profile and biome mapping".into());
+                }
+            }
             if !profile.ordered_decorations
                 && matches!(
                     recipe.feature,

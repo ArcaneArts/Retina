@@ -110,7 +110,7 @@ final class EndReferenceFixtures implements AutoCloseable {
                     case "registryAccess" -> registry;
                     case "getMinY" -> 0;
                     case "getMaxY" -> 255;
-                    case "getHeight" -> floor + 1;
+                    case "getHeight" -> args == null || args.length == 0 ? 256 : floor + 1;
                     case "getHeightmapPos" -> {
                         var pos = (BlockPos) args[1];
                         yield new BlockPos(pos.getX(), floor + 1, pos.getZ());
