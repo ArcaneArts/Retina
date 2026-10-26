@@ -37,6 +37,9 @@ final class DecorationProfile {
     private final Set<String> unsupported = new TreeSet<>();
     private final ProviderNoiseProfile providerNoise;
     private boolean flat;
+    private boolean end;
+    private List<Holder<Biome>> sourceBiomeOrder;
+    private int featureIndex = -1;
     private boolean sourceOrder;
     private int generatorDepth;
     private int generationStep = -1;
@@ -55,7 +58,13 @@ final class DecorationProfile {
     }
     static JsonArray export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles, LinkedHashMap<BlockState, Integer> materials, JsonObject world, Set<PlacedFeature> nativeDisks,
             java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation) {
+        return export(registry, biomes, profiles, materials, world, nativeDisks, generation, null);
+    }
+    static JsonArray export(HolderLookup.Provider registry, List<Holder<Biome>> biomes, JsonArray profiles, LinkedHashMap<BlockState, Integer> materials, JsonObject world, Set<PlacedFeature> nativeDisks,
+            java.util.function.Function<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings> generation,
+            List<Holder<Biome>> sourceBiomeOrder) {
         var exporter = new DecorationProfile(registry, materials);
+        exporter.end = world.has("end"); exporter.sourceBiomeOrder = sourceBiomeOrder;
         exporter.flat = world.has("flat");
         exporter.generatorDepth = world.get("generator_depth").getAsInt();
         exporter.sourceOrder = world.has("decoration_source_order") && world.get("decoration_source_order").getAsBoolean();
@@ -99,7 +108,7 @@ final class DecorationProfile {
         var allUnsupported = new TreeSet<String>();
         var settings = new HashMap<Holder<Biome>, net.minecraft.world.level.biome.BiomeGenerationSettings>();
         for (var biome : biomes) settings.put(biome, generation.apply(biome));
-        var steps = FeatureSorter.buildFeaturesPerStep(biomes, b -> settings.get(b).features(), true);
+        var steps = FeatureSorter.buildFeaturesPerStep(sourceBiomeOrder == null ? biomes : sourceBiomeOrder, b -> settings.get(b).features(), true);
         for (var profile : profiles) profile.getAsJsonObject().add("decorations", new JsonArray());
         for (int step = 0; step < steps.size(); step++) {
             var names = new IdentityHashMap<PlacedFeature, String>();
@@ -117,6 +126,7 @@ final class DecorationProfile {
             }
             for (var placed : steps.get(step).features()) {
                 generationStep = step;
+                featureIndex = steps.get(step).indexMapping().applyAsInt(placed);
                 rootSource = names.get(placed);
                 unsupported.clear();
                 var selected = new ArrayList<Integer>();
@@ -124,6 +134,13 @@ final class DecorationProfile {
                 // unsupported kinds outside vegetation that used to be skipped.
                 placed(placed, new Placement(), 1, rootSource, selected, 0);
                 var members = membership.get(placed);
+                for (int id : selected) {
+                    var recipe = recipes.get(id).getAsJsonObject();
+                    if (recipe.get("kind").getAsString().equals("end_island")) {
+                        var ids = new JsonArray(); for (int b = members.nextSetBit(0); b >= 0; b = members.nextSetBit(b+1)) ids.add(b);
+                        recipe.getAsJsonObject("end_island").add("biomes",ids);
+                    }
+                }
                 for (int biome = members.nextSetBit(0); biome >= 0; biome = members.nextSetBit(biome + 1)) {
                     var ids = profiles.get(biome).getAsJsonObject().getAsJsonArray("decorations");
                     selected.forEach(ids::add);
@@ -256,6 +273,15 @@ final class DecorationProfile {
             platform.add(material(Blocks.COBBLESTONE.defaultBlockState()));
             data.add("platform", platform);
             emit(path, p, chance, "void_platform", data, selected);
+        } else if (end && feature instanceof EndIslandFeature) {
+            var data = new JsonObject(); var island = new JsonObject();
+            if (!EndIslandProfile.supported(p.program)) { unsupported.add("end_island:placement"); return; }
+            island.addProperty("material",material(Blocks.END_STONE.defaultBlockState()));
+            island.addProperty("step",generationStep); island.addProperty("index",featureIndex);
+            island.add("placement",p.program.deepCopy()); island.add("biomes",new JsonArray());
+            data.add("end_island",island); data.addProperty("reach",EndIslandProfile.reach(p.program));
+            var root = p.copy(); root.program = new JsonArray();
+            emit(path,root,chance,"end_island",data,selected);
         } else if (feature instanceof EndPlatformFeature) {
             var data = new JsonObject(); var platform = new JsonArray();
             platform.add(material(Blocks.OBSIDIAN.defaultBlockState()));
@@ -476,6 +502,7 @@ final class DecorationProfile {
     }
     private static void finishFeature(JsonObject recipe,LinkedHashMap<BlockState,Integer> palette) {
             switch(recipe.get("kind").getAsString()) {
+                case "end_island" -> finishProgram(recipe.getAsJsonObject("end_island").getAsJsonArray("placement"),palette);
                 case "nether_feature" -> NetherFeatureProfile.finish(recipe.getAsJsonObject("nether"),palette);
                 case "flat_lake" -> {
                     for (String key : List.of("can_place_feature", "can_replace_with_air_or_fluid", "can_replace_with_barrier", "solid", "liquid"))

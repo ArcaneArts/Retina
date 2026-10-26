@@ -386,15 +386,72 @@ not the terrain's legacy random source. That gap remains to be implemented witho
 changing Overworld/Nether seed behavior. Production End activation remains disabled;
 cities, progression, sparse execution and full performance acceptance remain open.
 
+### Cycle 3b: exact decoration streams and small islands
+
+End random features now have a separate `WorldgenRandom`-over-Xoroshiro128++
+implementation. It preserves signed-low-word `nextLong`, bound-one draws,
+31-bit integer rejection sampling and 26.3 float rounding. Existing Overworld and
+Nether decoration RNGs remain unchanged. End export uses the original source
+biome order for `FeatureSorter` and embeds each root's actual per-step feature
+index, rather than seeding from the cumulative replay order or a hashed recipe ID.
+
+The End island root embeds its supported loaded placement program. One mutable
+vanilla RNG traverses count branches depth first and runs terminal features in
+emission order; branches are never given substitute independent streams. Exact
+seeded block-biome zoom uses SHA-256 seed obfuscation and vanilla's fiddled nearest
+quart selection. The End-only root discovery path reads surrounding 3×3 chunk
+biomes as vanilla does; checking only the anchor chunk would omit successful roots
+near biome boundaries. Unsupported modifier/provider kinds are explicitly reported.
+
+Small-island geometry follows the actual EndIslandFeature radius, integer loops,
+shrinking layers and random draw order. Writes use the existing ordered overlay,
+dependency assembly, lighting and publication. Horizontal reach is derived from
+the loaded modifiers and actual maximum island radius; no arbitrary clipping halo
+is imposed. Source feature bounds remain distinct from dimension storage height.
+
+```sh
+./gradlew --no-daemon -PretinaHostOnly :common:endDecorationRandomTest \
+  -x :packageNative -x :buildNative
+cargo test --release --locked --manifest-path native/Cargo.toml \
+  --lib --target-dir build/native-target
+cargo build --release --locked --manifest-path native/Cargo.toml \
+  --lib --target-dir build/native-target
+./gradlew --no-daemon -PretinaHostOnly \
+  -PretinaNativePath=/absolute/path/libretina_worldgen.dylib \
+  :common:endIslandTest :common:endPlatformTest :common:endProfileTest \
+  -x :packageNative -x :buildNative
+```
+
+Independent validation captures 42 actual world-seeded RNG streams across seven
+signed seeds, plus 42 biome-zoom selections, in the ordinary native golden suite.
+All 313 native tests pass (75 optional fixtures ignored). Whole vanilla placed
+island roots match for 25 targeted anchors over two seeds: 17 accepted, 8 rejected,
+two emitted islands sharing the same stream, negative coordinates and cross-region
+writes. A successful root at (31,3841) has a Midlands anchor biome and requires
+neighbor-biome discovery. Five generated chunks match all 327,680 stored states
+against vanilla base terrain plus all contributing source island anchors. No
+injected native random stream is used as the oracle. Platform and terrain/query
+regression checks pass; the original independent reference payload hash is unchanged.
+
+Two published regions at (0,6)/(1,6) contain all 334 source island cells from anchor
+(31,213), spanning four chunks across the region edge. All 2,048 saved records were
+hashed, then both disposable MCA files (8,404,992 bytes) were deleted. This is a
+publication correctness check, not final End throughput or readiness acceptance.
+
+Coverage now has two supported End roots, with chorus, spikes and gateways still
+omitted. Production activation remains disabled. Cities, progression, sparse
+execution, compatibility and complete End performance/gameplay acceptance remain
+unfinished. The End-specific stream and placement context are reusable foundations
+for those remaining random features.
+
 ## Remaining delivery sequence
 
-1. End profile, exact seeded terrain, floating-island queries and biome selection.
-2. Native End features and initial arena.
-3. End cities, ships, markers and saved structure metadata.
-4. Conservative occupancy classification and sparse execution through publication.
-5. Dragon progression and asynchronous portal/gateway preparation.
-6. Automatic activation and loader/world/preview compatibility.
-7. Measured tuning, gameplay verification and final merged-build acceptance.
+1. Chorus, spikes/cages/crystals and naturally generated gateways.
+2. End cities, ships, markers and saved structure metadata.
+3. Conservative occupancy classification and sparse execution through publication.
+4. Dragon progression and asynchronous portal/gateway preparation.
+5. Automatic activation and loader/world/preview compatibility.
+6. Measured tuning, gameplay verification and final merged-build acceptance.
 
 Each cycle uses a separate worktree and PR with squash auto-merge. Complete region
 performance targets are 50–100 ms median / below 150 ms p95 for void, 100–200 ms /

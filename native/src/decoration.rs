@@ -104,6 +104,8 @@ pub enum Kind {
     VoidPlatform { platform: [u16; 2] },
     #[serde(rename = "end_platform")]
     EndPlatform { platform: [u16; 2] },
+    #[serde(rename = "end_island")]
+    EndIsland { end_island: end_features::islands::Recipe },
     #[serde(rename = "disk")]
     Disk {
         #[serde(flatten)]
@@ -206,6 +208,7 @@ impl Recipe {
             Kind::VoidPlatform { platform } | Kind::EndPlatform { platform } => {
                 self.placement.is_some() && platform.iter().all(|&id| valid(id))
             }
+            Kind::EndIsland { end_island } => self.placement.is_some() && end_island.validate(material_count),
             Kind::Disk { disk } => self.placement.is_some() && disk.validate(material_count),
             Kind::Sequence { features } | Kind::Overlay { features } => {
                 self.placement.is_some()
@@ -1065,6 +1068,14 @@ pub(crate) fn anchor_recipes(field: &Field, profile: &WorldProfile) -> Vec<Vec<u
 }
 fn anchor_ids(field: &Field, profile: &WorldProfile, chunk_x: i32, chunk_z: i32) -> Vec<u32> {
     let mut biomes = HashSet::new();
+    if profile.end.is_some() {
+        // Vanilla discovers roots from all sections of the surrounding 3x3
+        // chunks. End/fixed source biomes are vertical constants per chunk.
+        for dz in -1..=1 { for dx in -1..=1 {
+            biomes.insert(field.column((chunk_x+dx)*16+8,(chunk_z+dz)*16+8)
+                .expect("End anchor biome halo").biome());
+        }}
+    }
     for z in (0..16).step_by(4) {
         for x in (0..16).step_by(4) {
             let c = field.column(chunk_x * 16 + x, chunk_z * 16 + z).unwrap();
@@ -1717,6 +1728,7 @@ pub(crate) fn feature_sample(
             | Kind::NetherFeature { .. }
             | Kind::VoidPlatform { .. }
             | Kind::EndPlatform { .. }
+            | Kind::EndIsland { .. }
             | Kind::Disk { .. }
             | Kind::Sequence { .. }
             | Kind::Overlay { .. }

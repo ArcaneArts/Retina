@@ -815,3 +815,30 @@ tasks.register('endPlatformTest', JavaExec) {
     else dependsOn ':packageNative'
     args rootProject.layout.buildDirectory.dir('end/platform-reference').get().asFile.absolutePath
 }
+
+tasks.register('endDecorationRandomTest', JavaExec) {
+    group = 'verification'
+    description = 'Capture actual WorldgenRandom-over-Xoroshiro seeds/draws and seeded biome zoom for End decoration.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndDecorationRandomTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '256m'
+    args rootProject.layout.buildDirectory.file('end/decoration-random-reference.json').get().asFile.absolutePath
+}
+
+tasks.register('endIslandTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare complete native End island placements against actual world-seeded vanilla roots.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndIslandTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '512m'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    args rootProject.layout.buildDirectory.dir('end/island-placement-reference').get().asFile.absolutePath
+}
