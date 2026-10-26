@@ -195,11 +195,17 @@ def main():
     # Adjacent tiles exercise shared structure halos and cold full-region terrain.
     coords = region_coordinates(args.count, args.origin_x, args.origin_z, args.grid_width,
                                 args.request_order, args.seed)
+    batch_start_unix = time.time()
+    usage_before = resource.getrusage(resource.RUSAGE_SELF)
     start = time.perf_counter()
     with concurrent.futures.ThreadPoolExecutor(args.parallel) as workers:
         regions = list(workers.map(generate, coords))
     wall = time.perf_counter()-start
-    generation_peak_rss_bytes = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * (1 if platform.system()=="Darwin" else 1024)
+    usage_after = resource.getrusage(resource.RUSAGE_SELF)
+    batch_end_unix = time.time()
+    user_seconds = usage_after.ru_utime - usage_before.ru_utime
+    system_seconds = usage_after.ru_stime - usage_before.ru_stime
+    generation_peak_rss_bytes = usage_after.ru_maxrss * (1 if platform.system()=="Darwin" else 1024)
     after = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(after)))
     after_performance = performance_snapshot()
     chunks = after.chunks-before.chunks
@@ -234,6 +240,20 @@ def main():
                 material_dispatch=args.material_dispatch or os.environ.get("RETINA_MATERIAL_DISPATCH"),
                 specialized_interpolation=args.specialized_interpolation or os.environ.get("RETINA_SPECIALIZED_INTERPOLATION"),
                 total_ms=wall*1000, chunks_per_second=chunks/wall, median_ms=statistics.median(durations),
+                measured_process_usage={
+                    "schema_version": 1,
+                    "start_unix": batch_start_unix, "end_unix": batch_end_unix,
+                    "user_ms": user_seconds * 1000, "system_ms": system_seconds * 1000,
+                    "total_ms": (user_seconds + system_seconds) * 1000,
+                    "cpu_ms_per_region": (user_seconds + system_seconds) * 1000 / len(regions),
+                    "average_scheduled_cores": (user_seconds + system_seconds) / wall,
+                    "voluntary_context_switches": usage_after.ru_nvcsw - usage_before.ru_nvcsw,
+                    "involuntary_context_switches": usage_after.ru_nivcsw - usage_before.ru_nivcsw,
+                    "minor_faults": usage_after.ru_minflt - usage_before.ru_minflt,
+                    "major_faults": usage_after.ru_majflt - usage_before.ru_majflt,
+                    "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+                    "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+                },
                 p95_region_ms=percentile(durations, 95), maximum_region_ms=max(durations),
                 average_region_ms=statistics.mean(durations),
                 startup=dict(initialize_ms=initialize_ms, registration_ms=registration_ms, warmups=warmups),
