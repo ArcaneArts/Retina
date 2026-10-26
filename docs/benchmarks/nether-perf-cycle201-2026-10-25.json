@@ -1,0 +1,758 @@
+{
+  "cycle": 201,
+  "date": "2026-10-25",
+  "status": "Reduce optional diagnostic observer contention; no default generation speedup or goal completion claim.",
+  "source": "a8c023026a5a22556378500e0868720d1798a076",
+  "native_tree": "03ebc41dcac79a885137bc30f37bf4c948ea7700",
+  "preceding_main": "8df3f8e6a90f78a72a888c98f5d2c7d6cf0de112",
+  "branch": "codex/nether-diagnostic-counter-shards",
+  "worktree": "/tmp/retina-nether-diagnostic-counter-shards",
+  "implementation": "Replace the enabled per-profile shared atomic counter array with 64 fixed 128-byte-aligned stripes. Each physical thread holds only a numeric TLS stripe id; collisions still use relaxed atomic adds. No generated state/metrics owner enters TLS. Disabled metrics retain None and allocate no counter backing. Snapshot aggregation wraps modulo u64 and existing counter names remain available.",
+  "tradeoffs": {
+    "enabled_counter_backing_bytes": 73728,
+    "disabled_counter_backing_bytes": 0,
+    "memory_scope": "Counter backing only; excludes allocator bookkeeping and unchanged candidate/terrain tracking.",
+    "snapshot_scope": "Shards are read sequentially. Totals are exact modulo u64 after writers join; live snapshots are not one instant across writers.",
+    "snapshot_cost": "The isolated joined array-read benchmark rises from about 61\u201376 ns to 1.30\u20131.35 us. It includes Vec creation/drop and excludes JSON/Seen scans.",
+    "unchanged_scope": "Generation ordering, RNG, feature/structure selection, dependency closure, terrain coverage, cache lifetimes and worker scheduling are unchanged."
+  },
+  "native_tests": {
+    "passed": 298,
+    "failed": 0,
+    "ignored": 75
+  },
+  "tests_added": [
+    "Forced stripe collisions and profile isolation retain every update.",
+    "Live snapshot bounds, exact barrier totals and final joined totals.",
+    "Modulo-u64 wraparound, alignment and bounded backing.",
+    "Existing disabled metrics test additionally checks zero backing bytes."
+  ],
+  "builds": {
+    "release_library": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/candidate-libretina_worldgen.dylib",
+    "release_sha256": "db0060feb49b1df19a5f5bec0221187ea76417435ad244b427f682eca01208fa",
+    "control_library": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/boundary-target-coverage/candidate-libretina_worldgen.dylib",
+    "control_actual_source": "d777df65f24d0a278e604be43bf26be27d6c95f6",
+    "control_native_tree": "6ed1891e8879f1b72c58a326ea9897780911662c",
+    "test_binary": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/candidate-native-tests-v2",
+    "test_binary_sha256": "5cfe49b8a12c64e9c971e1da2244fd065ce882079b2e4235b855c86c50e249b4",
+    "test_build_note": "Fresh v2 working-tree sources were hashed at successful build and committed unchanged as source. A separate fresh release build followed that commit. Both immutable test binaries and initial microbenchmark remain retained.",
+    "target": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/target"
+  },
+  "microbenchmark": {
+    "scope": "Same-process counter-storage microbenchmark. Five warmups and twenty measured pairs per thread count, alternating first variant. Ready barriers precede update timing; start/done barriers are included. Construction, thread creation/join and final exact-count checks are outside update timing. Independent thread-local initialization can still affect early updates. Separately, snapshot_ns times100joined counter-array reads and Vec allocation/drop; it excludes JSON and candidate/terrain tracking. This measures diagnostic counter storage only, not complete generation or default throughput.",
+    "counter_backing_bytes": 73728,
+    "rows": [
+      {
+        "threads": 1,
+        "updates_per_thread": 100000,
+        "measured_pairs": 20,
+        "shared_median_ns": 166020.5,
+        "sharded_median_ns": 164854.5,
+        "shared_p95_ns": 178141.95,
+        "sharded_p95_ns": 175358.0,
+        "median_ratio_shared_over_sharded": 1.0070729036817314,
+        "candidate_faster_pairs": 11,
+        "shared_snapshot_median_ns_per_read": 60.835,
+        "sharded_snapshot_median_ns_per_read": 1354.375
+      },
+      {
+        "threads": 8,
+        "updates_per_thread": 100000,
+        "measured_pairs": 20,
+        "shared_median_ns": 23910271.0,
+        "sharded_median_ns": 181541.5,
+        "shared_p95_ns": 24400680.900000002,
+        "sharded_p95_ns": 200339.55000000002,
+        "median_ratio_shared_over_sharded": 131.7069154986601,
+        "candidate_faster_pairs": 20,
+        "shared_snapshot_median_ns_per_read": 76.46000000000001,
+        "sharded_snapshot_median_ns_per_read": 1303.96
+      },
+      {
+        "threads": 16,
+        "updates_per_thread": 100000,
+        "measured_pairs": 20,
+        "shared_median_ns": 58695937.0,
+        "sharded_median_ns": 358812.5,
+        "shared_p95_ns": 59308387.5,
+        "sharded_p95_ns": 403410.4,
+        "median_ratio_shared_over_sharded": 163.5838690123672,
+        "candidate_faster_pairs": 20,
+        "shared_snapshot_median_ns_per_read": 66.46000000000001,
+        "sharded_snapshot_median_ns_per_read": 1310.42
+      }
+    ],
+    "decision": "Contended update improvements are consistent in this synthetic storage workload. Snapshot reads are more expensive and counter backing is bounded at 72 KiB per enabled metrics instance. These results do not claim a default generation speedup; completed whole-region observations are reported separately below."
+  },
+  "methodology": {
+    "whole_generation": "Complete 1024-chunk regions, GPU lighting, normal zlib publication and synchronous cleanup. Five warmups/twenty measured per case in separate ABBA processes. Same profiles, seeds, coordinates, 16 native workers and actual shader status 4 throughout. Diagnostic second-seed comparison uses 8 callers; ordinary full-corpus and focused follow-up use 1 caller.",
+    "profiling_separation": "Enabled observer timing is separate from default-path comparisons. Counter-only microbenchmarks are not region generation.",
+    "counter_microbenchmark": "Same-process original shared-array operation versus striped storage, alternating first variant, 5 warmups/20 measured pairs at 1/8/16 threads, 100,000 updates each. Update timing includes start/done barriers; construction/thread creation/join and exact-count assertions remain outside. Independent TLS initialization can affect early updates. Snapshot-array read cost is measured separately.",
+    "references": "Every case compares complete decompressed chunk NBT and chunk membership against the immutable original reference suite and preceding merged C200 postmerge suite; later candidates also compare surrounding controls and earlier candidates. Only compression/MCA container layout is outside payload equality.",
+    "identities": "Source and actual retained library hashes remain fixed throughout all generation campaigns. Exact commands are in external receipts.",
+    "activity": "Observer records are reviewed after running operations, without process-name admission gates or terminating other work."
+  },
+  "correctness": {
+    "initial_measured_chunk_instances": 491520,
+    "focused_measured_chunk_instances": 163840,
+    "total_measured_chunk_instances": 655360,
+    "all_original_and_preceding_full_nbt_exact": true,
+    "all_measured_shader_statuses": [
+      4
+    ],
+    "scope": "Counts are measured instances across variants and repeated coordinates; warmups are additional and excluded from this total."
+  },
+  "runs": [
+    {
+      "campaign": "diagnostic-p8",
+      "pass": "control-a",
+      "case": "nether-second-seed",
+      "median_ms": 6231.121521093883,
+      "p95_ms": 8257.522997807248,
+      "max_ms": 10019.131707958877,
+      "total_ms": 16286.39983292669,
+      "chunks_per_second": 1257.490925563241,
+      "peak_rss_bytes": 6173114368,
+      "readback_bytes": 2894981008,
+      "parallel": 8,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "diagnostic-p8",
+      "pass": "candidate-b",
+      "case": "nether-second-seed",
+      "median_ms": 3835.3161663981155,
+      "p95_ms": 6457.073841325474,
+      "max_ms": 7204.716874985024,
+      "total_ms": 11643.65829108283,
+      "chunks_per_second": 1758.8973746923155,
+      "peak_rss_bytes": 7048790016,
+      "readback_bytes": 2939648656,
+      "parallel": 8,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "diagnostic-p8",
+      "pass": "candidate-c",
+      "case": "nether-second-seed",
+      "median_ms": 3217.2429165802896,
+      "p95_ms": 4976.93327270681,
+      "max_ms": 5062.629249878228,
+      "total_ms": 10064.98795794323,
+      "chunks_per_second": 2034.776403665471,
+      "peak_rss_bytes": 6648233984,
+      "readback_bytes": 2811372236,
+      "parallel": 8,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "diagnostic-p8",
+      "pass": "control-d",
+      "case": "nether-second-seed",
+      "median_ms": 8099.976833444089,
+      "p95_ms": 12767.101980547886,
+      "max_ms": 13974.956957856193,
+      "total_ms": 23716.641375096515,
+      "chunks_per_second": 863.5286791284399,
+      "peak_rss_bytes": 6354534400,
+      "readback_bytes": 2893345896,
+      "parallel": 8,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-a",
+      "case": "nether-main",
+      "median_ms": 1317.132728989236,
+      "p95_ms": 2033.1198046216746,
+      "max_ms": 2523.7831668928266,
+      "total_ms": 27957.381000043824,
+      "chunks_per_second": 732.5435812448919,
+      "peak_rss_bytes": 2251505664,
+      "readback_bytes": 3873810092,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-a",
+      "case": "nether-second-seed",
+      "median_ms": 1096.1474374635145,
+      "p95_ms": 1419.9188354890796,
+      "max_ms": 1610.6115840375423,
+      "total_ms": 22229.851541109383,
+      "chunks_per_second": 921.2837054771417,
+      "peak_rss_bytes": 2171125760,
+      "readback_bytes": 3994997880,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-a",
+      "case": "nether-custom-bounds",
+      "median_ms": 919.6515415096655,
+      "p95_ms": 1124.2760355817154,
+      "max_ms": 1132.8267089556903,
+      "total_ms": 18597.577374894172,
+      "chunks_per_second": 1101.2187010791529,
+      "peak_rss_bytes": 1892990976,
+      "readback_bytes": 3094573100,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-a",
+      "case": "nether-direct-stem",
+      "median_ms": 750.7795420242473,
+      "p95_ms": 1533.7025017593987,
+      "max_ms": 1744.714958127588,
+      "total_ms": 17660.500458208844,
+      "chunks_per_second": 1159.6500364450665,
+      "peak_rss_bytes": 1913864192,
+      "readback_bytes": 3082823588,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-a",
+      "case": "overworld",
+      "median_ms": 351.6236040741205,
+      "p95_ms": 573.05829403922,
+      "max_ms": 960.5300829280168,
+      "total_ms": 7700.662584044039,
+      "chunks_per_second": 2659.5114091136857,
+      "peak_rss_bytes": 1658650624,
+      "readback_bytes": 2368471968,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-b",
+      "case": "nether-main",
+      "median_ms": 785.6693749781698,
+      "p95_ms": 987.2483876533807,
+      "max_ms": 1098.8094999920577,
+      "total_ms": 15831.96804090403,
+      "chunks_per_second": 1293.5852287654416,
+      "peak_rss_bytes": 2316779520,
+      "readback_bytes": 3874512484,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-b",
+      "case": "nether-second-seed",
+      "median_ms": 806.3818960217759,
+      "p95_ms": 1200.6919035338797,
+      "max_ms": 1201.7414160072803,
+      "total_ms": 16614.633333170786,
+      "chunks_per_second": 1232.648328092326,
+      "peak_rss_bytes": 2274525184,
+      "readback_bytes": 3998557208,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-b",
+      "case": "nether-custom-bounds",
+      "median_ms": 585.0201875437051,
+      "p95_ms": 727.3282645037398,
+      "max_ms": 741.7566669173539,
+      "total_ms": 12138.309333007783,
+      "chunks_per_second": 1687.2201422902122,
+      "peak_rss_bytes": 1949810688,
+      "readback_bytes": 3094573100,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-b",
+      "case": "nether-direct-stem",
+      "median_ms": 525.1489999936894,
+      "p95_ms": 571.7035942594521,
+      "max_ms": 640.263709006831,
+      "total_ms": 10549.115374917164,
+      "chunks_per_second": 1941.395014855529,
+      "peak_rss_bytes": 1983414272,
+      "readback_bytes": 3082823588,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-b",
+      "case": "overworld",
+      "median_ms": 214.8356664692983,
+      "p95_ms": 260.06533530307934,
+      "max_ms": 267.01858290471137,
+      "total_ms": 4322.120709111914,
+      "chunks_per_second": 4738.414629842237,
+      "peak_rss_bytes": 1549991936,
+      "readback_bytes": 2368472176,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-c",
+      "case": "nether-main",
+      "median_ms": 682.5434999773279,
+      "p95_ms": 905.5652897804976,
+      "max_ms": 907.0923749823123,
+      "total_ms": 14080.599915934727,
+      "chunks_per_second": 1454.4834823992978,
+      "peak_rss_bytes": 2429583360,
+      "readback_bytes": 3876546028,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-c",
+      "case": "nether-second-seed",
+      "median_ms": 781.6990414867178,
+      "p95_ms": 974.5393665274606,
+      "max_ms": 1059.212707914412,
+      "total_ms": 15610.721915960312,
+      "chunks_per_second": 1311.9188279858708,
+      "peak_rss_bytes": 2229256192,
+      "readback_bytes": 3997130920,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-c",
+      "case": "nether-custom-bounds",
+      "median_ms": 519.8107289616019,
+      "p95_ms": 577.1491362131201,
+      "max_ms": 614.6561249624938,
+      "total_ms": 10562.091291882098,
+      "chunks_per_second": 1939.0099397967422,
+      "peak_rss_bytes": 2021720064,
+      "readback_bytes": 3094573100,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-c",
+      "case": "nether-direct-stem",
+      "median_ms": 512.9468124359846,
+      "p95_ms": 581.5884731826372,
+      "max_ms": 629.3579160701483,
+      "total_ms": 10489.60362514481,
+      "chunks_per_second": 1952.409331359961,
+      "peak_rss_bytes": 2111291392,
+      "readback_bytes": 3082823588,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "candidate-c",
+      "case": "overworld",
+      "median_ms": 223.97958347573876,
+      "p95_ms": 255.7339917868376,
+      "max_ms": 268.1883331388235,
+      "total_ms": 4450.303875142708,
+      "chunks_per_second": 4601.932940892326,
+      "peak_rss_bytes": 1561985024,
+      "readback_bytes": 2368471840,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-d",
+      "case": "nether-main",
+      "median_ms": 652.0612704334781,
+      "p95_ms": 866.4838986704127,
+      "max_ms": 901.1268748436123,
+      "total_ms": 13669.372249860317,
+      "chunks_per_second": 1498.2399795432655,
+      "peak_rss_bytes": 2400583680,
+      "readback_bytes": 3873748140,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-d",
+      "case": "nether-second-seed",
+      "median_ms": 717.0340624870732,
+      "p95_ms": 876.5364079736174,
+      "max_ms": 960.9002089127898,
+      "total_ms": 14190.131457988173,
+      "chunks_per_second": 1443.2565378716783,
+      "peak_rss_bytes": 2473312256,
+      "readback_bytes": 3994997864,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-d",
+      "case": "nether-custom-bounds",
+      "median_ms": 520.6685834564269,
+      "p95_ms": 570.3861186513677,
+      "max_ms": 597.3303751088679,
+      "total_ms": 10492.934917099774,
+      "chunks_per_second": 1951.789481379975,
+      "peak_rss_bytes": 2077917184,
+      "readback_bytes": 3094573100,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-d",
+      "case": "nether-direct-stem",
+      "median_ms": 513.5255000786856,
+      "p95_ms": 618.2737348368391,
+      "max_ms": 627.1456659305841,
+      "total_ms": 10377.252415986732,
+      "chunks_per_second": 1973.5474458007234,
+      "peak_rss_bytes": 2057158656,
+      "readback_bytes": 3082823588,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "ordinary-p1",
+      "pass": "control-d",
+      "case": "overworld",
+      "median_ms": 218.1118754670024,
+      "p95_ms": 253.68748721666637,
+      "max_ms": 276.5830419957638,
+      "total_ms": 4388.1633339915425,
+      "chunks_per_second": 4667.100661763898,
+      "peak_rss_bytes": 1611808768,
+      "readback_bytes": 2368471840,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "focused-default/ordinary-p1",
+      "pass": "control-a",
+      "case": "nether-second-seed",
+      "median_ms": 733.5178960347548,
+      "p95_ms": 885.9106502495706,
+      "max_ms": 898.3339578844607,
+      "total_ms": 14209.331790916622,
+      "chunks_per_second": 1441.3063401821562,
+      "peak_rss_bytes": 2426683392,
+      "readback_bytes": 3994998024,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "focused-default/ordinary-p1",
+      "pass": "control-a",
+      "case": "overworld",
+      "median_ms": 222.76218747720122,
+      "p95_ms": 254.74089583149183,
+      "max_ms": 265.4857919551432,
+      "total_ms": 4390.715290792286,
+      "chunks_per_second": 4664.388065185723,
+      "peak_rss_bytes": 1827241984,
+      "readback_bytes": 2368471952,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "focused-default/ordinary-p1",
+      "pass": "candidate-b",
+      "case": "nether-second-seed",
+      "median_ms": 746.8901249812916,
+      "p95_ms": 879.1270251618699,
+      "max_ms": 910.9968331176788,
+      "total_ms": 14453.123416053131,
+      "chunks_per_second": 1416.9947498858826,
+      "peak_rss_bytes": 2372796416,
+      "readback_bytes": 3995693400,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "focused-default/ordinary-p1",
+      "pass": "candidate-b",
+      "case": "overworld",
+      "median_ms": 222.2073539160192,
+      "p95_ms": 262.2746941167861,
+      "max_ms": 265.5384580139071,
+      "total_ms": 4450.771874981001,
+      "chunks_per_second": 4601.449046428025,
+      "peak_rss_bytes": 1543536640,
+      "readback_bytes": 2368472048,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "focused-default/ordinary-p1",
+      "pass": "candidate-c",
+      "case": "nether-second-seed",
+      "median_ms": 730.991208110936,
+      "p95_ms": 850.9251880110243,
+      "max_ms": 901.2557920068502,
+      "total_ms": 14110.221832990646,
+      "chunks_per_second": 1451.4300513771077,
+      "peak_rss_bytes": 2475212800,
+      "readback_bytes": 3996425160,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "focused-default/ordinary-p1",
+      "pass": "candidate-c",
+      "case": "overworld",
+      "median_ms": 219.14337493944913,
+      "p95_ms": 248.83977312128994,
+      "max_ms": 275.1852918881923,
+      "total_ms": 4392.558083869517,
+      "chunks_per_second": 4662.431232317056,
+      "peak_rss_bytes": 1493729280,
+      "readback_bytes": 2368472272,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "focused-default/ordinary-p1",
+      "pass": "control-d",
+      "case": "nether-second-seed",
+      "median_ms": 736.2332500051707,
+      "p95_ms": 901.8741498584859,
+      "max_ms": 904.4989999383688,
+      "total_ms": 14438.312167068943,
+      "chunks_per_second": 1418.4483451404385,
+      "peak_rss_bytes": 2292858880,
+      "readback_bytes": 3997130936,
+      "parallel": 1,
+      "measured_chunks": 20480
+    },
+    {
+      "campaign": "focused-default/ordinary-p1",
+      "pass": "control-d",
+      "case": "overworld",
+      "median_ms": 217.63041650410742,
+      "p95_ms": 267.33598267892376,
+      "max_ms": 269.21112509444356,
+      "total_ms": 4409.321374958381,
+      "chunks_per_second": 4644.705672013601,
+      "peak_rss_bytes": 1576861696,
+      "readback_bytes": 2368471856,
+      "parallel": 1,
+      "measured_chunks": 20480
+    }
+  ],
+  "observed_comparisons": {
+    "diagnostic-p8": [
+      {
+        "case": "nether-second-seed",
+        "control_median_drift_percent": 29.992278372740277,
+        "candidate_median_change_percent": -50.788425921693594,
+        "candidate_throughput_change_percent": 78.86085399522975,
+        "candidate_peak_rss_change_percent": 9.334355182330722,
+        "both_candidate_p95_below_1s": false
+      }
+    ],
+    "ordinary-p1": [
+      {
+        "case": "nether-custom-bounds",
+        "control_median_drift_percent": -43.38414497715984,
+        "candidate_median_change_percent": -23.29268352538526,
+        "candidate_throughput_change_percent": 18.775642427728734,
+        "candidate_peak_rss_change_percent": 0.01567883151445404,
+        "both_candidate_p95_below_1s": true
+      },
+      {
+        "case": "nether-direct-stem",
+        "control_median_drift_percent": -31.601026488532014,
+        "candidate_median_change_percent": -17.89198193000975,
+        "candidate_throughput_change_percent": 24.27573966466099,
+        "candidate_peak_rss_change_percent": 3.1146337035631078,
+        "both_candidate_p95_below_1s": true
+      },
+      {
+        "case": "nether-main",
+        "control_median_drift_percent": -50.49388295636172,
+        "candidate_median_change_percent": -25.440922764038653,
+        "candidate_throughput_change_percent": 23.188495713758094,
+        "candidate_peak_rss_change_percent": 2.0264773315583184,
+        "both_candidate_p95_below_1s": true
+      },
+      {
+        "case": "nether-second-seed",
+        "control_median_drift_percent": -34.58598378460016,
+        "candidate_median_change_percent": -12.414673459233317,
+        "candidate_throughput_change_percent": 7.613611704675871,
+        "candidate_peak_rss_change_percent": -3.0284964405906667,
+        "both_candidate_p95_below_1s": false
+      },
+      {
+        "case": "overworld",
+        "control_median_drift_percent": -37.97007000103852,
+        "candidate_median_change_percent": -22.979125277845046,
+        "candidate_throughput_change_percent": 27.485220731985272,
+        "candidate_peak_rss_change_percent": -4.845876771552959,
+        "both_candidate_p95_below_1s": true
+      }
+    ],
+    "focused-default/ordinary-p1": [
+      {
+        "case": "nether-second-seed",
+        "control_median_drift_percent": 0.37018237524872877,
+        "candidate_median_change_percent": 0.553167593997661,
+        "candidate_throughput_change_percent": 0.3031769118132521,
+        "candidate_peak_rss_change_percent": 2.7220212596074322,
+        "both_candidate_p95_below_1s": true
+      },
+      {
+        "case": "overworld",
+        "control_median_drift_percent": -2.3036993087612867,
+        "candidate_median_change_percent": 0.21756152703245046,
+        "candidate_throughput_change_percent": -0.48569130068558675,
+        "candidate_peak_rss_change_percent": -10.776339221254272,
+        "both_candidate_p95_below_1s": true
+      }
+    ]
+  },
+  "identified_test_overlap": {
+    "diagnostic-p8": [],
+    "ordinary-p1": [
+      {
+        "pass": "control-a",
+        "case": "nether-custom-bounds-run0",
+        "terminal": true,
+        "identified_competing_test_samples": 2,
+        "pids": [
+          14050,
+          14060
+        ],
+        "maximum_observed_test_cpu": 210.8
+      },
+      {
+        "pass": "control-a",
+        "case": "nether-direct-stem-run0",
+        "terminal": true,
+        "identified_competing_test_samples": 3,
+        "pids": [
+          14315
+        ],
+        "maximum_observed_test_cpu": 115.7
+      },
+      {
+        "pass": "candidate-c",
+        "case": "nether-main-run0",
+        "terminal": true,
+        "identified_competing_test_samples": 6,
+        "pids": [
+          18788,
+          18934
+        ],
+        "maximum_observed_test_cpu": 0.0
+      }
+    ],
+    "focused-default/ordinary-p1": []
+  },
+  "decision": {
+    "counter_storage": "Select bounded stripes for enabled diagnostic fidelity. Synthetic contended updates improve consistently: 8 and 16 thread medians are 132x/164x faster in this storage-only workload; 1 thread is similar. This is not a region speedup.",
+    "diagnostic_generation": "Both candidate enabled passes beat both controls in median/p95 and throughput, but control median drift is 30%; no causal whole-generation speedup estimate. Candidate peak RSS observations are higher; 72 KiB counter backing is bounded and does not explain all process RSS variation.",
+    "ordinary_initial": "Full-corpus controls drift by 32\u201350% and some cases overlap identified tests. No default speedup or uncontended timing acceptance from that campaign. The second-seed difference against final control motivated a focused repeat.",
+    "ordinary_follow_up": "Follow-up second-seed and Overworld differences are small across repeated surrounding controls and candidates. The earlier difference versus final control did not reproduce as a material default regression. No default speedup claimed. Broader concurrency/tail acceptance remains open.",
+    "follow_up_effects": [
+      {
+        "case": "nether-second-seed",
+        "control_median_drift_percent": 0.37018237524872877,
+        "candidate_median_change_percent": 0.553167593997661,
+        "candidate_throughput_change_percent": 0.3031769118132521,
+        "candidate_peak_rss_change_percent": 2.7220212596074322,
+        "both_candidate_p95_below_1s": true
+      },
+      {
+        "case": "overworld",
+        "control_median_drift_percent": -2.3036993087612867,
+        "candidate_median_change_percent": 0.21756152703245046,
+        "candidate_throughput_change_percent": -0.48569130068558675,
+        "candidate_peak_rss_change_percent": -10.776339221254272,
+        "both_candidate_p95_below_1s": true
+      }
+    ],
+    "goal_complete": false,
+    "remaining": "Broader representative timing/concurrency/portal acceptance remains open. Complete-output correctness alone does not establish the performance objective."
+  },
+  "evidence": {
+    "validation-receipt.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/validation-receipt.json",
+      "sha256": "6f073fb00e9e31f6fd21974b023bf3a154df1af9f21399ee5429edef1631abb4"
+    },
+    "validation-assessment.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/validation-assessment.json",
+      "sha256": "90a61f3c1e5e28f456a1bae0eba15317b8e5f18833b7f65344ddaaa0843bf4d4"
+    },
+    "test-build-receipt-v2.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/test-build-receipt-v2.json",
+      "sha256": "98511e8d89db454feb98a449db54523e8e81155ea6f0384383e69d0b62aa6f66"
+    },
+    "native-tests-v2.log": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/native-tests-v2.log",
+      "sha256": "d67eb5b8523a5a0247ada91a6788b4d057d112e93780969fdc64f4bfef511cc3"
+    },
+    "release-build.log": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/release-build.log",
+      "sha256": "921fd31d0227f0e02c4b4a3f86ddf5d5da3838190317573f73190a838a02b309"
+    },
+    "micro-receipt.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/micro-receipt.json",
+      "sha256": "3e99ccd5c226d4ea5cbbf7bcd9be5b9edf4f32927d0d9db555e1ff382f24f39f"
+    },
+    "counter-microbenchmark-v2.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/counter-microbenchmark-v2.json",
+      "sha256": "2ee9cf88a3c7b7679af90d825c9637e4086cb4d6c7a48d0ac5a7ae17a3509ef1"
+    },
+    "micro-analysis.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/micro-analysis.json",
+      "sha256": "3b9def48f0cb41fbf358c7a29dee1290e2728aada42bad0f105143d53de4897d"
+    },
+    "diagnostic-p8/comparison.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/diagnostic-p8/comparison.json",
+      "sha256": "5d20fff1204db60e549b191ff382adb4d0eddb007077848c3ee63db1ae9dbb6d"
+    },
+    "diagnostic-p8/known-interference.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/diagnostic-p8/known-interference.json",
+      "sha256": "b23569b5c91971d22f2238ea6a7e83b7f601cc5c3b35434c73b49260a81ca7db"
+    },
+    "ordinary-p1/comparison.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/ordinary-p1/comparison.json",
+      "sha256": "9b135d07f72245b31937659d5849c0843e239aaee1455a9261f78ad710d6ffea"
+    },
+    "ordinary-p1/known-interference.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/ordinary-p1/known-interference.json",
+      "sha256": "57d33d9e7c4678f83d7c5acb9c39fd13f03bff8785c01a358c4096e686d1e0dc"
+    },
+    "focused-default/validation-receipt.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/focused-default/validation-receipt.json",
+      "sha256": "7602580a4fb79fa45ce606bf959b12bfc784779c738a9bc766d60df8ecc2bd8f"
+    },
+    "focused-default/assessment.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/focused-default/assessment.json",
+      "sha256": "b0082984befabaf2d1d8e2a3c683051a43ae9e05fc5ea3e6d468fa2289aa3ef2"
+    },
+    "focused-default/ordinary-p1/comparison.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/focused-default/ordinary-p1/comparison.json",
+      "sha256": "87a7a360b4bb66908b9c11ae1c5cc7a3aef28f2eb445db5a7e60350d77155116"
+    },
+    "focused-default/ordinary-p1/known-interference.json": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/diagnostic-counter-shards/focused-default/ordinary-p1/known-interference.json",
+      "sha256": "ff0a0dbafae54249c09da3789514f4e7953961831877d9c8c0b87d0177671046"
+    }
+  },
+  "reproduce": "Build source in an isolated owned worktree/target. Run the ignored counter_contention_inventory test with RETINA_COUNTER_BENCH_OUTPUT pointing to a fresh file. Replay receipt command arrays using fresh output paths. Retain all binaries, logs, generated worlds, original/preceding corpora and worktrees. No test data was removed."
+}
