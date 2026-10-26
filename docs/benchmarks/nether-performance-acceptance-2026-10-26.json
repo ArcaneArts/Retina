@@ -1,0 +1,1329 @@
+{
+  "date": "2026-10-26",
+  "status": "Runtime acceptance verified; final documentation delivery tracked separately.",
+  "runtime_source": "39f7a1eac278e7f16005b25bed0739546d35a255",
+  "native_tree": "75176b16dd1bca23f3ca0fa4c417b434286e712d",
+  "packaged_library_sha256": "eef6251eedbc16920335f365aa5d307e548d4fd4c82ac108b2f232e76426b283",
+  "actual_library_build_source": "9a8e5ca1802f3a5f81327d6176ad46e7f385a054",
+  "runtime_pr": "https://github.com/ArcaneArts/Retina/pull/241",
+  "method": "Fresh post-confirmed-merge complete five-profile suite twice,5warm20measured per profile/pass,1caller16nativeworkers,defaultdiagnostics off,actualshader readiness,lighting/zlib/publication/synchronous logical cleanup. Actual default native from full packaged build,not the isolated Cargo-target benchmark library. Library buildsource and merged native tree equality are recorded explicitly. Original,preceding5cd3335 and premerge5715candidate complete NBT comparisons. All data/worlds retained.",
+  "serial_results": [
+    {
+      "pass": "pass-0",
+      "case": "nether-main-run0",
+      "median_ms": 519.0051874378696,
+      "p95_ms": 662.4513934366405,
+      "max_ms": 714.7476659156382,
+      "total_ms": 10735.758375143632,
+      "chunks_per_second": 1907.6435296287116,
+      "generation_peak_rss_bytes": 2585772032,
+      "cpu_ms_per_region": 1933.953,
+      "observations": 15
+    },
+    {
+      "pass": "pass-0",
+      "case": "nether-second-seed-run0",
+      "median_ms": 580.0877501023933,
+      "p95_ms": 684.0010747429916,
+      "max_ms": 734.3319158535451,
+      "total_ms": 11286.94387502037,
+      "chunks_per_second": 1814.4858543440785,
+      "generation_peak_rss_bytes": 2612576256,
+      "cpu_ms_per_region": 1944.0937000000001,
+      "observations": 18
+    },
+    {
+      "pass": "pass-0",
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 379.39718703273684,
+      "p95_ms": 427.39168525440624,
+      "max_ms": 447.22250010818243,
+      "total_ms": 7693.227458978072,
+      "chunks_per_second": 2662.0816957777115,
+      "generation_peak_rss_bytes": 1928085504,
+      "cpu_ms_per_region": 1726.5068499999998,
+      "observations": 13
+    },
+    {
+      "pass": "pass-0",
+      "case": "nether-direct-stem-run0",
+      "median_ms": 384.96829150244594,
+      "p95_ms": 433.71969624422496,
+      "max_ms": 507.26212514564395,
+      "total_ms": 7787.956000072882,
+      "chunks_per_second": 2629.701554529628,
+      "generation_peak_rss_bytes": 1937145856,
+      "cpu_ms_per_region": 1707.67205,
+      "observations": 12
+    },
+    {
+      "pass": "pass-0",
+      "case": "overworld-run0",
+      "median_ms": 198.72025004588068,
+      "p95_ms": 230.21462653996423,
+      "max_ms": 245.53895788267255,
+      "total_ms": 3974.891416961327,
+      "chunks_per_second": 5152.342001748637,
+      "generation_peak_rss_bytes": 2035318784,
+      "cpu_ms_per_region": 587.5673500000001,
+      "observations": 7
+    },
+    {
+      "pass": "pass-1",
+      "case": "nether-main-run0",
+      "median_ms": 525.990187539719,
+      "p95_ms": 678.3206631662325,
+      "max_ms": 745.9811670705676,
+      "total_ms": 10810.038707917556,
+      "chunks_per_second": 1894.5353067977371,
+      "generation_peak_rss_bytes": 2540994560,
+      "cpu_ms_per_region": 1942.4225499999998,
+      "observations": 18
+    },
+    {
+      "pass": "pass-1",
+      "case": "nether-second-seed-run0",
+      "median_ms": 552.8174790088087,
+      "p95_ms": 662.4057858600282,
+      "max_ms": 746.9675419852138,
+      "total_ms": 11050.5287500564,
+      "chunks_per_second": 1853.3049832475638,
+      "generation_peak_rss_bytes": 2628894720,
+      "cpu_ms_per_region": 1933.71085,
+      "observations": 19
+    },
+    {
+      "pass": "pass-1",
+      "case": "nether-custom-bounds-run0",
+      "median_ms": 378.5628543701023,
+      "p95_ms": 426.8798044882715,
+      "max_ms": 438.2111660670489,
+      "total_ms": 7679.186290828511,
+      "chunks_per_second": 2666.9492345119816,
+      "generation_peak_rss_bytes": 1899184128,
+      "cpu_ms_per_region": 1730.0769,
+      "observations": 12
+    },
+    {
+      "pass": "pass-1",
+      "case": "nether-direct-stem-run0",
+      "median_ms": 376.83439545799047,
+      "p95_ms": 404.778766585514,
+      "max_ms": 467.31283282861114,
+      "total_ms": 7540.734125068411,
+      "chunks_per_second": 2715.9159387301966,
+      "generation_peak_rss_bytes": 1936703488,
+      "cpu_ms_per_region": 1691.69965,
+      "observations": 12
+    },
+    {
+      "pass": "pass-1",
+      "case": "overworld-run0",
+      "median_ms": 199.72979149315506,
+      "p95_ms": 229.26317261299118,
+      "max_ms": 242.92112491093576,
+      "total_ms": 3933.5323341656476,
+      "chunks_per_second": 5206.516245491616,
+      "generation_peak_rss_bytes": 2029993984,
+      "cpu_ms_per_region": 583.9064500000002,
+      "observations": 6
+    }
+  ],
+  "configuration": "Everyprofilehashandseedmatchesimmutableoriginal;lighting enabled,zlib,lit-mca,5warmups/20measured,actualshader4,1caller16workers,diagnosticsoff;all measuredwindowsobserved with0identifiedQA/tests.",
+  "concurrency_repeats": [
+    {
+      "mode": "main-p2",
+      "case": "nether-main",
+      "candidate_throughput_change_percent": 30.787534373494154,
+      "candidate_median_change_percent": -24.281391576663648,
+      "candidate_cpu_per_region_change_percent": -14.565595635627936,
+      "candidate_peak_rss_change_percent": 6.1691427969621015,
+      "control_median_drift_percent": 5.27536604452763,
+      "control_cpu_drift_percent": -1.1503546697623324,
+      "candidate_b_median_ms": 681.9459788966924,
+      "candidate_c_median_ms": 651.0003334842622,
+      "candidate_b_p95_ms": 954.2515106848441,
+      "candidate_c_p95_ms": 953.8085727137513,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "second-p4",
+      "case": "nether-second-seed",
+      "candidate_throughput_change_percent": 39.63541401994319,
+      "candidate_median_change_percent": -26.37894963846662,
+      "candidate_cpu_per_region_change_percent": -21.32081758944443,
+      "candidate_peak_rss_change_percent": 5.105964820334763,
+      "control_median_drift_percent": -0.8855508109143484,
+      "control_cpu_drift_percent": 5.074646607322664,
+      "candidate_b_median_ms": 1018.6803330434486,
+      "candidate_c_median_ms": 1048.9794585155323,
+      "candidate_b_p95_ms": 1399.6521769906394,
+      "candidate_c_p95_ms": 1421.796302427538,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "direct-p8",
+      "case": "nether-direct-stem",
+      "candidate_throughput_change_percent": 70.07507893093616,
+      "candidate_median_change_percent": -34.15877956836899,
+      "candidate_cpu_per_region_change_percent": -41.19815788532717,
+      "candidate_peak_rss_change_percent": 0.9860558688088883,
+      "control_median_drift_percent": -35.240198835351336,
+      "control_cpu_drift_percent": -12.204774327870393,
+      "candidate_b_median_ms": 1690.7952710753307,
+      "candidate_c_median_ms": 1706.785770948045,
+      "candidate_b_p95_ms": 2285.190599737689,
+      "candidate_c_p95_ms": 2456.7812503664754,
+      "measured_window_test_like_peaks_present": false
+    }
+  ],
+  "concurrency_candidate_results": [
+    {
+      "mode": "main-p2",
+      "pass": "candidate-b",
+      "case": "nether-main",
+      "parallel": 2,
+      "median_ms": 681.9459788966924,
+      "p95_ms": 954.2515106848441,
+      "max_ms": 977.492667036131,
+      "total_ms": 7265.178166795522,
+      "chunks_per_second": 2818.9260510638223,
+      "generation_peak_rss_bytes": 3627302912,
+      "cpu_ms_per_region": 2047.9837499999999,
+      "measured_window_observer_samples": 12
+    },
+    {
+      "mode": "main-p2",
+      "pass": "candidate-c",
+      "case": "nether-main",
+      "parallel": 2,
+      "median_ms": 651.0003334842622,
+      "p95_ms": 953.8085727137513,
+      "max_ms": 1016.4513748604804,
+      "total_ms": 7185.378582915291,
+      "chunks_per_second": 2850.2325609809054,
+      "generation_peak_rss_bytes": 3640033280,
+      "cpu_ms_per_region": 2045.8781000000004,
+      "measured_window_observer_samples": 12
+    },
+    {
+      "mode": "second-p4",
+      "pass": "candidate-b",
+      "case": "nether-second-seed",
+      "parallel": 4,
+      "median_ms": 1018.6803330434486,
+      "p95_ms": 1399.6521769906394,
+      "max_ms": 1405.1702921278775,
+      "total_ms": 5496.7848339583725,
+      "chunks_per_second": 3725.8143839790505,
+      "generation_peak_rss_bytes": 5216174080,
+      "cpu_ms_per_region": 2089.6187999999997,
+      "measured_window_observer_samples": 9
+    },
+    {
+      "mode": "second-p4",
+      "pass": "candidate-c",
+      "case": "nether-second-seed",
+      "parallel": 4,
+      "median_ms": 1048.9794585155323,
+      "p95_ms": 1421.796302427538,
+      "max_ms": 1481.94337496534,
+      "total_ms": 5497.853165958077,
+      "chunks_per_second": 3725.0903910655966,
+      "generation_peak_rss_bytes": 5298356224,
+      "cpu_ms_per_region": 2099.41465,
+      "measured_window_observer_samples": 9
+    },
+    {
+      "mode": "direct-p8",
+      "pass": "candidate-b",
+      "case": "nether-direct-stem",
+      "parallel": 8,
+      "median_ms": 1690.7952710753307,
+      "p95_ms": 2285.190599737689,
+      "max_ms": 2831.372041022405,
+      "total_ms": 4545.552333118394,
+      "chunks_per_second": 4505.503071823631,
+      "generation_peak_rss_bytes": 5427970048,
+      "cpu_ms_per_region": 2044.1877499999996,
+      "measured_window_observer_samples": 8
+    },
+    {
+      "mode": "direct-p8",
+      "pass": "candidate-c",
+      "case": "nether-direct-stem",
+      "parallel": 8,
+      "median_ms": 1706.785770948045,
+      "p95_ms": 2456.7812503664754,
+      "max_ms": 2456.837457837537,
+      "total_ms": 4465.461582876742,
+      "chunks_per_second": 4586.311990351144,
+      "generation_peak_rss_bytes": 5329387520,
+      "cpu_ms_per_region": 2016.0660999999996,
+      "measured_window_observer_samples": 7
+    }
+  ],
+  "correctness": {
+    "accounted_cycle204_chunk_instances_including_postmerge_and_final_repeats": 6459392,
+    "all_original_and_recorded_preceding_full_nbt_exact": true,
+    "original_profile_hashes_unchanged": true,
+    "retained_historical_digests_verified": 106,
+    "normalization": "Compare complete decompressed chunk NBT bytes and membership. Only MCA timestamps,sectorlayout/padding/compressionrepresentation excluded;no NBT fields excluded."
+  },
+  "memory": "Higher retained RAM:extendedOW8~4.8vs4.0GBRSS;optimizedcensusmixedpeak8.4Gvs5.9G,afterengineDrop2.5Gvs1.4G. Actual caps pass,2048mask+8versionownersrelease,workerstops. Finite workload limits explicit.",
+  "overworld_steady_results": [
+    {
+      "pass": "control-a",
+      "median_ms": 291.85908345971256,
+      "p95_region_ms": 427.8475227765739,
+      "maximum_region_ms": 531.1889578588307,
+      "total_ms": 26904.521082993597,
+      "chunks_per_second": 6850.893180050287,
+      "generation_peak_rss_bytes": 2128281600,
+      "cpu_ms_per_region": 632.05245,
+      "measured_window_observation_samples": 41
+    },
+    {
+      "pass": "candidate-b",
+      "median_ms": 293.581478879787,
+      "p95_region_ms": 448.28304372495063,
+      "maximum_region_ms": 553.895958000794,
+      "total_ms": 27644.370625028387,
+      "chunks_per_second": 6667.541920202812,
+      "generation_peak_rss_bytes": 2487812096,
+      "cpu_ms_per_region": 686.081611111111,
+      "measured_window_observation_samples": 43
+    },
+    {
+      "pass": "candidate-c",
+      "median_ms": 288.7366251088679,
+      "p95_region_ms": 411.61302246619033,
+      "maximum_region_ms": 587.1219160035253,
+      "total_ms": 26813.44912503846,
+      "chunks_per_second": 6874.1622586659905,
+      "generation_peak_rss_bytes": 2494349312,
+      "cpu_ms_per_region": 661.313761111111,
+      "measured_window_observation_samples": 41
+    },
+    {
+      "pass": "control-d",
+      "median_ms": 353.663207963109,
+      "p95_region_ms": 437.07386904861795,
+      "maximum_region_ms": 587.2454168274999,
+      "total_ms": 32515.79545903951,
+      "chunks_per_second": 5668.6295813427,
+      "generation_peak_rss_bytes": 2039529472,
+      "cpu_ms_per_region": 869.0025999999999,
+      "measured_window_observation_samples": 48
+    }
+  ],
+  "portal_runs": [
+    {
+      "label": "portal-qa-no-dh",
+      "events": 198,
+      "failures": 0,
+      "cold": {
+        "generated_chunks": 4096,
+        "reopened": false,
+        "all_generated_chunks": 4096,
+        "portal_ms": 1716.049292,
+        "server_ticks": 35,
+        "maximum_tick_gap_ms": 132.391083
+      },
+      "reopened": {
+        "generated_chunks": 0,
+        "reopened": true,
+        "all_generated_chunks": 0,
+        "portal_ms": 160.363708,
+        "server_ticks": 3,
+        "maximum_tick_gap_ms": 56.364208
+      },
+      "completed_nether_regions": 42,
+      "queue_median_ms": 1615.2240415,
+      "queue_p95_ms": 5866.177856550002,
+      "scope": "Completedcoldportal+deliberateunloadstressrequests;excludesunfinished/cancelled. Queue delay distinct fromexecution/portalarrival."
+    },
+    {
+      "label": "portal-qa-dh",
+      "events": 204,
+      "failures": 0,
+      "cold": {
+        "generated_chunks": 4096,
+        "reopened": false,
+        "all_generated_chunks": 4096,
+        "portal_ms": 2075.087625,
+        "server_ticks": 39,
+        "maximum_tick_gap_ms": 174.826334
+      },
+      "reopened": {
+        "generated_chunks": 0,
+        "reopened": true,
+        "all_generated_chunks": 0,
+        "portal_ms": 152.89775,
+        "server_ticks": 3,
+        "maximum_tick_gap_ms": 56.09025
+      },
+      "completed_nether_regions": 42,
+      "queue_median_ms": 1889.104521,
+      "queue_p95_ms": 6070.591183300001,
+      "scope": "Completedcoldportal+deliberateunloadstressrequests;excludesunfinished/cancelled. Queue delay distinct fromexecution/portalarrival."
+    },
+    {
+      "label": "portal-qa-dh-repeat",
+      "events": 206,
+      "failures": 0,
+      "cold": {
+        "generated_chunks": 4096,
+        "reopened": false,
+        "all_generated_chunks": 4096,
+        "portal_ms": 1722.116083,
+        "server_ticks": 32,
+        "maximum_tick_gap_ms": 173.693875
+      },
+      "reopened": {
+        "generated_chunks": 0,
+        "reopened": true,
+        "all_generated_chunks": 0,
+        "portal_ms": 151.117416,
+        "server_ticks": 3,
+        "maximum_tick_gap_ms": 56.836666
+      },
+      "completed_nether_regions": 42,
+      "queue_median_ms": 2189.2178750000003,
+      "queue_p95_ms": 8742.242820500001,
+      "scope": "Completedcoldportal+deliberateunloadstressrequests;excludesunfinished/cancelled. Queue delay distinct fromexecution/portalarrival."
+    }
+  ],
+  "architecture": {
+    "1": "PR171repeatable full suite/attribution;PR238/240diagnosticcountersharing/CPUattribution",
+    "2": "PR172job-ownedstructurestarts andbatchedfossilprobes",
+    "3": "PR173orderedcompletedviews/versions;laterlookup/boundaryreuseimprovements",
+    "4": "PR174initialterrain/materialhandoff;PR232boundedexactlive-tilereuse/jobpins",
+    "5": "PR175cleanupownership;measurednegligiblefinalplanning;PR241scalableallocator",
+    "6": "PR176boundedforegroundpreference/admission;subsequentboundedrootworkandtestedsharedbudgets"
+  },
+  "all_merged_implementation_and_evidence_prs": [
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-scalable-rust-allocator",
+      "mergeCommit": {
+        "oid": "39f7a1eac278e7f16005b25bed0739546d35a255"
+      },
+      "mergedAt": "2026-10-26T07:20:03Z",
+      "number": 241,
+      "title": "Reduce native generation allocator contention",
+      "url": "https://github.com/ArcaneArts/Retina/pull/241"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-batch-cpu-attribution",
+      "mergeCommit": {
+        "oid": "5cd3335d71f8c07d390c319b13400bd978aa0cf6"
+      },
+      "mergedAt": "2026-10-26T02:46:37Z",
+      "number": 240,
+      "title": "Record process CPU across measured region batches",
+      "url": "https://github.com/ArcaneArts/Retina/pull/240"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-current-performance-evidence",
+      "mergeCommit": {
+        "oid": "e7350ac7278797ceebd080268cd7e762cdcaa42c"
+      },
+      "mergedAt": "2026-10-26T02:00:57Z",
+      "number": 239,
+      "title": "Record current Nether performance and portal validation",
+      "url": "https://github.com/ArcaneArts/Retina/pull/239"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-diagnostic-counter-shards",
+      "mergeCommit": {
+        "oid": "8c4810e71373abc9d8c1192c24ccca1f4e1217b0"
+      },
+      "mergedAt": "2026-10-26T01:01:14Z",
+      "number": 238,
+      "title": "Reduce contention in optional performance counters",
+      "url": "https://github.com/ArcaneArts/Retina/pull/238"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-boundary-target-coverage",
+      "mergeCommit": {
+        "oid": "8df3f8e6a90f78a72a888c98f5d2c7d6cf0de112"
+      },
+      "mergedAt": "2026-10-25T23:52:19Z",
+      "number": 237,
+      "title": "Measure boundary prefixes covered by completed target writers",
+      "url": "https://github.com/ArcaneArts/Retina/pull/237"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-concurrency-verification-report",
+      "mergeCommit": {
+        "oid": "4f1eff3fe1f39c84f09fe675a2490de18c5ac306"
+      },
+      "mergedAt": "2026-10-25T23:14:37Z",
+      "number": 236,
+      "title": "Record serial target results and unresolved concurrent performance",
+      "url": "https://github.com/ArcaneArts/Retina/pull/236"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-timing-acceptance-report",
+      "mergeCommit": {
+        "oid": "ea72e27ec9d691182e209113b7fc1587c03067c0"
+      },
+      "mergedAt": "2026-10-25T21:40:22Z",
+      "number": 235,
+      "title": "Record timing confirmation results and contention limits",
+      "url": "https://github.com/ArcaneArts/Retina/pull/235"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-validation-evidence",
+      "mergeCommit": {
+        "oid": "de2ff279b789f9b84f4f89289a7869f413338cd4"
+      },
+      "mergedAt": "2026-10-25T21:10:24Z",
+      "number": 234,
+      "title": "Record fresh Nether memory and correctness validation",
+      "url": "https://github.com/ArcaneArts/Retina/pull/234"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-performance-evidence-report",
+      "mergeCommit": {
+        "oid": "8b1b0550b5155db78e5a8e7e42ecc61175b64173"
+      },
+      "mergedAt": "2026-10-25T21:02:51Z",
+      "number": 233,
+      "title": "Record post-merge Nether results and remaining verification gaps",
+      "url": "https://github.com/ArcaneArts/Retina/pull/233"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-live-terrain-index",
+      "mergeCommit": {
+        "oid": "dbf04f0796e628e22acfda94194621a47b077229"
+      },
+      "mergedAt": "2026-10-25T20:54:41Z",
+      "number": 232,
+      "title": "Reuse live exact terrain tiles across generation jobs",
+      "url": "https://github.com/ArcaneArts/Retina/pull/232"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-dh-first-biome-query",
+      "mergeCommit": {
+        "oid": "618f72088d4c06d2d963ce8a8e9d3d56de3b7aba"
+      },
+      "mergedAt": "2026-10-25T19:59:34Z",
+      "number": 231,
+      "title": "Avoid unused biome probes in unrestricted searches",
+      "url": "https://github.com/ArcaneArts/Retina/pull/231"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-terrain-reuse-costs",
+      "mergeCommit": {
+        "oid": "2dfddaf541670f91283818f1e00616a1b9c66526"
+      },
+      "mergedAt": "2026-10-25T17:49:42Z",
+      "number": 230,
+      "title": "Attribute terrain field copying and cache repopulation costs",
+      "url": "https://github.com/ArcaneArts/Retina/pull/230"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-terrain-overlap-clock",
+      "mergeCommit": {
+        "oid": "1a23ace02d8a2ce2ff85cb697cb9810a787c76d9"
+      },
+      "mergedAt": "2026-10-25T16:50:45Z",
+      "number": 229,
+      "title": "Align concurrent dependency diagnostics on a shared clock",
+      "url": "https://github.com/ArcaneArts/Retina/pull/229"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-material-kernel-timings",
+      "mergeCommit": {
+        "oid": "07a4fa4be7b467f10ec9320700263c187a52de7e"
+      },
+      "mergedAt": "2026-10-25T03:48:51Z",
+      "number": 228,
+      "title": "Separate material counting and emission GPU diagnostics",
+      "url": "https://github.com/ArcaneArts/Retina/pull/228"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-gpu-host-phase-timings",
+      "mergeCommit": {
+        "oid": "89d496b81c976963b4d5f7f4d4b6d2ac3cadbbeb"
+      },
+      "mergedAt": "2026-10-25T03:02:57Z",
+      "number": 227,
+      "title": "Measure host processing within terrain GPU replies",
+      "url": "https://github.com/ArcaneArts/Retina/pull/227"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-terrain-reply-timings",
+      "mergeCommit": {
+        "oid": "6e91869f9f0efb66ca01c836108ab1d679dbb1e9"
+      },
+      "mergedAt": "2026-10-25T02:47:34Z",
+      "number": 226,
+      "title": "Attribute terrain GPU reply delays to per-job timings",
+      "url": "https://github.com/ArcaneArts/Retina/pull/226"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-identity-interval-census",
+      "mergeCommit": {
+        "oid": "c7024009b4ef12440f3e8b12fc656ac680e45162"
+      },
+      "mergedAt": "2026-10-24T22:48:29Z",
+      "number": 225,
+      "title": "Measure demand-time availability of unchanged column proofs",
+      "url": "https://github.com/ArcaneArts/Retina/pull/225"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-cross-stage-reuse-census",
+      "mergeCommit": {
+        "oid": "55db5eb554038215a3a2a297c2b28285eb07e753"
+      },
+      "mergedAt": "2026-10-24T20:53:36Z",
+      "number": 224,
+      "title": "Measure live cross-stage column equality without retaining generation state",
+      "url": "https://github.com/ArcaneArts/Retina/pull/224"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-peer-source-inventory",
+      "mergeCommit": {
+        "oid": "61b6937c8c6c2764644dd0d344fbd6dde2fed442"
+      },
+      "mergedAt": "2026-10-24T19:24:29Z",
+      "number": 223,
+      "title": "Measure live column reuse by provider storage layout",
+      "url": "https://github.com/ArcaneArts/Retina/pull/223"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-contributor-storage-inventory",
+      "mergeCommit": {
+        "oid": "31c1d2957b171b6bd388576ff5d3c10b000a21e6"
+      },
+      "mergedAt": "2026-10-24T17:53:45Z",
+      "number": 222,
+      "title": "Measure completed-root contributor storage in test inventory",
+      "url": "https://github.com/ArcaneArts/Retina/pull/222"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-root-handoff-main",
+      "mergeCommit": {
+        "oid": "5df88525fc7d59a7fd293d5786a4d4586e9b5675"
+      },
+      "mergedAt": "2026-10-24T14:24:28Z",
+      "number": 221,
+      "title": "Continue ordered Nether roots from their final worker lane",
+      "url": "https://github.com/ArcaneArts/Retina/pull/221"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-material-reuse-main",
+      "mergeCommit": {
+        "oid": "625518882839dff0f11996a0866ef4d265a0d93d"
+      },
+      "mergedAt": "2026-10-24T13:16:44Z",
+      "number": 220,
+      "title": "Reuse material data across ordered generation",
+      "url": "https://github.com/ArcaneArts/Retina/pull/220"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-column-path-cpu",
+      "mergeCommit": {
+        "oid": "ce3cf5aaa0cdd4666b73e275dcbbb5b028f74dd9"
+      },
+      "mergedAt": "2026-10-24T10:15:44Z",
+      "number": 219,
+      "title": "Attribute sampled column CPU by lookup and initialization path",
+      "url": "https://github.com/ArcaneArts/Retina/pull/219"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-task-gap-attribution",
+      "mergeCommit": {
+        "oid": "acccb0e0e0ce399972b3fec43e3ebe0081adf469"
+      },
+      "mergedAt": "2026-10-24T08:46:51Z",
+      "number": 218,
+      "title": "Separate root callback admission and completion gaps",
+      "url": "https://github.com/ArcaneArts/Retina/pull/218"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-concurrent-phase-fixture",
+      "mergeCommit": {
+        "oid": "e6f2e5e301337a47415787f8230b8465fe220b0c"
+      },
+      "mergedAt": "2026-10-24T04:47:39Z",
+      "number": 217,
+      "title": "Profile concurrent region requests and expose evaluation join tails",
+      "url": "https://github.com/ArcaneArts/Retina/pull/217"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-all-column-cpu",
+      "mergeCommit": {
+        "oid": "fa63bc912e5ca96b07f33e7edf27133e749ac403"
+      },
+      "mergedAt": "2026-10-24T03:45:44Z",
+      "number": 216,
+      "title": "test: cover direct Nether planner queries in CPU attribution",
+      "url": "https://github.com/ArcaneArts/Retina/pull/216"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-column-load-cpu",
+      "mergeCommit": {
+        "oid": "117c1e14ee6f0c2edc5443076457da431b967ebf"
+      },
+      "mergedAt": "2026-10-24T03:13:54Z",
+      "number": 215,
+      "title": "test: attribute sampled Nether column-loading CPU",
+      "url": "https://github.com/ArcaneArts/Retina/pull/215"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-anchor-cpu-attribution",
+      "mergeCommit": {
+        "oid": "9e5a3209ad677ed8024112d1ae3c6bab1e7f1493"
+      },
+      "mergedAt": "2026-10-24T01:52:50Z",
+      "number": 214,
+      "title": "test: attribute Nether initializer CPU without nested double counting",
+      "url": "https://github.com/ArcaneArts/Retina/pull/214"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-live-column-reuse-census",
+      "mergeCommit": {
+        "oid": "86be5825a5e5bfd72087f8d3e63a20b2e7dab8b3"
+      },
+      "mergedAt": "2026-10-23T22:04:45Z",
+      "number": 213,
+      "title": "test: measure live Nether column reuse without changing release code",
+      "url": "https://github.com/ArcaneArts/Retina/pull/213"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-column-height-census",
+      "mergeCommit": {
+        "oid": "0945d3cef48bb6d3b99bf0626c4ea7da56152fdc"
+      },
+      "mergedAt": "2026-10-23T12:37:01Z",
+      "number": 212,
+      "title": "Measure unused Nether dependency-column heights",
+      "url": "https://github.com/ArcaneArts/Retina/pull/212"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-dependency-work-attribution",
+      "mergeCommit": {
+        "oid": "cbc6867512f869dc76695c6e4b285ec432f540f5"
+      },
+      "mergedAt": "2026-10-23T06:10:43Z",
+      "number": 211,
+      "title": "Attribute Nether dependency work without per-lookup event capture",
+      "url": "https://github.com/ArcaneArts/Retina/pull/211"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-root-cpu-attribution",
+      "mergeCommit": {
+        "oid": "a3eea3e490cc009c4ddea51012988f3ec9c9044d"
+      },
+      "mergedAt": "2026-10-23T05:31:40Z",
+      "number": 210,
+      "title": "Document Nether root CPU and memory attribution",
+      "url": "https://github.com/ArcaneArts/Retina/pull/210"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-prefix-path-inventory",
+      "mergeCommit": {
+        "oid": "f0183a1461fb8f5e88c499494c549722d95fdc54"
+      },
+      "mergedAt": "2026-10-23T02:24:27Z",
+      "number": 209,
+      "title": "Measure completed and fallback Nether prefix work",
+      "url": "https://github.com/ArcaneArts/Retina/pull/209"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-blob-output-inventory",
+      "mergeCommit": {
+        "oid": "f15d3d2875ecef5db8a557ce1fd172b012f5de99"
+      },
+      "mergedAt": "2026-10-22T22:26:18Z",
+      "number": 208,
+      "title": "Measure Nether blob output reuse opportunities",
+      "url": "https://github.com/ArcaneArts/Retina/pull/208"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-column-edit-ranges",
+      "mergeCommit": {
+        "oid": "c7872e93f1db5577cdbe7604d0e8cfc3553cf72e"
+      },
+      "mergedAt": "2026-10-22T20:02:57Z",
+      "number": 207,
+      "title": "Measure ordered Nether column edit workload",
+      "url": "https://github.com/ArcaneArts/Retina/pull/207"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-gpu-buffer-census",
+      "mergeCommit": {
+        "oid": "c3a9c24d6d612fd0d10a4665947352ac9a9be691"
+      },
+      "mergedAt": "2026-10-22T10:27:40Z",
+      "number": 206,
+      "title": "Attribute retained GPU buffers after region generation",
+      "url": "https://github.com/ArcaneArts/Retina/pull/206"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-retention-census",
+      "mergeCommit": {
+        "oid": "34a2f40ba574085fd8e72b32778ce4f64ecf1b6f"
+      },
+      "mergedAt": "2026-10-22T09:52:15Z",
+      "number": 205,
+      "title": "Measure cache ownership after completed region generation",
+      "url": "https://github.com/ArcaneArts/Retina/pull/205"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-terrain-overlap-proof",
+      "mergeCommit": {
+        "oid": "1630ed05d498ac822a98bdd582db6ef7a944f25e"
+      },
+      "mergedAt": "2026-10-22T06:29:47Z",
+      "number": 204,
+      "title": "Measure Nether terrain overlap and request footprints",
+      "url": "https://github.com/ArcaneArts/Retina/pull/204"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-performance-evidence",
+      "mergeCommit": {
+        "oid": "fa838f8097efd540e92c85775019f2fe0e02f7e9"
+      },
+      "mergedAt": "2026-10-22T03:53:21Z",
+      "number": 203,
+      "title": "Record merged Nether proof and held performance experiments",
+      "url": "https://github.com/ArcaneArts/Retina/pull/203"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-lookup-lock-attribution",
+      "mergeCommit": {
+        "oid": "0370ac83fb46e64b4c002e6285c6391ad9e3c560"
+      },
+      "mergedAt": "2026-10-22T02:38:29Z",
+      "number": 202,
+      "title": "Attribute Nether cache lookup and feature GPU waits",
+      "url": "https://github.com/ArcaneArts/Retina/pull/202"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-task-cpu-terrain-spans",
+      "mergeCommit": {
+        "oid": "b3ab2a082163949996cc0a954871b8fa429fe269"
+      },
+      "mergedAt": "2026-10-22T01:55:21Z",
+      "number": 201,
+      "title": "Attribute Nether task CPU and terrain service latency",
+      "url": "https://github.com/ArcaneArts/Retina/pull/201"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-dependency-join-attribution",
+      "mergeCommit": {
+        "oid": "c05a1b2124a9e92b1179abcf853143331777fc93"
+      },
+      "mergedAt": "2026-10-22T01:34:30Z",
+      "number": 200,
+      "title": "Attribute dependency joins within Nether root tasks",
+      "url": "https://github.com/ArcaneArts/Retina/pull/200"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-root-worker-occupancy",
+      "mergeCommit": {
+        "oid": "60e210d1b0e459955aec2007d8231ee4358bed88"
+      },
+      "mergedAt": "2026-10-21T22:41:00Z",
+      "number": 199,
+      "title": "Measure Nether root CPU phases and worker task occupancy",
+      "url": "https://github.com/ArcaneArts/Retina/pull/199"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-material-storage-inventory",
+      "mergeCommit": {
+        "oid": "542f41a19d0a69023e7cdf94dd88af9de4a9592e"
+      },
+      "mergedAt": "2026-10-21T21:49:12Z",
+      "number": 198,
+      "title": "Measure Nether material read backing and live storage",
+      "url": "https://github.com/ArcaneArts/Retina/pull/198"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-version-layout-inventory",
+      "mergeCommit": {
+        "oid": "d44156efdc5e5adf58e2d1c7f0736516ba1034bc"
+      },
+      "mergedAt": "2026-10-21T20:49:07Z",
+      "number": 197,
+      "title": "Measure Nether version allocation and retirement costs",
+      "url": "https://github.com/ArcaneArts/Retina/pull/197"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-overlay-material-read-probe",
+      "mergeCommit": {
+        "oid": "333afdc1846f5c4740f83ecddb12025413ba3230"
+      },
+      "mergedAt": "2026-10-21T19:43:09Z",
+      "number": 196,
+      "title": "Measure Nether material read reuse by feature root",
+      "url": "https://github.com/ArcaneArts/Retina/pull/196"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-exterior-state-inventory",
+      "mergeCommit": {
+        "oid": "0132a7435842d5ab4f060bee6ac107841a120cd3"
+      },
+      "mergedAt": "2026-10-21T18:55:01Z",
+      "number": 195,
+      "title": "Reuse exact completed Nether exterior prefix states",
+      "url": "https://github.com/ArcaneArts/Retina/pull/195"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-boundary-snapshot-footprint",
+      "mergeCommit": {
+        "oid": "e50eddd2e97f46854591bde14d19a162f42c77bc"
+      },
+      "mergedAt": "2026-10-21T16:40:00Z",
+      "number": 194,
+      "title": "Shrink completed Nether snapshots to region edges",
+      "url": "https://github.com/ArcaneArts/Retina/pull/194"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-boundary-version-probe",
+      "mergeCommit": {
+        "oid": "b34d8804aca9f97cfd1d488ef750bfa392e73520"
+      },
+      "mergedAt": "2026-10-21T15:40:54Z",
+      "number": 193,
+      "title": "Reuse completed Nether column states across neighboring regions",
+      "url": "https://github.com/ArcaneArts/Retina/pull/193"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-associative-view-cache",
+      "mergeCommit": {
+        "oid": "74f4e1b7c48e31fe4d98a9648e8b20e842d65db2"
+      },
+      "mergedAt": "2026-10-21T11:44:38Z",
+      "number": 192,
+      "title": "Index feature-local column reads by spatial position",
+      "url": "https://github.com/ArcaneArts/Retina/pull/192"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-exact-terrain-cache",
+      "mergeCommit": {
+        "oid": "e5adbd17ecdd47eda7e005bbd2f3ef6b5e59ddd5"
+      },
+      "mergedAt": "2026-10-21T11:14:04Z",
+      "number": 191,
+      "title": "Reuse exact cached terrain tiles across Nether generation jobs",
+      "url": "https://github.com/ArcaneArts/Retina/pull/191"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-work-attribution",
+      "mergeCommit": {
+        "oid": "ea148fd298f48c5675cad58261ca88e4b49f640d"
+      },
+      "mergedAt": "2026-10-21T10:28:03Z",
+      "number": 190,
+      "title": "Attribute terrain work and generation memory in benchmarks",
+      "url": "https://github.com/ArcaneArts/Retina/pull/190"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-borrowed-terrain-reads",
+      "mergeCommit": {
+        "oid": "5d533eff7742518ffcbbf364faf806b1766207d6"
+      },
+      "mergedAt": "2026-10-21T10:01:30Z",
+      "number": 189,
+      "title": "Borrow terrain references during ordered metadata reads",
+      "url": "https://github.com/ArcaneArts/Retina/pull/189"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-live-overlay-commit",
+      "mergeCommit": {
+        "oid": "28a87cdd330bbdcbc3c040f8bda1f1c04f3a54aa"
+      },
+      "mergedAt": "2026-10-21T09:11:53Z",
+      "number": 188,
+      "title": "Avoid redundant replay of live Nether feature writes",
+      "url": "https://github.com/ArcaneArts/Retina/pull/188"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-view-column-slots",
+      "mergeCommit": {
+        "oid": "26878d668d1227b87b68fcae731ced1d1a54b4a3"
+      },
+      "mergedAt": "2026-10-21T08:11:03Z",
+      "number": 187,
+      "title": "Avoid locking repeated prior-column reads in ordered generation",
+      "url": "https://github.com/ArcaneArts/Retina/pull/187"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-ore-footprints",
+      "mergeCommit": {
+        "oid": "192eeec7c943a8615549bbd2aee55d66aebfafe1"
+      },
+      "mergedAt": "2026-10-21T07:13:55Z",
+      "number": 186,
+      "title": "Refine boundary ore footprints to reduce dependency work",
+      "url": "https://github.com/ArcaneArts/Retina/pull/186"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-anchor-footprints",
+      "mergeCommit": {
+        "oid": "38c4ff2fc516c435cf1117c5f665f52823f9c692"
+      },
+      "mergedAt": "2026-10-21T06:32:37Z",
+      "number": 185,
+      "title": "Skip impossible Nether boundary writers using placement footprints",
+      "url": "https://github.com/ArcaneArts/Retina/pull/185"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-command-groups",
+      "mergeCommit": {
+        "oid": "1abc51771eca21a5deca060a5c945b5f2e164a69"
+      },
+      "mergedAt": "2026-10-21T05:26:45Z",
+      "number": 184,
+      "title": "Reduce retained Nether command index storage",
+      "url": "https://github.com/ArcaneArts/Retina/pull/184"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-height-invariant-views",
+      "mergeCommit": {
+        "oid": "96e1603655f3a01515314875b65f880405949b4f"
+      },
+      "mergedAt": "2026-10-21T04:50:55Z",
+      "number": 183,
+      "title": "Preserve height-only Nether dependency queries",
+      "url": "https://github.com/ArcaneArts/Retina/pull/183"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-borrowed-column-reads",
+      "mergeCommit": {
+        "oid": "7dde4f1fedffdd374ab33e93a42acd02e49481b6"
+      },
+      "mergedAt": "2026-10-21T04:39:25Z",
+      "number": 182,
+      "title": "Borrow cached Nether columns for scalar reads",
+      "url": "https://github.com/ArcaneArts/Retina/pull/182"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-bounded-root-dispatch",
+      "mergeCommit": {
+        "oid": "6e125da6f3728af7fba615ac4896088372d99b6b"
+      },
+      "mergedAt": "2026-10-21T04:12:54Z",
+      "number": 181,
+      "title": "Bound Nether worker tasks to one source root",
+      "url": "https://github.com/ArcaneArts/Retina/pull/181"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-ore-command-replay",
+      "mergeCommit": {
+        "oid": "7a2670a70d80cab1267427dc8b2e2ab5fb174c6b"
+      },
+      "mergedAt": "2026-10-21T03:40:36Z",
+      "number": 180,
+      "title": "Defer deterministic Nether ore tests to ordered replay",
+      "url": "https://github.com/ArcaneArts/Retina/pull/180"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-terrain-slots",
+      "mergeCommit": {
+        "oid": "ca2fde8ba1b0e51c3989b899b599414fba7af1ef"
+      },
+      "mergedAt": "2026-10-21T01:48:17Z",
+      "number": 179,
+      "title": "Avoid repeated map lookups for nearby job terrain tiles",
+      "url": "https://github.com/ArcaneArts/Retina/pull/179"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-cache-shards",
+      "mergeCommit": {
+        "oid": "d66caee66cbff3b7af10165df848ff4bfeb66472"
+      },
+      "mergedAt": "2026-10-21T01:23:29Z",
+      "number": 178,
+      "title": "Reduce contention in ordered dependency cache lookups",
+      "url": "https://github.com/ArcaneArts/Retina/pull/178"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-dependency-reads",
+      "mergeCommit": {
+        "oid": "fbbf5455e74880f672ec314cfd12e45e5a2b8410"
+      },
+      "mergedAt": "2026-10-21T01:09:16Z",
+      "number": 177,
+      "title": "Reduce ordered dependency read allocations and column cache storage",
+      "url": "https://github.com/ArcaneArts/Retina/pull/177"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-foreground-budget",
+      "mergeCommit": {
+        "oid": "60a7e3922938a65c32b74feafcfadf054c689ae2"
+      },
+      "mergedAt": "2026-10-21T00:27:52Z",
+      "number": 176,
+      "title": "Prioritize portal region preparation without starving background generation",
+      "url": "https://github.com/ArcaneArts/Retina/pull/176"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-planner-cleanup",
+      "mergeCommit": {
+        "oid": "e20ea131ef9755710aca153bd38b3e7f198f1a26"
+      },
+      "mergedAt": "2026-10-20T22:56:27Z",
+      "number": 175,
+      "title": "Reduce Nether boundary-state cleanup cost",
+      "url": "https://github.com/ArcaneArts/Retina/pull/175"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-terrain-sharing",
+      "mergeCommit": {
+        "oid": "1c12e2ec652cd5eaa7359471455b9d0109d3260a"
+      },
+      "mergedAt": "2026-10-20T22:31:06Z",
+      "number": 174,
+      "title": "Reuse job terrain and immutable base-material buffers",
+      "url": "https://github.com/ArcaneArts/Retina/pull/174"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-ordered-views",
+      "mergeCommit": {
+        "oid": "7e0721aed9a4da6b53e9ad984d92579da5e33c0a"
+      },
+      "mergedAt": "2026-10-20T22:22:25Z",
+      "number": 173,
+      "title": "Reuse completed ordered dependency state and column versions",
+      "url": "https://github.com/ArcaneArts/Retina/pull/173"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-structure-reuse",
+      "mergeCommit": {
+        "oid": "b4fc6d3fdd223d31f6eacf9295c082cf1c8ed719"
+      },
+      "mergedAt": "2026-10-20T22:07:01Z",
+      "number": 172,
+      "title": "Reuse job-owned structure starts and batch Nether fossil probes",
+      "url": "https://github.com/ArcaneArts/Retina/pull/172"
+    },
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/nether-perf-measurements",
+      "mergeCommit": {
+        "oid": "34645a375a0fa9b0be112f65c8d4eb59f36a5f2d"
+      },
+      "mergedAt": "2026-10-20T21:56:50Z",
+      "number": 171,
+      "title": "Measure Nether dependency costs and preserve a complete output corpus",
+      "url": "https://github.com/ArcaneArts/Retina/pull/171"
+    }
+  ],
+  "evidence": {
+    "runtime": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/postmerge/assessment.json",
+      "sha256": "ba8f097b6e0a04b7d162abe66e87def35c93640629acc8228774bc81fc7dad17"
+    },
+    "configuration": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/postmerge/configuration-audit.json",
+      "sha256": "43b9fc5c762eef7f19dfbbd66b73730d896597a2f20529805d1e707cf69fe26f"
+    },
+    "concurrency": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/final-concurrency-repeats/campaign-assessment.json",
+      "sha256": "8774419221d2dd871d04014f6cb15850b3cbca7274a4367ef1504e73e6e3ba3a"
+    },
+    "overworld": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-steady-repeat-assessment.json",
+      "sha256": "60d1c03b77cd8a48a848a8d7803c04713b0ed1f9fba44a65f03add8af4404b37"
+    },
+    "retention": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/retention-assessment.json",
+      "sha256": "6e9a26d5f0174dd5b5ebf22c31f55904583c2217b3c706864e717b6a2b331f71"
+    },
+    "production_memory": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-long-assessment.json",
+      "sha256": "dd5cd6cccaf42e9d8792ea1d6fd38604e7c19cfb8635a1e78b324ef38799d0f2"
+    },
+    "portal": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/portal-assessment.json",
+      "sha256": "862df1bd6e70a9f88c7c067db5c748c971ed0838d1749ef3384b7577966a9cd5"
+    },
+    "portal_repeat": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/portal-dh-repeat-assessment.json",
+      "sha256": "b2e7a6d4a99b92d132fc52f516b32334d42ce924d1411c9561e3fd9c5e0f2575"
+    },
+    "build": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/package-build-receipt.json",
+      "sha256": "02031c596166435038cc6154bb2c211d4c64fab32304ad7e335e0684c2f09f06"
+    },
+    "units": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/build-receipt.json",
+      "sha256": "f7079d91efba7cb031ad520ff9b5e85dc88dd20434672e301b9ae1c5d8796c5f"
+    },
+    "architecture_and_tests": {
+      "path": "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/docs/benchmarks/nether-validation-audit-2026-10-25.json",
+      "sha256": "d10e52af3f23420d8493023e6aa2e95dcac378f6f40fae3c1242b1729b57cb6e"
+    },
+    "phases": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/current-phase-audit.json",
+      "sha256": "c2bfedbd2372b03446f4c87172da23bb6fa283b4aebb81911603111bdd67487a"
+    },
+    "delivery": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/delivery-and-reference-audit-2026-10-26.json",
+      "sha256": "3c3aeefc129d21199af66afd37e1f7edab6aea329a4a1d2b43b6ef235e805def"
+    },
+    "history": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/merged-delivery-inventory-2026-10-26.json",
+      "sha256": "671415e7f2340a938cf852f7c2b83964846a575fd58392a882aef1ed79d8b56c"
+    },
+    "continuity": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/historical-corpus-digest-continuity-2026-10-26-reviewed.json",
+      "sha256": "046dbb0a17ebd03b0fc2737c231b7e42a90703c01e0b7a16ac5f2436486c68c3"
+    },
+    "historical_recovery": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/historical-recovery-inventory-2026-10-26.json",
+      "sha256": "746d4e70788d51f474e170ecfc79db59d42fbdc2ebef468413ee78036603a0e3"
+    }
+  },
+  "source_equivalence": [
+    {
+      "path": "native/src/structures/discovery.rs",
+      "current_blob": "c78fcfd5bcd5da667cba567b6d3bfa55480897ae",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "native/src/structures/fossils.rs",
+      "current_blob": "b4a0e1490bb34dbd4e83751c5d7cd82e1dd9fd0e",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "native/src/decoration/dependencies.rs",
+      "current_blob": "20f9c6b38b0cf62e37977d2cfdea600a3c7a0018",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "native/src/decoration/dependencies/version_cache.rs",
+      "current_blob": "d1da2ff6ebc882113d0e2ef459059a953889b741",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "native/src/terrain_job.rs",
+      "current_blob": "6839789a811e7f072bd7ed3bffee315eb8f28a58",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "native/src/region.rs",
+      "current_blob": "bc2f76c9b2b707404100079ff0f0c24e62cff900",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "native/src/performance.rs",
+      "current_blob": "06bc1a93aadea235b99e3ac784d1048d0cb34999",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "common/src/main/java/art/arcane/retina/worldgen/RegionPreparation.java",
+      "current_blob": "6500bf6e98d48af881b2b308a1acc9c7172af5f1",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "common/src/main/java/art/arcane/retina/worldgen/RegionLoadScheduler.java",
+      "current_blob": "598146b01ba22d0288419dd088a95fa5fa045048",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "common/src/main/java/art/arcane/retina/worldgen/RegionGenerationBudget.java",
+      "current_blob": "ab102a2421e566d18dcd727deac122104af500c6",
+      "matches_preceding_audited_source": true
+    },
+    {
+      "path": "common/src/main/java/art/arcane/retina/worldgen/PortalRegionPreparation.java",
+      "current_blob": "701b917e5537bea03bd14cf6db0752b979d49f67",
+      "matches_preceding_audited_source": true
+    }
+  ],
+  "full_requirement_audit": {
+    "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/goal-requirements-final-audit-2026-10-26.json",
+    "sha256": "651fcfcf5f10cc94baba03a34b3489ccebbf70b8d62c96c12787f5973c130da4"
+  },
+  "reproduction": "Use exact command arrays in terminal receipts with fresh outputdirectories. Retain originalcorpusandprecedingcontrols. Build recovered sources in isolatedtargetdirectory,record compiler/features/source/libraryhash,and comparefullNBT. Historicaltimings are not recreated by rebuilding. Current rawbinaries/worlds/logs/commands and all existing worktrees are retained.",
+  "limitations": [
+    "Historicalrawtimingfiles not recovered;committedresults/source/digestsretained. Earlierprovisional/contendedresults are not calleduncontended or discarded.",
+    "SourceequivalentpackagedlibraryhasdifferentbinaryhashfromisolatedCargo target;both actual identities are recorded.",
+    "Concurrent per-requestlatencysharesfinitecapacity;notclaimedbelow1secondat8callers.",
+    "Control drift limitscausal speedup percentages.",
+    "Higher allocator RAMretention is explicit;foreignplatformbuildsarenotforeignruntimevalidation.",
+    "DHfullrunsloggedsetuppausebeforetimedportalwindows;portalfunctionalnumbersarenot20regionwarmeddistributions."
+  ],
+  "final_delivery_evidence": {
+    "scope": "Created after the final documentation merge;the49requirement audit referenced above is the immutable pre-delivery review snapshot.",
+    "post_report_directory": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/final-report-postmerge",
+    "completion_audit": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/goal-completion-audit-2026-10-26.json"
+  }
+}
