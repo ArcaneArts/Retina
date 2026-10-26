@@ -1,5 +1,7 @@
 # Nether performance progress — 25 October 2026
 
+The latest [performance acceptance report](nether-performance-acceptance-2026-10-26.md) records the merged allocator implementation and current complete-region, concurrency, memory and portal results. Earlier measurements below retain their original revision and limits.
+
 Latest current-source measurements and fresh portal checks are recorded in [the current evidence report](nether-current-performance-evidence-2026-10-25.md). The earlier observations below retain their original source and timing limitations.
 
 Status: implementation and correctness progress; overall goal remains open. Timing confirmation was attempted after functional validation; competing test workloads still prevent full acceptance. All surviving test data and worktrees are retained.

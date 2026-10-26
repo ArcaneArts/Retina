@@ -1,5 +1,7 @@
 # Current Nether performance evidence — 25 October 2026
 
+The latest [performance acceptance report](nether-performance-acceptance-2026-10-26.md) records the merged allocator implementation and current complete-region, concurrency, memory and portal results. Earlier measurements below retain their original revision and limits.
+
 A later [allocator cycle report](nether-perf-cycle204-2026-10-26.md) records the next implementation and its Overworld/memory investigation. The measurements below retain their original revision and limitations.
 
 The architecture and current correctness checks are delivered. Complete serial Nether generation repeatedly meets the numerical one-second target. Sustained concurrent throughput and tail acceptance remain open. All current test data and worktrees are retained.

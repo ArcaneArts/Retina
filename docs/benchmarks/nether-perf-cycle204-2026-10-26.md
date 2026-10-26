@@ -47,4 +47,4 @@ The accounted full-region/census campaigns total **6,008,832 generated chunk ins
 
 Known competing workloads are labeled and their unfavorable results preserved. A separate review corrects a narrow classifier that missed worker-compatibility scripts and explicit `.qa/rust-server` executables. Earlier raw historical paths absent at their recorded locations remain an audit limitation; this report does not claim to recover them. All current data and worktrees are retained.
 
-This cycle is selected for PR delivery. Confirmed merge and a fresh benchmark of the merged native tree are still required. The full goal is not declared complete by this report.
+This cycle merged through [PR #241](https://github.com/ArcaneArts/Retina/pull/241). Fresh packaged-native post-merge repeats and the final concurrency/requirement review are in [the performance acceptance report](nether-performance-acceptance-2026-10-26.md). The pre-merge measurements above retain their original scope.
