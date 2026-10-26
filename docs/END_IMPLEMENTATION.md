@@ -186,6 +186,47 @@ GPU acceleration, features, structures, gameplay, automatic activation and full
 End performance acceptance remain unfinished. `VanillaDensity` explicitly models
 the vanilla graph; it is not a silent substitute for arbitrary custom graphs.
 
+### Cycle 2c: shared dense terrain lattice
+
+`VanillaDensity.tile` constructs each required 8×4×8 density corner once for a
+rectangle of block columns. It also shares each horizontal island value across
+all 33 vertical corners. `DenseTile` is immutable and can serve independent
+columns from bounded generation workers without locks. Unaligned rectangles and
+negative coordinates preserve the same corner alignment and accumulated-Y bulk
+interpolation as the independently validated column reference.
+
+An aligned 512×512-block rectangle stores 65×65×33 float values: **557,700 bytes**
+of density payload. Interpolated block densities are returned one column at a
+time rather than retained as a 128 MiB region-sized float array. No empty-space
+classification or feature suppression occurs in this dense baseline.
+
+The comparison example checks tiled columns directly against the independent
+vanilla capture: all 131,072 density float bits and 262,144 stored block decisions
+match across four chunks. All 14,280 original scalar samples and sixteen original
+columns still match. The optimized native suite passes 306 tests with zero failures
+(75 optional fixtures ignored). Tests cover unaligned tiles, negative/far
+coordinates, edge exclusion and invalid dimensions.
+
+A bounded density-stage probe is available:
+
+```sh
+cargo run --release --locked --manifest-path native/Cargo.toml \
+  --target-dir build/native-target --example end_density_benchmark
+```
+
+It alternates the reference and tiled evaluator on one 16×16-block rectangle, then
+measures tiled 64×64 and 512×512 rectangles. Construction, all density evaluation
+and hashing every density bit are included. It creates no region files. These are
+single-threaded CPU density-stage measurements, not complete-region timings or
+End performance acceptance. The bounded probe measured 12.18 ms median for the
+independent one-chunk evaluator and 0.141 ms for its tiled counterpart (four paired
+trials). Three tiled 512×512 density-only samples were 84.82–85.17 ms, with a
+median of 84.91 ms. These include hashing 128 MiB of density bits and exclude
+all required later generation stages; they do not establish the region targets.
+
+Production profile/query/material-mask integration,
+CPU/GPU comparison, features, cities and gameplay remain unfinished.
+
 ## Remaining delivery sequence
 
 1. End profile, exact seeded terrain, floating-island queries and biome selection.
