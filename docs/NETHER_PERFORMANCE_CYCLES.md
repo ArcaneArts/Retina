@@ -3510,3 +3510,39 @@ completion is claimed. All evidence and worktrees remain retained.
 
 See `docs/benchmarks/nether-perf-cycle200-2026-10-25.json` and external
 `completion-audit/boundary-target-coverage/` for receipts, hashes and commands.
+
+
+## Cycle 201 — Reduce contention in optional diagnostic counters
+
+Enabled metrics now use 64 fixed, cache-line-separated atomic stripes instead of
+one shared array. TLS keeps only a numeric stripe id; collisions remain exact.
+Counter names and wrapping arithmetic are preserved. Live snapshots read stripes
+sequentially; totals are exact after writers join. Enabled backing is bounded at
+**72 KiB per metrics instance**; disabled metrics allocate none. Joined array-read
+snapshots cost about **1.3 microseconds**, compared with 61–76 ns before. These
+figures exclude JSON and candidate/terrain tracking.
+
+A same-process storage benchmark alternates the original and new implementation
+for five warmups and twenty measured pairs at one, eight and sixteen threads.
+Contended update medians improve by **132× and 164×**; one thread is similar.
+This measures diagnostic storage, not default region speed. Separate enabled
+region comparisons favor both candidate passes, but controls drift by 30%, so no
+causal whole-generation improvement is claimed.
+
+**298 native tests pass**. Forced stripe collisions, profile isolation, live and
+joined totals, wrapping arithmetic and disabled backing are covered. Three ABBA
+campaigns compare **655,360 measured chunk instances** exactly against original
+and preceding merged complete NBT and membership; every measured shader status
+is 4. Source and libraries remain fixed throughout.
+
+Initial full-corpus controls drift substantially and some cases overlap identified
+tests. A focused ordinary second-seed/Overworld repeat has no identified test
+workload. Candidate second-seed medians are **747/731 ms**, p95 **879/851 ms**;
+controls are **734/736 ms**, p95 **886/902 ms**. Aggregate throughput differs by
+**+0.3%** for the second seed and **−0.5%** for Overworld. The earlier difference
+against the final control does not reproduce as a material default regression.
+No default speedup or broader goal-completion claim follows. All test data and
+worktrees remain preserved.
+
+See `docs/benchmarks/nether-perf-cycle201-2026-10-25.json` and external
+`completion-audit/diagnostic-counter-shards/` for identities, timings and commands.
