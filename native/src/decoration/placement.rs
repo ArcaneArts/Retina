@@ -289,6 +289,7 @@ pub enum Modifier {
         chance: f32,
     },
     InSquare,
+    FixedPlacement { positions: Vec<[i32; 3]> },
     Cuboid {
         xz_size: IntProvider,
         y_size: IntProvider,
@@ -574,6 +575,7 @@ impl From<Vec<Modifier>> for Program {
                         | Modifier::NoiseBasedCount { .. }
                         | Modifier::CountOnEveryLayer { .. }
                         | Modifier::Cuboid { .. }
+                        | Modifier::FixedPlacement { .. }
                 )
             })
             .filter(|&index| {
@@ -605,7 +607,7 @@ impl From<Vec<Modifier>> for Program {
                 | Modifier::Select { .. } => {}
                 _ => {
                     evaluation.push(Evaluation { index, parents });
-                    if matches!(op, Modifier::Cuboid { .. }) {
+                    if matches!(op, Modifier::Cuboid { .. } | Modifier::FixedPlacement { .. }) {
                         parents += 1;
                     }
                 }
@@ -828,6 +830,17 @@ fn expand_from(
                     self.count(index, count, at, rng, draws, order);
                     return;
                 }
+                Modifier::FixedPlacement { positions } => {
+                    for (i, &position) in positions.iter().enumerate() {
+                        if position[0].div_euclid(16) != at[0].div_euclid(16)
+                            || position[2].div_euclid(16) != at[2].div_euclid(16) { continue; }
+                        let previous = draws.push(position);
+                        order.push(i);
+                        self.step(index + 1, position, Rng::new(rng.0), draws, order);
+                        order.pop(); draws.pop(previous);
+                    }
+                    return;
+                }
                 Modifier::Cuboid {
                     xz_size,
                     y_size,
@@ -986,6 +999,7 @@ fn position_inner(
                 at = std::array::from_fn(|i| at[i] + offset[i]);
             }
             Modifier::HeightRange { .. } => at[1] = draws.next().unwrap()[1],
+            Modifier::FixedPlacement { .. } => at = *draws.next().unwrap(),
             _ => {
                 // Modifiers before a nested count execute once for the parent,
                 // before any of its children place blocks. Later children inherit
@@ -2129,4 +2143,30 @@ mod tests {
             "Minecraft truncates normal integer samples rather than rounding"
         );
     }
+    #[test]
+    fn fixed_positions_are_absolute_ordered_and_filtered_by_signed_chunk() {
+        let (mut profile, field, request, mut recipe) = fixture();
+        recipe.placement = Some(vec![Modifier::FixedPlacement { positions: vec![
+            [15,70,0], [-1,80,0], [0,3,15], [16,50,0], [15,70,0], [-16,7,0]
+        ] }].into());
+        profile.decorations[0] = recipe;
+        let positive = sample(&field, &profile, request, 0, [0,0,0], 42).unwrap();
+        assert_eq!(positive, vec![[15,70,0,0], [0,3,15,0], [15,70,0,0]]);
+        let negative = sample(&field, &profile, request, 0, [-1,0,0], 42).unwrap();
+        assert_eq!(negative, vec![[-1,80,0,0], [-16,7,0,0]]);
+    }
+
+    #[test]
+    fn fixed_positions_after_count_keep_all_branches_and_parent_transforms() {
+        let (mut profile, field, request, mut recipe) = fixture();
+        recipe.placement = Some(vec![
+            Modifier::Count { count: IntProvider::Value(2) },
+            Modifier::FixedPlacement { positions: vec![[0,30,0], [1,40,1]] },
+            Modifier::Offset { x: IntProvider::Value(1), y: IntProvider::Value(2), z: IntProvider::Value(3) }
+        ].into());
+        profile.decorations[0] = recipe;
+        assert_eq!(sample(&field, &profile, request, 0, [0,0,0], 42).unwrap(),
+            vec![[1,32,3,0],[2,42,4,0],[1,32,3,0],[2,42,4,0]]);
+    }
+
 }

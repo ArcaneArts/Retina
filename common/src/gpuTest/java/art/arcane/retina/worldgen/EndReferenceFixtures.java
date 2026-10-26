@@ -91,15 +91,21 @@ final class EndReferenceFixtures implements AutoCloseable {
         final long seed;
         final int floor;
         final WorldGenLevel level;
+        final java.util.function.Function<BlockPos, BlockState> base;
 
-        Capture(long seed, int floor) {
+        Capture(long seed, int floor) { this(seed, floor, null); }
+        Capture(long seed, int floor, java.util.function.Function<BlockPos, BlockState> base) {
+            this.base = base;
             this.seed = seed;
             this.floor = floor;
             var random = RandomSource.create(seed);
+            var biomeManager = new BiomeManager(EndReferenceFixtures.this.resolver(
+                    EndReferenceFixtures.this.state(seed))::getNoiseBiome, BiomeManager.obfuscateSeed(seed));
             level = (WorldGenLevel) Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),
                     new Class<?>[]{WorldGenLevel.class}, (proxy, method, args) -> {
                 return switch (method.getName()) {
                     case "getSeed" -> seed;
+                    case "getBiomeManager" -> biomeManager;
                     case "getRandom" -> random;
                     case "registryAccess" -> registry;
                     case "getMinY" -> 0;
@@ -139,8 +145,10 @@ final class EndReferenceFixtures implements AutoCloseable {
         }
 
         BlockState state(BlockPos pos) {
-            return blocks.getOrDefault(pos, pos.getY() <= floor
-                    ? Blocks.END_STONE.defaultBlockState() : Blocks.AIR.defaultBlockState());
+            var written = blocks.get(pos);
+            if (written != null) return written;
+            return base != null ? base.apply(pos) : pos.getY() <= floor
+                    ? Blocks.END_STONE.defaultBlockState() : Blocks.AIR.defaultBlockState();
         }
 
         JsonObject snapshot() {

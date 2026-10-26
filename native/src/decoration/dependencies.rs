@@ -156,6 +156,9 @@ impl Bounds {
                         let (zl, zh) = z.bounds()?;
                         add([xl as i64, xh as i64], [zl as i64, zh as i64]);
                     }
+                    // FixedPlacement replaces a point with any position in
+                    // that point's chunk: horizontal displacement is at most15.
+                    placement::Modifier::FixedPlacement { .. } => add([-15,15], [-15,15]),
                     placement::Modifier::Cuboid { xz_size, .. } => {
                         let (_, radius) = xz_size.bounds()?;
                         let radius = radius as i64;

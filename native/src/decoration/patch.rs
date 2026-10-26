@@ -454,6 +454,16 @@ impl World<'_> {
                 }
                 return any;
             }
+            Modifier::FixedPlacement { positions } => {
+                let mut any = false;
+                for &position in positions {
+                    if position[0].div_euclid(16) == at[0].div_euclid(16)
+                        && position[2].div_euclid(16) == at[2].div_euclid(16) {
+                        any |= self.placed(placed, position, rng, index + 1);
+                    }
+                }
+                return any;
+            }
             Modifier::Cuboid {
                 xz_size,
                 y_size,
