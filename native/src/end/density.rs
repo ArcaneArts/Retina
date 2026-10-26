@@ -8,6 +8,61 @@ pub struct VanillaDensity {
     noise: BlendedNoise,
 }
 
+/// Dense terrain lattice for a rectangle of block columns. Only the shared
+/// 8×4×8 noise corners are stored; no occupancy shortcut is applied. Columns
+/// retain the exact bulk interpolator's operation order, including Y stepping.
+pub struct DenseTile {
+    origin: [i32; 2],
+    size: [u32; 2],
+    corner_origin: [i32; 2],
+    corners_x: usize,
+    corners: Vec<[f32; 33]>,
+}
+
+impl DenseTile {
+    /// Returns the full 128-block base-terrain density range, or None outside
+    /// the requested rectangle. Dimension storage above this range remains air.
+    pub fn column_densities(&self, x: i32, z: i32) -> Option<[f32; 128]> {
+        let local_x = i64::from(x) - i64::from(self.origin[0]);
+        let local_z = i64::from(z) - i64::from(self.origin[1]);
+        if local_x < 0 || local_z < 0 || local_x >= i64::from(self.size[0])
+            || local_z >= i64::from(self.size[1]) {
+            return None;
+        }
+        let dx = x.rem_euclid(8);
+        let dz = z.rem_euclid(8);
+        let cx = ((i64::from(x) - i64::from(dx) - i64::from(self.corner_origin[0])) / 8) as usize;
+        let cz = ((i64::from(z) - i64::from(dz) - i64::from(self.corner_origin[1])) / 8) as usize;
+        let index = cz * self.corners_x + cx;
+        let a = &self.corners[index];
+        let b = &self.corners[index + 1];
+        let c = &self.corners[index + self.corners_x];
+        let d = &self.corners[index + self.corners_x + 1];
+        let ax = dx as f32 * 0.125;
+        let az = dz as f32 * 0.125;
+        let mut values = [0.0; 128];
+        for cell in 0..32 {
+            let bottom = lerp(ax, lerp(az, a[cell], c[cell]), lerp(az, b[cell], d[cell]));
+            let top = lerp(ax, lerp(az, a[cell + 1], c[cell + 1]), lerp(az, b[cell + 1], d[cell + 1]));
+            let step = (top - bottom) * 0.25;
+            let mut value = bottom + step * 0.0;
+            for dy in 0..4 {
+                values[cell * 4 + dy] = squeeze(value) + 0.0;
+                value += step;
+            }
+        }
+        Some(values)
+    }
+
+    pub fn column(&self, x: i32, z: i32) -> Option<[bool; 256]> {
+        let densities = self.column_densities(x, z)?;
+        Some(std::array::from_fn(|y| y < 128 && densities[y] > 0.0))
+    }
+
+    pub fn lattice_points(&self) -> usize { self.corners.len() * 33 }
+    pub fn lattice_bytes(&self) -> usize { self.corners.len() * std::mem::size_of::<[f32; 33]>() }
+}
+
 fn lerp(t: f32, a: f32, b: f32) -> f32 { a + t * (b - a) }
 fn select_lerp(t: f32, a: f32, b: f32) -> f32 {
     if t == 0.0 { a } else if t == 1.0 { b } else { lerp(t, a, b) }
@@ -20,6 +75,33 @@ fn squeeze(value: f32) -> f32 {
 impl VanillaDensity {
     pub fn new(seed: u64) -> Self {
         Self { islands: IslandNoise::new(seed), noise: BlendedNoise::new(seed, BlendedParameters::default()).unwrap() }
+    }
+
+    /// Construct each required island value once and each 3D noise corner once.
+    /// Callers can interpolate columns in parallel without locks or new noise
+    /// evaluation. The rectangle may be unaligned or cross chunk/region edges.
+    pub fn tile(&self, x: i32, z: i32, width: u32, depth: u32) -> Result<DenseTile, String> {
+        fn axis(origin: i32, length: u32) -> Result<(i32, usize), String> {
+            if length == 0 { return Err("End tile dimensions must be nonzero".into()); }
+            let first = i64::from(origin).div_euclid(8) * 8;
+            let last = (i64::from(origin) + i64::from(length) - 1).div_euclid(8) * 8 + 8;
+            i32::try_from(last).map_err(|_| "End tile noise corner exceeds coordinate range")?;
+            Ok((first as i32, ((last - first) / 8 + 1) as usize))
+        }
+        let (corner_x, corners_x) = axis(x, width)?;
+        let (corner_z, corners_z) = axis(z, depth)?;
+        let count = corners_x.checked_mul(corners_z).ok_or("End tile lattice size overflow")?;
+        let mut corners = Vec::new();
+        corners.try_reserve_exact(count).map_err(|e| format!("cannot allocate End tile lattice: {e}"))?;
+        for cz in 0..corners_z {
+            let block_z = (i64::from(corner_z) + cz as i64 * 8) as i32;
+            for cx in 0..corners_x {
+                let block_x = (i64::from(corner_x) + cx as i64 * 8) as i32;
+                let island = self.islands.sample(block_x, block_z);
+                corners.push(std::array::from_fn(|cy| self.raw(block_x, cy as i32 * 4, block_z, island, true)));
+            }
+        }
+        Ok(DenseTile { origin: [x, z], size: [width, depth], corner_origin: [corner_x, corner_z], corners_x, corners })
     }
 
     fn raw(&self, x: i32, y: i32, z: i32, island: f32, volume: bool) -> f32 {
@@ -121,11 +203,46 @@ mod tests {
                 let x = sample["xz"][0].as_i64().unwrap() as i32;
                 let z = sample["xz"][1].as_i64().unwrap() as i32;
                 let actual = noise.column(x, z);
+                let tile = noise.tile(x.div_euclid(16) * 16, z.div_euclid(16) * 16, 16, 16).unwrap();
+                assert_eq!(tile.column(x, z).unwrap(), actual, "tiled column seed={seed} at {x},{z}");
                 for (y, solid) in actual.into_iter().enumerate() {
                     let expected = sample["solid_y"].as_array().unwrap().iter().any(|v| v.as_u64() == Some(y as u64));
                     assert_eq!(solid, expected, "column seed={seed} at {x},{y},{z}");
                 }
             }
         }
+    }
+
+    #[test]
+    fn dense_lattice_matches_columns_across_unaligned_and_far_edges() {
+        for (seed, x, z) in [(42u64, -9, -17), (123456789, 4091, -529),
+            (u64::MAX, -16777217, 16777211)] {
+            let noise = VanillaDensity::new(seed);
+            let tile = noise.tile(x, z, 19, 11).unwrap();
+            for dz in 0..11 {
+                for dx in 0..19 {
+                    let actual = tile.column_densities(x + dx, z + dz).unwrap().map(f32::to_bits);
+                    let expected = noise.column_densities(x + dx, z + dz).map(f32::to_bits);
+                    assert_eq!(actual, expected, "seed={seed} at {},{}", x + dx, z + dz);
+                }
+            }
+            assert!(tile.column_densities(x - 1, z).is_none());
+            assert!(tile.column_densities(x + 19, z).is_none());
+            assert!(tile.column_densities(x, z - 1).is_none());
+            assert!(tile.column_densities(x, z + 11).is_none());
+        }
+    }
+
+    #[test]
+    fn dense_lattice_shares_corners_and_checks_its_real_bounds() {
+        let noise = VanillaDensity::new(42);
+        let tile = noise.tile(-8, 8, 16, 16).unwrap();
+        assert_eq!(tile.lattice_points(), 3 * 3 * 33);
+        assert_eq!(tile.lattice_bytes(), 3 * 3 * 33 * 4);
+        assert!(noise.tile(0, 0, 0, 16).is_err());
+        assert!(noise.tile(0, 0, 16, 0).is_err());
+        assert!(noise.tile(i32::MAX, 0, 1, 1).is_err());
+        assert!(noise.tile(0, i32::MAX - 7, 1, 8).is_err());
+        assert!(noise.tile(i32::MAX - 15, 0, u32::MAX, 1).is_err());
     }
 }
