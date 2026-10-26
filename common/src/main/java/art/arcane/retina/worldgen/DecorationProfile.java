@@ -136,9 +136,9 @@ final class DecorationProfile {
                 var members = membership.get(placed);
                 for (int id : selected) {
                     var recipe = recipes.get(id).getAsJsonObject();
-                    if (recipe.get("kind").getAsString().equals("end_island")) {
+                    if (Set.of("end_island","end_chorus").contains(recipe.get("kind").getAsString())) {
                         var ids = new JsonArray(); for (int b = members.nextSetBit(0); b >= 0; b = members.nextSetBit(b+1)) ids.add(b);
-                        recipe.getAsJsonObject("end_island").add("biomes",ids);
+                        recipe.getAsJsonObject(recipe.get("kind").getAsString()).add("biomes",ids);
                     }
                 }
                 for (int biome = members.nextSetBit(0); biome >= 0; biome = members.nextSetBit(biome + 1)) {
@@ -273,13 +273,33 @@ final class DecorationProfile {
             platform.add(material(Blocks.COBBLESTONE.defaultBlockState()));
             data.add("platform", platform);
             emit(path, p, chance, "void_platform", data, selected);
+        } else if (end && feature instanceof ChorusPlantFeature) {
+            if (!EndPlacementProfile.supported(p.program)) { unsupported.add("end_chorus:placement"); return; }
+            var chorus = new JsonObject(); var plants = new JsonArray(); var flowers = new JsonArray();
+            var connections = List.of(BlockStateProperties.DOWN,BlockStateProperties.UP,BlockStateProperties.NORTH,BlockStateProperties.EAST,BlockStateProperties.SOUTH,BlockStateProperties.WEST);
+            for (int bits=0;bits<64;bits++) {
+                var state=Blocks.CHORUS_PLANT.defaultBlockState();
+                for (int i=0;i<6;i++) state=state.setValue(connections.get(i),(bits&(1<<i))!=0);
+                plants.add(material(state));
+            }
+            for (int age=0;age<6;age++) flowers.add(material(Blocks.CHORUS_FLOWER.defaultBlockState().setValue(ChorusFlowerBlock.AGE,age)));
+            var supports=new JsonArray();var air=new JsonArray();
+            for (var block:BuiltInRegistries.BLOCK) for (var state:block.getStateDefinition().getPossibleStates()) {
+                if (state.is(BlockTags.SUPPORTS_CHORUS_PLANT)) supports.add(material(state));
+                if (state.isAir()) air.add(material(state));
+            }
+            chorus.add("plants",plants);chorus.add("flowers",flowers);chorus.add("supports",supports);chorus.add("air",air);
+            chorus.addProperty("step",generationStep);chorus.addProperty("index",featureIndex);
+            chorus.add("placement",p.program.deepCopy());chorus.add("biomes",new JsonArray());
+            var data=new JsonObject();data.add("end_chorus",chorus);data.addProperty("reach",EndPlacementProfile.reach(p.program,8));
+            var root=p.copy();root.program=new JsonArray();emit(path,root,chance,"end_chorus",data,selected);
         } else if (end && feature instanceof EndIslandFeature) {
             var data = new JsonObject(); var island = new JsonObject();
-            if (!EndIslandProfile.supported(p.program)) { unsupported.add("end_island:placement"); return; }
+            if (!EndPlacementProfile.supported(p.program)) { unsupported.add("end_island:placement"); return; }
             island.addProperty("material",material(Blocks.END_STONE.defaultBlockState()));
             island.addProperty("step",generationStep); island.addProperty("index",featureIndex);
             island.add("placement",p.program.deepCopy()); island.add("biomes",new JsonArray());
-            data.add("end_island",island); data.addProperty("reach",EndIslandProfile.reach(p.program));
+            data.add("end_island",island); data.addProperty("reach",EndPlacementProfile.reach(p.program));
             var root = p.copy(); root.program = new JsonArray();
             emit(path,root,chance,"end_island",data,selected);
         } else if (feature instanceof EndPlatformFeature) {
@@ -502,7 +522,7 @@ final class DecorationProfile {
     }
     private static void finishFeature(JsonObject recipe,LinkedHashMap<BlockState,Integer> palette) {
             switch(recipe.get("kind").getAsString()) {
-                case "end_island" -> finishProgram(recipe.getAsJsonObject("end_island").getAsJsonArray("placement"),palette);
+                case "end_island", "end_chorus" -> finishProgram(recipe.getAsJsonObject(recipe.get("kind").getAsString()).getAsJsonArray("placement"),palette);
                 case "nether_feature" -> NetherFeatureProfile.finish(recipe.getAsJsonObject("nether"),palette);
                 case "flat_lake" -> {
                     for (String key : List.of("can_place_feature", "can_replace_with_air_or_fluid", "can_replace_with_barrier", "solid", "liquid"))

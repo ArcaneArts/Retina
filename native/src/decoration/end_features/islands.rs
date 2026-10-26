@@ -1,7 +1,7 @@
 //! Exact world-seeded End island root: placement branches share one vanilla RNG.
+use super::super::placement::{Modifier, Overlay};
 use super::super::*;
-use crate::end::{BiomeZoom, DecorationRandom};
-use placement::{IntConfig, IntProvider, Modifier, Overlay};
+use crate::end::DecorationRandom;
 
 #[derive(Clone, Deserialize)]
 pub struct Recipe {
@@ -11,111 +11,72 @@ pub struct Recipe {
     pub biomes: Vec<u16>,
     pub placement: Vec<Modifier>,
 }
-fn supported_int(value: &IntProvider) -> bool {
-    match value {
-        IntProvider::Value(_) | IntProvider::Config(IntConfig::Constant{..} | IntConfig::Uniform{..}) => true,
-        IntProvider::Config(IntConfig::WeightedList{distribution}) => {
-            let total: u64 = distribution.iter().map(|v|u64::from(v.weight)).sum();
-            total > 0 && total <= i32::MAX as u64 && distribution.iter().all(|v| supported_int(&v.data))
-        },
-        _ => false,
-    }
-}
-fn integer(value: &IntProvider, rng: &mut DecorationRandom) -> i32 {
-    match value {
-        IntProvider::Value(v) | IntProvider::Config(IntConfig::Constant{value:v}) => *v,
-        IntProvider::Config(IntConfig::Uniform{min_inclusive,max_inclusive}) => min_inclusive + rng.below(max_inclusive-min_inclusive+1),
-        IntProvider::Config(IntConfig::WeightedList{distribution}) => {
-            let total: u64 = distribution.iter().map(|v| u64::from(v.weight)).sum();
-            let mut n = rng.below(total as i32) as u32;
-            for entry in distribution { if n < entry.weight { return integer(&entry.data,rng); } n -= entry.weight; }
-            unreachable!()
-        }
-        _ => unreachable!("validated End integer provider"),
-    }
-}
-fn anchor(value: &placement_height::Anchor, r: ChunkRequest) -> i32 {
-    let min = r.min_y.max(0); let height = r.height.min(128) as i32;
-    match value { placement_height::Anchor::Absolute(v) => *v,
-        placement_height::Anchor::AboveBottom(v) => min + v,
-        placement_height::Anchor::BelowTop(v) => min + height - 1 - v }
-}
 impl Recipe {
     pub(in crate::decoration) fn validate(&self, palette: usize) -> bool {
-        self.material != 0 && (self.material as usize) < palette && !self.biomes.is_empty()
-            && placement::validate(&self.placement,palette).is_ok()
-            && self.placement.iter().all(|op| match op {
-                Modifier::Count{count} => supported_int(count),
-                Modifier::RarityFilter{..} | Modifier::InSquare | Modifier::Biome | Modifier::FixedPlacement{..} => true,
-                Modifier::HeightRange{height} => height_supported(height),
-                _ => false,
-            })
+        self.material != 0
+            && (self.material as usize) < palette
+            && super::placement::validate(&self.placement, &self.biomes, palette)
     }
-    pub(in crate::decoration) fn place(&self, origin: [i32;3], field: &Field, profile: &WorldProfile,
-        request: ChunkRequest, _overlay: &Overlay, output: &mut Vec<WorldBlock>) {
-        let mut random = DecorationRandom::for_feature(request.seed,origin[0],origin[2],self.index,self.step);
-        let zoom = BiomeZoom::new(request.seed);
-        let mut stack = vec![(origin,0usize)];
-        let mut modified = Vec::new();
-        while let Some((at,index)) = stack.pop() {
-            let Some(op) = self.placement.get(index) else {
-                geometry(self.material,at,&mut random,request,output); continue;
-            };
-            modified.clear();
-            match op {
-                Modifier::Count{count} => { for _ in 0..integer(count,&mut random) { modified.push(at); } }
-                Modifier::RarityFilter{chance} => { if random.float() < 1.0f32 / *chance as f32 { modified.push(at); } }
-                Modifier::InSquare => modified.push([at[0]+random.below(16),at[1],at[2]+random.below(16)]),
-                Modifier::HeightRange{height} => modified.push([at[0],sample_height(height,&mut random,request),at[2]]),
-                Modifier::FixedPlacement{positions} => modified.extend(positions.iter().copied().filter(|p|
-                    p[0].div_euclid(16)==at[0].div_euclid(16) && p[2].div_euclid(16)==at[2].div_euclid(16))),
-                Modifier::Biome => {
-                    let quart = zoom.quart(at);
-                    let point = quart.map(|v|v*4);
-                    if field.biome(profile,point).is_some_and(|b| self.biomes.contains(&(b as u16))) { modified.push(at); }
-                }
-                _ => unreachable!("validated End placement modifier"),
-            }
-            // FeaturePlacer invokes terminal features in emission order; other
-            // modifiers push children backwards for depth-first shared RNG order.
-            if index + 1 == self.placement.len() {
-                for &at in &modified { geometry(self.material,at,&mut random,request,output); }
-            } else {
-                stack.extend(modified.iter().rev().map(|&p|(p,index+1)));
-            }
-        }
+    pub(in crate::decoration) fn place(
+        &self,
+        origin: [i32; 3],
+        field: &Field,
+        profile: &WorldProfile,
+        request: ChunkRequest,
+        overlay: &Overlay,
+        output: &mut Vec<WorldBlock>,
+    ) {
+        super::placement::walk(
+            &self.placement,
+            &self.biomes,
+            self.index,
+            self.step,
+            origin,
+            field,
+            profile,
+            request,
+            overlay,
+            output,
+            |at, random, live, output| {
+                let start = output.len();
+                geometry(self.material, at, random, request, output);
+                live.commit(output, start, field, profile, request);
+            },
+        );
     }
 }
-fn height_supported(height: &placement_height::HeightProvider) -> bool {
-    matches!(height, placement_height::HeightProvider::Constant(_)
-        | placement_height::HeightProvider::Config(placement_height::HeightConfig::Constant{..}
-        | placement_height::HeightConfig::Uniform{..}))
-}
-fn sample_height(height: &placement_height::HeightProvider, random: &mut DecorationRandom, request: ChunkRequest) -> i32 {
-    use placement_height::{HeightProvider as H,HeightConfig as C};
-    match height {
-        H::Constant(a) | H::Config(C::Constant{value:a}) => anchor(a,request),
-        H::Config(C::Uniform{min_inclusive,max_inclusive}) => {
-            let min = anchor(min_inclusive,request); let max = anchor(max_inclusive,request);
-            if min > max { min } else { min + random.below(max-min+1) }
-        }
-        _ => unreachable!("validated End height provider"),
-    }
-}
-fn geometry(material: u16, origin: [i32;3], random: &mut DecorationRandom,
-    request: ChunkRequest, output: &mut Vec<WorldBlock>) {
+fn geometry(
+    material: u16,
+    origin: [i32; 3],
+    random: &mut DecorationRandom,
+    request: ChunkRequest,
+    output: &mut Vec<WorldBlock>,
+) {
     let mut size = random.below(3) as f32 + 4.0;
     let mut y = 0;
     while size > 0.5 {
-        let low = (-size).floor() as i32; let high = size.ceil() as i32;
-        for x in low..=high { for z in low..=high {
-            if (x*x+z*z) as f32 <= (size+1.0)*(size+1.0) {
-                let at = [origin[0]+x,origin[1]+y,origin[2]+z];
-                if at[1] >= request.min_y && at[1] < request.min_y+request.height as i32 {
-                    output.push(WorldBlock{root_order:0,tick:0,x:at[0],y:at[1],z:at[2],material,upper:0,role:FEATURE});
+        let low = (-size).floor() as i32;
+        let high = size.ceil() as i32;
+        for x in low..=high {
+            for z in low..=high {
+                if (x * x + z * z) as f32 <= (size + 1.0) * (size + 1.0) {
+                    let at = [origin[0] + x, origin[1] + y, origin[2] + z];
+                    if at[1] >= request.min_y && at[1] < request.min_y + request.height as i32 {
+                        output.push(WorldBlock {
+                            root_order: 0,
+                            tick: 0,
+                            x: at[0],
+                            y: at[1],
+                            z: at[2],
+                            material,
+                            upper: 0,
+                            role: FEATURE,
+                        });
+                    }
                 }
             }
-        }}
-        size -= random.below(2) as f32 + 0.5; y -= 1;
+        }
+        size -= random.below(2) as f32 + 0.5;
+        y -= 1;
     }
 }

@@ -444,9 +444,52 @@ execution, compatibility and complete End performance/gameplay acceptance remain
 unfinished. The End-specific stream and placement context are reusable foundations
 for those remaining random features.
 
+### Cycle 3c: chorus and live End placement reads
+
+`EndPlacementProfile` and the shared native End placement walker now support the
+loaded heightmap modifier, including vanilla's empty-column rejection. A root
+retains one exact world-seeded RNG and a live overlay between emitted features.
+Small islands use the same walker; other dimensions retain their existing paths.
+
+Chorus follows `ChorusPlantFeature` and `ChorusFlowerBlock.generatePlant`: support
+tag checks, recursive stem/branch growth, north/east/south/west selection order,
+maximum spread, explicit connection updates, and terminal age-five flowers.
+Export retains all 64 connected stem states, all six flower ages, loaded support
+tag members and air states. Each recursive write enters the live overlay before
+subsequent reads. Heightmaps see earlier plants in the same placement stream.
+The conservative read reach is eight blocks around the feature origin plus the
+loaded placement displacement (23 blocks for the standard root). Writes use
+normal dimension storage bounds rather than the 128-block base-noise range.
+
+```sh
+./gradlew --no-daemon -PretinaHostOnly \
+  -PretinaNativePath=/absolute/path/libretina_worldgen.dylib \
+  :common:endChorusTest :common:endIslandTest :common:endPlatformTest \
+  :common:endProfileTest :common:endReferenceTest -x :packageNative -x :buildNative
+```
+
+Independent source roots use actual vanilla terrain columns, live vanilla
+heightmap predicates, source feature indices, decoration seeds and biome filters.
+All 32 targeted chorus roots over two seeds match exact final block states:
+20 accepted and 12 rejected. Two duplicate-column fixtures place the same root
+three times and verify updated heightmap reads after the first plant. Two complete
+generated chunks match 131,072 states against vanilla base terrain plus supported
+source features from contributing neighboring anchors. Island, platform and
+terrain/query regressions pass. The original source reference hash is unchanged.
+The optimized native suite passes 313 tests with zero failures (75 optional
+fixtures ignored).
+
+A saved-publication check covers 93 source chorus cells from anchor (31,90),
+including every connected-state property, across four chunks in regions (0,2) and
+(1,2). All 2,048 saved records were hashed; both disposable region files totaling
+8,404,992 bytes were removed after comparison. This is correctness evidence for
+the currently supported feature set, not full End readiness or performance
+acceptance. Export now supports three roots; spikes and gateways remain omitted.
+Production End activation stays disabled.
+
 ## Remaining delivery sequence
 
-1. Chorus, spikes/cages/crystals and naturally generated gateways.
+1. Spikes/cages/crystals and naturally generated gateways.
 2. End cities, ships, markers and saved structure metadata.
 3. Conservative occupancy classification and sparse execution through publication.
 4. Dragon progression and asynchronous portal/gateway preparation.
