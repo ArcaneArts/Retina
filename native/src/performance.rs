@@ -17,6 +17,7 @@ macro_rules! counters {
     };
 }
 counters! {
+    end_columns_nanos, end_query_nanos, end_terrain_nanos,
     dependency_evaluation_nanos, final_structure_planning_nanos,
     distribution_nanos, teardown_nanos, region_pool_wait_nanos,
     teardown_commands_nanos, teardown_versions_nanos, teardown_outputs_nanos,

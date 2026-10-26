@@ -15,6 +15,11 @@ record GenerationSource(ResourceKey<Level> key, ChunkGenerator generator, Dimens
         this(Level.OVERWORLD, generator, dimension);
     }
 
+    boolean endTerrain() {
+        return !flat() && (generator.getBiomeSource() instanceof net.minecraft.world.level.biome.TheEndBiomeSource
+                || key.equals(Level.END) || noise().generatorSettings().is(NoiseGeneratorSettings.END));
+    }
+
     boolean enclosedTerrain() {
         return dimension.hasCeiling() || key.equals(Level.NETHER)
                 || !flat() && noise().generatorSettings().is(NoiseGeneratorSettings.NETHER);
@@ -22,10 +27,10 @@ record GenerationSource(ResourceKey<Level> key, ChunkGenerator generator, Dimens
 
     JsonObject describe() {
         var data = new JsonObject();
-        data.addProperty("version", 3);
+        data.addProperty("version", endTerrain() ? 4 : 3);
         data.addProperty("dimension", key.identifier().toString());
-        data.addProperty("terrain", flat() ? "flat" : "noise");
-        data.addProperty("biomes", generator.getBiomeSource() instanceof FixedBiomeSource ? "fixed" : "climate");
+        data.addProperty("terrain", flat() ? "flat" : endTerrain() ? "end" : "noise");
+        data.addProperty("biomes", generator.getBiomeSource() instanceof FixedBiomeSource ? "fixed" : endTerrain() ? "end" : "climate");
         data.addProperty("min_y", dimension.minY());
         data.addProperty("height", dimension.height());
         data.addProperty("skylight", dimension.hasSkyLight());

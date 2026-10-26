@@ -2605,6 +2605,7 @@ mod tests {
             mca_compression: Default::default(),
             decoration_ticks: Vec::new(),
             flat: None,
+            end: None,
             lighting: None,
             simple_current_states: vec![],
             program_execution: crate::specialize::Execution::default(),

@@ -61,6 +61,8 @@ pub struct WorldProfile {
     #[serde(default)]
     pub flat: Option<crate::flat::Profile>,
     #[serde(default)]
+    pub end: Option<crate::end::Profile>,
+    #[serde(default)]
     pub structures: crate::structures::Profile,
     #[serde(default)]
     pub registry_program: Option<crate::program::RegistryProgram>,
@@ -133,9 +135,15 @@ pub struct WorldProfile {
 }
 
 impl WorldProfile {
+    pub(crate) fn material_layers(&self) -> bool { self.end.is_some() || self.registry_program.as_ref().is_some_and(|p| p.material_layers) }
+    pub(crate) fn material_halo(&self) -> bool { self.end.is_some() || self.registry_program.as_ref().is_some_and(|p| p.material_halo) }
     pub fn parse(json: &[u8]) -> Result<Self, String> {
         let mut profile: Self =
             serde_json::from_slice(json).map_err(|e| format!("world profile: {e}"))?;
+        if let Some(end) = &profile.end {
+            end.validate(profile.materials.len(), profile.biomes.len())?;
+            if profile.flat.is_some() || profile.registry_program.is_some() { return Err("End profiles cannot mix flat or registry density terrain".into()); }
+        }
         if let Some(flat) = &profile.flat {
             flat.validate(profile.materials.len())?;
             if profile.biomes.len() != 1 || profile.registry_program.is_some() { return Err("flat profiles require one biome and no density program".into()); }
@@ -542,7 +550,7 @@ impl Column {
 
     pub fn surface_height(self, profile: Option<&WorldProfile>) -> i32 {
         profile.map_or(self.height, |p| {
-            if p.flat.is_some() { return self.height; }
+            if p.flat.is_some() || p.end.is_some() { return self.height; }
             if self.packed & (1 << 29) != 0 {
                 self.height + ((self.packed >> 24) & 7) as i32
             } else {

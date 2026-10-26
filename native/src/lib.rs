@@ -190,9 +190,7 @@ impl TerrainEngine {
         }
         let profile = self.profile(request.reserved)?;
         if profile.as_deref().is_some_and(|p| {
-            p.registry_program
-                .as_ref()
-                .is_some_and(|r| r.material_layers)
+            p.material_layers()
         }) {
             let (_, mask) = self.terrain_field(request, 1)?;
             let runs = mask
@@ -1052,16 +1050,17 @@ impl TerrainEngine {
         if profile.as_deref().is_some_and(|p| p.flat.is_some()) {
             return Ok((self.decoration_field(request, side)?, None));
         }
+        if let Some(end) = profile.as_deref().and_then(|p| p.end.as_ref()) {
+            return self.end_field(request, side, end);
+        }
         let material_halo = profile
             .as_deref()
-            .is_some_and(|p| p.registry_program.as_ref().is_some_and(|r| r.material_halo));
+            .is_some_and(|p| p.material_halo());
         let patch_halo =
             material_halo && profile.as_deref().is_some_and(|p| p.decoration_patch_halo);
         if !profile.as_deref().is_some_and(|p| {
             p.geology.caves_enabled(p)
-                || p.registry_program
-                    .as_ref()
-                    .is_some_and(|r| r.material_layers)
+                || p.material_layers()
         }) {
             return Ok((self.decoration_field(request, side)?, None));
         }
@@ -1306,6 +1305,14 @@ impl TerrainEngine {
         probe_y: Vec<i32>,
     ) -> Result<gpu::GpuSample, String> {
         let profile = self.profile(requests[0].reserved)?;
+        if let Some(end) = profile.as_deref().and_then(|p| p.end.as_ref()) {
+            let metrics = self.timings(requests[0].reserved);
+            let started = metrics.performance.start();
+            let columns = end.columns(&requests, tile_side, matches!(probe_mode, 1 | 2))?;
+            metrics.performance.elapsed(performance::Counter::end_columns_nanos, started);
+            return Ok(gpu::GpuSample { columns, mask: None, timings: timings::Snapshot::default(),
+                #[cfg(test)] host_phases: Default::default() });
+        }
         let (reply, receiver) = mpsc::channel();
         let timing_profile = requests[0].reserved;
         #[cfg(test)]
@@ -1399,9 +1406,7 @@ impl TerrainEngine {
             !p.decorations.is_empty()
                 || !p.geology.ores.is_empty()
                 || p.geology.caves_enabled(p)
-                || p.registry_program
-                    .as_ref()
-                    .is_some_and(|r| r.material_layers)
+                || p.material_layers()
         }) {
             let (field, mask) = self.terrain_field(request, 1)?;
             let placements = timings.time(timings::VEGETATION_PLAN, || {

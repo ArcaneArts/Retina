@@ -227,6 +227,66 @@ all required later generation stages; they do not establish the region targets.
 Production profile/query/material-mask integration,
 CPU/GPU comparison, features, cities and gameplay remain unfinished.
 
+### Cycle 2d: explicit profiles and native material/query integration
+
+`EndTerrainProfile` exports loaded End or fixed biome IDs, the constant loaded
+terrain material and actual dimension lighting independently of terrain strategy.
+`EndTerrainSupport` resolves the loaded density references and compares their
+expressions with the supported standard graph, decoded through Minecraft's own
+codec. Registry names and settings hashes do not select a substitute graph.
+Changed graphs, unsupported noise bounds/random sources/fluids and nonconstant
+material rules remain unsupported rather than silently receiving vanilla terrain.
+The source-derived graph descriptor is `retina/end/standard-terrain-26.3.json`.
+
+Native `end::Profile` uses the shared dense lattice to produce floating-island
+columns, packed quart biomes, air exposure and the existing complete material-run
+substrate. It retains normal decoration guard columns and populates existing
+terrain caches. Chunk and region assembly decode those exact runs; point queries,
+base-column queries, height tiles and biome-volume queries use explicit End paths.
+End terrain stays within world Y=0..127 while dimension storage remains separate.
+No Overworld bedrock, ocean fill or cave noise is used. Opt-in performance counters
+record native End columns, queries and terrain work as host work rather than GPU
+density timestamps. Existing GPU lighting and region publication remain in use.
+
+Reproduce profile and public Java/native API checks:
+
+```sh
+cargo build --release --locked --manifest-path native/Cargo.toml \
+  --lib --target-dir build/native-target
+./gradlew --no-daemon -PretinaHostOnly \
+  -PretinaNativePath=/absolute/path/libretina_worldgen.dylib \
+  :common:endProfileTest -x :packageNative -x :buildNative
+```
+
+Without `retinaNativePath`, the task checks export only and reports that distinction.
+The native check registers both full exported tables and a clearly named
+terrain-only profile. Four chunks across central terrain, void and positive/negative
+outer islands match vanilla for 262,144 generated block states, all base columns,
+6,144 height checks, cold height/biome point queries, cached columns and all quart
+biome volumes. Fixed-biome registration and native volumes pass. The ordinary
+optimized native suite passes 308 tests, zero failures, with 75 optional fixtures
+ignored. Storage clipping, air planes, material-run assembly and halo reuse also
+have focused native coverage.
+
+A two-trial publication smoke used one measured region and one warmup per process.
+Both 1,024-record decompressed-NBT corpora hash identically. All four new MCA files
+(16,809,984 bytes) were removed after evidence capture. Measured lit terrain-only
+region times were 397.13 and 400.93 ms; these two samples establish neither tail
+latency nor final performance acceptance. Features and cities were explicitly
+absent. One process's measured peak RSS was about 480 MiB including driver/cache
+state. The historical region-report `gpu_ms` field includes terrain preparation
+wall time here; it is not a CPU density device timestamp.
+
+The bounded runner uses actual generation warmups for profiles without a registry
+shader rather than demanding a shader-ready status for a nonexistent program.
+The benchmark helper suite passes twelve tests, with one optional codec test skipped.
+
+**Production End activation remains disabled.** Export still reports omitted End
+features (islands, chorus, spikes, gateways and fixed placement). Cities, progression,
+CPU/GPU island-field comparison, sparse execution, final compatibility and complete
+End performance/gameplay acceptance remain required. Custom graphs beyond this
+explicitly recognized standard shape also remain outside the current adapter.
+
 ## Remaining delivery sequence
 
 1. End profile, exact seeded terrain, floating-island queries and biome selection.

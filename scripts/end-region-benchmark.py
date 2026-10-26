@@ -57,6 +57,10 @@ def main() -> None:
         parser.error("regions, trials, grid width and workers must be positive; warmups cannot be negative")
     args.out.mkdir(parents=True, exist_ok=False)
     runner = Path(__file__).with_name("native-region-benchmark.py")
+    # Native End/flat terrain has no registry shader to specialize. Warm actual
+    # generation without requiring a nonexistent GPU-program readiness state.
+    profile = json.loads(args.profile.read_text())
+    readiness = "shader-ready" if profile.get("registry_program") is not None else "driver-warm"
     environment = {**os.environ, "RETINA_REGION_THREADS": str(args.workers), "RAYON_NUM_THREADS": str(args.workers)}
     order = (["baseline", "candidate", "candidate", "baseline"] * ((trials + 3) // 4))[:trials] \
         if args.baseline_library else ["candidate"] * trials
@@ -73,7 +77,7 @@ def main() -> None:
                    "--parallel", str(args.callers), "--seed", str(args.seed),
                    "--origin-x", str(args.origin_x), "--origin-z", str(args.origin_z),
                    "--grid-width", str(args.grid_width), "--scope", "lit-mca", "--lighting", "enabled",
-                   "--readiness", "shader-ready"]
+                   "--readiness", readiness]
         if revision:
             command.extend(["--library-revision", revision])
         if first_reference is not None:

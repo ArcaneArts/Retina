@@ -5,6 +5,8 @@ use crate::structures::Random;
 mod blended;
 pub use blended::{BlendedNoise, Parameters as BlendedParameters};
 mod density;
+mod terrain;
+pub use terrain::Profile;
 pub use density::{DenseTile, VanillaDensity};
 
 fn permutation(random: &mut Random) -> [u8; 256] {

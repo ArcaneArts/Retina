@@ -71,7 +71,7 @@ impl<'a> TerrainJob<'a> {
         let metrics = engine.timings(request.reserved);
         let started = metrics.performance.start();
         let cached = if profile.decoration_patch_halo
-            && profile.registry_program.as_ref().is_some_and(|p| p.material_halo) {
+            && profile.material_halo() {
             crate::terrain_cache::capture_patch_tiles(engine, request, |x, z| {
                 nearby.index(x, z).is_some()
                     && !initial.is_some_and(|field| covers(field, x - 1, z - 1, 18))

@@ -140,7 +140,7 @@ final class GeologyProfile {
         var caveNoises = new JsonArray();
         boolean ceiling = world.has("registry_program") && world.getAsJsonObject("registry_program").has("generation")
                 && world.getAsJsonObject("registry_program").getAsJsonObject("generation").get("ceiling").getAsBoolean();
-        for (String id : world.has("flat") || ceiling ? List.<String>of() : List.of("cave_cheese", "spaghetti_3d_1", "spaghetti_3d_2", "cave_layer", "spaghetti_roughness", "pillar")) {
+        for (String id : world.has("flat") || world.has("end") || ceiling ? List.<String>of() : List.of("cave_cheese", "spaghetti_3d_1", "spaghetti_3d_2", "cave_layer", "spaghetti_roughness", "pillar")) {
             var noise = registry.lookupOrThrow(Registries.NOISE).getOrThrow(ResourceKey.create(Registries.NOISE, Identifier.withDefaultNamespace(id))).value();
             var data = NormalNoise.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, noise).getOrThrow().getAsJsonObject();
             var n = new JsonObject(); n.addProperty("frequency", Math.scalb(1.0, data.get("base_octave").getAsInt()));
