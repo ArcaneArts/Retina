@@ -1,5 +1,7 @@
 # Current Nether performance evidence — 25 October 2026
 
+A later [allocator cycle report](nether-perf-cycle204-2026-10-26.md) records the next implementation and its Overworld/memory investigation. The measurements below retain their original revision and limitations.
+
 The architecture and current correctness checks are delivered. Complete serial Nether generation repeatedly meets the numerical one-second target. Sustained concurrent throughput and tail acceptance remain open. All current test data and worktrees are retained.
 
 Current main is `8c4810e71373`, native tree `03ebc41dcac7`. The actual native build is `a8c023026a5a`, SHA-256 `db0060feb49b1df19a5f5bec0221187ea76417435ad244b427f682eca01208fa`. Its native tree matches main. PR [#238](https://github.com/ArcaneArts/Retina/pull/238) reduces optional diagnostic counter contention; it does not claim a default generation speedup.
