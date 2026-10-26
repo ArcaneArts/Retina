@@ -487,9 +487,63 @@ the currently supported feature set, not full End readiness or performance
 acceptance. Export now supports three roots; spikes and gateways remain omitted.
 Production End activation stays disabled.
 
+### Cycle 3d: spikes, cages and crystal metadata
+
+The End spike recipe retains loaded descriptors and exports the ten standard
+center coordinates using the source Java arithmetic. Empty descriptor lists use
+the actual request seed in native code: legacy random `nextLong() & 65535`, then
+the source Fisher–Yates shuffle. The existing random implementation is reused;
+only method visibility changes, preserving other dimensions' seed behavior.
+
+Native geometry preserves signed center-chunk selection, the source X/Y/Z loop
+order, obsidian radius predicate, air clearing above Y=65, explicit iron-bar
+connections, bedrock and fire caps. Crystal yaw consumes the End feature stream.
+Crystal tags travel through the existing ordered per-chunk metadata events and
+ordinary ProtoChunk entity installation, without fake structure starts. Each
+spawn has a stable native UUID generated independently of the feature RNG;
+vanilla creates runtime UUIDs outside that stream. All other saved fields,
+including yaw, position, beam target and invulnerability, match source NBT.
+
+The current spike adapter supports independent top-level roots whose modifiers
+retain the anchor's horizontal position. Nested/cross-chunk placement programs
+are reported unsupported rather than dropping entity ownership. Configured
+radii outside 0..46340 and cap heights outside 0..254 are also reported unsupported;
+they require overflow or boundary fire-state handling beyond this adapter.
+Standard vanilla spikes and the tested configured tall spike are supported.
+
+```sh
+./gradlew --no-daemon -PretinaHostOnly \
+  -PretinaNativePath=/absolute/path/libretina_worldgen.dylib \
+  :common:endSpikeTest -x :packageNative -x :buildNative
+```
+
+The independent fixture invokes actual vanilla placed roots and entity
+constructors/save codecs. Its entity-only level bypasses ServerLevel startup and
+provides only entity IDs, feature flags and registries; it does not simulate
+server ticking or prove live dragon gameplay. Twenty roots across two seeds
+match all 102,618 final source states, including four guarded cages and twenty
+crystals (the sole source/native NBT difference is runtime UUID). Four generated
+chunks match 262,144 stored states. A configured guarded spike at (-1,511), height
+134, crosses both region axes and verifies space above the base-noise range,
+invulnerability and a beam target. All native crystal tags also round-trip through
+actual Minecraft entity load/save codecs. Re-reading metadata does not duplicate
+crystals. Compact native golden fixtures match all ten descriptors for seven
+signed seeds, including both long extremes. Native suite: 314 passed, zero failures,
+75 optional fixtures ignored. Island, chorus, platform and terrain/query regressions
+pass, and the original independent source reference hash is unchanged.
+
+Four published boss-area regions at (-1,-1), (0,-1), (-1,0), (0,0) preserve all
+51,309 source spike/cage/cap cells for seed 123456789. Their 4,096 saved records
+contain exactly ten crystals in the correct owner chunks; every saved field,
+including native UUIDs, matches native metadata already compared with source.
+All four disposable files (16,809,984 bytes) were removed after hashing/comparison.
+This validates saved output, not live gameplay, final readiness or completed-End
+performance. Coverage now supports four roots; natural gateways remain omitted.
+Production End activation remains disabled.
+
 ## Remaining delivery sequence
 
-1. Spikes/cages/crystals and naturally generated gateways.
+1. Naturally generated gateways.
 2. End cities, ships, markers and saved structure metadata.
 3. Conservative occupancy classification and sparse execution through publication.
 4. Dragon progression and asynchronous portal/gateway preparation.

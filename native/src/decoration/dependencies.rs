@@ -885,6 +885,13 @@ impl Planner<'_> {
                     chunk_z: z,
                     ..self.request
                 };
+                if ids[0].len()==1 {
+                    if let Kind::EndSpikes { end_spikes } = &self.profile.decorations[ids[0][0] as usize].feature {
+                        let (writes,metadata)=end_spikes.generate([x*16,request.min_y,z*16],&field,self.profile,request,&placement::Overlay::default());
+                        let (columns,_)=output_columns::Columns::from_writes(&writes,None,request.min_y,request.height as usize,&self.metrics.performance);
+                        return Ok(Output{writes,columns,metadata});
+                    }
+                }
                 let mut replay =
                     Replay::new(&field, self.profile, request, x, z, 1, None, Some(&ids))
                         .with_prefix_resume(self.retain_prefix);

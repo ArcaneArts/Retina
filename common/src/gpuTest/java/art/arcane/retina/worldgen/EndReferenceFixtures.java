@@ -88,13 +88,15 @@ final class EndReferenceFixtures implements AutoCloseable {
     final class Capture {
         final Map<BlockPos, BlockState> blocks = new HashMap<>();
         final Map<BlockPos, BlockEntity> blockEntities = new HashMap<>();
+        final java.util.List<net.minecraft.world.entity.Entity> entities = new ArrayList<>();
         final long seed;
         final int floor;
         final WorldGenLevel level;
         final java.util.function.Function<BlockPos, BlockState> base;
 
         Capture(long seed, int floor) { this(seed, floor, null); }
-        Capture(long seed, int floor, java.util.function.Function<BlockPos, BlockState> base) {
+        Capture(long seed, int floor, java.util.function.Function<BlockPos, BlockState> base) { this(seed,floor,base,null); }
+        Capture(long seed, int floor, java.util.function.Function<BlockPos, BlockState> base, net.minecraft.server.level.ServerLevel entityLevel) {
             this.base = base;
             this.seed = seed;
             this.floor = floor;
@@ -104,6 +106,11 @@ final class EndReferenceFixtures implements AutoCloseable {
             level = (WorldGenLevel) Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),
                     new Class<?>[]{WorldGenLevel.class}, (proxy, method, args) -> {
                 return switch (method.getName()) {
+                    case "getLevel" -> {
+                        if(entityLevel==null)throw new UnsupportedOperationException("Entity creation requires an explicit entity level");
+                        yield entityLevel;
+                    }
+                    case "addFreshEntity" -> { entities.add((net.minecraft.world.entity.Entity)args[0]);yield true; }
                     case "getSeed" -> seed;
                     case "getBiomeManager" -> biomeManager;
                     case "getRandom" -> random;

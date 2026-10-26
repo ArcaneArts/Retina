@@ -2,6 +2,7 @@
 //! own vanilla world-seeded stream rather than changing other dimensions' RNG.
 pub mod islands;
 pub mod chorus;
+pub mod spikes;
 mod placement;
 use super::*;
 use super::placement::Overlay;

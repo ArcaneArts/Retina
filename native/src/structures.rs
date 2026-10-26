@@ -306,7 +306,7 @@ impl Random {
             }
         }
     }
-    fn long(&mut self) -> u64 {
+    pub(crate) fn long(&mut self) -> u64 {
         let high = self.bits(32) as i32 as i64;
         let low = self.bits(32) as i32 as i64;
         high.wrapping_shl(32).wrapping_add(low) as u64
@@ -322,7 +322,7 @@ impl Random {
             self.bits(32);
         }
     }
-    fn shuffle<T>(&mut self, v: &mut [T]) {
+    pub(crate) fn shuffle<T>(&mut self, v: &mut [T]) {
         for i in (1..v.len()).rev() {
             let j = self.int(i as u32 + 1) as usize;
             v.swap(i, j);

@@ -857,3 +857,18 @@ tasks.register('endChorusTest', JavaExec) {
     else dependsOn ':packageNative'
     args rootProject.layout.buildDirectory.dir('end/chorus-placement-reference').get().asFile.absolutePath
 }
+
+tasks.register('endSpikeTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare complete native End spike placements against actual world-seeded vanilla roots.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndSpikeTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '512m'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    args rootProject.layout.buildDirectory.dir('end/spike-placement-reference').get().asFile.absolutePath
+}
