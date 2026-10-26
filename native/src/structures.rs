@@ -311,11 +311,16 @@ impl Random {
         let low = self.bits(32) as i32 as i64;
         high.wrapping_shl(32).wrapping_add(low) as u64
     }
-    fn double(&mut self) -> f64 {
+    pub(crate) fn double(&mut self) -> f64 {
         (((self.bits(26) as u64) << 27) + self.bits(27) as u64) as f64 / (1u64 << 53) as f64
     }
     pub(crate) fn float(&mut self) -> f64 {
         self.bits(24) as f64 / (1u32 << 24) as f64
+    }
+    pub(crate) fn consume(&mut self, count: usize) {
+        for _ in 0..count {
+            self.bits(32);
+        }
     }
     fn shuffle<T>(&mut self, v: &mut [T]) {
         for i in (1..v.len()).rev() {
