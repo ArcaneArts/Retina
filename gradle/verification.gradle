@@ -784,3 +784,19 @@ tasks.register('flatTest', JavaExec) {
     environment 'RETINA_REGION_THREADS', '2'
     workingDir rootProject.projectDir
 }
+
+tasks.register('endProfileTest', JavaExec) {
+    group = 'verification'
+    description = 'Check actual End profile export and optional native four-chunk terrain/query parity.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndProfileTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '512m'
+    if (providers.gradleProperty('retinaNativePath').isPresent()) {
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+        systemProperty 'retina.end.nativeChecks', 'true'
+    }
+    args rootProject.layout.buildDirectory.dir('end/native-profile').get().asFile.absolutePath
+}

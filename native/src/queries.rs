@@ -62,6 +62,16 @@ impl TerrainEngine {
         }
         if let Some(profile) = self.profile(request.reserved)? {
             if let Some(flat) = &profile.flat { return Ok(vec![flat.column(request); points.len()]); }
+            if let Some(end) = &profile.end {
+                let islands = crate::end::IslandNoise::new(request.seed);
+                let density = matches!(kind, Kind::Height).then(|| crate::end::VanillaDensity::new(request.seed));
+                let metrics = self.timings(request.reserved);
+                let started = metrics.performance.start();
+                let result = points.iter().map(|p| end.query(request, p.x, p.z,
+                    matches!(kind, Kind::Height), &islands, density.as_ref())).collect();
+                metrics.performance.elapsed(crate::performance::Counter::end_query_nanos, started);
+                return Ok(result);
+            }
             if matches!(kind, Kind::Biome) && profile.biomes.len() == 1 { return Ok(vec![Column::default(); points.len()]); }
         }
         let mut output = Vec::with_capacity(points.len());
@@ -135,9 +145,7 @@ impl TerrainEngine {
                 let profile = self.profile(request.reserved)?;
                 let underground = profile.as_deref().is_some_and(|p| {
                     p.geology.caves_enabled(p)
-                        || p.registry_program
-                            .as_ref()
-                            .is_some_and(|r| r.material_layers)
+                        || p.material_layers()
                 });
                 let (reply, receiver) = mpsc::channel();
                 self.sender

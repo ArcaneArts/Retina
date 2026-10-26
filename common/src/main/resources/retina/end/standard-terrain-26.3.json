@@ -1,0 +1,138 @@
+{
+  "final_density": {
+    "type": "minecraft:add",
+    "left": {
+      "type": "minecraft:squeeze",
+      "input": {
+        "type": "minecraft:interpolated",
+        "cell_size_xz": 8,
+        "cell_size_y": 4,
+        "input": {
+          "type": "minecraft:mul",
+          "left": {
+            "type": "minecraft:blend_density",
+            "input": {
+              "type": "minecraft:lerp",
+              "alpha": {
+                "type": "minecraft:gradient",
+                "axis": "y",
+                "from_coordinate": 4,
+                "from_value": 0.0,
+                "to_coordinate": 32,
+                "to_value": 1.0
+              },
+              "first": -0.234375,
+              "second": {
+                "type": "minecraft:lerp",
+                "alpha": {
+                  "type": "minecraft:gradient",
+                  "axis": "y",
+                  "from_coordinate": 56,
+                  "from_value": 1.0,
+                  "to_coordinate": 312,
+                  "to_value": 0.0
+                },
+                "first": -23.4375,
+                "second": {
+                  "type": "minecraft:add",
+                  "left": {
+                    "type": "minecraft:cache",
+                    "input": {
+                      "type": "minecraft:max",
+                      "left": {
+                        "type": "minecraft:slice",
+                        "axis": "y",
+                        "coordinate": 0,
+                        "input": {
+                          "type": "minecraft:mul",
+                          "left": {
+                            "type": "minecraft:sub",
+                            "left": {
+                              "type": "minecraft:clamp",
+                              "input": {
+                                "type": "minecraft:sub",
+                                "left": 100.0,
+                                "right": {
+                                  "type": "minecraft:distance_to_point",
+                                  "metric": "euclidean",
+                                  "point": [
+                                    0,
+                                    0,
+                                    0
+                                  ]
+                                }
+                              },
+                              "max": 80.0,
+                              "min": -100.0
+                            },
+                            "right": 8.0
+                          },
+                          "right": 0.0078125
+                        }
+                      },
+                      "right": {
+                        "type": "minecraft:end_outer_islands"
+                      }
+                    }
+                  },
+                  "right": {
+                    "type": "minecraft:old_blended_noise",
+                    "smear_scale_multiplier": 4.0,
+                    "xz_factor": 80.0,
+                    "xz_scale": 0.25,
+                    "y_factor": 160.0,
+                    "y_scale": 0.25
+                  }
+                }
+              }
+            }
+          },
+          "right": 0.64
+        }
+      }
+    },
+    "right": {
+      "type": "minecraft:beardifier"
+    }
+  },
+  "erosion": {
+    "type": "minecraft:cache",
+    "input": {
+      "type": "minecraft:max",
+      "left": {
+        "type": "minecraft:slice",
+        "axis": "y",
+        "coordinate": 0,
+        "input": {
+          "type": "minecraft:mul",
+          "left": {
+            "type": "minecraft:sub",
+            "left": {
+              "type": "minecraft:clamp",
+              "input": {
+                "type": "minecraft:sub",
+                "left": 100.0,
+                "right": {
+                  "type": "minecraft:distance_to_point",
+                  "metric": "euclidean",
+                  "point": [
+                    0,
+                    0,
+                    0
+                  ]
+                }
+              },
+              "max": 80.0,
+              "min": -100.0
+            },
+            "right": 8.0
+          },
+          "right": 0.0078125
+        }
+      },
+      "right": {
+        "type": "minecraft:end_outer_islands"
+      }
+    }
+  }
+}

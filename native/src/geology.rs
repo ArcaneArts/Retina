@@ -124,7 +124,7 @@ impl GeologyProfile {
         }
         if self.carveable.len() != palette
             || self.lava as usize >= palette
-            || self.cave_noises.len() != if profile.flat.is_some() || enclosed { 0 } else { 6 }
+            || self.cave_noises.len() != if profile.flat.is_some() || profile.end.is_some() || enclosed { 0 } else { 6 }
             || (self.geology_height == 0 && !enclosed)
             || self.geology_height > 4096
         {

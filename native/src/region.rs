@@ -324,9 +324,7 @@ fn generate_region_inner(
             decorated
                 || !p.geology.ores.is_empty()
                 || p.geology.caves_enabled(p)
-                || p.registry_program
-                    .as_ref()
-                    .is_some_and(|r| r.material_layers)
+                || p.material_layers()
         }) {
             engine.terrain_field_profiled(origin, 32, Some(&mut gpu_trace))?
         } else {
