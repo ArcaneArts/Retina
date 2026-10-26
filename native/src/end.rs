@@ -2,6 +2,19 @@
 //! Keep f64 simplex arithmetic, f32 island arithmetic and truncating integer
 //! division distinct: changing any of them changes islands at negative/far coordinates.
 use crate::structures::Random;
+mod blended;
+pub use blended::{BlendedNoise, Parameters as BlendedParameters};
+mod density;
+pub use density::VanillaDensity;
+
+fn permutation(random: &mut Random) -> [u8; 256] {
+    let mut permutation = std::array::from_fn(|i| i as u8);
+    for i in 0..256 {
+        let offset = random.int((256 - i) as u32) as usize;
+        permutation.swap(i, i + offset);
+    }
+    permutation
+}
 
 pub struct IslandNoise {
     permutation: [u8; 256],
@@ -36,12 +49,7 @@ impl IslandNoise {
         for _ in 0..3 {
             random.double();
         }
-        let mut permutation = std::array::from_fn(|i| i as u8);
-        for i in 0..256 {
-            let offset = random.int((256 - i) as u32) as usize;
-            permutation.swap(i, i + offset);
-        }
-        Self { permutation }
+        Self { permutation: permutation(&mut random) }
     }
 
     fn permute(&self, i: i32) -> usize {
