@@ -1,4 +1,11 @@
 mod climate;
+// Rust-owned buffers are released by this library, including the byte buffers
+// returned through the C ABI. Foreign buffers and the host allocator stay owned
+// by their callers; mimalloc's process-wide override feature is not enabled.
+#[cfg(feature = "scalable-allocator")]
+#[global_allocator]
+static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 mod column_cache;
 mod column_program;
 mod nbt;

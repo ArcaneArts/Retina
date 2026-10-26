@@ -1,0 +1,1052 @@
+{
+  "cycle": 204,
+  "date": "2026-10-26",
+  "status": "Selected for PR delivery; post-merge validation still required. Overall goal not declared complete.",
+  "source": "9a8e5ca1802f3a5f81327d6176ad46e7f385a054",
+  "native_tree": "75176b16dd1bca23f3ca0fa4c417b434286e712d",
+  "preceding_main": "5cd3335d71f8c07d390c319b13400bd978aa0cf6",
+  "branch": "codex/nether-scalable-rust-allocator",
+  "worktree": "/tmp/retina-nether-scalable-rust-allocator",
+  "change": "Default pinned mimalloc for Rust-owned native allocations; local_dynamic_tls; no process-wide C malloc override. Foreign allocations remain caller-owned. Shared MIT notices packaged by both loaders. Same-source --no-default-features System control remains a build-time comparison,not an option to turn off Retina.",
+  "libraries": {
+    "candidate": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/candidate-libretina_worldgen.dylib",
+      "sha256": "5715ca555fd2e3cf3d28d06f54d5d8e49365f6707fa2e1b7a4c216ae56ab8ad9"
+    },
+    "control": {
+      "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/control-libretina_worldgen.dylib",
+      "sha256": "39811352924f9ecf0ec7171f9ea9d1a740e5bf8ba4b57d1736e4879b40b61e92"
+    }
+  },
+  "method": "Same machine/profiles/seeds/coordinates;5warmups,20measured full1024chunk regions per normal pass;ABBA;1/2/4/8callers separately from16nativeworkers;actualshader status4;diagnostics off;GPUlighting,zlib,MCApublication and synchronous logical cleanup. Separate statistical/phase attribution and sustained-memory streams. Full decompressed chunk NBT bytes and membership compared with immutable original and preceding merged corpora; candidate also with same-source System. MCA timestamps/sector layout/padding/compressed representation are outside NBT payload comparison. Expected output never updated.",
+  "validation": {
+    "debug_units_per_variant": {
+      "passed": 298,
+      "failed": 0,
+      "ignored": 75
+    },
+    "optimized_units_per_variant": {
+      "passed": 298,
+      "failed": 0,
+      "ignored": 75
+    },
+    "actual_gradle_build": "./gradlew --no-daemon build; exit0; bothloaders and sixnative targets. Runtime behavior on foreign platforms not tested.",
+    "accounted_full_region_chunk_instances": 6008832,
+    "all_accounted_full_nbt_comparisons_exact": true,
+    "initial_full_caller_matrix_instances": 1638400,
+    "full_confirmation_instances": 737280,
+    "retention_census_instances": 643072,
+    "production_soak_instances": 737280,
+    "extended_ow8_instances": 368640,
+    "first_contended_ow2_steady_instances": 737280,
+    "statistical_profile_instances": 245760,
+    "detailed_phase_instances": 81920,
+    "focused_ow2_repeat_instances": 81920,
+    "latest_ow2_steady_repeat_instances": 737280
+  },
+  "serial_confirmation_candidate_rows": [
+    {
+      "case": "nether-main",
+      "pass": "candidate-b",
+      "median_ms": 528.1539374263957,
+      "p95_ms": 676.3213224825449,
+      "max_ms": 716.9027500785887,
+      "total_ms": 10868.963125161827,
+      "chunks_per_second": 1884.2643740862886,
+      "generation_peak_rss_bytes": 2552365056,
+      "cpu_ms_per_region": 1972.4371500000002
+    },
+    {
+      "case": "nether-second-seed",
+      "pass": "candidate-b",
+      "median_ms": 563.9526250306517,
+      "p95_ms": 679.1008421219886,
+      "max_ms": 737.1135419234633,
+      "total_ms": 11168.551875045523,
+      "chunks_per_second": 1833.720273597827,
+      "generation_peak_rss_bytes": 2675884032,
+      "cpu_ms_per_region": 1965.0050999999999
+    },
+    {
+      "case": "nether-custom-bounds",
+      "pass": "candidate-b",
+      "median_ms": 394.67377099208534,
+      "p95_ms": 445.7544442382641,
+      "max_ms": 463.0140829831362,
+      "total_ms": 7990.702375071123,
+      "chunks_per_second": 2562.978701833794,
+      "generation_peak_rss_bytes": 1879490560,
+      "cpu_ms_per_region": 1798.4611
+    },
+    {
+      "case": "nether-direct-stem",
+      "pass": "candidate-b",
+      "median_ms": 374.4230625452474,
+      "p95_ms": 420.61378082726156,
+      "max_ms": 468.803915893659,
+      "total_ms": 7611.612666863948,
+      "chunks_per_second": 2690.625613302252,
+      "generation_peak_rss_bytes": 1951563776,
+      "cpu_ms_per_region": 1726.5080999999998
+    },
+    {
+      "case": "overworld",
+      "pass": "candidate-b",
+      "median_ms": 213.48591696005315,
+      "p95_ms": 253.01803367910907,
+      "max_ms": 258.19062488153577,
+      "total_ms": 4252.605875022709,
+      "chunks_per_second": 4815.870692435291,
+      "generation_peak_rss_bytes": 1957396480,
+      "cpu_ms_per_region": 596.82865
+    },
+    {
+      "case": "nether-main",
+      "pass": "candidate-c",
+      "median_ms": 523.4317084541544,
+      "p95_ms": 683.3550188457593,
+      "max_ms": 715.3870000038296,
+      "total_ms": 10740.286165848374,
+      "chunks_per_second": 1906.839322877789,
+      "generation_peak_rss_bytes": 2489974784,
+      "cpu_ms_per_region": 1951.2011500000003
+    },
+    {
+      "case": "nether-second-seed",
+      "pass": "candidate-c",
+      "median_ms": 555.3581669228151,
+      "p95_ms": 664.7794250398875,
+      "max_ms": 743.7847498804331,
+      "total_ms": 11026.152333943173,
+      "chunks_per_second": 1857.402236041477,
+      "generation_peak_rss_bytes": 2617311232,
+      "cpu_ms_per_region": 1952.9302500000001
+    },
+    {
+      "case": "nether-custom-bounds",
+      "pass": "candidate-c",
+      "median_ms": 381.949812406674,
+      "p95_ms": 429.13952576927846,
+      "max_ms": 446.57566701062024,
+      "total_ms": 7727.324417093769,
+      "chunks_per_second": 2650.3352123661048,
+      "generation_peak_rss_bytes": 1896022016,
+      "cpu_ms_per_region": 1745.0051000000003
+    },
+    {
+      "case": "nether-direct-stem",
+      "pass": "candidate-c",
+      "median_ms": 369.3552501499653,
+      "p95_ms": 400.92943379422655,
+      "max_ms": 454.0315829217434,
+      "total_ms": 7468.7886668834835,
+      "chunks_per_second": 2742.0778540445344,
+      "generation_peak_rss_bytes": 1951252480,
+      "cpu_ms_per_region": 1703.5560999999998
+    },
+    {
+      "case": "overworld",
+      "pass": "candidate-c",
+      "median_ms": 204.6141040045768,
+      "p95_ms": 241.88285605050623,
+      "max_ms": 251.58437504433095,
+      "total_ms": 4108.481833012775,
+      "chunks_per_second": 4984.809677248078,
+      "generation_peak_rss_bytes": 1913700352,
+      "cpu_ms_per_region": 589.1312999999999
+    }
+  ],
+  "initial_matrix_observed_aggregates": [
+    {
+      "mode": "ordinary-p1",
+      "case": "nether-custom-bounds",
+      "candidate_throughput_change_percent": 36.87112834468189,
+      "candidate_median_change_percent": -23.12536840798176,
+      "candidate_cpu_per_region_change_percent": -3.877897732107194,
+      "candidate_peak_rss_change_percent": -6.168750483779628,
+      "control_median_drift_percent": -0.46197781819464767,
+      "control_cpu_drift_percent": 4.5116263535600165,
+      "candidate_b_median_ms": 389.0552294906229,
+      "candidate_c_median_ms": 493.0448124650866,
+      "candidate_b_p95_ms": 426.82493401225656,
+      "candidate_c_p95_ms": 587.9273480852135,
+      "measured_window_test_like_peaks_present": true
+    },
+    {
+      "mode": "ordinary-p1",
+      "case": "nether-direct-stem",
+      "candidate_throughput_change_percent": 33.98730678483566,
+      "candidate_median_change_percent": -25.577605980290052,
+      "candidate_cpu_per_region_change_percent": -12.275192944954295,
+      "candidate_peak_rss_change_percent": -1.0271736826486966,
+      "control_median_drift_percent": -1.4812746773389063,
+      "control_cpu_drift_percent": -0.7151642692757587,
+      "candidate_b_median_ms": 403.2431250670925,
+      "candidate_c_median_ms": 394.14104144088924,
+      "candidate_b_p95_ms": 448.07734380010515,
+      "candidate_c_p95_ms": 452.9739832621999,
+      "measured_window_test_like_peaks_present": true
+    },
+    {
+      "mode": "ordinary-p1",
+      "case": "nether-main",
+      "candidate_throughput_change_percent": 26.288974974787283,
+      "candidate_median_change_percent": -18.810663124901893,
+      "candidate_cpu_per_region_change_percent": -2.5544895090231945,
+      "candidate_peak_rss_change_percent": 11.486866875840441,
+      "control_median_drift_percent": -11.285039991338785,
+      "control_cpu_drift_percent": 5.48604263925383,
+      "candidate_b_median_ms": 597.0979784615338,
+      "candidate_c_median_ms": 600.5312915658578,
+      "candidate_b_p95_ms": 772.2587256575936,
+      "candidate_c_p95_ms": 770.3765728510916,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p1",
+      "case": "nether-second-seed",
+      "candidate_throughput_change_percent": 28.76552565699575,
+      "candidate_median_change_percent": -24.024875821512016,
+      "candidate_cpu_per_region_change_percent": -7.341321741808615,
+      "candidate_peak_rss_change_percent": 10.727946801624189,
+      "control_median_drift_percent": -11.82738881107256,
+      "control_cpu_drift_percent": -0.5247384109333453,
+      "candidate_b_median_ms": 563.2662915159017,
+      "candidate_c_median_ms": 632.2257289430127,
+      "candidate_b_p95_ms": 701.9690542598256,
+      "candidate_c_p95_ms": 917.735187150538,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p1",
+      "case": "overworld",
+      "candidate_throughput_change_percent": 7.045280633378348,
+      "candidate_median_change_percent": -5.936541052904554,
+      "candidate_cpu_per_region_change_percent": -5.894716901117247,
+      "candidate_peak_rss_change_percent": 32.222346137301436,
+      "control_median_drift_percent": 2.0637634630145785,
+      "control_cpu_drift_percent": -0.22594372558871756,
+      "candidate_b_median_ms": 198.87906243093312,
+      "candidate_c_median_ms": 204.55166697502136,
+      "candidate_b_p95_ms": 228.30070805503055,
+      "candidate_c_p95_ms": 245.2325084595941,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p8",
+      "case": "nether-custom-bounds",
+      "candidate_throughput_change_percent": 60.38714590665004,
+      "candidate_median_change_percent": -43.38732726168466,
+      "candidate_cpu_per_region_change_percent": -35.24386216789763,
+      "candidate_peak_rss_change_percent": 18.28814731481274,
+      "control_median_drift_percent": -28.450932725136724,
+      "control_cpu_drift_percent": -16.175796171848056,
+      "candidate_b_median_ms": 2147.4295834777877,
+      "candidate_c_median_ms": 1655.015625525266,
+      "candidate_b_p95_ms": 3228.4068063716404,
+      "candidate_c_p95_ms": 2517.899556586053,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p8",
+      "case": "nether-direct-stem",
+      "candidate_throughput_change_percent": 56.48883936450364,
+      "candidate_median_change_percent": -18.24083671180339,
+      "candidate_cpu_per_region_change_percent": -33.61308897366847,
+      "candidate_peak_rss_change_percent": 15.0338184983257,
+      "control_median_drift_percent": -12.90832888837995,
+      "control_cpu_drift_percent": -5.332396020469298,
+      "candidate_b_median_ms": 1826.9419583957642,
+      "candidate_c_median_ms": 1884.5568544929847,
+      "candidate_b_p95_ms": 2989.383952191565,
+      "candidate_c_p95_ms": 3007.202906557359,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p8",
+      "case": "nether-main",
+      "candidate_throughput_change_percent": 75.19152966094651,
+      "candidate_median_change_percent": -37.61131156231888,
+      "candidate_cpu_per_region_change_percent": -38.115337673603165,
+      "candidate_peak_rss_change_percent": 8.692037144106003,
+      "control_median_drift_percent": -33.42506722143605,
+      "control_cpu_drift_percent": -29.2621867461766,
+      "candidate_b_median_ms": 2126.6099169151857,
+      "candidate_c_median_ms": 1832.7432711375877,
+      "candidate_b_p95_ms": 3276.960173051339,
+      "candidate_c_p95_ms": 3167.6170159713365,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p8",
+      "case": "nether-second-seed",
+      "candidate_throughput_change_percent": 38.88763960238122,
+      "candidate_median_change_percent": -19.001736747010444,
+      "candidate_cpu_per_region_change_percent": -21.30279100412048,
+      "candidate_peak_rss_change_percent": 16.27336006476865,
+      "control_median_drift_percent": 1.5170138139678713,
+      "control_cpu_drift_percent": -1.1399238184495952,
+      "candidate_b_median_ms": 2396.893020486459,
+      "candidate_c_median_ms": 1834.709000075236,
+      "candidate_b_p95_ms": 3822.954972472508,
+      "candidate_c_p95_ms": 2691.1578144296077,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p8",
+      "case": "overworld",
+      "candidate_throughput_change_percent": -1.310816361446776,
+      "candidate_median_change_percent": -0.5150742109163331,
+      "candidate_cpu_per_region_change_percent": 2.53997022404715,
+      "candidate_peak_rss_change_percent": 26.637613098352485,
+      "control_median_drift_percent": -1.641032657729391,
+      "control_cpu_drift_percent": -12.20476003658365,
+      "candidate_b_median_ms": 825.8686040062457,
+      "candidate_c_median_ms": 799.1277284454554,
+      "candidate_b_p95_ms": 3316.8830500449985,
+      "candidate_c_p95_ms": 3318.5866287443787,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p2",
+      "case": "nether-custom-bounds",
+      "candidate_throughput_change_percent": 50.881460755651986,
+      "candidate_median_change_percent": -32.98732887304736,
+      "candidate_cpu_per_region_change_percent": -16.531331238709146,
+      "candidate_peak_rss_change_percent": 2.179600390120462,
+      "control_median_drift_percent": -4.1483002907340305,
+      "control_cpu_drift_percent": -4.735175796240709,
+      "candidate_b_median_ms": 539.8141874466091,
+      "candidate_c_median_ms": 522.8725000051782,
+      "candidate_b_p95_ms": 678.742268739734,
+      "candidate_c_p95_ms": 572.2950149909593,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p2",
+      "case": "nether-direct-stem",
+      "candidate_throughput_change_percent": 41.77767370231555,
+      "candidate_median_change_percent": -27.034666519303762,
+      "candidate_cpu_per_region_change_percent": -19.038723189850536,
+      "candidate_peak_rss_change_percent": -2.1763473923780974,
+      "control_median_drift_percent": -3.1690047145415456,
+      "control_cpu_drift_percent": 1.0845306327966986,
+      "candidate_b_median_ms": 558.60125052277,
+      "candidate_c_median_ms": 548.6311459681019,
+      "candidate_b_p95_ms": 651.9326146459207,
+      "candidate_c_p95_ms": 647.8491326677613,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p2",
+      "case": "nether-main",
+      "candidate_throughput_change_percent": 42.73245801557935,
+      "candidate_median_change_percent": -27.05586311854059,
+      "candidate_cpu_per_region_change_percent": -17.600147193830786,
+      "candidate_peak_rss_change_percent": 13.643539225852376,
+      "control_median_drift_percent": -9.348915039574113,
+      "control_cpu_drift_percent": -2.963416048091083,
+      "candidate_b_median_ms": 690.5295209726319,
+      "candidate_c_median_ms": 697.8231663815677,
+      "candidate_b_p95_ms": 922.8763215476647,
+      "candidate_c_p95_ms": 939.5501499529928,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p2",
+      "case": "nether-second-seed",
+      "candidate_throughput_change_percent": 23.814110031302825,
+      "candidate_median_change_percent": -19.384456470571354,
+      "candidate_cpu_per_region_change_percent": -8.84385886014698,
+      "candidate_peak_rss_change_percent": 15.52397064797626,
+      "control_median_drift_percent": 4.516175371360509,
+      "control_cpu_drift_percent": -0.07050322014098276,
+      "candidate_b_median_ms": 819.0081039210781,
+      "candidate_c_median_ms": 768.9130209619179,
+      "candidate_b_p95_ms": 1002.872064500116,
+      "candidate_c_p95_ms": 945.2969208708964,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p2",
+      "case": "overworld",
+      "candidate_throughput_change_percent": -3.4559122828676347,
+      "candidate_median_change_percent": 2.5254226597454688,
+      "candidate_cpu_per_region_change_percent": 5.628911877754872,
+      "candidate_peak_rss_change_percent": 27.44836026113444,
+      "control_median_drift_percent": -13.04749011949713,
+      "control_cpu_drift_percent": -9.954631140299563,
+      "candidate_b_median_ms": 358.4719584323466,
+      "candidate_c_median_ms": 357.17522841878235,
+      "candidate_b_p95_ms": 398.8880189834163,
+      "candidate_c_p95_ms": 483.69940263219183,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p4",
+      "case": "nether-custom-bounds",
+      "candidate_throughput_change_percent": 51.00417279447178,
+      "candidate_median_change_percent": -26.743659607500593,
+      "candidate_cpu_per_region_change_percent": -25.80087065892688,
+      "candidate_peak_rss_change_percent": 7.871377304116134,
+      "control_median_drift_percent": 2.4257174053279096,
+      "control_cpu_drift_percent": 1.2349580029310525,
+      "candidate_b_median_ms": 963.2143540075049,
+      "candidate_c_median_ms": 875.7521044462919,
+      "candidate_b_p95_ms": 1141.4710172684863,
+      "candidate_c_p95_ms": 1143.7285954365507,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p4",
+      "case": "nether-direct-stem",
+      "candidate_throughput_change_percent": 52.577051514770034,
+      "candidate_median_change_percent": -31.406519342625415,
+      "candidate_cpu_per_region_change_percent": -25.226223703605953,
+      "candidate_peak_rss_change_percent": 4.257197831644977,
+      "control_median_drift_percent": -17.712921113580936,
+      "control_cpu_drift_percent": 0.5938125533230698,
+      "candidate_b_median_ms": 888.5576664470136,
+      "candidate_c_median_ms": 878.2487290445715,
+      "candidate_b_p95_ms": 1243.4052806929685,
+      "candidate_c_p95_ms": 1064.880905800965,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p4",
+      "case": "nether-main",
+      "candidate_throughput_change_percent": 40.05428613268687,
+      "candidate_median_change_percent": -25.414563110959932,
+      "candidate_cpu_per_region_change_percent": -21.876994274676143,
+      "candidate_peak_rss_change_percent": 13.138140721550663,
+      "control_median_drift_percent": -4.729014916834551,
+      "control_cpu_drift_percent": -0.130798381023145,
+      "candidate_b_median_ms": 981.5595829859376,
+      "candidate_c_median_ms": 1079.5249164802954,
+      "candidate_b_p95_ms": 1464.842632773798,
+      "candidate_c_p95_ms": 1418.7899493961595,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p4",
+      "case": "nether-second-seed",
+      "candidate_throughput_change_percent": 39.11742165261407,
+      "candidate_median_change_percent": -26.26535037189468,
+      "candidate_cpu_per_region_change_percent": -20.658144521291266,
+      "candidate_peak_rss_change_percent": 7.608946781725301,
+      "control_median_drift_percent": -13.219853949822745,
+      "control_cpu_drift_percent": -0.5359727745364973,
+      "candidate_b_median_ms": 1152.4527294095606,
+      "candidate_c_median_ms": 1117.5024999538437,
+      "candidate_b_p95_ms": 1376.9072483526543,
+      "candidate_c_p95_ms": 1395.5865647876637,
+      "measured_window_test_like_peaks_present": false
+    },
+    {
+      "mode": "ordinary-p4",
+      "case": "overworld",
+      "candidate_throughput_change_percent": 8.841011064862169,
+      "candidate_median_change_percent": 14.744127627908332,
+      "candidate_cpu_per_region_change_percent": -7.096025275209228,
+      "candidate_peak_rss_change_percent": 32.89039703376506,
+      "control_median_drift_percent": -15.365361829447643,
+      "control_cpu_drift_percent": 3.964078265130988,
+      "candidate_b_median_ms": 510.9201669692993,
+      "candidate_c_median_ms": 546.9694375060499,
+      "candidate_b_p95_ms": 862.3275461606682,
+      "candidate_c_p95_ms": 896.6615559416826,
+      "measured_window_test_like_peaks_present": false
+    }
+  ],
+  "focused_ow2_rows": [
+    {
+      "case": "overworld",
+      "pass": "control-a",
+      "median_ms": 334.4469995936379,
+      "p95_ms": 404.2242562165485,
+      "max_ms": 529.206374892965,
+      "total_ms": 3509.542166022584,
+      "chunks_per_second": 5835.519002528551,
+      "generation_peak_rss_bytes": 1842987008,
+      "cpu_ms_per_region": 640.7156500000001
+    },
+    {
+      "case": "overworld",
+      "pass": "candidate-b",
+      "median_ms": 304.21304202172905,
+      "p95_ms": 418.73734433902433,
+      "max_ms": 510.9516668599099,
+      "total_ms": 3130.5475828703493,
+      "chunks_per_second": 6541.986492095486,
+      "generation_peak_rss_bytes": 2309603328,
+      "cpu_ms_per_region": 584.5750499999999
+    },
+    {
+      "case": "overworld",
+      "pass": "candidate-c",
+      "median_ms": 308.8002500589937,
+      "p95_ms": 372.1865956904367,
+      "max_ms": 508.99791601113975,
+      "total_ms": 3216.2695839069784,
+      "chunks_per_second": 6367.625432418456,
+      "generation_peak_rss_bytes": 2261532672,
+      "cpu_ms_per_region": 589.7562
+    },
+    {
+      "case": "overworld",
+      "pass": "control-d",
+      "median_ms": 295.2536040684208,
+      "p95_ms": 368.66183752426883,
+      "max_ms": 458.5453749168664,
+      "total_ms": 3038.8407909777015,
+      "chunks_per_second": 6739.4119694605215,
+      "generation_peak_rss_bytes": 1823604736,
+      "cpu_ms_per_region": 622.02775
+    }
+  ],
+  "steady_ow2_rows": [
+    {
+      "pass": "control-a",
+      "variant": "control",
+      "warmups": 5,
+      "measured_regions": 180,
+      "measured_chunks": 184320,
+      "actual_program_statuses": [
+        4
+      ],
+      "parallel": 2,
+      "library_sha256": "39811352924f9ecf0ec7171f9ea9d1a740e5bf8ba4b57d1736e4879b40b61e92",
+      "library_revision": "9a8e5ca1802f3a5f81327d6176ad46e7f385a054",
+      "generation_peak_rss_bytes": 2128281600,
+      "cpu_ms_per_region": 632.05245,
+      "measured_window_observation_samples": 41,
+      "known_qa_peaks": [],
+      "other_process_peaks": [
+        {
+          "pid": 57620,
+          "ppid": 55205,
+          "cpu_percent": 5.8,
+          "executable": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+          "script_paths": [
+            "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/observe-benchmark-workloads-halfsecond.py"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 57559,
+          "ppid": 55205,
+          "cpu_percent": 0.7,
+          "executable": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+          "script_paths": [
+            "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/run-ow-p2-steady-repeat.py"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 79616,
+          "ppid": 1,
+          "cpu_percent": 0.1,
+          "executable": "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+          "script_paths": [
+            "/Users/cyberpwn/.gradle/wrapper/dists/gradle-9.7.1-bin/1w1c7tv4s851m17nbqdsro2tv/gradle-9.7.1/lib/gradle-daemon-main-9.7.1.jar",
+            "-javaagent:/Users/cyberpwn/.gradle/wrapper/dists/gradle-9.7.1-bin/1w1c7tv4s851m17nbqdsro2tv/gradle-9.7.1/lib/agents/gradle-instrumentation-agent-9.7.1.jar"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6131,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "./server.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6134,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "./server.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6135,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules/@oai/cua-repl/bin/cua-repl.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6141,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "node",
+          "script_paths": [],
+          "known_flags": []
+        },
+        {
+          "pid": 6142,
+          "ppid": 6141,
+          "cpu_percent": 0.0,
+          "executable": "/Users/cyberpwn/.nvm/versions/node/v24.14.0/lib/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-darwin-arm64/node",
+          "script_paths": [
+            "/Users/cyberpwn/.nvm/versions/node/v24.14.0/lib/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-darwin-arm64/lib/dist/bin/codegraph.js"
+          ],
+          "known_flags": []
+        }
+      ],
+      "median_ms": 291.85908345971256,
+      "p95_region_ms": 427.8475227765739,
+      "maximum_region_ms": 531.1889578588307,
+      "total_ms": 26904.521082993597,
+      "chunks_per_second": 6850.893180050287
+    },
+    {
+      "pass": "candidate-b",
+      "variant": "candidate",
+      "warmups": 5,
+      "measured_regions": 180,
+      "measured_chunks": 184320,
+      "actual_program_statuses": [
+        4
+      ],
+      "parallel": 2,
+      "library_sha256": "5715ca555fd2e3cf3d28d06f54d5d8e49365f6707fa2e1b7a4c216ae56ab8ad9",
+      "library_revision": "9a8e5ca1802f3a5f81327d6176ad46e7f385a054",
+      "generation_peak_rss_bytes": 2487812096,
+      "cpu_ms_per_region": 686.081611111111,
+      "measured_window_observation_samples": 43,
+      "known_qa_peaks": [],
+      "other_process_peaks": [
+        {
+          "pid": 57620,
+          "ppid": 55205,
+          "cpu_percent": 6.5,
+          "executable": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+          "script_paths": [
+            "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/observe-benchmark-workloads-halfsecond.py"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 57559,
+          "ppid": 55205,
+          "cpu_percent": 1.0,
+          "executable": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+          "script_paths": [
+            "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/run-ow-p2-steady-repeat.py"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6131,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "./server.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6134,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "./server.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6135,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules/@oai/cua-repl/bin/cua-repl.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6141,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "node",
+          "script_paths": [],
+          "known_flags": []
+        },
+        {
+          "pid": 6142,
+          "ppid": 6141,
+          "cpu_percent": 0.0,
+          "executable": "/Users/cyberpwn/.nvm/versions/node/v24.14.0/lib/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-darwin-arm64/node",
+          "script_paths": [
+            "/Users/cyberpwn/.nvm/versions/node/v24.14.0/lib/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-darwin-arm64/lib/dist/bin/codegraph.js"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 23507,
+          "ppid": 74496,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "/var/folders/pv/03n81v656wn6x0m7v876mjjc0000gn/T/.tmphp6h8B/kernel.js"
+          ],
+          "known_flags": []
+        }
+      ],
+      "median_ms": 293.581478879787,
+      "p95_region_ms": 448.28304372495063,
+      "maximum_region_ms": 553.895958000794,
+      "total_ms": 27644.370625028387,
+      "chunks_per_second": 6667.541920202812
+    },
+    {
+      "pass": "candidate-c",
+      "variant": "candidate",
+      "warmups": 5,
+      "measured_regions": 180,
+      "measured_chunks": 184320,
+      "actual_program_statuses": [
+        4
+      ],
+      "parallel": 2,
+      "library_sha256": "5715ca555fd2e3cf3d28d06f54d5d8e49365f6707fa2e1b7a4c216ae56ab8ad9",
+      "library_revision": "9a8e5ca1802f3a5f81327d6176ad46e7f385a054",
+      "generation_peak_rss_bytes": 2494349312,
+      "cpu_ms_per_region": 661.313761111111,
+      "measured_window_observation_samples": 41,
+      "known_qa_peaks": [],
+      "other_process_peaks": [
+        {
+          "pid": 89135,
+          "ppid": 1,
+          "cpu_percent": 6.8,
+          "executable": "/Users/cyberpwn/.nvm/versions/node/v24.14.0/lib/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-darwin-arm64/node",
+          "script_paths": [
+            "/Users/cyberpwn/.nvm/versions/node/v24.14.0/lib/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-darwin-arm64/lib/dist/bin/codegraph.js"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 57620,
+          "ppid": 55205,
+          "cpu_percent": 6.6,
+          "executable": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+          "script_paths": [
+            "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/observe-benchmark-workloads-halfsecond.py"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 57559,
+          "ppid": 55205,
+          "cpu_percent": 1.0,
+          "executable": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+          "script_paths": [
+            "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/run-ow-p2-steady-repeat.py"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 79616,
+          "ppid": 1,
+          "cpu_percent": 0.1,
+          "executable": "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+          "script_paths": [
+            "/Users/cyberpwn/.gradle/wrapper/dists/gradle-9.7.1-bin/1w1c7tv4s851m17nbqdsro2tv/gradle-9.7.1/lib/gradle-daemon-main-9.7.1.jar",
+            "-javaagent:/Users/cyberpwn/.gradle/wrapper/dists/gradle-9.7.1-bin/1w1c7tv4s851m17nbqdsro2tv/gradle-9.7.1/lib/agents/gradle-instrumentation-agent-9.7.1.jar"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6131,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "./server.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6134,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "./server.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6135,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules/@oai/cua-repl/bin/cua-repl.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6141,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "node",
+          "script_paths": [],
+          "known_flags": []
+        }
+      ],
+      "median_ms": 288.7366251088679,
+      "p95_region_ms": 411.61302246619033,
+      "maximum_region_ms": 587.1219160035253,
+      "total_ms": 26813.44912503846,
+      "chunks_per_second": 6874.1622586659905
+    },
+    {
+      "pass": "control-d",
+      "variant": "control",
+      "warmups": 5,
+      "measured_regions": 180,
+      "measured_chunks": 184320,
+      "actual_program_statuses": [
+        4
+      ],
+      "parallel": 2,
+      "library_sha256": "39811352924f9ecf0ec7171f9ea9d1a740e5bf8ba4b57d1736e4879b40b61e92",
+      "library_revision": "9a8e5ca1802f3a5f81327d6176ad46e7f385a054",
+      "generation_peak_rss_bytes": 2039529472,
+      "cpu_ms_per_region": 869.0025999999999,
+      "measured_window_observation_samples": 48,
+      "known_qa_peaks": [],
+      "other_process_peaks": [
+        {
+          "pid": 57620,
+          "ppid": 55205,
+          "cpu_percent": 7.8,
+          "executable": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+          "script_paths": [
+            "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/observe-benchmark-workloads-halfsecond.py"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 57559,
+          "ppid": 55205,
+          "cpu_percent": 1.2,
+          "executable": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python",
+          "script_paths": [
+            "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/run-ow-p2-steady-repeat.py"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 79616,
+          "ppid": 1,
+          "cpu_percent": 0.1,
+          "executable": "/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home/bin/java",
+          "script_paths": [
+            "/Users/cyberpwn/.gradle/wrapper/dists/gradle-9.7.1-bin/1w1c7tv4s851m17nbqdsro2tv/gradle-9.7.1/lib/gradle-daemon-main-9.7.1.jar",
+            "-javaagent:/Users/cyberpwn/.gradle/wrapper/dists/gradle-9.7.1-bin/1w1c7tv4s851m17nbqdsro2tv/gradle-9.7.1/lib/agents/gradle-instrumentation-agent-9.7.1.jar"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6131,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "./server.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6134,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "./server.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6135,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "/Applications/ChatGPT.app/Contents/Resources/cua_node/bin/node",
+          "script_paths": [
+            "/Applications/ChatGPT.app/Contents/Resources/cua_node/lib/node_modules/@oai/cua-repl/bin/cua-repl.mjs"
+          ],
+          "known_flags": []
+        },
+        {
+          "pid": 6141,
+          "ppid": 55205,
+          "cpu_percent": 0.0,
+          "executable": "node",
+          "script_paths": [],
+          "known_flags": []
+        },
+        {
+          "pid": 6142,
+          "ppid": 6141,
+          "cpu_percent": 0.0,
+          "executable": "/Users/cyberpwn/.nvm/versions/node/v24.14.0/lib/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-darwin-arm64/node",
+          "script_paths": [
+            "/Users/cyberpwn/.nvm/versions/node/v24.14.0/lib/node_modules/@colbymchenry/codegraph/node_modules/@colbymchenry/codegraph-darwin-arm64/lib/dist/bin/codegraph.js"
+          ],
+          "known_flags": []
+        }
+      ],
+      "median_ms": 353.663207963109,
+      "p95_region_ms": 437.07386904861795,
+      "maximum_region_ms": 587.2454168274999,
+      "total_ms": 32515.79545903951,
+      "chunks_per_second": 5668.6295813427
+    }
+  ],
+  "selection_reason": "Repeated standard Nether medians523\u2013564ms/p95under684ms; custom/direct also under700ms. Initial1/2/4/8caller Nether throughput improves in every average profile pair; control drift limits causal percentages. Earlier Overworld2 short-run tail loss was investigated,not discarded: latest180region repeats have candidatep95411.6/448.3ms versus controls427.8/437.1ms,no identified competing test/QA and41\u201348observations per batch. One candidate is2.7%below first control throughput; other candidate matches/exceeds it. Final control median/CPU drifts substantially,so no causal Overworld gain is claimed. Latest sustained tails do not reproduce the earlier material short-run p95 loss.",
+  "memory_tradeoff": "Higher retained RAM is real. Optimized census mixed peak8.4G vs5.9G and afterengineDrop2.5G vs1.4G. Extended productionOW8 settles near4.8GB vs4.0GB RSS. All tracked2048mask and8version owners release;worker stops;actual cache caps pass. Finite workload evidence plus bounded ownership structures,not a universal RSS bound for arbitrary worlds. No cleanup moved outside timed call to hide work.",
+  "integration": "Real Fabric portal/light/reopen/unload fixtures:198noDH/204DH/206DHrepeat events,0failures;each unload has8active requests. Cold4096chunk arrivals1.716s noDH,2.075/1.722s DH;reopen160/153/151ms. Each cold DH window overlaps completed actual DH work. DH setup has one pause minutes before timed window;timed windows advance ticks. Native override exercises retained candidate;actual packaged build verified separately. These are functional observations,not warmed portal distributions or a speedup claim.",
+  "attribution": "Residual assembly includes lighting/host waits; detailed worker values are scaled shares,not CPU time. Statistical profile allocator-path leaf observations628System/241MI,with239/0kernel waits on those paths;sampled thread states are not wall or CPU percentages. Phase variation appears in planning,lighting and worker intervals;no speculative scheduler change selected.",
+  "interference": "Initial serial custom/direct control cases and some concurrent follow-ups have identified competing tests or QA;all are retained. Final serial confirmation has no identified test/QA overlap. The first180regionOW2stream and earlier60/180retention streams are contended,not acceptance timings. LatestOW2steady repeat has0identified test/QA in41\u201348measured-window samples per variant. A narrower classifier missed workercompatibility/.qa/rust-server identities;separate review corrects this. Other desktop/native activity is not proof of an idle OS. Focused20region controlA has no global measured-window sample,so that whole comparison is not the sole acceptance basis.",
+  "preservation": "All current test data,binaries,logs,worlds and worktrees retained. No deletion or cleanup requests. Historical raw paths absent at earlier recorded locations remain an audit limitation;committed reports are not represented as recovered raw runs. Original reference corpus and binary remain immutable.",
+  "recovery": {
+    "root": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator",
+    "instructions": "Use exact command arrays in receipts with fresh output directories. Record actual source/features/library SHA on rebuild. Do not assume a shared Cargo target identifies the requested build. Preserve original and preceding references.",
+    "receipts": [
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/build-receipt.json",
+        "sha256": "f7079d91efba7cb031ad520ff9b5e85dc88dd20434672e301b9ae1c5d8796c5f"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/source-receipt.json",
+        "sha256": "06a5c0f44281ea28862a12c833596c7909b677104aedf13ada9a2bf4ee4dfe83"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/binary-audit.json",
+        "sha256": "24f238ed26cb1b47f77615c4446a9ee4df738931299504d8df335bfab41c1786"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/compiled-feature-evidence.json",
+        "sha256": "b7fd0be27c77ccb13bb797b3fe1225144a890f7df1d307512beab6aa97fe2716"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/validation-receipt.json",
+        "sha256": "75a7275e672b0bf9a3b967e94a104d42e283a16da25ecd0b8ebd4aeb89f6046e"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/campaign-assessment.json",
+        "sha256": "b19cc05404350b7e6ef2e2c62fd06e4e4eee2d607c8ef3ec45baafae5ed8fabf"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/confirmation/validation-receipt.json",
+        "sha256": "7be368b038d590a1ff6713125f493f01e086ffa7d0e1cb336639bc04dcedb270"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/confirmation/campaign-assessment.json",
+        "sha256": "6dfaf6342b768282aedf15a80e8c222ec6c8965f9672e63d65b6b5f0ff4fe5b5"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/retention-receipt.json",
+        "sha256": "5e435f9705a4e6218a49a6f58e1323c6e03c1e9cca3c6053f6a2d7a3dfe017d5"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/retention-assessment.json",
+        "sha256": "6e9a26d5f0174dd5b5ebf22c31f55904583c2217b3c706864e717b6a2b331f71"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/soak-receipt.json",
+        "sha256": "ce5b3c52d9079c23463934889d740e97754995648d5541112c8712b9e9896c6d"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/soak-assessment.json",
+        "sha256": "74368334e58c2f8a35819ea1ce687ce8eb4dcd435057b7407591c33b70e330f6"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-long-receipt.json",
+        "sha256": "5088a60c16f4f0670e5f24f1e9f54c168d5cd663e403aaf53137ba0a81e7792d"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-long-assessment.json",
+        "sha256": "dd5cd6cccaf42e9d8792ea1d6fd38604e7c19cfb8635a1e78b324ef38799d0f2"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/package-build-receipt.json",
+        "sha256": "02031c596166435038cc6154bb2c211d4c64fab32304ad7e335e0684c2f09f06"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/packaged-host-audit.json",
+        "sha256": "ac3c3268dfecdd7d46b9d3f054370af5ae9ddf68ce889a9b8ed34c66b05e46e7"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/portal-validation-receipt.json",
+        "sha256": "f8585a92e9ccc7a94778b8791e2dade850d1b834062e3da01d391b8323465cf5"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/portal-assessment.json",
+        "sha256": "862df1bd6e70a9f88c7c067db5c748c971ed0838d1749ef3384b7577966a9cd5"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/portal-dh-repeat-validation-receipt.json",
+        "sha256": "01d9ccc361f691005ba8d60ec61e6d4ee4ba8c4fee6b828cc5a44480210f487f"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/portal-dh-repeat-assessment.json",
+        "sha256": "b2e7a6d4a99b92d132fc52f516b32334d42ce924d1411c9561e3fd9c5e0f2575"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/known-qa-activity-review.json",
+        "sha256": "ff4a8a02dfe49a53e84c1ddb5994e30fad7110d3c7189ade2d906a6e8ec27c13"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-tail-receipt.json",
+        "sha256": "428c6a9c53e1e1b478ac557af56070ad288fa90f194116b8aa62c1a26e459d11"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-tail-assessment.json",
+        "sha256": "e302c8aa878908c164a5252aaab14d77200b7f6429027c975fc452c059139c9d"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-profile-receipt.json",
+        "sha256": "cc6683a15fd38daf4456a9d912c3859c0088fa68bb7fceaf2fba578231782d89"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-detailed-v2-receipt.json",
+        "sha256": "f048b28cc395f482e8842b5fc49a47232b8260813b051d9604af17b3b036c254"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-attribution-assessment.json",
+        "sha256": "0450fda7d261d8714751345150d84acc16278404561742eb2eaba04f9e97a332"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-focused-repeat/validation-receipt.json",
+        "sha256": "ed04b7242ae9127125b8ff20c7faf2c324d2ea4d2d35858d33db1bf1c8b83189"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-focused-repeat/campaign-assessment.json",
+        "sha256": "e9dee3f7e8194f15a9fd1657650e3d433339d267aa8f81878955d357f8bc03fb"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-steady-repeat-receipt.json",
+        "sha256": "5a485889b450af9a1bfc392ab47451169dee6323daaaae0fcd4c7b28a4fb891d"
+      },
+      {
+        "path": "/Users/cyberpwn/development/retina-benchmark-evidence/completion-audit/scalable-rust-allocator/ow-p2-steady-repeat-assessment.json",
+        "sha256": "60d1c03b77cd8a48a848a8d7803c04713b0ed1f9fba44a65f03add8af4404b37"
+      }
+    ]
+  }
+}
