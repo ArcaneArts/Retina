@@ -431,7 +431,8 @@ def worldDefinitionBridgeClasses = tasks.register('worldDefinitionBridgeClasses'
     source file('src/main/java/art/arcane/retina/worldgen/NativeLibrary.java'),
             file('src/main/java/art/arcane/retina/worldgen/NativeWorldDefinition.java'),
             file('src/main/java/art/arcane/retina/worldgen/TerrainRequest.java'),
-            file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionBridgeTest.java')
+            file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionBridgeTest.java'),
+            file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionThreadTest.java')
     classpath = files()
     destinationDirectory = layout.buildDirectory.dir('world-definition-bridge/classes')
     javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -1039,3 +1040,24 @@ tasks.register('endRegionPublicationTest', JavaExec) {
     else dependsOn ':packageNative'
     args rootProject.layout.buildDirectory.dir('end/region-publication').get().asFile.absolutePath
 }
+
+
+tasks.register('worldDefinitionThreadTest', JavaExec) {
+    group = 'verification'
+    description = 'Open saved definitions after the first host thread exits, without Minecraft or GPU.'
+    dependsOn worldDefinitionBridgeClasses
+    classpath = files(worldDefinitionBridgeClasses.flatMap { it.destinationDirectory })
+    mainClass = 'art.arcane.retina.worldgen.NativeWorldDefinitionThreadTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '128m'
+    def library = providers.gradleProperty('retinaNativePath')
+            .orElse(nativeTarget.map { it.file("release/${System.mapLibraryName('retina_worldgen')}").asFile.absolutePath })
+    if (!providers.gradleProperty('retinaNativePath').isPresent()) dependsOn ':buildNative'
+    def definition = providers.gradleProperty('retinaThreadDefinition')
+            .orElse(rootProject.layout.buildDirectory.file('world-definition-fixtures/vanilla/retina.dat').map { it.asFile.absolutePath })
+    if (!providers.gradleProperty('retinaThreadDefinition').isPresent()) dependsOn 'worldDefinitionCompileTest'
+    args library.get(), definition.get()
+}
+
+check.dependsOn 'worldDefinitionThreadTest'
