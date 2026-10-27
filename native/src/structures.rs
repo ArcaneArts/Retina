@@ -439,6 +439,8 @@ impl Profile {
                         self.portals.is_none()
                     } else if d.kind == "nether_fossil" {
                         self.fossils.is_none()
+                    } else if d.kind == "end_city" {
+                        self.end_cities.is_none()
                     } else {
                         d.kind != "jigsaw" && d.template >= self.templates.len()
                     }
@@ -457,6 +459,18 @@ impl Profile {
         }
         if let Some(kit) = &self.end_cities {
             kit.validate(self)?;
+            if kit.containers.iter().any(|&id|id as usize>=materials)
+                || kit.block_entities.iter().any(|(&id,tag)|id as usize>=materials || tag[0].as_u64()!=Some(10) || !nbt::validate(tag,0)) {
+                return Err("invalid End city block entity prototypes".into());
+            }
+            if kit.stairs.iter().any(|(&id,s)|id as usize>=materials || !(2..6).contains(&s.facing) || s.shapes.iter().any(|&m|m as usize>=materials)) {
+                return Err("invalid End city stair update table".into());
+            }
+            if kit.attachments.iter().any(|(&id,a)|id as usize>=materials || !(2..6).contains(&a.facing))
+                || kit.solid.iter().any(|&id|id as usize>=materials)
+                || kit.faces.iter().any(|(&id,&mask)|id as usize>=materials || mask>=64) {
+                return Err("invalid End city support table".into());
+            }
         }
         for s in &self.sets {
             let space = value(&s.placement, "spacing", 0);
@@ -547,6 +561,9 @@ fn geometry_reach(p: &Profile, d: &Definition) -> i32 {
     }
     if d.kind == "fortress" {
         return 144;
+    }
+    if d.kind == "end_city" {
+        return p.end_cities.as_ref().unwrap().catalog(p).horizontal_reach()+7;
     }
     if d.kind == "ruined_portal" {
         return p
@@ -677,14 +694,17 @@ pub fn plans(
 }
 
 fn candidate_halo(p: &Profile, set: &Set) -> i32 {
-    (set.entries
+    set.entries
         .iter()
-        .map(|e| reach(p, &p.definitions[e.definition]))
+        .map(|e| {
+            let d=&p.definitions[e.definition];let derived=(reach(p,d)+15)/16+1;
+            // ChunkGenerator.createReferences reads only +/-8 source chunks.
+            // Keep the full city plan/bounds; this limits discovery to starts
+            // that vanilla can actually reference from the consumer chunk.
+            if d.kind=="end_city" && !d.unimplemented {derived.min(8)}else{derived}
+        })
         .max()
-        .unwrap_or(0)
-        + 15)
-        / 16
-        + 1
+        .unwrap_or(1)
 }
 
 fn plans_inner(
@@ -1115,7 +1135,9 @@ fn build(
     let p = &profile.structures;
     let s = &p.sets[set];
     let seed = selection_seed(request, s);
-    let mut random = Random::new(seed);
+    let mut random = if profile.end.is_some() {
+        cities::context_random(request.seed,[request.chunk_x,request.chunk_z])
+    }else{Random::new(seed)};
     let mut choices = s.entries.clone();
     loop {
         if choices.is_empty() {
@@ -1132,6 +1154,11 @@ fn build(
         }
         let choice = choices.remove(at).definition;
         let d = &p.definitions[choice];
+        if d.kind == "end_city" && !d.unimplemented {
+            let start=cities::integration::build(request,profile,choice)?;
+            if !start.pieces.is_empty() {return Ok(start);}
+            continue;
+        }
         if d.kind == "ruined_portal" && !d.unimplemented {
             let start = portals::build(engine, request, profile, choice, seed, random.clone())?;
             if !start.pieces.is_empty() {
@@ -1577,7 +1604,7 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
     ];
     let mut starts = nbt::compound();
     let mut references = nbt::compound();
-    for start in plans {
+    for start in cities::placement::ordered(plans,request,profile) {
         let definition = &p.definitions[start.definition];
         // Minecraft references the whole adjusted start box in X/Z, including
         // gaps between pieces and terrain-adaptation margins, regardless of Y.
@@ -1605,6 +1632,9 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
                 .pieces
                 .iter()
                 .map(|piece| {
+                    if definition.kind=="end_city" {
+                        return cities::integration::saved_piece(piece,p);
+                    }
                     let mut tag = nbt::compound();
                     nbt::put(&mut tag, "id", nbt::string("retina:template"));
                     nbt::put(&mut tag, "BB", json!([11, piece.bounds]));
@@ -1829,7 +1859,13 @@ fn apply_inner(
     let mut block_ticks = Vec::new();
     let mut processing = vec![Vec::new(); request.height as usize / 16];
     let mut plant_updates = crate::decoration::pairs::Updates::default();
-    for start in plans {
+    let mut city_placement=None;
+    for start in cities::placement::ordered(plans,request,profile) {
+        if p.definitions[start.definition].kind=="end_city" {
+            let (city_count,city_placed)=city_placement.get_or_insert_with(cities::placement::Placement::default).apply(start,request,profile,blocks.as_deref_mut(),&mut block_entities,
+                &mut entities,&mut writes,track,&mut plant_updates);
+            count+=city_count;placed+=city_placed;continue;
+        }
         if start.portal.is_some() {
             count += 1;
             placed += portals::apply(

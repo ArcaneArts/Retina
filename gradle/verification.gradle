@@ -975,3 +975,35 @@ tasks.register('endCityCatalogTest', JavaExec) {
     maxHeapSize = '512m'
     args rootProject.layout.buildDirectory.dir('end/city-catalog').get().asFile.absolutePath
 }
+
+tasks.register('endCityExecutionTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare native city start queries and saved ECP pieces with live vanilla contexts.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndCityExecutionTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '768m'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    args rootProject.layout.buildDirectory.dir('end/city-execution').get().asFile.absolutePath,
+        rootProject.file('native/tests/fixtures/end-city-plans-26.3.json').absolutePath
+}
+
+tasks.register('endCityPlacementTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare native city-only chunks, loot and marker entities with vanilla piece execution.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndCityPlacementTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '768m'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    args rootProject.layout.buildDirectory.dir('end/city-placement').get().asFile.absolutePath,
+        rootProject.file('native/tests/fixtures/end-city-plans-26.3.json').absolutePath
+}

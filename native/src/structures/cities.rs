@@ -2,6 +2,8 @@
 //! independently of random-spread candidate or weighted set selection streams.
 mod assembly;
 mod resident;
+pub(super) mod integration;
+pub(super) mod placement;
 pub use resident::{Resident, TemplateRef};
 use super::{add, intersects, rotate, Random};
 use crate::nbt;
@@ -131,7 +133,7 @@ pub struct Plan {
 
 /// Vanilla GenerationContext.makeRandom / setLargeFeatureSeed. The incoming
 /// world seed is never replaced by the generic structure selection hash.
-fn context_random(seed: u64, chunk: [i32; 2]) -> Random {
+pub(super) fn context_random(seed: u64, chunk: [i32; 2]) -> Random {
     let mut random = Random::new(seed);
     let x = random.long();
     let z = random.long();

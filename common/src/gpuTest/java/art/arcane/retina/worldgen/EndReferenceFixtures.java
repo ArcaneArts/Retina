@@ -42,6 +42,8 @@ final class EndReferenceFixtures implements AutoCloseable {
         net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources, builtin)
                 .forEach(Registry.PendingTags::apply);
         registry = RegistryIntegrationFixtures.load(resources);
+        BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(registry)
+                .forEach(net.minecraft.core.component.DataComponentInitializers.PendingComponents::apply);
         settings = registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.END);
         biomes = TheEndBiomeSource.create(registry.lookupOrThrow(Registries.BIOME));
         generator = new NoiseBasedChunkGenerator(biomes, settings);
@@ -116,7 +118,7 @@ final class EndReferenceFixtures implements AutoCloseable {
                     case "getRandom" -> random;
                     case "registryAccess" -> registry;
                     case "getMinY" -> 0;
-                    case "getMaxY" -> 256;
+                    case "getMaxY" -> 255;
                     case "getHeight" -> args == null || args.length == 0 ? 256 : height((Heightmap.Types) args[0],(int) args[1],(int) args[2]);
                     case "getHeightmapPos" -> {
                         var pos = (BlockPos) args[1];
