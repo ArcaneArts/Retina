@@ -19,8 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Actual Fabric transformations, without opening another client or generating regions. */
 class EndGatewayMixinTest {
     @Test void gatewayMetadataAndPendingPearlFlightUseTransformedClasses() throws Exception {
-        net.minecraft.SharedConstants.tryDetectVersion(); net.minecraft.server.Bootstrap.bootStrap();
-        net.minecraft.core.registries.BuiltInRegistries.bootStrap();
+        EndFixtureBootstrap.initialize();
         var gateway = new TheEndGatewayBlockEntity(BlockPos.ZERO, Blocks.END_GATEWAY.defaultBlockState());
         var exit = new BlockPos(-513, 81, 1024);
         gateway.setExitPosition(exit, true);
