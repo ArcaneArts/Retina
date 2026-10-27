@@ -55,41 +55,44 @@ public final class NetherFeatureTest {
                 var material=compiler.new Program();material.roots.add(material.constant(data.get("stone").getAsInt()+1));programs.set(3+i,material.finish());
             }
             var heightCases=heightPredicates(data,exported.materials(),settings.value());
-            int profile=NativeTerrain.instance().registerProfile(data.toString());
-            var request=new TerrainRequest(42,-2,-2,0,256,64,48,.008f,profile);
-            checkHeightPredicates(heightCases,request,generator);
-            var palette=exported.materials();var terrain=new HashMap<ChunkPos,short[]>();
-            var recipes=data.getAsJsonArray("decorations");var successes=new TreeMap<String,Integer>();var failures=new TreeMap<String,Integer>();
-            int cases=0;long writes=0;
-            for(int id=0;id<recipes.size();id++) {
-                var recipe=recipes.get(id).getAsJsonObject();var nested=new TreeSet<String>();gather(recipe,nested);
-                if(nested.isEmpty() || nested.contains("ore"))continue; // Bulk-section ore writes have a separate reference fixture.
-                String name=recipe.get("source").getAsString();
-                var feature=NativeBlockFeatureIntegrationTest.resolve(registry,name);require(feature!=null,"source feature resolves: "+name);
-                for(int y0:new int[]{0,31,32,64,95,96,127,128,255}) for(int seed=0;seed<16;seed++) {
-                    var origin=new BlockPos(-17,y0,-17);var world=new World(request,palette,terrain);
-                    feature.place(world.level,generator,new NativeBlockFeatureIntegrationTest.Stream(seed,false),origin);
-                    int[] result=NativeTerrain.instance().decorationFeature(request,id,new int[]{origin.getX(),y0,origin.getZ()},seed);
-                    var actual=new HashMap<BlockPos,BlockState>();
-                    for(int i=0;i<result.length;i+=4) {
-                        actual.put(new BlockPos(result[i],result[i+1],result[i+2]),palette[result[i+3]]);
-                        require(Math.abs(result[i]-origin.getX())<=recipe.get("reach").getAsInt()
-                                && Math.abs(result[i+2]-origin.getZ())<=recipe.get("reach").getAsInt(),
-                                "exported dependency footprint contains actual feature writes: "+name);
+            try(var saved=NetherTerrainTest.fixture(data,42)) {
+                var request=saved.request(-2,-2);
+                checkHeightPredicates(heightCases,request,generator);
+                var palette=exported.materials();var terrain=new HashMap<ChunkPos,short[]>();
+                var recipes=data.getAsJsonArray("decorations");var successes=new TreeMap<String,Integer>();var failures=new TreeMap<String,Integer>();
+                int cases=0;long writes=0;
+                for(int id=0;id<recipes.size();id++) {
+                    var recipe=recipes.get(id).getAsJsonObject();var nested=new TreeSet<String>();gather(recipe,nested);
+                    if(nested.isEmpty() || nested.contains("ore"))continue; // Bulk-section ore writes have a separate reference fixture.
+                    String name=recipe.get("source").getAsString();
+                    var feature=NativeBlockFeatureIntegrationTest.resolve(registry,name);require(feature!=null,"source feature resolves: "+name);
+                    for(int y0:new int[]{0,31,32,64,95,96,127,128,255}) for(int seed=0;seed<16;seed++) {
+                        var origin=new BlockPos(-17,y0,-17);var world=new World(request,palette,terrain);
+                        feature.place(world.level,generator,new NativeBlockFeatureIntegrationTest.Stream(seed,false),origin);
+                        int[] result=NativeTerrain.instance().decorationFeature(request,id,new int[]{origin.getX(),y0,origin.getZ()},seed);
+                        var actual=new HashMap<BlockPos,BlockState>();
+                        for(int i=0;i<result.length;i+=4) {
+                            actual.put(new BlockPos(result[i],result[i+1],result[i+2]),palette[result[i+3]]);
+                            require(Math.abs(result[i]-origin.getX())<=recipe.get("reach").getAsInt()
+                                    && Math.abs(result[i+2]-origin.getZ())<=recipe.get("reach").getAsInt(),
+                                    "exported dependency footprint contains actual feature writes: "+name);
+                        }
+                        require(actual.equals(world.changed),"Nether feature parity "+name+" y="+y0+" seed="+seed+": "+NativeBlockFeatureIntegrationTest.differences(world.changed,actual));
+                        (actual.isEmpty()?failures:successes).merge(name,1,Integer::sum);cases++;writes+=actual.size();
                     }
-                    require(actual.equals(world.changed),"Nether feature parity "+name+" y="+y0+" seed="+seed+": "+NativeBlockFeatureIntegrationTest.differences(world.changed,actual));
-                    (actual.isEmpty()?failures:successes).merge(name,1,Integer::sum);cases++;writes+=actual.size();
                 }
+                require(successes.size()>=8 && cases>1000 && writes>10000,"loaded primitive geometry exercised: "+successes);
+                var stats=new JsonObject();stats.addProperty("cases",cases);stats.addProperty("writes",writes);stats.add("successes",new Gson().toJsonTree(successes));stats.add("empty",new Gson().toJsonTree(failures));
+                Files.writeString(Path.of("build/nether/feature-reference-stats.json"),stats.toString());
+                System.out.println("QA_EVT {\"event\":\"nether_block_features_reference\",\"status\":\"pass\",\"context\":"+stats+"}");
             }
-            require(successes.size()>=8 && cases>1000 && writes>10000,"loaded primitive geometry exercised: "+successes);
-            var stats=new JsonObject();stats.addProperty("cases",cases);stats.addProperty("writes",writes);stats.add("successes",new Gson().toJsonTree(successes));stats.add("empty",new Gson().toJsonTree(failures));
-            Files.writeString(Path.of("build/nether/feature-reference-stats.json"),stats.toString());
-            System.out.println("QA_EVT {\"event\":\"nether_block_features_reference\",\"status\":\"pass\",\"context\":"+stats+"}");
             NetherSpringTest.check(registry,exported,generator);
             NetherSurvivalTest.check(registry,exported,generator);
             NetherFungusTest.check(registry,exported,generator);
             if(Arrays.asList(args).contains("--region")) {
-                NetherRegionTest.check(exported,BiomeTerrainProfile.register(exported),true);
+                try(var saved=NetherTerrainTest.fixture(registry,generator,exported,42)) {
+                    NetherRegionTest.check(exported,saved,true);
+                }
                 NetherFungusTest.checkRegions(registry,generator);
             }
         }
@@ -163,7 +166,7 @@ public final class NetherFeatureTest {
             if(at.getY()<request.minY() || at.getY()>=request.minY()+request.height())return Blocks.AIR.defaultBlockState();
             var cp=ChunkPos.containing(at);
             var blocks=terrain.computeIfAbsent(cp,p->{
-                var r=new TerrainRequest(request.seed(),p.x(),p.z(),request.minY(),request.height(),64,48,.008f,request.profile());
+                var r=new TerrainRequest(request.seed(),p.x(),p.z(),request.minY(),request.height(),request.baseHeight(),request.amplitude(),request.frequency(),request.profile());
                 try(var chunk=NativeTerrain.instance().generate(r)) {
                     short[] result=chunk.blocks().toArray(ValueLayout.JAVA_SHORT);
                     for(int y=0;y<request.height();y++)for(int c=0;c<256;c++) {

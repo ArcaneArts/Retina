@@ -31,7 +31,9 @@ final class NetherFungusTest {
             var required=key.equals(Biomes.CRIMSON_FOREST)
                     ? Set.of(Blocks.GLOWSTONE,Blocks.CRIMSON_STEM,Blocks.CRIMSON_ROOTS,Blocks.SHROOMLIGHT,Blocks.WEEPING_VINES)
                     : Set.of(Blocks.GLOWSTONE,Blocks.WARPED_STEM,Blocks.WARPED_ROOTS,Blocks.NETHER_SPROUTS,Blocks.SHROOMLIGHT);
-            NetherRegionTest.check(data,BiomeTerrainProfile.register(data),true,required);
+            try(var saved=NetherTerrainTest.fixture(registry,new NoiseBasedChunkGenerator(new FixedBiomeSource(biome),generator.generatorSettings()),data,42)) {
+                NetherRegionTest.check(data,saved,true,required);
+            }
         }
     }
 
@@ -98,25 +100,26 @@ final class NetherFungusTest {
                 if(obstruction!=0)result=material.node(23,my,material.constant(palette.get(barrierState)+1),result,barrier,barrier+1);
                 material.roots.add(result);programs.set(3+i,material.finish());
             }
-            int profile=NativeTerrain.instance().registerProfile(data.toString());
-            var request=new TerrainRequest(42,-2,-2,0,256,64,48,.008f,profile);var terrain=new HashMap<ChunkPos,short[]>();
-            final int wall=obstruction;
-            Function<BlockPos,BlockState> expected=p->p.getY()>=128?Blocks.AIR.defaultBlockState():p.getY()==floor?base.defaultBlockState():wall!=0 && p.getY()==barrier?barrierState:p.getY()<floor?Blocks.NETHERRACK.defaultBlockState():p.getY()<32?Blocks.LAVA.defaultBlockState():Blocks.AIR.defaultBlockState();
-            for(int id=0;id<features.size();id++)for(int seed=0;seed<192;seed++) {
-                var origin=new BlockPos(-17,floor+1,-17);var world=new NetherFeatureTest.World(request,materials,terrain,expected);
-                boolean placed=features.get(id).place(world.level,generator,new NativeBlockFeatureIntegrationTest.Stream(seed,false),origin);
-                var actual=new HashMap<BlockPos,BlockState>();var result=NativeTerrain.instance().decorationFeature(request,id,new int[]{-17,floor+1,-17},seed);
-                for(int i=0;i<result.length;i+=4)actual.put(new BlockPos(result[i],result[i+1],result[i+2]),materials[result[i+3]]);
-                require(actual.equals(world.changed),"fungus parity "+names.get(id)+" floor="+floor+" obstruction="+obstruction+" base="+base+" seed="+seed+": "+NativeBlockFeatureIntegrationTest.differences(world.changed,actual));
-                if(placed) {accepted++;successes.merge(names.get(id),1,Integer::sum);}else rejected++;cases++;writes+=actual.size();
-                int maxStem=0;boolean thick=false;
-                for(var e:actual.entrySet()) {
-                    if(e.getKey().getY()>=128)aboveRoof++;
-                    if(e.getValue().is(Blocks.SHROOMLIGHT))shroomlights++;
-                    if(e.getValue().is(Blocks.WEEPING_VINES))ages.add(e.getValue().getValue(GrowingPlantHeadBlock.AGE));
-                    if(features.get(id) instanceof HugeFungusFeature fungus && e.getValue().equals(fungus.stemState())) {maxStem=Math.max(maxStem,e.getKey().getY()-floor);thick|=e.getKey().getX()!=-17 || e.getKey().getZ()!=-17;}
+            try(var saved=NetherTerrainTest.fixture(data,42)) {
+                var request=saved.request(-2,-2);var terrain=new HashMap<ChunkPos,short[]>();
+                final int wall=obstruction;
+                Function<BlockPos,BlockState> expected=p->p.getY()>=128?Blocks.AIR.defaultBlockState():p.getY()==floor?base.defaultBlockState():wall!=0 && p.getY()==barrier?barrierState:p.getY()<floor?Blocks.NETHERRACK.defaultBlockState():p.getY()<32?Blocks.LAVA.defaultBlockState():Blocks.AIR.defaultBlockState();
+                for(int id=0;id<features.size();id++)for(int seed=0;seed<192;seed++) {
+                    var origin=new BlockPos(-17,floor+1,-17);var world=new NetherFeatureTest.World(request,materials,terrain,expected);
+                    boolean placed=features.get(id).place(world.level,generator,new NativeBlockFeatureIntegrationTest.Stream(seed,false),origin);
+                    var actual=new HashMap<BlockPos,BlockState>();var result=NativeTerrain.instance().decorationFeature(request,id,new int[]{-17,floor+1,-17},seed);
+                    for(int i=0;i<result.length;i+=4)actual.put(new BlockPos(result[i],result[i+1],result[i+2]),materials[result[i+3]]);
+                    require(actual.equals(world.changed),"fungus parity "+names.get(id)+" floor="+floor+" obstruction="+obstruction+" base="+base+" seed="+seed+": "+NativeBlockFeatureIntegrationTest.differences(world.changed,actual));
+                    if(placed) {accepted++;successes.merge(names.get(id),1,Integer::sum);}else rejected++;cases++;writes+=actual.size();
+                    int maxStem=0;boolean thick=false;
+                    for(var e:actual.entrySet()) {
+                        if(e.getKey().getY()>=128)aboveRoof++;
+                        if(e.getValue().is(Blocks.SHROOMLIGHT))shroomlights++;
+                        if(e.getValue().is(Blocks.WEEPING_VINES))ages.add(e.getValue().getValue(GrowingPlantHeadBlock.AGE));
+                        if(features.get(id) instanceof HugeFungusFeature fungus && e.getValue().equals(fungus.stemState())) {maxStem=Math.max(maxStem,e.getKey().getY()-floor);thick|=e.getKey().getX()!=-17 || e.getKey().getZ()!=-17;}
+                    }
+                    if(maxStem>0)heights.add(maxStem);if(thick)huge++;
                 }
-                if(maxStem>0)heights.add(maxStem);if(thick)huge++;
             }
         }
         require(accepted>1000 && rejected>1000 && huge>0 && aboveRoof>0 && shroomlights>0 && heights.contains(26) && ages.equals(Set.of(23,24,25)) && successes.size()==8,"nonvacuous fungus/vegetation coverage: heights="+heights+" ages="+ages+" successes="+successes);

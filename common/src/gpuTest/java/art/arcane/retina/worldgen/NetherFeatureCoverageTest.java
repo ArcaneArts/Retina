@@ -82,9 +82,11 @@ final class NetherFeatureCoverageTest {
         var partialA = placed(new SimpleRandomSelectorFeature(HolderSet.direct(glowstone, omitted)));
         var partialB = placed(new SimpleRandomSelectorFeature(HolderSet.direct(glowstone, omitted)));
         var composite = placed(new SequenceFeature(HolderSet.direct(placed(glowstone.value().feature().value()), omitted)));
-        var fixed = Holder.direct(new PlacedFeature(glowstone.value().feature(), List.of(FixedPlacement.of(net.minecraft.core.BlockPos.ZERO))));
+        // Fixed placement is now supported. Keep this omission probe on an unsupported modifier.
+        var unsupportedPlacement = Holder.direct(new PlacedFeature(glowstone.value().feature(),
+                List.of(new RandomlySelectedPlacement(FixedPlacement.of(net.minecraft.core.BlockPos.ZERO)))));
         var first = new BiomeGenerationSettings.PlainBuilder().addFeature(0, omitted).addFeature(4, partialA)
-                .addFeature(4, partialB).addFeature(7, composite).addFeature(8, fixed).build();
+                .addFeature(4, partialB).addFeature(7, composite).addFeature(8, unsupportedPlacement).build();
         var second = new BiomeGenerationSettings.PlainBuilder().addFeature(4, partialA).addFeature(4, partialB).build();
         var fixture = export(registry, exported, exported.biomes().subList(0, 2), List.of(first, second));
         var failures = fixture.coverage.getAsJsonArray("roots");
@@ -98,8 +100,8 @@ final class NetherFeatureCoverageTest {
         require(failures.get(0).getAsJsonObject().get("generation_step").getAsInt() == 0, "unsupported roots outside vegetation are not skipped");
         require(strings(failures.get(3).getAsJsonObject().getAsJsonArray("omissions")).contains("vegetation_patch:nested_feature:VoidStartPlatformFeature"),
                 "an unsupported nested feature prevents an incomplete composite from being emitted");
-        require(strings(failures.get(4).getAsJsonObject().getAsJsonArray("omissions")).contains("placement:fixed_placement"), "unsupported modifier attributed to its root");
-        require(strings(fixture.coverage.getAsJsonArray("input_types")).contains("minecraft:fixed_placement"), "unsupported modifier retained in source inventory");
+        require(strings(failures.get(4).getAsJsonObject().getAsJsonArray("omissions")).contains("placement:randomly_selected"), "unsupported modifier attributed to its root");
+        require(strings(fixture.coverage.getAsJsonArray("input_types")).contains("minecraft:randomly_selected"), "unsupported modifier retained in source inventory");
 
         // Named holder sets require registry-backed serialization. Failure to inline
         // this audit graph must not prevent the working selector from being exported.

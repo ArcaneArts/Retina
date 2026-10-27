@@ -82,21 +82,22 @@ final class NetherOreTest {
             var gpu = data.getAsJsonObject("registry_program"); var programs = gpu.getAsJsonArray("programs");
             programs.set(1, density.finish()); programs.set(2, density.finish()); gpu.add("interpolations", new JsonArray());
             for (int i = 0; i < exported.biomes().size(); i++) programs.set(3 + i, material.finish());
-            int profile = NativeTerrain.instance().registerProfile(data.toString());
-            var request = new TerrainRequest(42, -2, -2, 0, 256, 64, 48, .008f, profile);
-            var fixture = new Fixture(registry, request, states, gap);
-            for (int id = 0; id < features.size(); id++) for (int height : new int[]{0, 1, 32, 63, 64, 127, 128, 255}) for (int seed = 0; seed < 4; seed++) {
-                var at = new BlockPos(-17, height, -17); var world = new World(fixture);
-                features.get(id).place(world.level, generator, new NativeBlockFeatureIntegrationTest.Stream(seed, false), at);
-                var output = NativeTerrain.instance().decorationFeature(request, id, new int[]{at.getX(), at.getY(), at.getZ()}, seed);
-                var actual = new HashMap<BlockPos, BlockState>();
-                for (int i = 0; i < output.length; i += 4) actual.put(new BlockPos(output[i], output[i + 1], output[i + 2]), states[output[i + 3]]);
-                actual.entrySet().removeIf(e -> e.getValue().equals(fixture.expected(e.getKey())));
-                var expected = world.changed(at);
-                require(actual.equals(expected), "ore parity " + names.get(id) + " gap=" + gap + " y=" + height + " seed=" + seed + ": "
-                        + NativeBlockFeatureIntegrationTest.differences(expected, actual));
-                if (!actual.isEmpty()) { accepted++; successes.merge(names.get(id), 1, Integer::sum); }
-                cases++; writes += actual.size();
+            try(var saved=NetherTerrainTest.fixture(data,42)) {
+                var request=saved.request(-2,-2);
+                var fixture = new Fixture(registry, request, states, gap);
+                for (int id = 0; id < features.size(); id++) for (int height : new int[]{0, 1, 32, 63, 64, 127, 128, 255}) for (int seed = 0; seed < 4; seed++) {
+                    var at = new BlockPos(-17, height, -17); var world = new World(fixture);
+                    features.get(id).place(world.level, generator, new NativeBlockFeatureIntegrationTest.Stream(seed, false), at);
+                    var output = NativeTerrain.instance().decorationFeature(request, id, new int[]{at.getX(), at.getY(), at.getZ()}, seed);
+                    var actual = new HashMap<BlockPos, BlockState>();
+                    for (int i = 0; i < output.length; i += 4) actual.put(new BlockPos(output[i], output[i + 1], output[i + 2]), states[output[i + 3]]);
+                    actual.entrySet().removeIf(e -> e.getValue().equals(fixture.expected(e.getKey())));
+                    var expected = world.changed(at);
+                    require(actual.equals(expected), "ore parity " + names.get(id) + " gap=" + gap + " y=" + height + " seed=" + seed + ": "
+                            + NativeBlockFeatureIntegrationTest.differences(expected, actual));
+                    if (!actual.isEmpty()) { accepted++; successes.merge(names.get(id), 1, Integer::sum); }
+                    cases++; writes += actual.size();
+                }
             }
         }
         require(accepted > 1000 && successes.keySet().containsAll(names.subList(0, 10)), "every loaded ore has accepted reference cases");
@@ -116,7 +117,7 @@ final class NetherOreTest {
         BlockState expected(BlockPos p) { return p.getY() < 0 || p.getY() >= 128 ? Blocks.AIR.defaultBlockState() : p.getY() == 63 ? gap : Blocks.NETHERRACK.defaultBlockState(); }
         LevelChunkSection[] prototype(ChunkPos pos) {
             return prototypes.computeIfAbsent(pos, cp -> {
-                var r = new TerrainRequest(42, cp.x(), cp.z(), 0, 256, 64, 48, .008f, request.profile());
+                var r = new TerrainRequest(request.seed(),cp.x(),cp.z(),request.minY(),request.height(),request.baseHeight(),request.amplitude(),request.frequency(),request.profile());
                 var sections = new LevelChunkSection[16]; Arrays.setAll(sections, i -> new LevelChunkSection(containers));
                 try (var chunk = NativeTerrain.instance().generate(r)) {
                     var actual = chunk.blocks().toArray(ValueLayout.JAVA_SHORT);
