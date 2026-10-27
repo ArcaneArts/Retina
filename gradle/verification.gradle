@@ -1023,3 +1023,19 @@ tasks.register('endCombinedGenerationTest', JavaExec) {
     args rootProject.layout.buildDirectory.dir('end/combined-generation').get().asFile.absolutePath,
         rootProject.file('native/tests/fixtures/end-city-plans-26.3.json').absolutePath
 }
+
+tasks.register('endRegionPublicationTest', JavaExec) {
+    group = 'verification'
+    description = 'Decode four complete End regions published from saved development definitions.'
+    environment 'RETINA_REGION_THREADS', '4'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndRegionPublicationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=4', '--enable-native-access=ALL-UNNAMED'
+    maxHeapSize = '1g'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    args rootProject.layout.buildDirectory.dir('end/region-publication').get().asFile.absolutePath
+}
