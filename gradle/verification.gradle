@@ -155,16 +155,31 @@ tasks.register('nativeGpuTest', Exec) {
     commandLine(nativeCargoCommand + ['test', '--release', '--locked', '--test', 'gpu', '--target-dir', nativeTarget.get().asFile.absolutePath, '--', '--nocapture'])
 }
 
-tasks.register('gpuTest', JavaExec) {
+tasks.register('bridgeTest', JavaExec) {
     group = 'verification'
-    description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
-    dependsOn 'nativeGpuTest', 'nativeMappingGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'nativeInterpolationGpuTest', 'materialTest', 'aquiferTest', 'gpuTestClasses'
+    description = 'Test parallel Java/Rust calls, saved procedural terrain and timing payloads.'
+    dependsOn 'gpuTestClasses'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
     }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
+
+tasks.register('gpuTest', JavaExec) {
+    group = 'verification'
+    description = 'Test the GPU pipeline and Java/Rust bridge with parallel requests.'
+    dependsOn 'nativeGpuTest', 'nativeMappingGpuTest', 'nativeOreGpuTest', 'nativeCoordinateGpuTest', 'nativeInterpolationGpuTest', 'materialTest', 'aquiferTest', 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.NativeTerrainIntegrationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('nativeMappingGpuTest', Exec) {
@@ -312,6 +327,9 @@ tasks.register('regionTest', JavaExec) {
     dependsOn 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeRegionIntegrationTest'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
     }

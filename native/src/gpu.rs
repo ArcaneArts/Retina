@@ -597,11 +597,22 @@ impl Gpu {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn submit(
         &mut self,
         requests: &[GpuRequest],
         profile: Option<&WorldProfile>,
         timings: &timings::Timings,
+    ) -> Result<PendingSample, String> {
+        self.submit_for_world(requests, profile, timings, requests[0].profile)
+    }
+
+    pub(crate) fn submit_for_world(
+        &mut self,
+        requests: &[GpuRequest],
+        profile: Option<&WorldProfile>,
+        timings: &timings::Timings,
+        world_profile: u32,
     ) -> Result<PendingSample, String> {
         let host_start = Instant::now();
         let surface_probe = requests[0].padding & (1 << 31) != 0;
@@ -1738,8 +1749,9 @@ impl Gpu {
             encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, query_bytes);
         }
         let submission = self.queue.submit([encoder.finish()]);
+        // Procedural worlds share shader/buffer slot zero but retain distinct diagnostics.
         self.pipeline.transfer(
-            profile_id,
+            world_profile,
             (gpu_requests.len() * std::mem::size_of::<GpuRequest>()) as u64
                 + interpolation_headers
                     .iter()
