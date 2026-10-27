@@ -225,7 +225,7 @@ pub(crate) fn run(
             job.timings.add(timings::QUEUE, job.queue_nanos);
         }
         let result = catch_unwind(AssertUnwindSafe(|| {
-            gpu.submit(&requests, batch[0].profile.as_deref(), &batch[0].timings)
+            gpu.submit_for_world(&requests, batch[0].profile.as_deref(), &batch[0].timings, profile)
         }))
         .unwrap_or_else(|_| Err("GPU dispatch panicked; see native stderr".into()));
         match result {
