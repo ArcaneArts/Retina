@@ -1,9 +1,10 @@
 # Retina
 
 Retina is a Rust and GPU terrain generator for **Minecraft 26.3**, available for
-**Fabric and NeoForge**. It reads Minecraft's loaded worldgen registries, including
-supported datapack and mod additions, and produces complete Anvil (`.mca`) regions
-with terrain, biomes, decorations, structures and interior lighting.
+**Fabric and NeoForge**. It compiles loaded worldgen registries and supported
+datapack/mod additions into `<world-root>/retina.dat`, then generates complete
+Anvil (`.mca`) regions from that saved definition with terrain, biomes,
+decorations, structures and interior lighting.
 
 Install Retina and select your usual world type. Supported Overworld and Nether
 generators automatically use Retina when creating or reopening a world; there is no disable
@@ -72,6 +73,29 @@ The engine enables Metal, Vulkan and Direct3D 12 through `wgpu`. GPU generation
 has been exercised on Metal/Apple M4 Max; Vulkan and Direct3D 12 still need runtime
 validation. There is no vanilla/CPU terrain fallback when GPU initialization or
 generation fails. Minecraft releases after 26.3 require a separate port.
+
+## Standalone region generation
+
+Copy a world's `retina.dat` to an otherwise empty directory. A Rust executable
+uses the same loader, engine and region writer without Minecraft, Java or
+external datapacks. It still requires a supported GPU compute adapter.
+
+```sh
+cargo build --manifest-path native/Cargo.toml --release --bin retina
+./native/target/release/retina generate \
+  --definition /path/to/retina.dat \
+  --dimension minecraft:overworld \
+  --region-min=-4,-4 --region-max=4,4 \
+  --output /path/to/generated-world
+```
+
+Both ends of the region range are inclusive. The file fixes the seed and all
+supported dimension generation data. Existing chunk records are preserved;
+use empty output or regions from the matching definition, with any server
+stopped. Ctrl-C finishes the active region and exits with status 130.
+This produces region data; creating `level.dat` and initializing a playable
+save remain outside the executable's scope. See [world definitions and headless
+usage](docs/WORLD_DEFINITION.md) for layouts, compression, errors and validation.
 
 ## Configuration
 
@@ -177,7 +201,11 @@ Terralith is covered by the project's registry and generation tests.
 After packs resolve, Retina adapts the effective supported generator before the
 server constructs its chunk system. The original generator definition remains in
 the save, including flat-world metadata and customization. Its biome source,
-noise settings, bounds and effective feature settings feed the runtime profile.
+noise settings, bounds and effective feature settings are compiled once into
+`<world-root>/retina.dat`. Even that first startup reopens the published file
+through Rust. Later startups read it directly, so changing datapacks does not
+silently change saved generation rules. Runtime registries resolve the saved
+identifiers; missing required types cause concrete binding errors.
 Single Biome and Superflat retain exactly their selected biome. Normal, Large
 Biomes, Amplified and Terralith retain their actual source biome pools and noise
 programs. This applies to both loaders and integrated or dedicated servers.
@@ -249,8 +277,9 @@ slots and Rust worker pool; increasing the limit does not create separate pools.
 Fresh-region preparation happens **outside Minecraft's serialized I/O queue**.
 Ready reads can proceed while other regions generate. The pipeline:
 
-1. Java exports the effective registry profile and palette properties for native
-   use. GPU programs and supporting fields remain resident.
+1. Rust opens the world's saved `retina.dat` and binds its dimension profiles.
+   Java compiles it only when absent, then reopens that file. GPU programs and
+   supporting fields remain resident.
 2. GPU passes evaluate density, climate, surface materials, cave biomes, carving,
    aquifers and lake fields. Sparse batches handle supported feature counts,
    provider noise and ore preparation. Rust consumes compact masks and material
