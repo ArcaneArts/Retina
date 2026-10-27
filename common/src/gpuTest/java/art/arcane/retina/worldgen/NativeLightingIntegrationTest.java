@@ -24,34 +24,37 @@ import java.util.*;
 /** Actual Minecraft light propagation vs the production WGSL, including mixed saved/unlit seams. */
 public final class NativeLightingIntegrationTest {
     private static final int SIDE=3, HEIGHT=64, COUNT=HEIGHT*256;
-    static void flat(PalettedContainerFactory factory, BiomeTerrainProfile profile) {
-        var fixture = new Fixture(factory, List.of(profile.materials()), true, 3, List.of());
-        var request = new TerrainRequest(42, 0, 0, 0, HEIGHT, 64, 0, .008F, profile.nativeId());
-        try (var generated = NativeTerrain.instance().generate(request)) {
-            var blocks = generated.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
-            for (int i = 0; i < 9; i++) {
-                System.arraycopy(blocks, 0, fixture.materials, i * COUNT, COUNT);
-                for (int y = 0; y < HEIGHT; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
-                    fixture.put(new BlockPos(i % 3 * 16 + x, y, i / 3 * 16 + z), profile.materials()[Short.toUnsignedInt(blocks[y * 256 + z * 16 + x])]);
-                fixture.chunks[i].initializeLightSources();
+    static void flat(PalettedContainerFactory factory, BiomeTerrainProfile profile) throws Exception {
+        try(var definition=DefinitionFixture.create("minecraft:overworld",JsonParser.parseString(profile.diagnosticJson()).getAsJsonObject(),
+                new TerrainRequest(42,0,0,0,HEIGHT,64,0,.008F),0,HEIGHT,true,false)) {
+            var fixture = new Fixture(factory, List.of(profile.materials()), true, 3, List.of());
+            var request = definition.request(0,0);
+            try (var generated = NativeTerrain.instance().generate(request)) {
+                var blocks = generated.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
+                for (int i = 0; i < 9; i++) {
+                    System.arraycopy(blocks, 0, fixture.materials, i * COUNT, COUNT);
+                    for (int y = 0; y < HEIGHT; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
+                        fixture.put(new BlockPos(i % 3 * 16 + x, y, i / 3 * 16 + z), profile.materials()[Short.toUnsignedInt(blocks[y * 256 + z * 16 + x])]);
+                    fixture.chunks[i].initializeLightSources();
+                }
             }
-        }
-        var light = NativeTerrain.instance().lightVolume(request, SIDE, fixture.materials);
-        var expected = fixture.engine(null);
-        var imported = fixture.engine(light);
-        int comparisons = 0;
-        for (int z = 0; z < 48; z++) for (int x = 0; x < 48; x++) for (int y = 0; y < HEIGHT; y++) {
-            int index = (z / 16 * SIDE + x / 16) * (HEIGHT + 32) * 256 + (y + 16) * 256 + z % 16 * 16 + x % 16;
-            int packed = Byte.toUnsignedInt(light[index]);
-            var pos = new BlockPos(x, y, z);
-            for (var layer : LightLayer.values()) {
-                int value = layer == LightLayer.SKY ? packed >> 4 : packed & 15;
-                require(value == expected.getLayerListener(layer).getLightValue(pos), "flat GPU lighting matches Minecraft: " + pos + "/" + layer);
-                require(value == imported.getLayerListener(layer).getLightValue(pos), "flat imported lighting matches Minecraft");
-                comparisons++;
+            var light = NativeTerrain.instance().lightVolume(request, SIDE, fixture.materials);
+            var expected = fixture.engine(null);
+            var imported = fixture.engine(light);
+            int comparisons = 0;
+            for (int z = 0; z < 48; z++) for (int x = 0; x < 48; x++) for (int y = 0; y < HEIGHT; y++) {
+                int index = (z / 16 * SIDE + x / 16) * (HEIGHT + 32) * 256 + (y + 16) * 256 + z % 16 * 16 + x % 16;
+                int packed = Byte.toUnsignedInt(light[index]);
+                var pos = new BlockPos(x, y, z);
+                for (var layer : LightLayer.values()) {
+                    int value = layer == LightLayer.SKY ? packed >> 4 : packed & 15;
+                    require(value == expected.getLayerListener(layer).getLightValue(pos), "flat GPU lighting matches Minecraft: " + pos + "/" + layer);
+                    require(value == imported.getLayerListener(layer).getLightValue(pos), "flat imported lighting matches Minecraft");
+                    comparisons++;
+                }
             }
+            System.out.println("QA_EVT {\"event\":\"flat_lighting_minecraft_reference\",\"status\":\"pass\",\"context\":{\"comparisons\":" + comparisons + "}}");
         }
-        System.out.println("QA_EVT {\"event\":\"flat_lighting_minecraft_reference\",\"status\":\"pass\",\"context\":{\"comparisons\":" + comparisons + "}}");
     }
     public static void main(String[] args) throws Exception {
         SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
@@ -60,7 +63,9 @@ public final class NativeLightingIntegrationTest {
             net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources,RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY)).forEach(Registry.PendingTags::apply);
             var registry=RegistryIntegrationFixtures.load(resources);
             var plains=(Holder<Biome>)registry.lookupOrThrow(Registries.BIOME).getOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS);
-            var base=BiomeTerrainProfile.load(registry,new RetinaBiomeSource(List.of(plains),512,.55F),-64,384);
+            var base=TerrainProfileData.export(registry,new RetinaBiomeSource(List.of(plains),512,.55F),-64,384,123456789L,
+                    registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(net.minecraft.world.level.levelgen.NoiseGeneratorSettings.OVERWORLD).value(),
+                    StructureProfile.Context.NONE);
             var data=JsonParser.parseString(base.json()).getAsJsonObject();
             for(String key:List.of("decorations","ores","cave_noises"))data.add(key,new JsonArray());
             data.remove("registry_program");
@@ -82,34 +87,36 @@ public final class NativeLightingIntegrationTest {
             var factory=PalettedContainerFactory.create(registry);
             for(boolean sky:List.of(true,false)) {
                 data.add("lighting",LightingProfile.export(palette,sky));
-                int profile=NativeTerrain.instance().registerProfile(data.toString());
-                for(int variant=0;variant<3;variant++) {
-                    var fixture=new Fixture(factory,palette,sky,variant,examples);
-                    var request=new TerrainRequest(123456789L,0,0,0,HEIGHT,24,0,.0035F,profile);
-                    exportFixture("small-"+sky+"-"+variant,data,SIDE,HEIGHT,0,fixture.materials);
-                    byte[] light=NativeTerrain.instance().lightVolume(request,SIDE,fixture.materials);
-                    var expected=fixture.engine(null);var imported=fixture.engine(light);
-                    for(int z=0;z<48;z++)for(int x=0;x<48;x++)for(int y=0;y<HEIGHT;y++) {
-                        int index=((z/16)*SIDE+x/16)*(HEIGHT+32)*256+(y+16)*256+(z%16)*16+x%16;
-                        int value=Byte.toUnsignedInt(light[index]);var pos=new BlockPos(x,y,z);
-                        for(var layer:LightLayer.values()) {
-                            int reference=expected.getLayerListener(layer).getLightValue(pos);
-                            int actual=layer==LightLayer.SKY?value>>4:value&15;
-                            require(actual==reference,"GPU "+layer+" differs at "+pos+" sky="+sky+" variant="+variant+": "+actual+" != "+reference);
-                            require(imported.getLayerListener(layer).getLightValue(pos)==reference,"mixed prelit/unlit seam differs at "+pos);
-                            compared++;
+                try(var definition=DefinitionFixture.create("minecraft:overworld",data,
+                        new TerrainRequest(123456789L,0,0,0,HEIGHT,24,0,.0035F),0,HEIGHT,sky,false)) {
+                    for(int variant=0;variant<3;variant++) {
+                        var fixture=new Fixture(factory,palette,sky,variant,examples);
+                        var request=definition.request(0,0);
+                        exportFixture("small-"+sky+"-"+variant,definition.file(),SIDE,fixture.materials);
+                        byte[] light=NativeTerrain.instance().lightVolume(request,SIDE,fixture.materials);
+                        var expected=fixture.engine(null);var imported=fixture.engine(light);
+                        for(int z=0;z<48;z++)for(int x=0;x<48;x++)for(int y=0;y<HEIGHT;y++) {
+                            int index=((z/16)*SIDE+x/16)*(HEIGHT+32)*256+(y+16)*256+(z%16)*16+x%16;
+                            int value=Byte.toUnsignedInt(light[index]);var pos=new BlockPos(x,y,z);
+                            for(var layer:LightLayer.values()) {
+                                int reference=expected.getLayerListener(layer).getLightValue(pos);
+                                int actual=layer==LightLayer.SKY?value>>4:value&15;
+                                require(actual==reference,"GPU "+layer+" differs at "+pos+" sky="+sky+" variant="+variant+": "+actual+" != "+reference);
+                                require(imported.getLayerListener(layer).getLightValue(pos)==reference,"mixed prelit/unlit seam differs at "+pos);
+                                compared++;
+                            }
                         }
-                    }
-                    // Dynamic block light remains handled by Minecraft after importing GPU arrays.
-                    var torch=new BlockPos(24,45,24);fixture.put(torch,Blocks.TORCH.defaultBlockState());
-                    imported.checkBlock(torch);imported.runLightUpdates();
-                    require(imported.getLayerListener(LightLayer.BLOCK).getLightValue(torch)==14,"placed torch updates prelit chunk");
-                    fixture.put(torch,Blocks.AIR.defaultBlockState());imported.checkBlock(torch);imported.runLightUpdates();
-                    require(imported.getLayerListener(LightLayer.BLOCK).getLightValue(torch)==0,"removed torch clears prelit chunk");
-                    if(sky) {
-                        var roof=new BlockPos(24,HEIGHT-1,24);fixture.put(roof,Blocks.STONE.defaultBlockState());
-                        imported.checkBlock(roof);imported.runLightUpdates();
-                        require(imported.getLayerListener(LightLayer.SKY).getLightValue(roof.below())==14,"placed roof updates imported skylight");
+                        // Dynamic block light remains handled by Minecraft after importing GPU arrays.
+                        var torch=new BlockPos(24,45,24);fixture.put(torch,Blocks.TORCH.defaultBlockState());
+                        imported.checkBlock(torch);imported.runLightUpdates();
+                        require(imported.getLayerListener(LightLayer.BLOCK).getLightValue(torch)==14,"placed torch updates prelit chunk");
+                        fixture.put(torch,Blocks.AIR.defaultBlockState());imported.checkBlock(torch);imported.runLightUpdates();
+                        require(imported.getLayerListener(LightLayer.BLOCK).getLightValue(torch)==0,"removed torch clears prelit chunk");
+                        if(sky) {
+                            var roof=new BlockPos(24,HEIGHT-1,24);fixture.put(roof,Blocks.STONE.defaultBlockState());
+                            imported.checkBlock(roof);imported.runLightUpdates();
+                            require(imported.getLayerListener(LightLayer.SKY).getLightValue(roof.below())==14,"placed roof updates imported skylight");
+                        }
                     }
                 }
             }
@@ -124,20 +131,23 @@ public final class NativeLightingIntegrationTest {
         int compared=0;
         for(boolean sky:List.of(true,false)) {
             data.add("lighting",LightingProfile.export(palette,sky));
-            int profile=NativeTerrain.instance().registerProfile(data.toString());
-            // Reuse the same native allocations across empty, enclosed and sunlit volumes.
-            for(int variant:List.of(4,3,5,3)) {
-                var fixture=new Fixture(factory,palette,sky,variant,examples);
-                exportFixture("boundary-"+sky+"-"+variant,data,SIDE,HEIGHT,0,fixture.materials);
-                byte[] light=NativeTerrain.instance().lightVolume(new TerrainRequest(123456789L,0,0,0,HEIGHT,24,0,.0035F,profile),SIDE,fixture.materials);
-                var expected=fixture.engine(null);
-                for(int z=0;z<48;z++)for(int x=0;x<48;x++)for(int y=0;y<HEIGHT;y++) {
-                    int i=(z/16*SIDE+x/16)*(HEIGHT+32)*256+(y+16)*256+z%16*16+x%16;
-                    var pos=new BlockPos(x,y,z);int value=Byte.toUnsignedInt(light[i]);
-                    for(var layer:LightLayer.values()) {
-                        int actual=layer==LightLayer.SKY?value>>4:value&15;
-                        require(actual==expected.getLayerListener(layer).getLightValue(pos),"sparse boundary differs: "+sky+"/"+variant+" "+layer+" "+pos);
-                        compared++;
+            try(var definition=DefinitionFixture.create("minecraft:overworld",data,
+                    new TerrainRequest(123456789L,0,0,0,HEIGHT,24,0,.0035F),0,HEIGHT,sky,false)) {
+                int sequence=0;
+                // Reuse the same native allocations across empty, enclosed and sunlit volumes.
+                for(int variant:List.of(4,3,5,3)) {
+                    var fixture=new Fixture(factory,palette,sky,variant,examples);
+                    exportFixture("boundary-"+sky+"-"+variant+"-"+(sequence++),definition.file(),SIDE,fixture.materials);
+                    byte[] light=NativeTerrain.instance().lightVolume(definition.request(0,0),SIDE,fixture.materials);
+                    var expected=fixture.engine(null);
+                    for(int z=0;z<48;z++)for(int x=0;x<48;x++)for(int y=0;y<HEIGHT;y++) {
+                        int i=(z/16*SIDE+x/16)*(HEIGHT+32)*256+(y+16)*256+z%16*16+x%16;
+                        var pos=new BlockPos(x,y,z);int value=Byte.toUnsignedInt(light[i]);
+                        for(var layer:LightLayer.values()) {
+                            int actual=layer==LightLayer.SKY?value>>4:value&15;
+                            require(actual==expected.getLayerListener(layer).getLightValue(pos),"sparse boundary differs: "+sky+"/"+variant+" "+layer+" "+pos);
+                            compared++;
+                        }
                     }
                 }
             }
@@ -205,7 +215,7 @@ public final class NativeLightingIntegrationTest {
             return engine;
         }
     }
-    private static void region(BiomeTerrainProfile base,HolderLookup.Provider registry,PalettedContainerFactory factory) throws Exception {
+    private static void region(TerrainProfileData base,HolderLookup.Provider registry,PalettedContainerFactory factory) throws Exception {
         var data=JsonParser.parseString(base.json()).getAsJsonObject();
         for(String key:List.of("registry_program","structures","terrain_features"))data.remove(key);
         for(String key:List.of("decorations","ores","cave_noises"))data.add(key,new JsonArray());
@@ -215,53 +225,55 @@ public final class NativeLightingIntegrationTest {
         for(String key:List.of("decorations","ores","carvers"))biome.add(key,new JsonArray());
         biome.add("lakes",JsonParser.parseString("[0,0]"));biome.addProperty("cave_kind",0);biome.addProperty("flags",0);biome.addProperty("snow_surface",false);
         var biomes=new JsonArray();biomes.add(biome);data.add("biomes",biomes);data.addProperty("sea_level",16);data.add("climate_targets",new JsonArray());data.remove("climate_lookup");
-        int profile=NativeTerrain.instance().registerProfile(data.toString());
-        var request=new TerrainRequest(123456789L,-32,-32,0,HEIGHT,24,0,.0035F,profile);
-        var directory=Files.createTempDirectory("retina-gpu-lighting-");
-        try {
-            var path=directory.resolve("r.-1.-1.mca");
-            var report=NativeTerrain.instance().generateRegion(request,path,SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:plains");
-            int lit=0,unlit=0;
-            var savedChunks=new ArrayList<SerializableChunkData>();
-            try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-light",Level.OVERWORLD,"chunk"),directory,false)) {
-                for(int z=0;z<32;z++)for(int x=0;x<32;x++) {
-                    var pos=new ChunkPos(x-32,z-32);var tag=storage.read(pos);
-                    var parsed=SerializableChunkData.parse(LevelHeightAccessor.create(0,HEIGHT),factory,tag);
-                    savedChunks.add(parsed);
-                    boolean interior=x>0&&x<31&&z>0&&z<31;
-                    require(parsed.lightCorrect()==interior,"saved lighting flag matches interior");
-                    require(parsed.chunkStatus()==(interior?ChunkStatus.LIGHT:ChunkStatus.FEATURES),"saved status controls actual Minecraft lighting bypass");
-                    require(parsed.sectionData().size()==(interior?6:4),"lit sections include light-only padding");
-                    if(interior)lit++;else unlit++;
+        try(var definition=DefinitionFixture.create("minecraft:overworld",data,
+                new TerrainRequest(123456789L,0,0,0,HEIGHT,24,0,.0035F),0,HEIGHT,true,false)) {
+            var request=definition.request(-32,-32);
+            var directory=Files.createTempDirectory("retina-gpu-lighting-");
+            try {
+                var path=directory.resolve("r.-1.-1.mca");
+                var report=NativeTerrain.instance().generateRegion(request,path,definition.dataVersion(),"minecraft:plains");
+                int lit=0,unlit=0;
+                var savedChunks=new ArrayList<SerializableChunkData>();
+                try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-light",Level.OVERWORLD,"chunk"),directory,false)) {
+                    for(int z=0;z<32;z++)for(int x=0;x<32;x++) {
+                        var pos=new ChunkPos(x-32,z-32);var tag=storage.read(pos);
+                        var parsed=SerializableChunkData.parse(LevelHeightAccessor.create(0,HEIGHT),factory,tag);
+                        savedChunks.add(parsed);
+                        boolean interior=x>0&&x<31&&z>0&&z<31;
+                        require(parsed.lightCorrect()==interior,"saved lighting flag matches interior");
+                        require(parsed.chunkStatus()==(interior?ChunkStatus.LIGHT:ChunkStatus.FEATURES),"saved status controls actual Minecraft lighting bypass");
+                        require(parsed.sectionData().size()==(interior?6:4),"lit sections include light-only padding");
+                        if(interior)lit++;else unlit++;
+                    }
+                    var pos=new ChunkPos(-31,-31);var tag=storage.read(pos);tag.putString("retina_edit","preserved");storage.write(pos,tag);
+                    storage.write(new ChunkPos(-30,-30),null);
                 }
-                var pos=new ChunkPos(-31,-31);var tag=storage.read(pos);tag.putString("retina_edit","preserved");storage.write(pos,tag);
-                storage.write(new ChunkPos(-30,-30),null);
-            }
-            require(lit==900&&unlit==124,"exactly 87.9% of region lit");
-            var grid=new SavedGrid(factory,savedChunks);
-            var unlitEngine=grid.engine(false);var prelitEngine=grid.engine(true);
-            var random=new Random(5581);
-            for(int sample=0;sample<30000;sample++) {
-                var pos=new BlockPos(-512+random.nextInt(512),random.nextInt(HEIGHT),-512+random.nextInt(512));
-                for(var layer:LightLayer.values())require(unlitEngine.getLayerListener(layer).getLightValue(pos)
-                        ==prelitEngine.getLayerListener(layer).getLightValue(pos),"actual MCA imported lighting / outer ring matches recomputation at "+pos);
-            }
-            double[] vanilla=new double[4],gpu=new double[4];
-            for(int i=0;i<4;i++) {
-                if(i%2==0) {vanilla[i]=grid.measure(false);gpu[i]=grid.measure(true);}
-                else {gpu[i]=grid.measure(true);vanilla[i]=grid.measure(false);}
-            }
-            System.out.println("QA_EVT {\"event\":\"gpu_lighting_load_benchmark\",\"status\":\"pass\",\"context\":{\"vanilla_light_ms\":"+Arrays.stream(vanilla).average().orElseThrow()+",\"prelit_load_ms\":"+Arrays.stream(gpu).average().orElseThrow()+",\"gpu_generation_light_ms\":"+report.stages().nanos(NativeTimings.LIGHT_HOST)/1e6+"}}");
-            require(report.stages().nanos(NativeTimings.LIGHT_HOST)>0,"lighting host time reaches F3");
-            if(report.stages().lightingMeasured())require(report.stages().nanos(NativeTimings.LIGHT_SPREAD)>0,"propagation has real device timestamps");
-            var repaired=NativeTerrain.instance().generateRegion(request,path,SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:plains");
-            require(repaired.generated()==1&&repaired.preserved()==1023,"repair preserves prior chunks");
-            try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-light",Level.OVERWORLD,"chunk"),directory,false)) {
-                require(storage.read(new ChunkPos(-31,-31)).getStringOr("retina_edit","").equals("preserved"),"prelit player edits preserved");
-                require(!storage.read(new ChunkPos(-30,-30)).getBooleanOr("isLightOn",false),"repair delegates lighting around actual saved neighbors");
-            }
-            System.out.println("QA_EVT {\"event\":\"gpu_lighting_single_mca_publish\",\"status\":\"pass\",\"context\":{\"lit\":900,\"unlit\":124,\"lighting_ms\":"+report.stages().nanos(NativeTimings.LIGHT_HOST)/1e6+"}}");
-        } finally {try(var paths=Files.walk(directory)){for(var p:paths.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(p);}}
+                require(lit==900&&unlit==124,"exactly 87.9% of region lit");
+                var grid=new SavedGrid(factory,savedChunks);
+                var unlitEngine=grid.engine(false);var prelitEngine=grid.engine(true);
+                var random=new Random(5581);
+                for(int sample=0;sample<30000;sample++) {
+                    var pos=new BlockPos(-512+random.nextInt(512),random.nextInt(HEIGHT),-512+random.nextInt(512));
+                    for(var layer:LightLayer.values())require(unlitEngine.getLayerListener(layer).getLightValue(pos)
+                            ==prelitEngine.getLayerListener(layer).getLightValue(pos),"actual MCA imported lighting / outer ring matches recomputation at "+pos);
+                }
+                double[] vanilla=new double[4],gpu=new double[4];
+                for(int i=0;i<4;i++) {
+                    if(i%2==0) {vanilla[i]=grid.measure(false);gpu[i]=grid.measure(true);}
+                    else {gpu[i]=grid.measure(true);vanilla[i]=grid.measure(false);}
+                }
+                System.out.println("QA_EVT {\"event\":\"gpu_lighting_load_benchmark\",\"status\":\"pass\",\"context\":{\"vanilla_light_ms\":"+Arrays.stream(vanilla).average().orElseThrow()+",\"prelit_load_ms\":"+Arrays.stream(gpu).average().orElseThrow()+",\"gpu_generation_light_ms\":"+report.stages().nanos(NativeTimings.LIGHT_HOST)/1e6+"}}");
+                require(report.stages().nanos(NativeTimings.LIGHT_HOST)>0,"lighting host time reaches F3");
+                if(report.stages().lightingMeasured())require(report.stages().nanos(NativeTimings.LIGHT_SPREAD)>0,"propagation has real device timestamps");
+                var repaired=NativeTerrain.instance().generateRegion(request,path,definition.dataVersion(),"minecraft:plains");
+                require(repaired.generated()==1&&repaired.preserved()==1023,"repair preserves prior chunks");
+                try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-light",Level.OVERWORLD,"chunk"),directory,false)) {
+                    require(storage.read(new ChunkPos(-31,-31)).getStringOr("retina_edit","").equals("preserved"),"prelit player edits preserved");
+                    require(!storage.read(new ChunkPos(-30,-30)).getBooleanOr("isLightOn",false),"repair delegates lighting around actual saved neighbors");
+                }
+                System.out.println("QA_EVT {\"event\":\"gpu_lighting_single_mca_publish\",\"status\":\"pass\",\"context\":{\"lit\":900,\"unlit\":124,\"lighting_ms\":"+report.stages().nanos(NativeTimings.LIGHT_HOST)/1e6+"}}");
+            } finally {try(var paths=Files.walk(directory)){for(var p:paths.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(p);}}
+        }
     }
     static final class SavedGrid implements LightChunkGetter {
         final ProtoChunk[] chunks=new ProtoChunk[1024];final List<SerializableChunkData> saved;
@@ -330,13 +342,15 @@ public final class NativeLightingIntegrationTest {
             else{b[i]=grid.measure(true);a[i]=grid.measure(false);}
         System.out.println("QA_EVT {\"event\":\"live_saved_region_light_benchmark\",\"status\":\"pass\",\"context\":{\"comparisons\":200000,\"vanilla_light_ms\":"+Arrays.stream(a).average().orElseThrow()+",\"prelit_load_ms\":"+Arrays.stream(b).average().orElseThrow()+"}}");
     }
-    private static void exportFixture(String name,JsonObject profile,int side,int height,int minY,short[] blocks) throws java.io.IOException {
+    private static void exportFixture(String name,Path definition,int side,short[] blocks) throws java.io.IOException {
         String destination=System.getenv("RETINA_LIGHTING_EXPORT");if(destination==null)return;
         var path=Path.of(destination);Files.createDirectories(path);
+        var world=path.resolve(name);Files.createDirectories(world);
+        Files.copy(definition,world.resolve(WorldDefinitionFile.NAME));
         var bytes=java.nio.ByteBuffer.allocate(blocks.length*2).order(java.nio.ByteOrder.LITTLE_ENDIAN);
         bytes.asShortBuffer().put(blocks);Files.write(path.resolve(name+".blocks"),bytes.array());
-        var manifest=new JsonObject();manifest.add("profile",profile.deepCopy());
-        manifest.addProperty("side",side);manifest.addProperty("height",height);manifest.addProperty("min_y",minY);
+        var manifest=new JsonObject();manifest.addProperty("definition",name+"/"+WorldDefinitionFile.NAME);
+        manifest.addProperty("dimension","minecraft:overworld");manifest.addProperty("side",side);
         manifest.addProperty("blocks",name+".blocks");Files.writeString(path.resolve(name+".json"),manifest.toString());
     }
     private static void exportSaved(SavedGrid grid,JsonObject base,List<BlockState> original) throws java.io.IOException {
@@ -361,7 +375,10 @@ public final class NativeLightingIntegrationTest {
                 }
             }
             profile.add("lighting",LightingProfile.export(palette,true));
-            exportFixture("region-"+origin,profile,12,384,-64,blocks);
+            try(var definition=DefinitionFixture.create("minecraft:overworld",profile,
+                    new TerrainRequest(123456789L,0,0,-64,384,24,0,.0035F),-64,384,true,false)) {
+                exportFixture("region-"+origin,definition.file(),12,blocks);
+            }
         }
     }
     /** Direct engines are private in LevelLightEngine; the production mixin calls this same helper. */
