@@ -100,9 +100,11 @@ Both sequential and concurrent output passed for the nine-region default seed.
 A dedicated Minecraft server also passed actual `IOWorker.loadAsync` preparation,
 MCA promotion, activated terrain and F3 timing packet checks.
 
-Run from the repository root after exporting `build/structure-profile.json` with
-`./gradlew structureTest`. Preserve a baseline native library before rebuilding a
-candidate. Each output directory must be new; all outputs are private benchmark
+Run from the repository root using a world's automatically created `retina.dat`.
+For isolated structure experiments, `./gradlew :common:structureTest` also writes
+forced-placement definitions under `build/structure-definition-fixtures/`.
+Preserve a baseline native library before rebuilding a candidate.
+Each output directory must be new; all outputs are private benchmark
 MCAs and are never installed into a Minecraft world:
 
 ```sh
