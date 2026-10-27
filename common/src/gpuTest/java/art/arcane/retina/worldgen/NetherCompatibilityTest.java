@@ -91,73 +91,75 @@ public final class NetherCompatibilityTest {
         var settings = registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.NETHER);
         var source = new NoiseBasedChunkGenerator(biomes, settings);
         var dimension = registry.lookupOrThrow(Registries.DIMENSION_TYPE).getValueOrThrow(BuiltinDimensionTypes.NETHER);
-        var generator = RetinaChunkGenerator.fromSource(new GenerationSource(Level.NETHER, source, dimension));
         var factory = PalettedContainerFactory.create(registry);
-        generator.bindWorld(registry, seed, factory, StructureProfile.Context.NONE, false);
-        var cache = generator.previewCache();
-        var folder = cache.folder();
-        var position = new ChunkPos(-32, 0);
-        var missing = new ChunkPos(-31, 0);
-        var bounds = LevelHeightAccessor.create(0, 256);
-        var random = RandomState.create(registry.lookupOrThrow(Registries.NOISE), seed, settings.value());
-        var save = OUTPUT.resolve(name + "-save");
-        Files.createDirectories(save);
-        var destination = save.resolve("r.-1.0.mca");
-        // Each invocation gets its own save; repeated tests must generate fresh output.
-        if (Files.exists(destination)) destination = Files.createTempDirectory(save, "repeat-").resolve("r.-1.0.mca");
-        save = destination.getParent();
-        try {
-            Files.writeString(OUTPUT.resolve(name + "-profile.json"), generator.profile().json());
-            require(cache.dimension().equals(Level.NETHER), "Nether preview storage identity");
-            var proto = new ProtoChunk(position, UpgradeData.EMPTY, bounds, factory, null);
-            var biomeFuture = generator.createBiomes(random, Blender.empty(), null, proto);
-            require(biomeFuture.isDone() && biomeFuture.join() == proto, "synchronous preview biome completion");
-            var terrainFuture = generator.buildTerrain(proto, Blender.empty(), random, null, null, null, biomes.possibleBiomes());
-            require(terrainFuture.isDone() && terrainFuture.join() == proto, "synchronous preview terrain completion");
-            try (var nativeChunk = NativeTerrain.instance().generate(generator.request(seed, position.x(), position.z()))) {
-                var blocks = nativeChunk.blocks().toArray(ValueLayout.JAVA_SHORT);
-                for (int y = 0; y < 256; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
-                    require(proto.getBlockState(new net.minecraft.core.BlockPos(position.getMinBlockX() + x, y, z))
-                            .equals(generator.profile().materials()[Short.toUnsignedInt(blocks[y * 256 + z * 16 + x])]),
-                            "independent decorated chunk/preview blocks for " + name);
+        try(var fixture=RuntimeDefinitionFixture.source(registry,new GenerationSource(Level.NETHER,source,dimension),
+                seed,StructureProfile.Context.NONE,factory)) {
+            var generator=fixture.generator();
+            var cache = generator.previewCache();
+            var folder = cache.folder();
+            var position = new ChunkPos(-32, 0);
+            var missing = new ChunkPos(-31, 0);
+            var bounds = LevelHeightAccessor.create(0, 256);
+            var random = RandomState.create(registry.lookupOrThrow(Registries.NOISE), seed, settings.value());
+            var save = OUTPUT.resolve(name + "-save");
+            Files.createDirectories(save);
+            var destination = save.resolve("r.-1.0.mca");
+            // Each invocation gets its own save; repeated tests must generate fresh output.
+            if (Files.exists(destination)) destination = Files.createTempDirectory(save, "repeat-").resolve("r.-1.0.mca");
+            save = destination.getParent();
+            try {
+                Files.writeString(OUTPUT.resolve(name + "-profile.json"), generator.profile().diagnosticJson());
+                require(cache.dimension().equals(Level.NETHER), "Nether preview storage identity");
+                var proto = new ProtoChunk(position, UpgradeData.EMPTY, bounds, factory, null);
+                var biomeFuture = generator.createBiomes(random, Blender.empty(), null, proto);
+                require(biomeFuture.isDone() && biomeFuture.join() == proto, "synchronous preview biome completion");
+                var terrainFuture = generator.buildTerrain(proto, Blender.empty(), random, null, null, null, biomes.possibleBiomes());
+                require(terrainFuture.isDone() && terrainFuture.join() == proto, "synchronous preview terrain completion");
+                try (var nativeChunk = NativeTerrain.instance().generate(generator.request(seed, position.x(), position.z()))) {
+                    var blocks = nativeChunk.blocks().toArray(ValueLayout.JAVA_SHORT);
+                    for (int y = 0; y < 256; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
+                        require(proto.getBlockState(new net.minecraft.core.BlockPos(position.getMinBlockX() + x, y, z))
+                                .equals(generator.profile().materials()[Short.toUnsignedInt(blocks[y * 256 + z * 16 + x])]),
+                                "independent decorated chunk/preview blocks for " + name);
+                }
+                for (int y = 0; y < 64; y++) for (int z = 0; z < 4; z++) for (int x = 0; x < 4; x++)
+                    require(biomes.possibleBiomes().contains(proto.getSection(y / 4).getNoiseBiome(x, y % 4, z)),
+                            "preview biome palette remains in selected source");
+                var raw = cache.read(position);
+                require(raw.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").isEmpty(),
+                        "disabled structure generation produces no starts");
+                for (var section : raw.getListOrEmpty("sections"))
+                    for (byte light : ((net.minecraft.nbt.CompoundTag) section).getByteArray("SkyLight").orElse(new byte[0]))
+                        require(light == 0, "Nether has no native skylight");
+                require(generator.metrics().snapshot().previewRegions() == 1 && !Files.exists(destination),
+                        "preview calls share one temporary region and do not publish");
+                require(cache.publishIfPresent(position, destination).generated() == 1024, "full preview promotion");
+                try (var storage = new RegionFileStorage(new RegionStorageInfo("nether-partial", Level.NETHER, "chunk"), save, false)) {
+                    require(storage.read(position).equals(raw), "saved preview NBT parity");
+                    var edited = storage.read(position);
+                    edited.putString("retina_qa_player_record", name);
+                    storage.write(position, edited);
+                    storage.write(missing, null);
+                }
+                byte[] prior = Files.readAllBytes(destination);
+                var report = cache.publishIfPresent(missing, destination);
+                byte[] after = Files.readAllBytes(destination);
+                require(report.generated() == 1 && report.preserved() == 1023 && report.gpuNanos() == 0,
+                        "partial repair only fills absent record without regeneration");
+                require(Arrays.equals(prior, 8192, prior.length, after, 8192, prior.length),
+                        "all existing compressed records retained byte-for-byte");
+                try (var storage = new RegionFileStorage(new RegionStorageInfo("nether-partial", Level.NETHER, "chunk"), save, false)) {
+                    require(storage.read(position).getStringOr("retina_qa_player_record", "").equals(name), "player record retained");
+                    require(storage.read(missing).equals(cache.read(missing)), "missing chunk restored from identical preview");
+                }
+                System.out.println("QA_EVT {\"event\":\"nether_preview_partial_save\",\"status\":\"pass\",\"context\":{\"source\":\""
+                        + name + "\",\"compared_voxels\":65536,\"preserved_records\":1023}}");
+            } finally {
+                cache.closeAndAwaitGeneration();
+                generator.closePreviews();
             }
-            for (int y = 0; y < 64; y++) for (int z = 0; z < 4; z++) for (int x = 0; x < 4; x++)
-                require(biomes.possibleBiomes().contains(proto.getSection(y / 4).getNoiseBiome(x, y % 4, z)),
-                        "preview biome palette remains in selected source");
-            var raw = cache.read(position);
-            require(raw.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").isEmpty(),
-                    "disabled structure generation produces no starts");
-            for (var section : raw.getListOrEmpty("sections"))
-                for (byte light : ((net.minecraft.nbt.CompoundTag) section).getByteArray("SkyLight").orElse(new byte[0]))
-                    require(light == 0, "Nether has no native skylight");
-            require(generator.metrics().snapshot().previewRegions() == 1 && !Files.exists(destination),
-                    "preview calls share one temporary region and do not publish");
-            require(cache.publishIfPresent(position, destination).generated() == 1024, "full preview promotion");
-            try (var storage = new RegionFileStorage(new RegionStorageInfo("nether-partial", Level.NETHER, "chunk"), save, false)) {
-                require(storage.read(position).equals(raw), "saved preview NBT parity");
-                var edited = storage.read(position);
-                edited.putString("retina_qa_player_record", name);
-                storage.write(position, edited);
-                storage.write(missing, null);
-            }
-            byte[] prior = Files.readAllBytes(destination);
-            var report = cache.publishIfPresent(missing, destination);
-            byte[] after = Files.readAllBytes(destination);
-            require(report.generated() == 1 && report.preserved() == 1023 && report.gpuNanos() == 0,
-                    "partial repair only fills absent record without regeneration");
-            require(Arrays.equals(prior, 8192, prior.length, after, 8192, prior.length),
-                    "all existing compressed records retained byte-for-byte");
-            try (var storage = new RegionFileStorage(new RegionStorageInfo("nether-partial", Level.NETHER, "chunk"), save, false)) {
-                require(storage.read(position).getStringOr("retina_qa_player_record", "").equals(name), "player record retained");
-                require(storage.read(missing).equals(cache.read(missing)), "missing chunk restored from identical preview");
-            }
-            System.out.println("QA_EVT {\"event\":\"nether_preview_partial_save\",\"status\":\"pass\",\"context\":{\"source\":\""
-                    + name + "\",\"compared_voxels\":65536,\"preserved_records\":1023}}");
-        } finally {
-            cache.closeAndAwaitGeneration();
-            generator.closePreviews();
+            require(Files.notExists(folder), "preview directory cleanup");
         }
-        require(Files.notExists(folder), "preview directory cleanup");
     }
 
     private static void write(Path path, JsonObject value) throws Exception {

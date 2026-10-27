@@ -608,6 +608,8 @@ tasks.register('previewTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativePreviewIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('datapackTest', JavaExec) {
@@ -659,6 +661,8 @@ tasks.register('locateTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeLocateIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('biomeSearchBenchmark', JavaExec) {
@@ -668,6 +672,8 @@ tasks.register('biomeSearchBenchmark', JavaExec) {
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeBiomeSearchBenchmark'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('landscapeTest', JavaExec) {
