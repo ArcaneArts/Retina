@@ -118,6 +118,22 @@ this structure. Tag IDs, signed arrays, numeric values, list kinds and string
 contents are preserved through decoding and native structure compilation.
 No profile JSON text is embedded in the file or parsed by the NBT loader.
 
+New registry profiles retain the exporter's `decoration_omissions`,
+`geology_omissions` and `simple_current_omissions` string lists, plus
+`structures.omissions` and `registry_program.approximations`. These describe
+encountered unsupported rules and existing approximations; they do not promise
+complete vanilla generation. Empty lists are meaningful, including legitimate
+biomes with no generation features. A disabled feature category can also have
+an empty report because no rules were selected for execution.
+
+The native adapter exposes these saved reports under each dimension's
+`limitations` object as `decorations`, `geology`, `simple_block_survival`,
+`structures` and `approximations`. It reads them from the file without looking
+up current registries. A report absent from an older artifact stays absent;
+absence does not establish that nothing was omitted. Minimal procedural
+profiles describe only their built-in air/stone kernel and do not carry
+registry-export reports. Adding reports does not rewrite an existing file.
+
 The decoded profile enters the same native validation and initialization used
 by the existing generation engine. The loader resolves local/shared palette
 references before initialization. A SHA-256 fingerprint of the uncompressed

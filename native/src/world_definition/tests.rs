@@ -472,6 +472,14 @@ fn java_compiled_definitions_preserve_complete_profiles() {
             expected.as_object_mut().unwrap().remove("mca_compression");
             let raw = world.source().dimensions[id].profile.clone().unwrap();
             let actual_data = value::decode(raw).unwrap();
+            let metadata=world.adapter_metadata();
+            let limitations=&metadata["dimensions"][id]["limitations"];
+            for (field,report) in [("decoration_omissions","decorations"),("geology_omissions","geology"),
+                                   ("simple_current_omissions","simple_block_survival")] {
+                assert_eq!(&limitations[report],&expected[field],"{case}/{id}: saved {report} report");
+            }
+            assert_eq!(limitations["structures"],expected["structures"]["omissions"]);
+            assert_eq!(limitations["approximations"],expected["registry_program"]["approximations"]);
             assert!(
                 actual_data == expected,
                 "{case}/{id}: complete structural data differs at {}",
@@ -567,4 +575,22 @@ fn first_difference(actual: &Value, expected: &Value, path: &str) -> Option<Stri
             .find_map(|(i, (a, b))| first_difference(a, b, &format!("{path}[{i}]"))),
         _ => Some(path.into()),
     }
+}
+
+#[test]
+fn exporter_reports_survive_file_loading_and_older_absence_stays_unknown() {
+    let mut document=document();
+    let world=WorldDefinition::from_gzip(gzip(&document).as_slice()).unwrap();
+    assert_eq!(world.adapter_metadata()["dimensions"]["minecraft:overworld"]["limitations"],json!({}));
+    let saved=document.dimensions.get_mut("minecraft:overworld").unwrap();
+    let mut profile=value::decode(saved.profile.take().unwrap()).unwrap();
+    profile["decoration_omissions"]=json!(["tree_decorator:beehive"]);
+    profile["geology_omissions"]=json!([]);
+    profile["simple_current_omissions"]=json!(["example:contextual_block"]);
+    profile["structures"]=json!({"definitions":[],"templates":[],"pools":{},"sets":[],"omissions":["placement:minecraft:strongholds"]});
+    saved.profile=Some(value::encode(&profile).unwrap());
+    let world=WorldDefinition::from_gzip(gzip(&document).as_slice()).unwrap();
+    assert_eq!(world.adapter_metadata()["dimensions"]["minecraft:overworld"]["limitations"],json!({
+        "decorations":["tree_decorator:beehive"],"geology":[],"simple_block_survival":["example:contextual_block"],
+        "structures":["placement:minecraft:strongholds"]}));
 }

@@ -72,6 +72,7 @@ final class StructureProfile {
         if(context.enabled){out.load();StructureProcessorProfile.finish(out.pools,materials);out.finishProcessors(out.pools);}
         var result=new JsonObject();result.add("templates",out.templates);result.add("definitions",out.definitions);
         result.add("pools",out.pools);result.add("sets",out.sets);
+        result.add("omissions",new Gson().toJsonTree(out.omitted));
         if(out.endCities!=null)result.add("end_cities",out.endCities);
         if(out.fortress!=null)result.add("fortress",out.fortress);
         if(out.fossils!=null)result.add("fossils",out.fossils);
