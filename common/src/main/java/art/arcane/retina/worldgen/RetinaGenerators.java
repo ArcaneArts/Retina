@@ -8,7 +8,6 @@ import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
-import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 
 /** Adapts effective server generators without rewriting registries or saved world settings. */
 public final class RetinaGenerators {
@@ -45,15 +44,22 @@ public final class RetinaGenerators {
 
     static String unsupportedReason(ResourceKey<Level> dimension, ChunkGenerator generator) {
         if (generator instanceof RetinaChunkGenerator) return null;
-        if (!dimension.equals(Level.OVERWORLD) && !dimension.equals(Level.NETHER)) return "dimension adapter is not implemented; End support is deferred";
+        if (!dimension.equals(Level.OVERWORLD) && !dimension.equals(Level.NETHER) && !dimension.equals(Level.END))
+            return "dimension adapter is not implemented";
         if (generator.getClass() == net.minecraft.world.level.levelgen.FlatLevelSource.class) return null;
         // Subclasses can implement arbitrary generation behavior. Adapting their fields alone would lose it.
         if (generator.getClass() != NoiseBasedChunkGenerator.class) return "no adapter for this generator implementation";
-        var noise = (NoiseBasedChunkGenerator) generator;
-        if (noise.generatorSettings().is(NoiseGeneratorSettings.END)) return "End noise settings are not supported yet";
         var biomes = generator.getBiomeSource();
-        if (biomes.getClass() != MultiNoiseBiomeSource.class && biomes.getClass() != FixedBiomeSource.class)
+        if (biomes.getClass() != MultiNoiseBiomeSource.class && biomes.getClass() != FixedBiomeSource.class
+                && biomes.getClass() != net.minecraft.world.level.biome.TheEndBiomeSource.class)
             return "no adapter for biome source " + biomes.getClass().getName();
         return null;
+    }
+
+    static String unsupportedReason(net.minecraft.core.HolderLookup.Provider registry, ResourceKey<Level> dimension, LevelStem stem) {
+        String reason = unsupportedReason(dimension, stem.generator());
+        if (reason != null || stem.generator() instanceof RetinaChunkGenerator) return reason;
+        var source = new GenerationSource(dimension, stem.generator(), stem.type().value());
+        return source.endTerrain() ? EndTerrainSupport.unsupportedReason(registry, source) : null;
     }
 }

@@ -38,7 +38,7 @@ public final class WorldDefinitionBindingTest {
             };
             for (String fixture : List.of("vanilla", "flat", "legacy", "procedural", "cropped", "cropped_registry")) {
                 try (var world = new WorldDefinitionContext(NativeWorldDefinition.open(fixtures.resolve(fixture).resolve("retina.dat")))) {
-                    for (var key : List.of(Level.OVERWORLD, Level.NETHER)) {
+                    for (var key : List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
                         var dimension = world.dimension(key);
                         var generator = RetinaChunkGenerator.fromDefinition(dimension, bindingOnly);
                         require(generator.selectedSource() == null, "no source generator retained");

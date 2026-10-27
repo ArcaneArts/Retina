@@ -138,7 +138,13 @@ public final class NativeRegistryLoadingTest {
                 var other = dimensions.get(dimension);
                 var level = ResourceKey.create(Registries.DIMENSION, dimension.identifier());
                 var adapted=RetinaGenerators.adapt(level, other, other.generator());
-                if(dimension.equals(LevelStem.END))require(adapted==other.generator(),"End unchanged");
+                if(dimension.equals(LevelStem.END)) {
+                    require(adapted instanceof RetinaChunkGenerator,"End automatically activates");
+                    var end=(RetinaChunkGenerator)adapted;
+                    require(end.dimension().equals(net.minecraft.world.level.Level.END)
+                            && end.selectedSource().generator()==other.generator(),"End retains source and dimension identity");
+                    require(EndTerrainSupport.unsupportedReason(registry,end.selectedSource())==null,"loaded standard End expressions supported");
+                }
                 else {
                     require(adapted instanceof RetinaChunkGenerator,"Nether automatically activates");
                     var nether=(RetinaChunkGenerator)adapted;
