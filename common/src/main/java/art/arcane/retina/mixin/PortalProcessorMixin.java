@@ -1,10 +1,12 @@
 package art.arcane.retina.mixin;
 
 import art.arcane.retina.worldgen.PortalRegionPreparation;
+import art.arcane.retina.worldgen.EndPortalPreparationAccess;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.PortalProcessor;
 import net.minecraft.world.level.block.NetherPortalBlock;
+import net.minecraft.world.level.block.EndPortalBlock;
 import net.minecraft.world.level.block.Portal;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -24,5 +26,12 @@ abstract class PortalProcessorMixin {
                                           CallbackInfoReturnable<Boolean> callback) {
         if (callback.getReturnValueZ() && portal.getClass() == NetherPortalBlock.class
                 && !retina$destination.ready(level, entity)) callback.setReturnValue(false);
+        if (callback.getReturnValueZ() && portal.getClass() == EndPortalBlock.class
+                && !((EndPortalPreparationAccess) entity).retina$endPortalReady(level)) {
+            // Vanilla already accepted this instant portal. Retain that acceptance while terrain is
+            // publishing, even if movement takes the entity out of the portal on the following tick.
+            ((PortalProcessor) (Object) this).setAsInsidePortalThisTick(true);
+            callback.setReturnValue(false);
+        }
     }
 }
