@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /** Measures actual DH native work during the opt-in portal fixture. */
 final class PortalBackgroundQa {
-    static final boolean ENABLED = Boolean.getBoolean("retina.qa.nether.portalDh");
+    static final boolean ENABLED = Boolean.getBoolean("retina.qa.nether.portalDh") || Boolean.getBoolean("retina.qa.end.integrations");
     private static final AtomicLong STARTED = new AtomicLong(), COMPLETED = new AtomicLong();
     private static final AtomicInteger ACTIVE = new AtomicInteger();
     private static final ConcurrentHashMap<Long, AtomicLong> NETHER_CHUNKS = new ConcurrentHashMap<>();

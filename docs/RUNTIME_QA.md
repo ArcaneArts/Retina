@@ -797,3 +797,23 @@ event, inspect logs and decode every PNG. Then inspect the images themselves:
 capture events only prove that a file was written. See the
 [visual inspection report](NETHER_VISUAL_QA.md) for accepted views and rejected
 early camera/capture trials.
+
+### Installed End integrations
+
+Use `-PretinaEndIntegrationsQa -PretinaEndActivationQa` with the existing QA
+instance, `-PretinaClientGameplayQa -PretinaClientOpenExistingQa=true`, and the
+installed matching Chunky and Distant Horizons jars. This extends the same installed
+integration scenario to `minecraft:the_end`: actual Chunky pause/resume, DH
+disable/restore, real native generation on a DH thread, and a foreground request
+submitted while DH is active. The saved integration report records the dimension,
+coordinates, real native DH regions and foreground latency.
+
+The End scenario accepts a save whose player is already in the End. Reopen visits
+the saved destination and verifies the saved integration evidence and current
+telemetry without repeating the cold Chunky campaign. This is an integration
+observation under game load, not the uncontended performance acceptance benchmark.
+
+For automated macOS runs, launch with `SDL_MAC_BACKGROUND_APP=1`,
+`SDL_WINDOW_ACTIVATE_WHEN_SHOWN=0`, and `SDL_WINDOW_ACTIVATE_WHEN_RAISED=0` to
+suppress automatic window activation. Continue to reuse the muted instance settings
+above.

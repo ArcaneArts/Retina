@@ -28,6 +28,7 @@ loom {
             if (providers.gradleProperty('retinaNetherStructuresQa').isPresent()) vmArg '-Dretina.qa.nether.structures=true'
             if (providers.gradleProperty('retinaNetherUnloadQa').isPresent()) vmArg '-Dretina.qa.nether.unload=true'
             if (providers.gradleProperty('retinaNetherIntegrationsQa').isPresent()) vmArg '-Dretina.qa.nether.integrations=true'
+            if (providers.gradleProperty('retinaEndIntegrationsQa').isPresent()) vmArg '-Dretina.qa.end.integrations=true'
             if (providers.gradleProperty('retinaClientStartupQa').isPresent()) vmArg '-Dretina.qa.client.startup=true'
             if (providers.gradleProperty('retinaClientGameplayQa').isPresent()) {
                 vmArg '-Dretina.qa.client.gameplay=true'
