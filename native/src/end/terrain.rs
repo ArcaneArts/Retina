@@ -6,6 +6,28 @@ use crate::{ChunkRequest, COLUMNS, CacheKey, TerrainEngine, decoration::Field,
 use serde::Deserialize;
 use std::sync::Arc;
 
+fn below(height: u32) -> u128 {
+    if height == 128 { u128::MAX } else { (1u128 << height) - 1 }
+}
+fn clipped(bits: u128, request: ChunkRequest) -> u128 {
+    let low = request.min_y.clamp(0,128) as u32;
+    let high = (i64::from(request.min_y) + i64::from(request.height)).clamp(0,128) as u32;
+    bits & below(high) & !below(low)
+}
+fn append_runs(mut bits: u128, request: ChunkRequest, material: u16, runs: &mut Vec<u32>) {
+    let before = runs.len();
+    while bits != 0 {
+        let upper = 128 - bits.leading_zeros();
+        let lower = upper - (bits << (128-upper)).leading_ones();
+        let top = (i64::from(upper) - i64::from(request.min_y)) as u32;
+        let bottom = (i64::from(lower) - i64::from(request.min_y)) as u32;
+        if top < request.height { runs.push(top << 16); }
+        runs.push((bottom << 16) | u32::from(material));
+        bits &= below(lower);
+    }
+    if runs.len() == before || runs.last().unwrap() >> 16 != 0 { runs.push(0); }
+}
+
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Profile {
@@ -73,7 +95,7 @@ impl Profile {
     /// The same six-chunk guard geometry used by ordered decoration's cached
     /// substrate. Material runs cover the inner tile, including feature anchors;
     /// the outer chunk supplies biome/column probes without truncating writes.
-    fn build(&self, request: ChunkRequest, side: u32) -> Result<(Field<'static>, Arc<CaveMask>), String> {
+    fn build(&self, request: ChunkRequest, side: u32, metrics: Option<&crate::performance::Metrics>) -> Result<(Field<'static>, Arc<CaveMask>), String> {
         let tile_side = side as usize + 6;
         let origin = ChunkRequest {
             chunk_x: request.chunk_x.checked_sub(3).ok_or("End halo X overflows")?,
@@ -85,6 +107,14 @@ impl Profile {
         let ox = origin.chunk_x * 16; let oz = origin.chunk_z * 16;
         let density = VanillaDensity::new(request.seed);
         let tile = density.tile(ox, oz, tile_side as u32 * 16, tile_side as u32 * 16)?;
+        if let Some(metrics) = metrics.filter(|_|crate::performance::enabled()) {
+            use crate::performance::Counter::*;
+            let [empty,solid,uncertain] = tile.occupancy_counts();
+            metrics.add(end_mask_nanos,tile.mask_nanos());
+            metrics.add(end_mask_bytes,tile.mask_bytes() as u64);
+            metrics.add(end_empty_cells,empty); metrics.add(end_solid_cells,solid); metrics.add(end_uncertain_cells,uncertain);
+            metrics.add(end_voxel_interpolations_avoided,(empty+solid)*8*4*8);
+        }
         let run_width = (tile_side - 2) * 16;
         let width = run_width + 2;
         let surface = width + 30;
@@ -95,6 +125,11 @@ impl Profile {
         let base = biome_offset + (quart * quart * layers).div_ceil(2);
         let count = run_width * run_width; let groups = count.div_ceil(256);
         let mut words = vec![0u32; base + 4 + count * 2 + groups * 2];
+        // Start with air and clear only occupied voxels. The unused tail bits
+        // remain zero, matching the dense plane's byte representation.
+        words[..air_words].fill(u32::MAX);
+        let air_bits = width * width * request.height as usize;
+        if air_bits % 32 != 0 { words[air_words-1] = (1u32 << (air_bits%32))-1; }
         words[base..base+4].copy_from_slice(&[0x52554e53, run_width as u32, count as u32, 0]);
         let mut runs = Vec::with_capacity(count * 3);
         let mut columns = vec![Column::default(); tile_side * tile_side * COLUMNS];
@@ -104,27 +139,28 @@ impl Profile {
         // chunk-major. Keep both layouts explicit to avoid region-edge aliasing.
         for z in 0..tile_side * 16 { for x in 0..tile_side * 16 {
             let wx = ox + x as i32; let wz = oz + z as i32;
-            let solid = tile.column(wx, wz).unwrap();
+            let solid = clipped(tile.column_bits(wx, wz).unwrap(),request);
             let chunk = z / 16 * tile_side + x / 16;
             let biome = biomes[chunk];
-            columns[chunk * COLUMNS + (z % 16) * 16 + x % 16] = self.column(request, biome, &solid);
+            columns[chunk * COLUMNS + (z % 16) * 16 + x % 16] = Column {
+                height: if solid == 0 { request.min_y } else { (128-solid.leading_zeros()) as i32 },
+                packed: u32::from(biome), materials: u32::from(self.material) * 0x10001,
+            };
             if x % 4 == 0 && z % 4 == 0 {
                 for y in 0..layers {
                     let index = (y * quart + z / 4) * quart + x / 4;
                     words[biome_offset + index / 2] |= u32::from(biome) << ((index % 2) * 16);
                 }
             }
-            let material = |y: usize| {
-                let wy = i64::from(request.min_y) + y as i64;
-                if (0..256).contains(&wy) && solid[wy as usize] { self.material } else { 0 }
-            };
             // Populate the air exposure plane including its single-block guards.
             if (15..tile_side*16-15).contains(&x) && (15..tile_side*16-15).contains(&z) {
-                for y in 0..request.height as usize {
-                    if material(y) == 0 {
-                        let index = (y * width + z - 15) * width + x - 15;
-                        words[index / 32] |= 1 << (index % 32);
-                    }
+                let mut occupied = solid;
+                while occupied != 0 {
+                    let wy = occupied.trailing_zeros();
+                    occupied &= occupied-1;
+                    let y = (i64::from(wy) - i64::from(request.min_y)) as usize;
+                    let index = (y * width + z - 15) * width + x - 15;
+                    words[index / 32] &= !(1 << (index % 32));
                 }
             }
             if !(16..tile_side*16-16).contains(&x) || !(16..tile_side*16-16).contains(&z) { continue; }
@@ -133,12 +169,7 @@ impl Profile {
             // encoder can be zero because native offsets are already absolute.
             words[base + 5 + index * 2] = runs.len() as u32;
             let before = runs.len();
-            let mut current = material(request.height as usize - 1);
-            for y in (0..request.height as usize - 1).rev() {
-                let next = material(y);
-                if next != current { runs.push(((y as u32 + 1) << 16) | u32::from(current)); current = next; }
-            }
-            runs.push(u32::from(current));
+            append_runs(solid,request,self.material,&mut runs);
             words[base + 4 + index * 2] = (runs.len() - before) as u32;
         }}
         words[base + 3] = runs.len() as u32;
@@ -181,7 +212,7 @@ impl TerrainEngine {
             .entries.get(&CacheKey::from(request)).cloned();
         let (field, mask) = if let Some((mask, field)) = cached.and_then(|m| crop(request, side, &m).map(|f| (m, f))) {
             (field, mask)
-        } else { profile.build(request, side)? };
+        } else { profile.build(request, side, Some(&metrics.performance))? };
         let halo = mask.columns.as_ref().unwrap();
         self.cache_terrain(request, side, ChunkRequest { chunk_x: halo.origin_x,
             chunk_z: halo.origin_z, ..request }, halo.side as u32, &halo.columns, &mask)?;
@@ -220,7 +251,7 @@ mod tests {
             let x = sample["xz"][0].as_i64().unwrap() as i32;
             let z = sample["xz"][1].as_i64().unwrap() as i32;
             let r = request(x.div_euclid(16), z.div_euclid(16));
-            let (field, mask) = profile.build(r, 1).unwrap();
+            let (field, mask) = profile.build(r, 1, None).unwrap();
             mask.validate_material_runs().unwrap();
             let islands = IslandNoise::new(r.seed);
             let expected_biome = profile.biome(&islands, x, z);
@@ -260,5 +291,22 @@ mod tests {
         assert!(profile.validate(1, 1).is_err());
         assert!(Profile { material: 0, biomes: [0; 5] }.validate(2, 1).is_err());
         assert!(Profile { material: 1, biomes: [1; 5] }.validate(2, 1).is_err());
+    }
+
+    #[test]
+    fn compact_runs_match_dense_encoding_across_storage_boundaries() {
+        for bits in [0,u128::MAX,1,1u128<<127,0xff00ff00ff00ff00ff00ff00ff00ff00,15u128<<62] {
+            for (min_y,height) in [(-64,384),(0,256),(0,128),(64,64),(128,128),(63,1)] {
+                let r=ChunkRequest{min_y,height,..request(0,0)};
+                let mut actual=Vec::new();append_runs(clipped(bits,r),r,7,&mut actual);
+                let material=|y:u32| {let wy=i64::from(min_y)+i64::from(y);
+                    if (0..128).contains(&wy) && bits&(1u128<<wy)!=0 {7u16}else{0}};
+                let mut expected=Vec::new();let mut current=material(height-1);
+                for y in (0..height-1).rev() {let next=material(y);
+                    if next!=current {expected.push(((y+1)<<16)|u32::from(current));current=next;}}
+                expected.push(u32::from(current));
+                assert_eq!(actual,expected,"bits={bits:x} min_y={min_y} height={height}");
+            }
+        }
     }
 }
