@@ -584,6 +584,8 @@ tasks.register('blockFeatureTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeBlockFeatureIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('providerNoiseTest', JavaExec) {
