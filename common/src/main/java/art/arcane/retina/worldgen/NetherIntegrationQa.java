@@ -23,7 +23,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /** Opt-in real installed Chunky/DH checks; optional APIs are used only in this disposable scenario. */
 final class NetherIntegrationQa {
-    private static final boolean ENABLED = Boolean.getBoolean("retina.qa.nether.integrations");
+    private static final boolean END = Boolean.getBoolean("retina.qa.end.integrations");
+    private static final boolean ENABLED = END || Boolean.getBoolean("retina.qa.nether.integrations");
+    private static final ResourceKey<Level> DIMENSION = END ? Level.END : Level.NETHER;
     private static final Map<MinecraftServer, Session> SESSIONS = new WeakHashMap<>();
     private static final AtomicInteger STARTED = new AtomicInteger(), STOPPED = new AtomicInteger(), FINISHED = new AtomicInteger();
     private static final AtomicLong DH_REGIONS = new AtomicLong();
@@ -43,23 +45,25 @@ final class NetherIntegrationQa {
         long dhBefore;
         Object task;
         BlockPos destination;
-        CompletableFuture<Void> preparation;
+        CompletableFuture<Void> preparation, foreground;
+        long foregroundBegan, foregroundNanos;
+        int backgroundAtForeground;
         Run(ServerPlayer player) { this.player = player; }
     }
 
     private NetherIntegrationQa() {}
 
     static void chunkyStarted(ServerLevel level) {
-        if (ENABLED && level.dimension().equals(Level.NETHER)) STARTED.incrementAndGet();
+        if (ENABLED && level.dimension().equals(DIMENSION)) STARTED.incrementAndGet();
     }
     static void chunkyFinished(ServerLevel level, RegionAheadPump.Result result) {
-        if (!ENABLED || !level.dimension().equals(Level.NETHER)) return;
+        if (!ENABLED || !level.dimension().equals(DIMENSION)) return;
         if (result.failure() != null) { failure = result.failure(); return; }
         (result.stopped() ? STOPPED : FINISHED).incrementAndGet();
         event("nether_chunky_pump", "\"stopped\":" + result.stopped() + ",\"published\":" + result.completed());
     }
     static void generated(ResourceKey<Level> dimension, ChunkPos origin) {
-        if (!ENABLED || !dimension.equals(Level.NETHER)) return;
+        if (!ENABLED || !dimension.equals(DIMENSION)) return;
         try {
             if ((boolean) Class.forName("com.seibel.distanthorizons.api.DhApi").getMethod("isDhThread").invoke(null)) {
                 DH_REGIONS.incrementAndGet();
@@ -68,16 +72,16 @@ final class NetherIntegrationQa {
         } catch (ReflectiveOperationException error) { throw new IllegalStateException("Installed DH QA API", error); }
     }
     static void unload(ServerLevel level) {
-        if (ENABLED && level.dimension().equals(Level.NETHER)) SESSIONS.remove(level.getServer());
+        if (ENABLED && level.dimension().equals(DIMENSION)) SESSIONS.remove(level.getServer());
     }
     static void tick(MinecraftServer server) {
         if (!ENABLED) return;
         try { run(server); }
-        catch (Exception error) { throw new IllegalStateException("Nether installed integration QA", error); }
+        catch (Exception error) { throw new IllegalStateException("Installed dimension integration QA", error); }
     }
 
     private static void run(MinecraftServer server) throws Exception {
-        if (failure != null) throw new IllegalStateException("Nether Chunky QA pump failed", failure);
+        if (failure != null) throw new IllegalStateException("Installed Chunky QA pump failed", failure);
         var session = SESSIONS.computeIfAbsent(server, ignored -> new Session());
         var players = server.getPlayerList().getPlayers();
         if (players.isEmpty()) {
@@ -96,34 +100,43 @@ final class NetherIntegrationQa {
         require(run.player == player, "same connection throughout scenario");
         if (run.phase == 7) return;
         require(System.nanoTime() - run.began < 900_000_000_000L, "deadline in phase " + run.phase);
-        var level = server.getLevel(Level.NETHER);
+        var level = server.getLevel(DIMENSION);
         var generator = (RetinaChunkGenerator) level.getChunkSource().getGenerator();
-        var path = server.getWorldPath(LevelResource.ROOT).resolve("retina-qa-nether-integrations.json");
+        var path = server.getWorldPath(LevelResource.ROOT).resolve("retina-qa-" + (END ? "end" : "nether") + "-integrations.json");
         switch (run.phase) {
             case 0 -> {
-                if (!TerrainQa.completed(server.overworld())) return;
+                if (!END && !TerrainQa.completed(server.overworld())) return;
                 AutomaticGenerationQa.check(server);
                 boolean reopened = Files.exists(path);
-                if (reopened) run.pass = JsonParser.parseString(Files.readString(path)).getAsJsonObject().get("pass").getAsInt() + 1;
+                var saved = reopened ? JsonParser.parseString(Files.readString(path)).getAsJsonObject() : null;
+                if (reopened) run.pass = saved.get("pass").getAsInt() + 1;
                 AutomaticGenerationQa.checkSavedEdits(server, reopened);
-                // Each connection requests a cold region, including after a full process restart.
+                if (END && reopened) {
+                    require(saved.get("dimension").getAsString().equals(DIMENSION.identifier().toString()), "saved integration dimension");
+                    require(saved.get("dh_native_regions").getAsLong() > 0 && saved.get("dh_active_at_foreground_request").getAsInt() > 0, "saved real background and foreground evidence");
+                    run.destination = new BlockPos(saved.get("destination_x").getAsInt(), 160, saved.get("destination_z").getAsInt());
+                    run.preparation = PortalRegionPreparation.prepareArea(level, run.destination, 48);
+                    run.phase = 6;
+                    return;
+                }
+                // Initial End checks and each Nether connection request a cold selection.
                 int coordinate = -7936 - run.pass * 4096;
-                // Above the roof, distant terrain is visible to DH's request selection.
+                // Above the terrain, distant chunks are visible to DH request selection.
                 run.destination = new BlockPos(coordinate, 160, coordinate);
-                command(server, "chunky start minecraft:the_nether square " + coordinate + " " + coordinate + " 192");
+                command(server, "chunky start " + DIMENSION.identifier() + " square " + coordinate + " " + coordinate + " 192");
                 run.task = task();
-                require(run.task != null, "real Chunky task started in Nether");
+                require(run.task != null, "real Chunky task started in selected dimension");
                 run.phase = 1;
             }
             case 1 -> {
                 if (STARTED.get() == run.starts || generator.metrics().snapshot().inFlight() == 0) return;
-                command(server, "chunky pause minecraft:the_nether");
+                command(server, "chunky pause " + DIMENSION.identifier());
                 event("nether_chunky_paused", "\"pass\":" + run.pass + ",\"count\":" + count(run.task));
                 run.phase = 2;
             }
             case 2 -> {
                 if (task() != null || STOPPED.get() == run.stops) return;
-                command(server, "chunky continue minecraft:the_nether");
+                command(server, "chunky continue " + DIMENSION.identifier());
                 run.task = task();
                 require(run.task != null, "real paused Chunky task resumes");
                 event("nether_chunky_resumed", "\"pass\":" + run.pass + ",\"count\":" + count(run.task));
@@ -159,16 +172,51 @@ final class NetherIntegrationQa {
                 run.phase = 5;
             }
             case 5 -> {
+                if (END && run.foreground == null) {
+                    int active = PortalBackgroundQa.active();
+                    if (active == 0) return;
+                    run.backgroundAtForeground = active;
+                    run.foregroundBegan = System.nanoTime();
+                    run.foreground = PortalRegionPreparation.prepareArea(level, run.destination.offset(4096, 0, 4096), 0);
+                }
+                if (run.foreground != null) {
+                    if (!run.foreground.isDone()) return;
+                    run.foreground.join();
+                    if (run.foregroundNanos == 0) run.foregroundNanos = System.nanoTime() - run.foregroundBegan;
+                }
                 // Observe real native work on a DH thread, not just its loaded mod or database.
                 if (DH_REGIONS.get() <= run.dhBefore || !TerrainQa.completed(level)
                         || server.getTickCount() - run.arrived < 100) return;
                 require(generator.metrics().snapshot().failures() == 0, "no hidden native failures during integrations");
                 var saved = new JsonObject();
                 saved.addProperty("pass", run.pass);
+                saved.addProperty("dimension", DIMENSION.identifier().toString());
+                saved.addProperty("destination_x", run.destination.getX());
+                saved.addProperty("destination_z", run.destination.getZ());
+                if (END) {
+                    saved.addProperty("dh_active_at_foreground_request", run.backgroundAtForeground);
+                    saved.addProperty("foreground_ms", run.foregroundNanos / 1e6);
+                }
                 saved.addProperty("chunky_chunks", count(run.task));
                 saved.addProperty("dh_native_regions", DH_REGIONS.get() - run.dhBefore);
                 Files.writeString(path, saved.toString());
                 event("nether_installed_integrations", saved.toString().substring(1, saved.toString().length() - 1));
+                position(player, server.overworld(), RETURN);
+                run.phase = 7;
+                session.completed++;
+            }
+            case 6 -> {
+                if (!run.preparation.isDone()) return;
+                run.preparation.join();
+                if (run.arrived == 0) {
+                    player.setGameMode(GameType.SPECTATOR);
+                    position(player, level, run.destination);
+                    run.arrived = server.getTickCount();
+                    return;
+                }
+                if (server.getTickCount() - run.arrived < 40) return;
+                require(generator.metrics().snapshot().failures() == 0, "integration world reopens without generation failures");
+                event("end_installed_integrations_reopen", "\"pass\":" + run.pass);
                 position(player, server.overworld(), RETURN);
                 run.phase = 7;
                 session.completed++;
@@ -182,7 +230,7 @@ final class NetherIntegrationQa {
         var tasks = (Map<?, ?>) call(chunky, "getGenerationTasks");
         for (var value : tasks.values()) {
             var world = call(call(value, "getSelection"), "world");
-            if (call(world, "getKey").toString().equals("minecraft:the_nether")) return value;
+            if (call(world, "getKey").toString().equals(DIMENSION.identifier().toString())) return value;
         }
         return null;
     }
@@ -204,6 +252,7 @@ final class NetherIntegrationQa {
         if (!condition) throw new IllegalStateException(message);
     }
     private static void event(String name, String context) {
+        if (END && name.startsWith("nether_")) name = "end_" + name.substring(7);
         Retina.LOGGER.info("QA_EVT {\"event\":\"{}\",\"status\":\"pass\",\"context\":{}}", name, "{" + context + "}");
     }
 }

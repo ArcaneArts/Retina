@@ -56,7 +56,7 @@ public final class TerrainClientQa {
         if (Boolean.getBoolean("retina.qa.end.travel") && minecraft.gui.screen() instanceof net.minecraft.client.gui.screens.WinScreen credits)
             credits.onClose(); // Normal client completion sends the respawn packet to the server.
         if (started == 0) started = System.nanoTime();
-        long deadline = Boolean.getBoolean("retina.qa.nether.integrations") ? 2_400_000_000_000L
+        long deadline = (Boolean.getBoolean("retina.qa.nether.integrations") || Boolean.getBoolean("retina.qa.end.integrations")) ? 2_400_000_000_000L
                 : Boolean.getBoolean("retina.qa.nether.structures") ? 2_400_000_000_000L
                 : Boolean.getBoolean("retina.qa.nether.progression") ? 1_200_000_000_000L
                 : Boolean.getBoolean("retina.qa.nether.lifecycle") ? 600_000_000_000L : 300_000_000_000L;
