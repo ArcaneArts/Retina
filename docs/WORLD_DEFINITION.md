@@ -8,8 +8,9 @@ datapacks, or creating a GPU device.
 Implementation is being delivered in separate cycles. The format, reader,
 Java compiler, atomic file writer, native session binding and JDK-only bridge
 and automatic Fabric/NeoForge startup integration are implemented. Normal
-server generation opens the saved definition. The standalone runner and final
-legacy tooling migration follow in subsequent cycles.
+server generation opens the saved definition. The standalone runner uses the
+same loader and generation session. Final legacy tooling migration and the
+broader frozen-dependency/feature audit remain subsequent cycles.
 
 ## Version 1 wire format
 
@@ -338,3 +339,95 @@ observations, not a release performance guarantee. Rust independently verified
 complete data/GPU/material parity for all four compiler fixtures, including the
 legacy generator with nondefault procedural parameters. The binding test and
 existing preset registry integration test also passed.
+
+## Standalone executable
+
+Build from the repository root:
+
+```sh
+cargo build --manifest-path native/Cargo.toml --release --bin retina
+./native/target/release/retina --help
+./native/target/release/retina generate \
+  --definition ./retina.dat \
+  --dimension minecraft:overworld \
+  --region-min=-4,-4 --region-max=4,4 \
+  --output ./generated-world
+```
+
+The executable is `retina.exe` on Windows. Both range endpoints are inclusive,
+using region coordinates (32x32 chunks). The example selects 81 regions. Rows
+advance in Z, then X within each row. There is no seed override: copying the
+file reproduces its exact seed-bound supported generation. A supported GPU
+compute adapter remains required; neither Minecraft, a JVM nor datapack files
+are runtime dependencies. End or other unsupported records report their saved
+reason when selected.
+
+Output paths are `region/` for the Overworld, `DIM-1/region/` for the Nether,
+`DIM1/region/` for the End, and `dimensions/<namespace>/<path>/region/` for
+other supported dimensions. Unsafe filesystem components cannot form output
+paths. End layout support does not enable the deferred End generation adapter.
+Use `--compression zlib` (default) or `--compression lz4` to select output
+compression independently of the snapshot. `RAYON_NUM_THREADS` and
+`RETINA_REGION_THREADS` control existing CPU execution pools.
+
+Progress and errors go to stderr; completed generation reports a JSON summary
+on stdout with counts, backend, seed, DataVersion and elapsed time. Exit codes
+are 0 for completion, 1 for a runtime/read/generation error, 2 for invalid
+arguments, and 130 for cancellation. Ctrl-C (and SIGTERM on Unix) finishes and
+publishes the active region before stopping; completed regions remain usable.
+GPU calls are not interrupted midway through publication.
+
+Use an empty output directory or region data belonging to this definition.
+The shared writer preserves every existing chunk record and generates missing
+slots only. It preserves complete regions byte for byte; malformed header or
+record locations fail without replacing the input. Existing chunks retain their
+original generation identity, so filling a directory from another snapshot can
+mix terrain. Stop any server using that output first. An OS advisory lock on
+`.retina-generation.lock` serializes CLI writers to the output root; the file
+can remain after exit/crash because only the actual OS lock controls ownership.
+Minecraft does not use this CLI lock. The CLI produces region data, including
+native metadata/ticks, rather than a fully initialized playable save with
+`level.dat`, spawn setup or server metadata.
+
+## Fresh-process headless proof
+
+CPU process tests exercise the real executable's help, argument failures,
+missing/malformed files, unsupported schemas, unknown dimensions and explicit
+unsupported generation records. Run them and the CLI unit tests with:
+
+```sh
+cargo test --manifest-path native/Cargo.toml --bin retina --test headless
+```
+
+For the GPU proof, first capture untouched mod regions with the startup QA
+option above, then write an orchestration JSON array such as:
+
+```json
+[
+  {"name":"fabric","definition":"/absolute/fabric/world/retina.dat","regions":"/absolute/fabric/captured"},
+  {"name":"neoforge","definition":"/absolute/neoforge/world/retina.dat","regions":"/absolute/neoforge/captured"}
+]
+```
+
+```sh
+RETINA_HEADLESS_PROOFS=/absolute/proofs.json \
+  cargo test --manifest-path native/Cargo.toml --test headless \
+  copied_definition_matches_mod_regions_in_fresh_processes -- --ignored --nocapture
+```
+
+Each child starts in a fresh directory containing only a copy of `retina.dat`.
+The harness clears its environment apart from execution thread counts, starts
+the compiled Rust executable directly, and compares every decoded NBT field in
+all 1,024 chunks of region (-2,1), for both dimensions of each mod world.
+The orchestration JSON supplies paths to the test; it is not a generation input
+to the executable. Nether output uses LZ4 while the mod captures use zlib.
+
+Executed on Metal / Apple M4 Max, the two mod-created definitions (seeds 731 and
+9007199254740993) matched all 4,096 chunks. Full-region repeat runs preserved
+bytes, partial-region runs generated one missing slot and preserved 1,023, and
+damaged output failed unchanged. An actual SIGINT during generation finished
+one complete region, left no unpublished region file and exited 130. CPU CLI
+unit/process tests and the existing native unit suite also passed. These checks
+establish Retina-to-Retina equality on this backend, not new vanilla parity or
+cross-GPU determinism. The remaining goal still includes targeted rare-feature
+coverage, frozen runtime-template binding and legacy JSON tooling migration.
