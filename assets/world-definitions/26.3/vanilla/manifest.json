@@ -11,9 +11,76 @@
     "vanilla"
   ],
   "asset": "retina-catalog.dat",
-  "compressed_bytes": 2567145,
-  "sha256": "83a580287f00f3c240926542d4e4b6f60239df04ccfebfe9f642f0fd27249619",
+  "compressed_bytes": 2706404,
+  "sha256": "c2146b791bbe07ccea51d683e684ec4cac96e865ef366257af0ae37d22e53f63",
   "variants": {
+    "bukkit-api": {
+      "generate_structures": false,
+      "bonus_chest": false,
+      "delivery_policy": "Public Bukkit API: structures and decoration roots requiring saved scheduled spring updates are disabled before world materialization",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_end",
+        "minecraft:the_nether"
+      ],
+      "limitations": {
+        "minecraft:overworld": {
+          "decoration_omissions": [
+            "CoralClawFeature",
+            "CoralTreeFeature",
+            "RootSystemFeature",
+            "simple_block:survival:minecraft:pale_moss_carpet",
+            "simple_block:survival:minecraft:tube_coral",
+            "tree_decorator:alter_ground",
+            "tree_decorator:attached_to_leaves",
+            "tree_decorator:beehive",
+            "tree_decorator:creaking_heart",
+            "tree_decorator:pale_moss",
+            "tree_decorator:place_on_ground",
+            "tree_decorator:shelf_mushroom",
+            "vegetation_patch:nested_feature:LakeFeature",
+            "vegetation_patch:nested_feature:SculkPatchFeature",
+            "bukkit-api:scheduled-spring-root:minecraft:spring_water",
+            "bukkit-api:scheduled-spring-root:minecraft:spring_lava",
+            "bukkit-api:scheduled-spring-root:minecraft:spring_lava_frozen"
+          ],
+          "geology_omissions": [],
+          "simple_current_omissions": [],
+          "structures": [],
+          "approximations": [
+            "aquifer:4x4x4-barrier-interpolation",
+            "aquifer:carver-negative-density-proxy",
+            "aquifer:gpu-positional-hash",
+            "density:old_blended_noise",
+            "material:OreVeinRule",
+            "material:preliminary-surface-from-final-height"
+          ]
+        },
+        "minecraft:the_end": {
+          "decoration_omissions": [],
+          "geology_omissions": [],
+          "simple_current_omissions": [],
+          "structures": [],
+          "approximations": []
+        },
+        "minecraft:the_nether": {
+          "decoration_omissions": [
+            "bukkit-api:scheduled-spring-root:minecraft:spring_delta",
+            "bukkit-api:scheduled-spring-root:minecraft:spring_open",
+            "bukkit-api:scheduled-spring-root:minecraft:spring_closed",
+            "bukkit-api:scheduled-spring-root:minecraft:spring_closed_double",
+            "bukkit-api:scheduled-spring-root:minecraft:spring_lava"
+          ],
+          "geology_omissions": [],
+          "simple_current_omissions": [],
+          "structures": [],
+          "approximations": [
+            "density:old_blended_noise",
+            "material:preliminary-surface-from-final-height"
+          ]
+        }
+      }
+    },
     "normal": {
       "generate_structures": true,
       "bonus_chest": false,

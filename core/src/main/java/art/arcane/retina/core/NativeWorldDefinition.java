@@ -28,6 +28,8 @@ public final class NativeWorldDefinition implements AutoCloseable {
         static final MethodHandle BIND_EXECUTION = call("retina_bind_world_dimension_execution", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, ADDRESS));
         static final MethodHandle REQUEST = call("retina_world_dimension_request", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, ADDRESS));
         static final MethodHandle CHUNK = call("retina_world_dimension_chunk", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, ADDRESS, ADDRESS));
+        static final MethodHandle BIOMES = call("retina_sample_biomes_u16", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG));
+        static final MethodHandle POINTS = call("retina_query_points", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS));
         static final MethodHandle PROFILE = call("retina_world_definition_profile_json", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
         static final MethodHandle CLOSE = call("retina_close_world_definition", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
         static final MethodHandle FREE = call("retina_free_bytes", FunctionDescriptor.ofVoid(ADDRESS, JAVA_LONG));
@@ -109,6 +111,43 @@ public final class NativeWorldDefinition implements AutoCloseable {
             var input=arena.allocateFrom(JAVA_BYTE,bytes);
             return readBuffer((pointer,length) -> (int) Calls.CHUNK.invokeExact(opened,input,(long)bytes.length,x,z,pointer,length));
         } catch (Throwable error) { throw failure(error); }
+    }
+
+    /** Saved local biome IDs in x,z,y quart order, without assembling terrain.
+     * The host must drain admitted calls before closing its world owner. */
+    public short[] biomes(String key, int x, int z) {
+        TerrainRequest request = request(key, x, z);
+        try (var arena = Arena.ofConfined()) {
+            var encoded = encode(arena, request);
+            long count = request.height() * 4L;
+            var output = arena.allocate(count * Short.BYTES, Short.BYTES);
+            check((int) Calls.BIOMES.invokeExact(encoded, output, count));
+            return output.toArray(JAVA_SHORT);
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    /** Exact XYZ biome probes, quart-normalized by the engine, without building terrain.
+     * The host must drain admitted calls before closing its world owner. */
+    public int[] biomePoints(String key, int[] xyz) {
+        if (xyz.length % 3 != 0 || xyz.length / 3 > 1024) throw new IllegalArgumentException("Invalid biome point batch");
+        if (xyz.length == 0) return new int[0];
+        TerrainRequest request = request(key, 0, 0);
+        try (var arena = Arena.ofConfined()) {
+            long count = xyz.length / 3;
+            var output = arena.allocate(count * Integer.BYTES, Integer.BYTES);
+            check((int) Calls.POINTS.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_INT, xyz), count, 0, output));
+            return output.toArray(JAVA_INT);
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    private static MemorySegment encode(Arena arena, TerrainRequest request) {
+        var encoded = arena.allocate(40, Long.BYTES);
+        encoded.set(JAVA_LONG, 0, request.seed());
+        encoded.set(JAVA_INT, 8, request.chunkX()); encoded.set(JAVA_INT, 12, request.chunkZ());
+        encoded.set(JAVA_INT, 16, request.minY()); encoded.set(JAVA_INT, 20, request.height());
+        encoded.set(JAVA_FLOAT, 24, request.baseHeight()); encoded.set(JAVA_FLOAT, 28, request.amplitude());
+        encoded.set(JAVA_FLOAT, 32, request.frequency()); encoded.set(JAVA_INT, 36, request.profile());
+        return encoded;
     }
 
     /** Explicit QA/diagnostic output, decoded from the same loaded file without rereading it. */

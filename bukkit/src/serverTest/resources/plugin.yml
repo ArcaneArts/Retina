@@ -1,0 +1,12 @@
+name: RetinaProbe
+version: '1'
+main: art.arcane.retina.bukkit.qa.ProbePlugin
+api-version: '${minecraft_version}'
+depend: [Retina]
+commands:
+  retinaprobe:
+    description: Write an API snapshot of test chunks for independent native comparison.
+    permission: retina.probe
+permissions:
+  retina.probe:
+    default: op

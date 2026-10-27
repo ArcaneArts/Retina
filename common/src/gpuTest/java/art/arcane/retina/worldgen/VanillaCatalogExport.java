@@ -54,6 +54,8 @@ public final class VanillaCatalogExport {
                 var entry = new JsonObject();
                 entry.addProperty("generate_structures", template.getBooleanOr("generate_structures", false));
                 entry.addProperty("bonus_chest", false);
+                if (name.equals("bukkit-api")) entry.addProperty("delivery_policy",
+                        "Public Bukkit API: structures and decoration roots requiring saved scheduled spring updates are disabled before world materialization");
                 var dimensions = new JsonArray(); new TreeSet<>(template.getCompoundOrEmpty("dimensions").keySet()).forEach(dimensions::add);
                 entry.add("dimensions", dimensions);
                 var limitations = new JsonObject();
