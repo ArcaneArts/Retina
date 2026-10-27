@@ -142,7 +142,7 @@ cargo build --manifest-path native/Cargo.toml --release --locked \
   --target-dir build/native-target --features ore-raster-benchmark \
   --example ore_raster_benchmark
 build/native-target/release/examples/ore_raster_benchmark \
-  build/goal-baseline/vanilla.json 20 123456789 0 0 compact
+  build/benchmark-definition/overworld/retina.dat minecraft:overworld 20 0 0 compact
 
 ./gradlew build gpuTest regionTest geologyTest featureTest previewTest structureTest
 python3 scripts/native-region-benchmark.py \

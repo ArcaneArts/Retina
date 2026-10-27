@@ -523,7 +523,7 @@ reference counts and saved adjustment bounds.
 
 The registry compiler and benchmark fixtures share `WorldDefinitionAssembler`
 for structural profiles, shared type dictionaries, palettes and world headers.
-The pipeline and retained-column tools now open actual files through
+The pipeline, retained-column and ore-planning/raster tools open actual files through
 `WorldDefinition::read` and `WorldSession`; their request seed and parameters
 come from the selected dimension. They accept no seed override. Other legacy
 benchmark and integration fixtures remain scheduled for migration.
@@ -548,6 +548,8 @@ The native tools can also consume a file copied from a real mod world:
 ```sh
 gpu_pipeline_benchmark ./retina.dat minecraft:overworld 1 2
 column_cache_fixture ./retina.dat minecraft:the_nether ./columns.bin
+ore_plan_benchmark ./retina.dat minecraft:overworld 0 0 2 3
+ore_raster_benchmark ./retina.dat minecraft:overworld 3 0 0 bits
 ```
 
 Pipeline depth and sample counts remain execution inputs. Fixture export

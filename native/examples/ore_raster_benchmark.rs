@@ -1,5 +1,5 @@
 //! End-to-end compact GPU ore raster experiment, NOT a production ore layout.
-//! ore_raster_benchmark <profile.json> [iterations] [seed] [chunk_x] [chunk_z] [bits|ordered|compact]
+//! ore_raster_benchmark <retina.dat> <dimension> [iterations] [chunk_x] [chunk_z] [bits|ordered|compact]
 //! Includes descriptor preparation, upload, fence/readback, decode and merging.
 //! Production replacement/exposure rules remain on the CPU in both proposals.
 use retina_worldgen::{
@@ -7,9 +7,11 @@ use retina_worldgen::{
     decoration::{self, Field},
     geology::{self, OrePlacement, raster_benchmark::Batch},
     profile::WorldProfile,
+    region::codec::Compression,
+    world_definition::{WorldDefinition, runtime::WorldSession},
 };
 use std::{
-    sync::mpsc,
+    sync::{Arc, mpsc},
     time::{Duration, Instant},
 };
 
@@ -413,7 +415,7 @@ fn compact_benchmark(
     println!(
         "{}",
         serde_json::json!({"backend":engine.backend(),"format":"direct_union_masks",
-        "seed":request.seed,"chunk_x":request.chunk_x,"chunk_z":request.chunk_z,
+        "seed":request.seed as i64,"chunk_x":request.chunk_x,"chunk_z":request.chunk_z,
         "workers":16,"warmups":5,"iterations":iterations,"identical_block_chunks":1024*(iterations+5),
         "veins":batch.descriptors.len(),"spheres":batch.spheres.len(),
         "upload_bytes":batch.descriptors.len()*48+batch.spheres.len()*16,"readback_bytes":batch.words*4,
@@ -427,16 +429,17 @@ fn compact_benchmark(
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let source = std::fs::read(args.next().ok_or("profile path required")?)?;
+    let source = Arc::new(WorldDefinition::read(
+        args.next().ok_or("definition path required")?,
+    )?);
+    let key = args.next().ok_or("dimension required")?;
     let iterations: usize = args.next().map(|s| s.parse()).transpose()?.unwrap_or(7);
-    let seed: u64 = args
-        .next()
-        .map(|s| s.parse())
-        .transpose()?
-        .unwrap_or(123456789);
     let chunk_x = args.next().map(|s| s.parse()).transpose()?.unwrap_or(0);
     let chunk_z = args.next().map(|s| s.parse()).transpose()?.unwrap_or(0);
     let format = args.next();
+    if args.next().is_some() {
+        return Err("unexpected argument; seed comes from retina.dat".into());
+    }
     let ordered = match format.as_deref() {
         None | Some("bits") => false,
         Some("ordered") => true,
@@ -446,20 +449,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if iterations == 0 {
         return Err("iterations must be positive".into());
     }
-    let engine = TerrainEngine::new()?;
-    let reserved = engine.register_profile(&source)?;
-    let profile = engine.profile(reserved)?.ok_or("missing profile")?;
-    let request = ChunkRequest {
-        seed,
-        chunk_x,
-        chunk_z,
-        min_y: -64,
-        height: 384,
-        base_height: 64.,
-        amplitude: 48.,
-        frequency: 0.008,
-        reserved,
-    };
+    let engine = Arc::new(TerrainEngine::new()?);
+    let world = WorldSession::bind(engine.clone(), source.clone(), Compression::Zlib)?;
+    let request = world.dimension(&key)?.request(chunk_x, chunk_z)?;
+    let profile = engine
+        .profile(request.reserved)?
+        .ok_or("dimension has no registry ore program")?;
     let (field, mask) = engine.terrain_field(request, 32)?;
     let workers = rayon::ThreadPoolBuilder::new().num_threads(16).build()?;
     if format.as_deref() == Some("compact") {
@@ -586,7 +581,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "{}",
         serde_json::json!({
-            "backend":gpu.backend,"seed":seed,"chunk_x":chunk_x,"chunk_z":chunk_z,"workers":16,"warmups":3,"iterations":iterations,
+            "backend":gpu.backend,"dimension":key,"seed":source.seed(),"chunk_x":chunk_x,"chunk_z":chunk_z,"workers":16,"warmups":3,"iterations":iterations,
             "veins":batch.descriptors.len(),"spheres":batch.spheres.len(),"upload_bytes":batch.descriptors.len()*48+batch.spheres.len()*16,"readback_bytes":batch.words*4,
             "cpu_placements":cpu_geometry.0,"gpu_placements":gpu_geometry.0,"cpu_geometry_signature":format!("{:016x}",cpu_geometry.1),"gpu_geometry_signature":format!("{:016x}",gpu_geometry.1),
             "format":if ordered {"first_sphere_bytes"}else{"union_bits"},"raster_differing_bits":differing_bits,"raster_differing_voxels":differing_voxels,"position_differences":position_differences,"exposure_random_parity":cpu_order==gpu_order,

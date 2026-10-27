@@ -178,8 +178,8 @@ Reproduce each coordinate sequentially with both formats:
 cargo build --manifest-path native/Cargo.toml --release --locked \
   --target-dir build/native-target --features ore-raster-benchmark \
   --example ore_raster_benchmark
-build/native-target/release/examples/ore_raster_benchmark build/structure-profile.json 9 123456789 0 0 bits
-build/native-target/release/examples/ore_raster_benchmark build/structure-profile.json 9 123456789 0 0 ordered
+build/native-target/release/examples/ore_raster_benchmark build/benchmark-definition/overworld/retina.dat minecraft:overworld 9 0 0 bits
+build/native-target/release/examples/ore_raster_benchmark build/benchmark-definition/overworld/retina.dat minecraft:overworld 9 0 0 ordered
 ```
 
 Local final results are
