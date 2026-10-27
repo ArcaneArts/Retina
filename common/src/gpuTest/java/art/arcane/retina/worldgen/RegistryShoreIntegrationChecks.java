@@ -10,7 +10,7 @@ import java.util.*;
 /** Analytic fixtures retain registered material programs; CPU noise is never sampled. */
 final class RegistryShoreIntegrationChecks {
     static void checkCoasts(BiomeTerrainProfile profile, List<Pair<Climate.ParameterPoint, Holder<Biome>>> parameters) {
-        var original = JsonParser.parseString(profile.json()).getAsJsonObject();
+        var original = JsonParser.parseString(profile.diagnosticJson()).getAsJsonObject();
         int targets = 0;
         for (String shore : List.of("minecraft:beach", "minecraft:snowy_beach", "minecraft:stony_shore")) {
             int index = biome(profile, shore);
@@ -32,24 +32,26 @@ final class RegistryShoreIntegrationChecks {
             for (var target : exported) {
                 var data = flat(original, profile.seaLevel());
                 constantClimate(data, target);
-                int id = NativeTerrain.instance().registerProfile(data.toString());
-                var columns = NativeTerrain.instance().sampleColumns(request(id, 0, 0));
-                if (columns.biome(0) != index) continue; // Adjacent interval endpoints can tie.
-                for (int c = 0; c < 256; c++) {
-                    require(columns.biome(c) == index, "registered coastal biome selected on GPU");
-                    var top = profile.materials()[columns.materials()[c] & 65535];
-                    require(shore.equals("minecraft:stony_shore") ? top.is(Blocks.STONE) || top.is(Blocks.GRAVEL) : top.is(Blocks.SAND),
-                            "registered shore surface on GPU: " + shore + " / " + top);
+                try(var id=RegistryDefinitionFixture.create(data,123456789L)) {
+                    var columns = NativeTerrain.instance().sampleColumns(request(id, 0, 0));
+                    if (columns.biome(0) != index) continue; // Adjacent interval endpoints can tie.
+                    for (int c = 0; c < 256; c++) {
+                        require(columns.biome(c) == index, "registered coastal biome selected on GPU");
+                        var top = profile.materials()[columns.materials()[c] & 65535];
+                        require(shore.equals("minecraft:stony_shore") ? top.is(Blocks.STONE) || top.is(Blocks.GRAVEL) : top.is(Blocks.SAND),
+                                "registered shore surface on GPU: " + shore + " / " + top);
+                    }
+                    // A pack moving this biome's climate intervals must change actual GPU selection.
+                    for (var t : data.getAsJsonArray("climate_targets")) if (t.getAsJsonObject().get("biome").getAsInt() == index) {
+                        t.getAsJsonObject().getAsJsonArray("min").set(2, new JsonPrimitive(2));
+                        t.getAsJsonObject().getAsJsonArray("max").set(2, new JsonPrimitive(3));
+                    }
+                    try(var moved=RegistryDefinitionFixture.create(data,123456789L)) {
+                        require(NativeTerrain.instance().sampleColumns(request(moved, 0, 0)).biome(0) != index,
+                                "changed registered coast interval affects GPU output");
+                        selected = true; break;
+                    }
                 }
-                // A pack moving this biome's climate intervals must change actual GPU selection.
-                for (var t : data.getAsJsonArray("climate_targets")) if (t.getAsJsonObject().get("biome").getAsInt() == index) {
-                    t.getAsJsonObject().getAsJsonArray("min").set(2, new JsonPrimitive(2));
-                    t.getAsJsonObject().getAsJsonArray("max").set(2, new JsonPrimitive(3));
-                }
-                int moved = NativeTerrain.instance().registerProfile(data.toString());
-                require(NativeTerrain.instance().sampleColumns(request(moved, 0, 0)).biome(0) != index,
-                        "changed registered coast interval affects GPU output");
-                selected = true; break;
             }
             require(selected, "coastal biome is reachable: " + shore);
             require((original.getAsJsonArray("biomes").get(index).getAsJsonObject().get("flags").getAsInt() & 64) != 0,
@@ -72,8 +74,10 @@ final class RegistryShoreIntegrationChecks {
             if (candidate.get("biome").getAsInt() != beach) continue;
             var probe = flat(original, profile.seaLevel()); constantClimate(probe, candidate);
             probe.addProperty("program_execution", "interpreter");
-            if (NativeTerrain.instance().sampleColumns(request(NativeTerrain.instance().registerProfile(probe.toString()), 0, 0)).biome(0) == beach) {
-                target = candidate; break;
+            try(var saved=RegistryDefinitionFixture.create(probe,123456789L)) {
+                if(NativeTerrain.instance().sampleColumns(saved.request(0,0)).biome(0)==beach) {
+                    target=candidate;break;
+                }
             }
         }
         require(target != null, "registered warm beach fixture is reachable");
@@ -95,30 +99,32 @@ final class RegistryShoreIntegrationChecks {
             nodes.add(node(5, 1, 2, 0, 0));
             density.add("nodes", nodes); density.add("roots", JsonParser.parseString("[3]"));
             registry.getAsJsonArray("programs").set(1, density);
-            int id = NativeTerrain.instance().registerProfile(data.toString());
-            for (int z : new int[]{-33,-32,-1,0,31,32}) {
-                var shore = NativeTerrain.instance().sampleColumns(request(id, 0, z));
-                for (int row = 0; row < 16; row++) {
-                    int column = row*16+3;
-                    require(shore.biome(column) == beach, "GPU aligns the registered shore with real water despite mismatched climate: "+inlandClimate);
-                    require(profile.materials()[shore.materials()[column]&65535].is(Blocks.SAND), "aligned beach uses registered sand rules");
+            try(var id=RegistryDefinitionFixture.create(data,123456789L)) {
+                for (int z : new int[]{-33,-32,-1,0,31,32}) {
+                    var shore = NativeTerrain.instance().sampleColumns(request(id, 0, z));
+                    for (int row = 0; row < 16; row++) {
+                        int column = row*16+3;
+                        require(shore.biome(column) == beach, "GPU aligns the registered shore with real water despite mismatched climate: "+inlandClimate);
+                        require(profile.materials()[shore.materials()[column]&65535].is(Blocks.SAND), "aligned beach uses registered sand rules");
+                    }
+                    for (int cx : new int[]{2,3}) {
+                        var inland = NativeTerrain.instance().sampleColumns(request(id, cx, z));
+                        for (int c=0;c<256;c++) require((original.getAsJsonArray("biomes").get(inland.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,
+                                "disconnected inland slopes cannot select a coastal biome");
+                    }
                 }
-                for (int cx : new int[]{2,3}) {
-                    var inland = NativeTerrain.instance().sampleColumns(request(id, cx, z));
-                    for (int c=0;c<256;c++) require((original.getAsJsonArray("biomes").get(inland.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,
-                            "disconnected inland slopes cannot select a coastal biome");
+                if (inlandClimate) try {java.nio.file.Files.writeString(java.nio.file.Path.of("build/shore-alignment-profile.json"), data.toString());}
+                    catch (java.io.IOException error) {throw new java.io.UncheckedIOException(error);}
+                if (!inlandClimate) for(int flatHeight:new int[]{profile.seaLevel()-1,profile.seaLevel()+1}) {
+                    var plateau=data.deepCopy();
+                    plateau.getAsJsonObject("registry_program").getAsJsonArray("programs").get(1).getAsJsonObject()
+                            .getAsJsonArray("nodes").set(1,node(0,0,0,0,flatHeight-1));
+                    try(var flatId=RegistryDefinitionFixture.create(plateau,123456789L)) {
+                        var flatColumns=NativeTerrain.instance().sampleColumns(request(flatId,-32,-32));
+                        for(int c=0;c<256;c++)require((original.getAsJsonArray("biomes").get(flatColumns.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,
+                                "low dry land and open shallow water cannot manufacture a physical shoreline");
+                    }
                 }
-            }
-            if (inlandClimate) try {java.nio.file.Files.writeString(java.nio.file.Path.of("build/shore-alignment-profile.json"), data.toString());}
-                catch (java.io.IOException error) {throw new java.io.UncheckedIOException(error);}
-            if (!inlandClimate) for(int flatHeight:new int[]{profile.seaLevel()-1,profile.seaLevel()+1}) {
-                var plateau=data.deepCopy();
-                plateau.getAsJsonObject("registry_program").getAsJsonArray("programs").get(1).getAsJsonObject()
-                        .getAsJsonArray("nodes").set(1,node(0,0,0,0,flatHeight-1));
-                int flatId=NativeTerrain.instance().registerProfile(plateau.toString());
-                var flatColumns=NativeTerrain.instance().sampleColumns(request(flatId,-32,-32));
-                for(int c=0;c<256;c++)require((original.getAsJsonArray("biomes").get(flatColumns.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,
-                        "low dry land and open shallow water cannot manufacture a physical shoreline");
             }
         }
         // An explicit datapack with no shore targets receives no manufactured shore.
@@ -127,12 +133,13 @@ final class RegistryShoreIntegrationChecks {
                 (noShore.getAsJsonArray("biomes").get(t.getAsJsonObject().get("biome").getAsInt()).getAsJsonObject().get("flags").getAsInt()&64)!=0);
         require(noShore.getAsJsonArray("climate_targets").asList().stream().noneMatch(t ->
                 (noShore.getAsJsonArray("biomes").get(t.getAsJsonObject().get("biome").getAsInt()).getAsJsonObject().get("flags").getAsInt()&64)!=0), "no-shore fixture follows the source");
-        int without = NativeTerrain.instance().registerProfile(noShore.toString());
-        for (int x=-8;x<8;x++) {
-            var columns=NativeTerrain.instance().sampleColumns(request(without,x,-1));
-            for(int c=0;c<256;c++)require((original.getAsJsonArray("biomes").get(columns.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,"absent coastal placements stay absent");
+        try(var without=RegistryDefinitionFixture.create(noShore,123456789L)) {
+            for (int x=-8;x<8;x++) {
+                var columns=NativeTerrain.instance().sampleColumns(request(without,x,-1));
+                for(int c=0;c<256;c++)require((original.getAsJsonArray("biomes").get(columns.biome(c)).getAsJsonObject().get("flags").getAsInt()&64)==0,"absent coastal placements stay absent");
+            }
+            System.out.println("QA_EVT {\"event\":\"gpu_physical_shore_alignment\",\"status\":\"pass\",\"context\":{\"climate_cases\":2,\"negative_boundaries\":true}}");
         }
-        System.out.println("QA_EVT {\"event\":\"gpu_physical_shore_alignment\",\"status\":\"pass\",\"context\":{\"climate_cases\":2,\"negative_boundaries\":true}}");
     }
 
     /** Shallow slopes must not turn a whole lowland shelf into a beach. */
@@ -173,30 +180,31 @@ final class RegistryShoreIntegrationChecks {
                     nodes.add(vertical); nodes.add(node(5, 4, 5, 0, 0));
                     density.add("nodes", nodes); density.add("roots", JsonParser.parseString("[6]"));
                     registry.getAsJsonArray("programs").set(1, density);
-                    int id = NativeTerrain.instance().registerProfile(data.toString());
-                    long nearby = 0, selectedNearby = 0, selectedDry = 0;
-                    for (int cz = -34; cz < -30; cz++) for (int cx = -34; cx < -30; cx++) {
-                        var columns = NativeTerrain.instance().sampleColumns(request(id, cx, cz));
-                        for (int c = 0; c < 256; c++) {
-                            int x = cx * 16 + (c & 15), z = cz * 16 + (c >> 4);
-                            double distance = x * (double) direction[0] + z * (double) direction[1] - crossing;
-                            boolean shore = (original.getAsJsonArray("biomes").get(columns.biome(c)).getAsJsonObject().get("flags").getAsInt() & 64) != 0;
-                            if (shore) {
-                                require(Math.abs(distance) <= 6.05, "registered beach stays beside its physical waterline: "
-                                        + execution + " slope=" + slope + " at " + x + "," + z + " distance=" + distance);
-                                require(columns.heights()[c] <= profile.seaLevel() + 3, "shore treatment cannot climb high banks");
-                                beachColumns++;
-                                if (distance > 0) { selectedDry++; maxDryDistance = Math.max(maxDryDistance, distance); }
+                    try(var id=RegistryDefinitionFixture.create(data,123456789L)) {
+                        long nearby = 0, selectedNearby = 0, selectedDry = 0;
+                        for (int cz = -34; cz < -30; cz++) for (int cx = -34; cx < -30; cx++) {
+                            var columns = NativeTerrain.instance().sampleColumns(request(id, cx, cz));
+                            for (int c = 0; c < 256; c++) {
+                                int x = cx * 16 + (c & 15), z = cz * 16 + (c >> 4);
+                                double distance = x * (double) direction[0] + z * (double) direction[1] - crossing;
+                                boolean shore = (original.getAsJsonArray("biomes").get(columns.biome(c)).getAsJsonObject().get("flags").getAsInt() & 64) != 0;
+                                if (shore) {
+                                    require(Math.abs(distance) <= 6.05, "registered beach stays beside its physical waterline: "
+                                            + execution + " slope=" + slope + " at " + x + "," + z + " distance=" + distance);
+                                    require(columns.heights()[c] <= profile.seaLevel() + 3, "shore treatment cannot climb high banks");
+                                    beachColumns++;
+                                    if (distance > 0) { selectedDry++; maxDryDistance = Math.max(maxDryDistance, distance); }
+                                }
+                                if (distance >= .1 && distance <= 2.5) {
+                                    nearby++; if (shore) selectedNearby++;
+                                }
+                                checked++;
                             }
-                            if (distance >= .1 && distance <= 2.5) {
-                                nearby++; if (shore) selectedNearby++;
-                            }
-                            checked++;
                         }
+                        require(selectedDry > 0 && nearby > 0 && nearby == selectedNearby,
+                                "narrowing the shore retains its registered beach at the waterline");
+                        nearDryColumns += nearby;
                     }
-                    require(selectedDry > 0 && nearby > 0 && nearby == selectedNearby,
-                            "narrowing the shore retains its registered beach at the waterline");
-                    nearDryColumns += nearby;
                 }
         System.out.println("QA_EVT {\"event\":\"gpu_narrow_shore_width\",\"status\":\"pass\",\"context\":{\"columns\":"
                 + checked + ",\"shore_columns\":" + beachColumns + ",\"near_dry_columns\":" + nearDryColumns
@@ -242,33 +250,34 @@ final class RegistryShoreIntegrationChecks {
                 boolean coast = (data.getAsJsonArray("biomes").get(b).getAsJsonObject().get("flags").getAsInt() & 64) != 0;
                 programs.set(3+b, constant((coast ? sand : grass)+1));
             }
-            int id = NativeTerrain.instance().registerProfile(data.toString());
-            for (int[] pos : new int[][]{{0,0},{1,0},{0,1},{1,-1}}) {
-                int cx = direction > 0 ? pos[0] : -pos[0]-1;
-                int cz = direction > 0 ? pos[1] : -pos[1]-1;
-                var request = request(id, cx, cz);
-                var selected = NativeTerrain.instance().sampleColumns(request);
-                try (var chunk = NativeTerrain.instance().generate(request)) {
-                    for (int c = 0; c < 256; c++) {
-                        int expected = selected.materials()[c] & 65535;
-                        int top = selected.heights()[c]-1;
-                        for (int y = top; y > top-4; y--) {
-                            int actual = Short.toUnsignedInt(chunk.blocks().getAtIndex(java.lang.foreign.ValueLayout.JAVA_SHORT, (y+64)*256L+c));
-                            require(actual == expected, "surface uses its own GPU column biome, not a neighboring quart: "
-                                    +execution+" phase="+phase+" at "+(cx*16+(c&15))+","+y+","+(cz*16+(c>>4))
-                                    +" expected="+profile.materials()[expected]+" actual="+profile.materials()[actual]);
-                            checked++;
+            try(var id=RegistryDefinitionFixture.create(data,123456789L)) {
+                for (int[] pos : new int[][]{{0,0},{1,0},{0,1},{1,-1}}) {
+                    int cx = direction > 0 ? pos[0] : -pos[0]-1;
+                    int cz = direction > 0 ? pos[1] : -pos[1]-1;
+                    var request = request(id, cx, cz);
+                    var selected = NativeTerrain.instance().sampleColumns(request);
+                    try (var chunk = NativeTerrain.instance().generate(request)) {
+                        for (int c = 0; c < 256; c++) {
+                            int expected = selected.materials()[c] & 65535;
+                            int top = selected.heights()[c]-1;
+                            for (int y = top; y > top-4; y--) {
+                                int actual = Short.toUnsignedInt(chunk.blocks().getAtIndex(java.lang.foreign.ValueLayout.JAVA_SHORT, (y+64)*256L+c));
+                                require(actual == expected, "surface uses its own GPU column biome, not a neighboring quart: "
+                                        +execution+" phase="+phase+" at "+(cx*16+(c&15))+","+y+","+(cz*16+(c>>4))
+                                        +" expected="+profile.materials()[expected]+" actual="+profile.materials()[actual]);
+                                checked++;
+                            }
+                        }
+                        for (int z0 = 0; z0 < 16; z0 += 4) for (int x0 = 0; x0 < 16; x0 += 4) {
+                            int first = selected.biome(z0*16+x0);
+                            boolean mixed = false;
+                            for (int z1=0;z1<4;z1++) for (int x1=0;x1<4;x1++) mixed |= selected.biome((z0+z1)*16+x0+x1) != first;
+                            if (mixed) mixedQuarts++;
                         }
                     }
-                    for (int z0 = 0; z0 < 16; z0 += 4) for (int x0 = 0; x0 < 16; x0 += 4) {
-                        int first = selected.biome(z0*16+x0);
-                        boolean mixed = false;
-                        for (int z1=0;z1<4;z1++) for (int x1=0;x1<4;x1++) mixed |= selected.biome((z0+z1)*16+x0+x1) != first;
-                        if (mixed) mixedQuarts++;
-                    }
                 }
+                if (execution.equals("specialized") && phase == 0) checkShoreRegion(profile, id);
             }
-            if (execution.equals("specialized") && phase == 0) checkShoreRegion(profile, id);
         }
         require(mixedQuarts > 0, "diagonal coast crosses quart boundaries in the fixture");
         System.out.println("QA_EVT {\"event\":\"gpu_shore_material_resolution\",\"status\":\"pass\",\"context\":{\"surface_voxels\":"+checked+",\"mixed_quarts\":"+mixedQuarts+"}}");
@@ -279,7 +288,7 @@ final class RegistryShoreIntegrationChecks {
         result.add("nodes",nodes); result.add("roots",JsonParser.parseString("[0]")); return result;
     }
 
-    private static void checkShoreRegion(BiomeTerrainProfile profile, int id) {
+    private static void checkShoreRegion(BiomeTerrainProfile profile, DefinitionFixture id) {
         var terrain = NativeTerrain.instance();
         var positions = List.of(new net.minecraft.world.level.ChunkPos(-1,0),new net.minecraft.world.level.ChunkPos(-1,1),
                 new net.minecraft.world.level.ChunkPos(-2,2),new net.minecraft.world.level.ChunkPos(-8,14),
@@ -294,7 +303,7 @@ final class RegistryShoreIntegrationChecks {
         try {
             directory = java.nio.file.Files.createTempDirectory("retina-shore-resolution-");
             var report = terrain.generateRegion(request(id,-32,0),directory.resolve("r.-1.0.mca"),
-                    net.minecraft.SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:beach");
+                    id.dataVersion(),"minecraft:beach");
             require(report.generated() == 1024,"all shoreline MCA slots generated");
             var codec = net.minecraft.world.level.chunk.PalettedContainer.codecRW(net.minecraft.world.level.block.state.BlockState.CODEC,
                     net.minecraft.world.level.chunk.Strategy.createForBlockStates(net.minecraft.world.level.block.Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
@@ -322,7 +331,7 @@ final class RegistryShoreIntegrationChecks {
 
     static void checkWaterCondition(BiomeTerrainProfile profile) {
         int grass = material(profile, Blocks.GRASS_BLOCK), dirt = material(profile, Blocks.DIRT);
-        var data = single(JsonParser.parseString(profile.json()).getAsJsonObject(), 0);
+        var data = single(JsonParser.parseString(profile.diagnosticJson()).getAsJsonObject(), 0);
         data = flat(data, profile.seaLevel() + 1);
         // On a dry column, vanilla WaterCondition returns true even below sea level.
         // The filler query is three blocks down and must not invent an ocean here.
@@ -332,18 +341,20 @@ final class RegistryShoreIntegrationChecks {
         nodes.add(node(40, 1, 2, 0, 0)); nodes.add(node(41, 4, 3, 0, 0));
         program.add("nodes", nodes); program.add("roots", JsonParser.parseString("[5]"));
         data.getAsJsonObject("registry_program").getAsJsonArray("programs").set(3, program);
-        int dry = NativeTerrain.instance().registerProfile(data.toString());
-        var dryColumns = NativeTerrain.instance().sampleColumns(request(dry, -1, -1));
-        for (int p : dryColumns.materials()) require((p >>> 16) == grass, "dry filler does not fail the water predicate");
-        data = flat(data, profile.seaLevel() - 1);
-        int wet = NativeTerrain.instance().registerProfile(data.toString());
-        for (int p : NativeTerrain.instance().sampleColumns(request(wet, -1, -1)).materials())
-            require((p & 65535) == dirt, "submerged query still uses its registered water condition");
-        System.out.println("QA_EVT {\"event\":\"gpu_surface_water_condition\",\"status\":\"pass\"}");
+        try(var dry=RegistryDefinitionFixture.create(data,123456789L)) {
+            var dryColumns = NativeTerrain.instance().sampleColumns(request(dry, -1, -1));
+            for (int p : dryColumns.materials()) require((p >>> 16) == grass, "dry filler does not fail the water predicate");
+            data = flat(data, profile.seaLevel() - 1);
+            try(var wet=RegistryDefinitionFixture.create(data,123456789L)) {
+                for (int p : NativeTerrain.instance().sampleColumns(request(wet, -1, -1)).materials())
+                    require((p & 65535) == dirt, "submerged query still uses its registered water condition");
+                System.out.println("QA_EVT {\"event\":\"gpu_surface_water_condition\",\"status\":\"pass\"}");
+            }
+        }
     }
 
     static void checkSediments(BiomeTerrainProfile profile, boolean terralith) {
-        var original = JsonParser.parseString(profile.json()).getAsJsonObject();
+        var original = JsonParser.parseString(profile.diagnosticJson()).getAsJsonObject();
         var registry = original.getAsJsonObject("registry_program");
         var exported = new HashSet<String>();
         for (var id : registry.getAsJsonArray("shore_features")) exported.add(id.getAsString());
@@ -387,33 +398,38 @@ final class RegistryShoreIntegrationChecks {
                 int bedrock = material(profile, Blocks.BEDROCK);
                 protectedSoil.getAsJsonObject("registry_program").getAsJsonArray("programs").get(3).getAsJsonObject()
                         .getAsJsonArray("nodes").set(baseRoot, node(0, 0, 0, 0, bedrock + 1));
-                int protectedId = NativeTerrain.instance().registerProfile(flat(protectedSoil, 61).toString());
-                for (int p : NativeTerrain.instance().sampleColumns(request(protectedId, -17, -7)).materials())
-                    require((p & 65535) == bedrock && (p >>> 16) == bedrock, "sediment target predicates protect non-soil blocks");
-                var zeroNoise = data.deepCopy(); boolean noiseCount = false;
-                for (var v : zeroNoise.getAsJsonObject("registry_program").getAsJsonArray("programs").get(3).getAsJsonObject().getAsJsonArray("nodes"))
-                    if (v.getAsJsonObject().get("op").getAsInt() == 52) {
-                        v.getAsJsonObject().getAsJsonArray("p").set(2, new JsonPrimitive(0)); noiseCount = true;
-                    }
-                if (noiseCount) {
-                    int zeroId = NativeTerrain.instance().registerProfile(flat(zeroNoise, 59).toString());
-                    int baseId = NativeTerrain.instance().registerProfile(flat(baseline, 59).toString());
-                    require(Arrays.equals(NativeTerrain.instance().sampleColumns(request(zeroId, -17, -7)).materials(),
-                            NativeTerrain.instance().sampleColumns(request(baseId, -17, -7)).materials()), "zero noise-based count disables actual GPU coverage");
-                }
-                for (int height : new int[]{59, 61, 63, 90}) {
-                    int coated = NativeTerrain.instance().registerProfile(flat(data, height).toString());
-                    int plain = NativeTerrain.instance().registerProfile(flat(baseline, height).toString());
-                    for (int x : new int[]{-61, -17, -1, 13, 57}) {
-                        var a = NativeTerrain.instance().sampleColumns(request(coated, x, -7));
-                        var c = NativeTerrain.instance().sampleColumns(request(plain, x, -7));
-                        for (int i = 0; i < 256; i++) {
-                            if (a.materials()[i] != c.materials()[i]) {
-                                require(height != 90, "coastal sediment stays within its registered height or water bounds: " + feature);
-                                if (waterOnly) require(height < profile.seaLevel(), "water sediment cannot coat dry land: " + feature);
-                                changed++; reached = true;
+                try(var protectedId=RegistryDefinitionFixture.create(flat(protectedSoil, 61),123456789L)) {
+                    for (int p : NativeTerrain.instance().sampleColumns(request(protectedId, -17, -7)).materials())
+                        require((p & 65535) == bedrock && (p >>> 16) == bedrock, "sediment target predicates protect non-soil blocks");
+                    var zeroNoise = data.deepCopy(); boolean noiseCount = false;
+                    for (var v : zeroNoise.getAsJsonObject("registry_program").getAsJsonArray("programs").get(3).getAsJsonObject().getAsJsonArray("nodes"))
+                        if (v.getAsJsonObject().get("op").getAsInt() == 52) {
+                            v.getAsJsonObject().getAsJsonArray("p").set(2, new JsonPrimitive(0)); noiseCount = true;
+                        }
+                    if (noiseCount) {
+                        try(var zeroId=RegistryDefinitionFixture.create(flat(zeroNoise, 59),123456789L)) {
+                            try(var baseId=RegistryDefinitionFixture.create(flat(baseline, 59),123456789L)) {
+                                require(Arrays.equals(NativeTerrain.instance().sampleColumns(request(zeroId, -17, -7)).materials(),
+                                        NativeTerrain.instance().sampleColumns(request(baseId, -17, -7)).materials()), "zero noise-based count disables actual GPU coverage");
                             }
-                            require(a.heights()[i] == c.heights()[i], "sediment projection changes materials, not terrain shape");
+                        }
+                    }
+                    for (int height : new int[]{59, 61, 63, 90}) {
+                        try(var coated=RegistryDefinitionFixture.create(flat(data, height),123456789L)) {
+                            try(var plain=RegistryDefinitionFixture.create(flat(baseline, height),123456789L)) {
+                                for (int x : new int[]{-61, -17, -1, 13, 57}) {
+                                    var a = NativeTerrain.instance().sampleColumns(request(coated, x, -7));
+                                    var c = NativeTerrain.instance().sampleColumns(request(plain, x, -7));
+                                    for (int i = 0; i < 256; i++) {
+                                        if (a.materials()[i] != c.materials()[i]) {
+                                            require(height != 90, "coastal sediment stays within its registered height or water bounds: " + feature);
+                                            if (waterOnly) require(height < profile.seaLevel(), "water sediment cannot coat dry land: " + feature);
+                                            changed++; reached = true;
+                                        }
+                                        require(a.heights()[i] == c.heights()[i], "sediment projection changes materials, not terrain shape");
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -454,7 +470,7 @@ final class RegistryShoreIntegrationChecks {
         var n = new JsonObject(); n.addProperty("op", op); n.addProperty("a", a); n.addProperty("b", b); n.addProperty("c", c);
         var p = new JsonArray(); p.add(value); p.add(0); p.add(0); p.add(0); n.add("p", p); return n;
     }
-    private static TerrainRequest request(int profile, int x, int z) { return new TerrainRequest(123456789L, x, z, -64, 384, 64, 48, .008F, profile); }
+    private static TerrainRequest request(DefinitionFixture profile, int x, int z) { return profile.request(x,z); }
     private static int biome(BiomeTerrainProfile profile, String id) {
         for (int i = 0; i < profile.biomes().size(); i++) if (profile.biomes().get(i).unwrapKey().orElseThrow().identifier().toString().equals(id)) return i;
         throw new AssertionError("Missing shore biome " + id);

@@ -390,6 +390,8 @@ tasks.register('biomeTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeBiomeIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('registryTest', JavaExec) {
@@ -614,7 +616,7 @@ tasks.register('datapackTest', JavaExec) {
 
 tasks.register('datapackProgramTest', JavaExec) {
     group = 'verification'
-    description = 'Compare specialized/interpreted GPU programs using a previously Minecraft-exported profile.'
+    description = 'Compare specialized/interpreted GPU programs using a saved world definition.'
     dependsOn 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.RegistryProgramIntegrationChecks'
@@ -622,7 +624,7 @@ tasks.register('datapackProgramTest', JavaExec) {
     jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
     if (providers.gradleProperty('retinaNativePath').isPresent())
         systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
-    args providers.gradleProperty('testProgramProfile').getOrElse('build/terralith-profile.json')
+    args providers.gradleProperty('testProgramDefinition').getOrElse('build/registry-biome-definition/retina.dat')
 }
 
 tasks.register('structureTest', JavaExec) {
@@ -672,6 +674,8 @@ tasks.register('shoreTest', JavaExec) {
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeShoreIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 ['exportBenchmarkProfile': false, 'exportNetherBenchmarkProfile': true].each { taskName, nether ->

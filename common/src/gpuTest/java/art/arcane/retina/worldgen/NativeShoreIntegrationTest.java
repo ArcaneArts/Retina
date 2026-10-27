@@ -38,12 +38,18 @@ public final class NativeShoreIntegrationTest {
                 var older = preset.deepCopy(); older.remove("use_registry_biomes");
                 require(RetinaBiomeSource.CODEC.codec().parse(ops, older).getOrThrow().possibleBiomes().size() == older.getAsJsonArray("biomes").size(), "older explicit biome pools stay unchanged");
                 if (mode.equals("gpu_chunk")) continue;
-                var profile = BiomeTerrainProfile.load(registry, source, -64, 384, 123456789L);
-                Files.writeString(Path.of("build/shore-vanilla-profile.json"), profile.json());
-                RegistryShoreIntegrationChecks.checkCoasts(profile, source.climateParameters(registry));
-                RegistryClimateIntegrationChecks.check(profile);
-                RegistryShoreIntegrationChecks.checkWaterCondition(profile);
-                RegistryShoreIntegrationChecks.checkSediments(profile, false);
+                var data=TerrainProfileData.export(registry,source,-64,384,123456789L,
+                        registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(net.minecraft.world.level.levelgen.NoiseGeneratorSettings.OVERWORLD).value(),StructureProfile.Context.NONE);
+                try(var definition=RegistryDefinitionFixture.create(JsonParser.parseString(data.json()).getAsJsonObject(),123456789L)) {
+                    var profile=definition.savedDimension().bind(registry);
+                    Files.writeString(Path.of("build/shore-vanilla-profile.json"),profile.diagnosticJson());
+                    var output=Path.of("build/shore-definition");Files.createDirectories(output);
+                    Files.copy(definition.file(),output.resolve("retina.dat"),StandardCopyOption.REPLACE_EXISTING);
+                    if(!Arrays.asList(args).contains("--contracts-only"))RegistryShoreIntegrationChecks.checkCoasts(profile,source.climateParameters(registry));
+                    RegistryClimateIntegrationChecks.check(profile);
+                    RegistryShoreIntegrationChecks.checkWaterCondition(profile);
+                    RegistryShoreIntegrationChecks.checkSediments(profile,false);
+                }
             }
         }
     }

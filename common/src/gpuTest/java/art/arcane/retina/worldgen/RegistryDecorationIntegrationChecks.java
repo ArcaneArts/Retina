@@ -21,7 +21,7 @@ import java.util.*;
 /** Registered placement data exercised through the actual GPU/native assembly path. */
 final class RegistryDecorationIntegrationChecks {
     static void check(BiomeTerrainProfile profile, boolean datapack) throws Exception {
-        var source = JsonParser.parseString(profile.json()).getAsJsonObject();
+        var source = JsonParser.parseString(profile.diagnosticJson()).getAsJsonObject();
         var recipes = source.getAsJsonArray("decorations");
         for (var element : recipes) {
             var recipe = element.getAsJsonObject();
@@ -70,7 +70,6 @@ final class RegistryDecorationIntegrationChecks {
         biome.addProperty("snow_surface", false);
         var biomes = new JsonArray(); biomes.add(biome); fixture.add("biomes", biomes);
         var nativeTerrain = NativeTerrain.instance();
-        int modern = nativeTerrain.registerProfile(fixture.toString());
         var legacy = fixture.deepCopy();
         // This fixture selects only trees. New column/aquatic kinds require their
         // registered placement program even when they are inactive in a biome.
@@ -78,40 +77,42 @@ final class RegistryDecorationIntegrationChecks {
             var recipe = element.getAsJsonObject();
             if (recipe.get("kind").getAsString().equals("tree")) recipe.remove("placement");
         }
-        int old = nativeTerrain.registerProfile(legacy.toString());
-        long modernRoots = 0, legacyRoots = 0;
-        for (int z = -1; z <= 0; z++) for (int x = -2; x <= 1; x++) {
-            for (int mode = 0; mode < 2; mode++) {
-                var request = new TerrainRequest(123456789L, x, z, -64, 384, 80, 0, .008F, mode == 0 ? modern : old);
-                try (var data = nativeTerrain.generate(request)) {
-                    var blocks = data.blocks().toArray(ValueLayout.JAVA_SHORT);
-                    for (int c = 0; c < 256; c++) {
-                        int index = (data.heights()[c] + 64) * 256 + c;
-                        if (profile.materials()[Short.toUnsignedInt(blocks[index])].is(BlockTags.LOGS)) {
-                            if (mode == 0) modernRoots++; else legacyRoots++;
+        try(var modern=RegistryDefinitionFixture.create(fixture,123456789L,-64,384,80,0);
+            var old=RegistryDefinitionFixture.create(legacy,123456789L,-64,384,80,0)) {
+            long modernRoots = 0, legacyRoots = 0;
+            for (int z = -1; z <= 0; z++) for (int x = -2; x <= 1; x++) {
+                for (int mode = 0; mode < 2; mode++) {
+                    var request = (mode==0?modern:old).request(x,z);
+                    try (var data = nativeTerrain.generate(request)) {
+                        var blocks = data.blocks().toArray(ValueLayout.JAVA_SHORT);
+                        for (int c = 0; c < 256; c++) {
+                            int index = (data.heights()[c] + 64) * 256 + c;
+                            if (profile.materials()[Short.toUnsignedInt(blocks[index])].is(BlockTags.LOGS)) {
+                                if (mode == 0) modernRoots++; else legacyRoots++;
+                            }
                         }
                     }
                 }
             }
+            require(modernRoots > 0, "registered placements still produce trees");
+            if (datapack) require(modernRoots < legacyRoots / 2, "canopy/soil filters reduce accepted Terralith trees without changing count=155: " + modernRoots + " vs " + legacyRoots);
+            if (datapack) checkRegionParity(profile, modern);
+            System.out.println("QA_EVT {\"event\":\"registered_decoration_density\",\"status\":\"pass\",\"context\":{\"datapack\":" + datapack + ",\"chunks\":8,\"modern_trunk_columns\":" + modernRoots + ",\"legacy_trunk_columns\":" + legacyRoots + "}}");
         }
-        require(modernRoots > 0, "registered placements still produce trees");
-        if (datapack) require(modernRoots < legacyRoots / 2, "canopy/soil filters reduce accepted Terralith trees without changing count=155: " + modernRoots + " vs " + legacyRoots);
-        if (datapack) checkRegionParity(profile, modern);
-        System.out.println("QA_EVT {\"event\":\"registered_decoration_density\",\"status\":\"pass\",\"context\":{\"datapack\":" + datapack + ",\"chunks\":8,\"modern_trunk_columns\":" + modernRoots + ",\"legacy_trunk_columns\":" + legacyRoots + "}}");
     }
 
-    private static void checkRegionParity(BiomeTerrainProfile profile, int nativeId) throws Exception {
+    private static void checkRegionParity(BiomeTerrainProfile profile, DefinitionFixture saved) throws Exception {
         var nativeTerrain = NativeTerrain.instance();
         var expected = new LinkedHashMap<ChunkPos, short[]>();
         for (var pos : List.of(new ChunkPos(-32, -32), new ChunkPos(-1, -1), new ChunkPos(-2, -1))) {
-            try (var data = nativeTerrain.generate(new TerrainRequest(123456789L, pos.x(), pos.z(), -64, 384, 80, 0, .008F, nativeId))) {
+            try (var data = nativeTerrain.generate(saved.request(pos.x(),pos.z()))) {
                 expected.put(pos, data.blocks().toArray(ValueLayout.JAVA_SHORT));
             }
         }
         var directory = Files.createTempDirectory("retina-decoration-density-");
         try {
-            nativeTerrain.generateRegion(new TerrainRequest(123456789L, -32, -32, -64, 384, 80, 0, .008F, nativeId),
-                    directory.resolve("r.-1.-1.mca"), SharedConstants.getCurrentVersion().dataVersion().version(), "minecraft:dark_forest");
+            nativeTerrain.generateRegion(saved.request(-32,-32),
+                    directory.resolve("r.-1.-1.mca"), saved.dataVersion(), "minecraft:dark_forest");
             var codec = PalettedContainer.codecRW(BlockState.CODEC, Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY), Blocks.AIR.defaultBlockState());
             try (var storage = new RegionFileStorage(new RegionStorageInfo("retina-density-test", Level.OVERWORLD, "chunk"), directory, false)) {
                 for (var entry : expected.entrySet()) {

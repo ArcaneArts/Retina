@@ -5,7 +5,7 @@ import com.google.gson.JsonParser;
 /** Analytic surfaces exercise the real GPU; no CPU noise implementation is used. */
 final class RegistryGpuProgramIntegrationChecks {
     static void checkNoiseSurfacePreservation(BiomeTerrainProfile profile) {
-        var data=JsonParser.parseString(profile.json()).getAsJsonObject();
+        var data=JsonParser.parseString(profile.diagnosticJson()).getAsJsonObject();
         data.addProperty("biome_scale",128);
         var program=data.getAsJsonObject("registry_program");
         for(var value:program.getAsJsonArray("programs").get(0).getAsJsonObject().getAsJsonArray("nodes")) {
@@ -22,28 +22,30 @@ final class RegistryGpuProgramIntegrationChecks {
             biome.add("lakes",JsonParser.parseString("[0,0]"));
             biome.addProperty("cave_kind",0);
         }
-        int id=NativeTerrain.instance().registerProfile(data.toString()), checked=0, undergroundAir=0;
-        for(int[] pos:new int[][]{{-29,-32},{-28,-32},{-6,-13},{0,0}}) {
-            var request=new TerrainRequest(-2570674330951730954L,pos[0],pos[1],-64,384,64,48,.008F,id);
-            try(var chunk=NativeTerrain.instance().generate(request)) {
-                var columns=chunk.columns();
-                for(int c=0;c<256;c++) {
-                    int expected=columns.materials()[c]&65535, y=columns.heights()[c]-1;
-                    if(y<63 || expected==0)continue;
-                    int actual=Short.toUnsignedInt(chunk.blocks().getAtIndex(java.lang.foreign.ValueLayout.JAVA_SHORT,(long)(y+64)*256+c));
-                    if(actual!=expected)throw new AssertionError("Registered density stripped surface at "+(pos[0]*16+c%16)+","+y+","+(pos[1]*16+c/16)+": expected "+expected+", got "+actual);
-                    checked++;
+        int checked=0, undergroundAir=0;
+        try(var id=RegistryDefinitionFixture.create(data,-2570674330951730954L)) {
+            for(int[] pos:new int[][]{{-29,-32},{-28,-32},{-6,-13},{0,0}}) {
+                var request=id.request(pos[0],pos[1]);
+                try(var chunk=NativeTerrain.instance().generate(request)) {
+                    var columns=chunk.columns();
+                    for(int c=0;c<256;c++) {
+                        int expected=columns.materials()[c]&65535, y=columns.heights()[c]-1;
+                        if(y<63 || expected==0)continue;
+                        int actual=Short.toUnsignedInt(chunk.blocks().getAtIndex(java.lang.foreign.ValueLayout.JAVA_SHORT,(long)(y+64)*256+c));
+                        if(actual!=expected)throw new AssertionError("Registered density stripped surface at "+(pos[0]*16+c%16)+","+y+","+(pos[1]*16+c/16)+": expected "+expected+", got "+actual);
+                        checked++;
+                    }
+                    for(int y=6;y<104;y++)for(int c=0;c<256;c++)if(y-64<columns.heights()[c]-16
+                            && chunk.blocks().getAtIndex(java.lang.foreign.ValueLayout.JAVA_SHORT,(long)y*256+c)==0)undergroundAir++;
                 }
-                for(int y=6;y<104;y++)for(int c=0;c<256;c++)if(y-64<columns.heights()[c]-16
-                        && chunk.blocks().getAtIndex(java.lang.foreign.ValueLayout.JAVA_SHORT,(long)y*256+c)==0)undergroundAir++;
             }
+            if(checked<256 || undergroundAir<100)throw new AssertionError("Surface preservation must exercise land and underground cavities: "+checked+"/"+undergroundAir);
+            System.out.println("QA_EVT {\"event\":\"registered_density_preserves_surface\",\"status\":\"pass\",\"context\":{\"columns\":"+checked+",\"underground_air\":"+undergroundAir+"}}");
         }
-        if(checked<256 || undergroundAir<100)throw new AssertionError("Surface preservation must exercise land and underground cavities: "+checked+"/"+undergroundAir);
-        System.out.println("QA_EVT {\"event\":\"registered_density_preserves_surface\",\"status\":\"pass\",\"context\":{\"columns\":"+checked+",\"underground_air\":"+undergroundAir+"}}");
     }
 
     static void checkSurfaceInterpolation(BiomeTerrainProfile profile) {
-        var data=JsonParser.parseString(profile.json()).getAsJsonObject();
+        var data=JsonParser.parseString(profile.diagnosticJson()).getAsJsonObject();
         for(var biome:data.getAsJsonArray("biomes"))biome.getAsJsonObject().add("lakes",JsonParser.parseString("[0,0]"));
         var program=data.getAsJsonObject("registry_program");
         program.add("surface",JsonParser.parseString("[-64,8,0]"));
@@ -57,21 +59,23 @@ final class RegistryGpuProgramIntegrationChecks {
                   {"op":4,"a":3,"b":4,"c":0,"p":[0,0,0,0]}
                 ],"roots":[5,3]}
                 """));
-        var nativeTerrain=NativeTerrain.instance();int id=nativeTerrain.registerProfile(data.toString());
-        for(int chunk:new int[]{-4,0,1,7,15}) {
-            var columns=nativeTerrain.sampleColumns(new TerrainRequest(123456789L,chunk,0,-64,384,64,48,.008F,id));
-            for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
-                int expected=(int)Math.floor(65.35+(chunk*16+x)*.5);
-                int actual=columns.heights()[z*16+x];
-                if(actual!=expected)throw new AssertionError("Continuous GPU surface at x="+(chunk*16+x)+": expected "+expected+", got "+actual);
+        var nativeTerrain=NativeTerrain.instance();
+        try(var id=RegistryDefinitionFixture.create(data,123456789L)) {
+            for(int chunk:new int[]{-4,0,1,7,15}) {
+                var columns=nativeTerrain.sampleColumns(id.request(chunk,0));
+                for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
+                    int expected=(int)Math.floor(65.35+(chunk*16+x)*.5);
+                    int actual=columns.heights()[z*16+x];
+                    if(actual!=expected)throw new AssertionError("Continuous GPU surface at x="+(chunk*16+x)+": expected "+expected+", got "+actual);
+                }
             }
+            System.out.println("QA_EVT {\"event\":\"continuous_gpu_surface_zero_crossing\",\"status\":\"pass\",\"context\":{\"columns\":1280}}");
+            checkDensityInterpolation(profile);
         }
-        System.out.println("QA_EVT {\"event\":\"continuous_gpu_surface_zero_crossing\",\"status\":\"pass\",\"context\":{\"columns\":1280}}");
-        checkDensityInterpolation(profile);
     }
 
     private static void checkDensityInterpolation(BiomeTerrainProfile profile) {
-        var data=JsonParser.parseString(profile.json()).getAsJsonObject();
+        var data=JsonParser.parseString(profile.diagnosticJson()).getAsJsonObject();
         for(var biome:data.getAsJsonArray("biomes"))biome.getAsJsonObject().add("lakes",JsonParser.parseString("[0,0]"));
         var program=data.getAsJsonObject("registry_program");
         // This fixture measures final-density lattice interpolation. Composition
@@ -104,38 +108,39 @@ final class RegistryGpuProgramIntegrationChecks {
         int checked=0,differentFromHeightBlend=0;
         for(int[] cell:new int[][]{{4,8},{6,12},{8,4}}) {
             program.add("terrain_cell",JsonParser.parseString("["+cell[0]+","+cell[1]+"]"));
-            int id=NativeTerrain.instance().registerProfile(data.toString());
-            // Shared world-aligned cells must agree even for negative chunk
-            // coordinates and sizes which do not divide the chunk width.
-            try(var workers=java.util.concurrent.Executors.newFixedThreadPool(8)) {
-                var futures=new java.util.ArrayList<java.util.concurrent.Future<NativeTerrain.Columns>>();
-                int[] chunks={-4,-1,0,1,7,15};
-                int[] chunksZ={-1,0,0,0,1,15};
-                for(int i=0;i<chunks.length;i++) {
-                    int chunk=chunks[i], chunkZ=chunksZ[i];
-                    int min=chunk%2==0?-64:-63, height=chunk%2==0?384:383;
-                    futures.add(workers.submit(()->NativeTerrain.instance().sampleColumns(
-                            new TerrainRequest(123456789L,chunk,chunkZ,min,height,64,48,.008F,id))));
-                }
-                for(int i=0;i<chunks.length;i++) {
-                    NativeTerrain.Columns columns;
-                    try {columns=futures.get(i).get();}catch(Exception e){throw new AssertionError("Concurrent density interpolation",e);}
-                    for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
-                        int wx=chunks[i]*16+x, wz=chunksZ[i]*16+z;
-                        int x0=Math.floorDiv(wx,cell[0])*cell[0], z0=Math.floorDiv(wz,cell[0])*cell[0];
-                        int top=Math.ceilDiv(320,cell[1])*cell[1], expected=320;
-                        double upper=fixtureDensityLayer(wx,wz,top,cell[0]);
-                        for(int y=top-cell[1];y>=Math.floorDiv(-64,cell[1])*cell[1];y-=cell[1]) {
-                            double lower=fixtureDensityLayer(wx,wz,y,cell[0]);
-                            if(lower>0) {expected=(int)Math.floor(y+cell[1]*lower/(lower-upper)+1);break;}
-                            upper=lower;
+            try(var even=RegistryDefinitionFixture.create(data,123456789L);
+                var odd=RegistryDefinitionFixture.create(data,123456789L,-63,383,64,48)) {
+                // Shared world-aligned cells must agree even for negative chunk
+                // coordinates and sizes which do not divide the chunk width.
+                try(var workers=java.util.concurrent.Executors.newFixedThreadPool(8)) {
+                    var futures=new java.util.ArrayList<java.util.concurrent.Future<NativeTerrain.Columns>>();
+                    int[] chunks={-4,-1,0,1,7,15};
+                    int[] chunksZ={-1,0,0,0,1,15};
+                    for(int i=0;i<chunks.length;i++) {
+                        int chunk=chunks[i], chunkZ=chunksZ[i];
+                        futures.add(workers.submit(()->NativeTerrain.instance().sampleColumns(
+                                (chunk%2==0?even:odd).request(chunk,chunkZ))));
+                    }
+                    for(int i=0;i<chunks.length;i++) {
+                        NativeTerrain.Columns columns;
+                        try {columns=futures.get(i).get();}catch(Exception e){throw new AssertionError("Concurrent density interpolation",e);}
+                        for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
+                            int wx=chunks[i]*16+x, wz=chunksZ[i]*16+z;
+                            int x0=Math.floorDiv(wx,cell[0])*cell[0], z0=Math.floorDiv(wz,cell[0])*cell[0];
+                            int top=Math.ceilDiv(320,cell[1])*cell[1], expected=320;
+                            double upper=fixtureDensityLayer(wx,wz,top,cell[0]);
+                            for(int y=top-cell[1];y>=Math.floorDiv(-64,cell[1])*cell[1];y-=cell[1]) {
+                                double lower=fixtureDensityLayer(wx,wz,y,cell[0]);
+                                if(lower>0) {expected=(int)Math.floor(y+cell[1]*lower/(lower-upper)+1);break;}
+                                upper=lower;
+                            }
+                            int actual=columns.heights()[z*16+x];
+                            if(actual!=expected)throw new AssertionError("Density-first surface x/z="+wx+"/"+wz+", cell="+cell[0]+"x"+cell[1]+": expected "+expected+", got "+actual);
+                            double tx=(double)(wx-x0)/cell[0],tz=(double)(wz-z0)/cell[0];
+                            int heightBlend=(int)Math.floor((1-tx)*(1-tz)*fixtureHeight(x0,z0)+tx*(1-tz)*fixtureHeight(x0+cell[0],z0)+(1-tx)*tz*fixtureHeight(x0,z0+cell[0])+tx*tz*fixtureHeight(x0+cell[0],z0+cell[0])+1);
+                            if(heightBlend!=expected)differentFromHeightBlend++;
+                            checked++;
                         }
-                        int actual=columns.heights()[z*16+x];
-                        if(actual!=expected)throw new AssertionError("Density-first surface x/z="+wx+"/"+wz+", cell="+cell[0]+"x"+cell[1]+": expected "+expected+", got "+actual);
-                        double tx=(double)(wx-x0)/cell[0],tz=(double)(wz-z0)/cell[0];
-                        int heightBlend=(int)Math.floor((1-tx)*(1-tz)*fixtureHeight(x0,z0)+tx*(1-tz)*fixtureHeight(x0+cell[0],z0)+(1-tx)*tz*fixtureHeight(x0,z0+cell[0])+tx*tz*fixtureHeight(x0+cell[0],z0+cell[0])+1);
-                        if(heightBlend!=expected)differentFromHeightBlend++;
-                        checked++;
                     }
                 }
             }
@@ -156,10 +161,11 @@ final class RegistryGpuProgramIntegrationChecks {
         var cappedDensity=capped.deepCopy();cappedDensity.add("roots",JsonParser.parseString("[3]"));
         program.getAsJsonArray("programs").set(2,cappedDensity);
         program.add("terrain_cell",JsonParser.parseString("[6,12]"));
-        int cappedId=NativeTerrain.instance().registerProfile(data.toString());
-        var cappedColumns=NativeTerrain.instance().sampleColumns(new TerrainRequest(123456789L,-1,0,-64,383,64,48,.008F,cappedId));
-        for(int h:cappedColumns.heights())if(h!=73)throw new AssertionError("Partial density cell above world ceiling: expected 73, got "+h);
-        System.out.println("QA_EVT {\"event\":\"gpu_density_partial_ceiling\",\"status\":\"pass\",\"context\":{\"columns\":256}}");
+        try(var cappedId=RegistryDefinitionFixture.create(data,123456789L,-64,383,64,48)) {
+            var cappedColumns=NativeTerrain.instance().sampleColumns(cappedId.request(-1,0));
+            for(int h:cappedColumns.heights())if(h!=73)throw new AssertionError("Partial density cell above world ceiling: expected 73, got "+h);
+            System.out.println("QA_EVT {\"event\":\"gpu_density_partial_ceiling\",\"status\":\"pass\",\"context\":{\"columns\":256}}");
+        }
     }
 
     private static double fixtureHeight(int x,int z) {
