@@ -239,7 +239,7 @@ Record SHA-256 hashes before switching sources. The raw artifact embeds the
 deadline runner and Gradle native-path/worker configuration.
 
 Run `scripts/native-region-benchmark.py` with pinned library/profile paths,
-`--parallel 8 --count 8 --grid-width 4 --seed 123456789 --warmups 1`. For vanilla
+`--parallel 8 --count 8 --grid-width 4 --warmups 1`. For vanilla
 use `--program-execution auto --readiness shader-ready --specialization-timeout 8`;
 for Terralith use `--program-execution interpreter --interpreter-preload disabled`.
 Use the reference environment above only on its side. Supply `--compare` on the

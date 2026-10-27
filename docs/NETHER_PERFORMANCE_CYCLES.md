@@ -55,13 +55,17 @@ the original loaded exports or re-exporting the same Minecraft definitions.
 `qa/nether-performance-corpus.json` defines two normal Nether seeds, the custom
 bounds under both exported routes/seeds, and an Overworld control. Each case uses
 five warmups and twenty measured regions spanning positive/negative coordinates
-and adjoining region boundaries.
+and adjoining region boundaries. The version 2 manifest assigns each case its own
+`CASE_NAME/retina.dat` and dimension key; compile each snapshot with that case's
+intended seed and datapacks (`fixture_seed` records the intended source seed for
+fixture preparation only). Generation always uses the snapshot's saved seed;
+the suite reports it and never overrides it.
 
 ```sh
 python3 scripts/nether-performance-suite.py \
   --library /absolute/path/to/libretina_worldgen.dylib \
   --library-revision COMMIT_OR_RETAINED_BUILD_ID \
-  --profiles /absolute/path/to/profiles \
+  --definitions /absolute/path/to/definitions \
   --out /absolute/path/to/new-cycle-suite \
   --compare /absolute/path/to/reference-suite \
   --compare /absolute/path/to/previous-cycle-suite \

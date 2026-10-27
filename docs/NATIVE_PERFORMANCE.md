@@ -108,14 +108,14 @@ MCAs and are never installed into a Minecraft world:
 ```sh
 python3 scripts/native-region-benchmark.py \
   --library build/optimization-baseline/libretina_worldgen.dylib \
-  --profile build/structure-profile.json --out build/perf-before --count 9
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld --out build/perf-before --count 9
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/structure-profile.json --out build/perf-after --count 9 \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld --out build/perf-after --count 9 \
   --compare build/perf-before
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/structure-profile.json --out build/perf-pipeline --count 9 \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld --out build/perf-pipeline --count 9 \
   --parallel 2 --compare build/perf-before
 ```
 

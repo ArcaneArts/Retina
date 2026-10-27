@@ -166,7 +166,7 @@ Warm measurement reproduction:
 ```sh
 nice -n 10 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile /absolute/path/to/full-profile.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out /absolute/path/to/fresh-private-output \
   --count 20 --warmups 2 --program-execution specialized --parallel 1
 ```

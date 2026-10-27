@@ -147,7 +147,7 @@ build/native-target/release/examples/ore_raster_benchmark \
 ./gradlew build gpuTest regionTest geologyTest featureTest previewTest structureTest
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/goal-baseline/vanilla.json --out build/sparse-measurement \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld --out build/sparse-measurement \
   --count 20 --warmups 5 --program-execution specialized \
   --compare build/goal-baseline/sparse-van-before
 ```

@@ -1,42 +1,47 @@
 {
-  "version": 1,
+  "version": 2,
   "warmup_regions": 5,
   "measured_regions": 20,
   "cases": [
     {
       "name": "nether-main",
-      "profile": "nether.json",
-      "seed": 123456789,
       "origin": [-2, -2],
-      "grid_width": 5
+      "grid_width": 5,
+      "definition": "nether-main/retina.dat",
+      "dimension": "minecraft:the_nether",
+      "fixture_seed": 123456789
     },
     {
       "name": "nether-second-seed",
-      "profile": "nether.json",
-      "seed": 42,
       "origin": [-2, -2],
-      "grid_width": 5
+      "grid_width": 5,
+      "definition": "nether-second-seed/retina.dat",
+      "dimension": "minecraft:the_nether",
+      "fixture_seed": 42
     },
     {
       "name": "nether-custom-bounds",
-      "profile": "custom.json",
-      "seed": 123456789,
       "origin": [-2, -2],
-      "grid_width": 5
+      "grid_width": 5,
+      "definition": "nether-custom-bounds/retina.dat",
+      "dimension": "minecraft:the_nether",
+      "fixture_seed": 123456789
     },
     {
       "name": "nether-direct-stem",
-      "profile": "direct-stem.json",
-      "seed": 42,
       "origin": [-2, -2],
-      "grid_width": 5
+      "grid_width": 5,
+      "definition": "nether-direct-stem/retina.dat",
+      "dimension": "minecraft:the_nether",
+      "fixture_seed": 42
     },
     {
       "name": "overworld",
-      "profile": "overworld.json",
-      "seed": 123456789,
       "origin": [-2, -2],
-      "grid_width": 5
+      "grid_width": 5,
+      "definition": "overworld/retina.dat",
+      "dimension": "minecraft:overworld",
+      "fixture_seed": 123456789
     }
   ]
 }

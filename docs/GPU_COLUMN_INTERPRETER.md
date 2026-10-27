@@ -173,7 +173,7 @@ RETINA_PROGRAM_PARITY_PROFILE=/absolute/path/to/terralith.json \
 
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/goal-baseline/sparse-lake-fields/terralith.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --program-execution specialized --terrain-execution interpreter \
   --interpreter-columns enabled --count 20 --warmups 2 --out build/column-benchmark
 ```

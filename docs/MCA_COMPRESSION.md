@@ -129,12 +129,12 @@ their standard-library-only dependency set.
 
 ```sh
 python scripts/native-region-benchmark.py \
-  --library /absolute/library/path --profile /absolute/exported-profile.json \
+  --library /absolute/library/path --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out /tmp/codec-zlib --parallel 2 --count 6 --warmups 1 \
   --program-execution interpreter --interpreter-preload disabled \
   --mca-compression zlib
 python scripts/native-region-benchmark.py \
-  --library /absolute/library/path --profile /absolute/exported-profile.json \
+  --library /absolute/library/path --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out /tmp/codec-lz4 --parallel 2 --count 6 --warmups 1 \
   --program-execution interpreter --interpreter-preload disabled \
   --mca-compression lz4 --compare /tmp/codec-zlib

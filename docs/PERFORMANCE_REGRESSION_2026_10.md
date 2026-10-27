@@ -35,7 +35,8 @@ region latency.
 
 `scripts/native-region-benchmark.py` writes schema-versioned results containing
 the library hash and revision label, dirty harness fingerprint, platform, exact
-profile hash, coordinates, readiness, lighting/scope, per-region latency, p95,
+definition hash, saved seed/geometry/DataVersion, dimension, coordinates,
+readiness, lighting/scope, per-region latency, p95,
 peak RSS, transfers, GPU pipeline gaps, stage counters and a decompressed-NBT
 corpus manifest. `--compare` requires identical record membership and byte-exact
 decompressed NBT and reports the first decoded NBT path on a mismatch.
@@ -53,14 +54,14 @@ python3 scripts/native-region-benchmark-ab.py \
   --baseline-revision 8d41f8d \
   --candidate-library build/native-target/release/libretina_worldgen.dylib \
   --candidate-revision working-tree-lighting \
-  --profile build/task-vanilla-profile.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out build/vanilla-lit-ab --trials 8 --count 20 --warmups 5 \
   --parallel 1 --lighting enabled --readiness shader-ready
 ```
 
 Use `--lighting disabled --scope native-region` only as a clearly labeled
-diagnostic. The harness rejects a `lit-mca` label when the exported profile lacks
-lighting properties.
+diagnostic. The saved definition supplies material and lighting rules. Generate
+and inspect the actual corpus when establishing the completion boundary.
 
 ## Lighting candidate
 
