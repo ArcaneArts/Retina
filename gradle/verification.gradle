@@ -887,3 +887,15 @@ tasks.register('endGatewayTest', JavaExec) {
     else dependsOn ':packageNative'
     args rootProject.layout.buildDirectory.dir('end/gateway-placement-reference').get().asFile.absolutePath
 }
+
+tasks.register('endCityReferenceTest', JavaExec) {
+    group = 'verification'
+    description = 'Capture actual world-seeded vanilla End city plans and resident template sizes.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndCityReferenceTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '512m'
+    args rootProject.layout.buildDirectory.dir('end/city-reference').get().asFile.absolutePath
+}

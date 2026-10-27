@@ -3,6 +3,7 @@
 mod discovery;
 pub(crate) use discovery::Discovery;
 mod fortress;
+pub mod cities;
 mod fossils;
 mod portals;
 mod template_transform;
