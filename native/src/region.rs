@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use rayon::prelude::*;
+use crate::material_blocks::{Chunk as MaterialChunk, Read as MaterialRead, View as MaterialView};
 
 use crate::{
     COLUMNS, ChunkRequest, TerrainEngine, decoration, geology,
@@ -458,6 +459,14 @@ fn generate_region_inner(
                         && (storage_origin.min_y + storage_origin.height as i32) / 16 <= 127
                         && std::env::var("RETINA_GPU_LIGHTING").as_deref() != Ok("0")
                 });
+            // These loaded profiles have no out-of-band ore/cave mutation pass.
+            // Their complete ordered command stream can replay into lazy sections.
+            // Other profiles keep the same dense assembly, without losing support.
+            let compact_end = profile.as_deref().filter(|p| p.end.is_some() && p.flat.is_none()
+                && generation.is_some() && p.geology.ores.is_empty()
+                && !p.base_plant_halves && p.biomes.iter().all(|b| b.cave_kind == 0)
+                && origin.min_y % 16 == 0 && origin.height.is_multiple_of(16))
+                .and_then(|p| cave_mask.as_deref().filter(|mask| mask.material_run_count().is_some()).map(|mask| (p, mask)));
             let parallel_start = Instant::now();
             let records: Result<Vec<PreparedRecord>, String> = requests
                 .par_iter()
@@ -466,6 +475,30 @@ fn generate_region_inner(
                 .enumerate()
                 .map_init(ChunkScratch::default, |scratch, (index, &request)| {
                     let columns = field.chunk(request.chunk_x, request.chunk_z);
+                    if let Some((p, mask)) = compact_end {
+                        let mut blocks = timings.time(timings::ASSEMBLY, || MaterialChunk::from_runs(request, mask))?;
+                        let mut updates = decoration::pairs::Updates::default();
+                        updates.placements(p, &overlays[slots[index]]);
+                        let data = timings.time(timings::VEGETATION, || generation.as_ref().unwrap().apply(
+                            slots[index], request, p, &overlays[slots[index]], &mut blocks))?;
+                        timings.time(timings::SNOW, || crate::features::snow(request, p, columns, &mut blocks));
+                        timings.time(timings::VEGETATION, || updates.finish_materials(p, &mut blocks));
+                        let storage_request = geometry::storage_request(request, storage);
+                        if request.min_y != storage_request.min_y || request.height != storage_request.height {
+                            blocks.fit(request, storage_request, geometry::storage_air(Some(p))?);
+                        }
+                        if crate::performance::enabled() {
+                            let (allocated, uniform) = blocks.allocation();
+                            use crate::performance::Counter::*;
+                            session.performance.add(end_final_material_allocated_bytes, allocated as u64);
+                            session.performance.add(end_final_dense_equivalent_bytes, (storage_request.block_count() * 2) as u64);
+                            session.performance.add(end_final_uniform_sections, uniform as u64);
+                        }
+                        if lighting.is_some() { return Ok(PreparedRecord::Blocks(blocks, Some(data.tag))); }
+                        timings.time(timings::NBT, || encode_chunk(storage_request, columns, &blocks,
+                            data_version, biome, Some(p), Some(mask), Some(&data.tag), None, scratch));
+                        return timings.time(timings::COMPRESS, || scratch.encoder.encode(compression, &scratch.nbt.0).map(PreparedRecord::Compressed));
+                    }
                     let mut blocks = std::mem::take(&mut scratch.blocks);
                     blocks.resize(request.block_count(), 0);
                     let mut plant_updates = decoration::pairs::Updates::default();
@@ -560,7 +593,7 @@ fn generate_region_inner(
                     geometry::fit_blocks(request, storage_request, profile.as_deref(), &mut blocks)?;
                     if lighting.is_some() {
                         return Ok(PreparedRecord::Blocks(
-                            blocks,
+                            MaterialChunk::Dense(blocks),
                             structure_data.map(|d| d.tag),
                         ));
                     }
@@ -902,7 +935,7 @@ impl PaletteScratch {
 }
 enum PreparedRecord {
     Compressed(Record),
-    Blocks(Vec<u16>, Option<serde_json::Value>),
+    Blocks(MaterialChunk, Option<serde_json::Value>),
 }
 struct ChunkScratch {
     blocks: Vec<u16>,
@@ -947,10 +980,10 @@ pub(crate) fn material_nbt(material: &serde_json::Value) -> Vec<u8> {
     nbt.0
 }
 
-fn encode_chunk(
+fn encode_chunk<B: MaterialRead + ?Sized>(
     request: ChunkRequest,
     columns: &[Column],
-    blocks: &[u16],
+    blocks: &B,
     data_version: i32,
     biome: &str,
     profile: Option<&WorldProfile>,
@@ -1000,7 +1033,7 @@ fn encode_chunk(
         nbt.byte("Y", (y / 16) as i8);
         nbt.compound("block_states");
         if let Some(profile) = profile {
-            let values = &blocks[section as usize * 4096..(section as usize + 1) * 4096];
+            let section_blocks = blocks.section(section as usize);
             match lighting
                 .and_then(|l| l.palettes)
                 .and_then(|p| p.section(section as usize))
@@ -1028,7 +1061,14 @@ fn encode_chunk(
                         nbt.0.extend_from_slice(data);
                     }
                 }
+                None if matches!(section_blocks, MaterialView::Uniform(_)) => {
+                    let MaterialView::Uniform(id) = section_blocks else { unreachable!() };
+                    occupied.push(profile.heightmap_masks[id as usize] != 0);
+                    nbt.list("palette", 10, 1);
+                    nbt.0.extend_from_slice(&profile.material_nbt[id as usize]);
+                }
                 None => {
+                    let MaterialView::Dense(values) = section_blocks else { unreachable!() };
                     palette.build_with_indices::<false>(values, profile.materials.len());
                     occupied.push(
                         palette.palette.len() != 1
@@ -1075,7 +1115,7 @@ fn encode_chunk(
             }
             nbt.end();
         } else {
-            let values = &blocks[section as usize * 4096..(section as usize + 1) * 4096];
+            let MaterialView::Dense(values) = blocks.section(section as usize) else { unreachable!("legacy terrain is dense") };
             let has_air = values.contains(&0);
             let has_stone = values.contains(&1);
             let mixed = has_air && has_stone;
@@ -1118,7 +1158,7 @@ fn encode_chunk(
     // Profiled terrain uses final block predicates below, not these legacy maps.
     if profile.is_none() {
         for i in 0..COLUMNS {
-            let height = (0..request.height as usize).rev().find(|&y|blocks[y*COLUMNS+i]!=0).map_or(0,|y|y as u32+1);
+            let height = (0..request.height as usize).rev().find(|&y|blocks.value(y*COLUMNS+i)!=0).map_or(0,|y|y as u32+1);
             ground[i] = height;
             surface[i] = height;
         }
@@ -1130,12 +1170,12 @@ fn encode_chunk(
         // Traverse occupied final sections in contiguous rows, including structure/tree tops.
         for section in (0..occupied.len()).rev().filter(|&i| occupied[i]) {
             for layer in (section * 16..(section + 1) * 16).rev() {
-                let row = &blocks[layer * COLUMNS..(layer + 1) * COLUMNS];
+                let row = blocks.row(layer);
                 for c in 0..COLUMNS {
                     if pending[c] == 0 {
                         continue;
                     }
-                    let hit = profile.heightmap_masks[row[c] as usize] & pending[c];
+                    let hit = profile.heightmap_masks[row.value(c) as usize] & pending[c];
                     let mut hits = hit;
                     while hits != 0 {
                         let kind = hits.trailing_zeros() as usize;

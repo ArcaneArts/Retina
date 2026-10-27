@@ -401,11 +401,11 @@ mod scan_tests {
 }
 
 /// Registered snow/freezing feature, applied after vegetation. Temperature flags come from GPU columns.
-pub fn snow(
+pub fn snow<B: crate::material_blocks::Write + ?Sized>(
     request: ChunkRequest,
     p: &WorldProfile,
     columns: &[crate::profile::Column],
-    blocks: &mut [u16],
+    blocks: &mut B,
 ) {
     if p.terrain_features.snow_layer == 0 {
         return;
@@ -419,7 +419,7 @@ pub fn snow(
         }
         for layer in (0..request.height as usize - 1).rev() {
             let at = layer * COLUMNS + index;
-            let material = blocks[at] as usize;
+            let material = blocks.value(at) as usize;
             if p.heightmap_masks[material] & (1 << 4) == 0 {
                 continue;
             }
@@ -427,13 +427,13 @@ pub fn snow(
                 .snow_support
                 .get(material)
                 .copied()
-                .unwrap_or(blocks[at] != p.ice);
+                .unwrap_or(blocks.value(at) != p.ice);
             if supports
-                && blocks[at + COLUMNS] == 0
-                && blocks[at] != p.water
-                && blocks[at] != p.geology.lava
+                && blocks.value(at + COLUMNS) == 0
+                && blocks.value(at) != p.water
+                && blocks.value(at) != p.geology.lava
             {
-                blocks[at + COLUMNS] = p.terrain_features.snow_layer;
+                blocks.put(at + COLUMNS, p.terrain_features.snow_layer);
             }
             break;
         }

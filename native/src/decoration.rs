@@ -2319,10 +2319,10 @@ pub fn assemble_carved(
 pub fn decorate(profile: Option<&WorldProfile>, placements: &[Placement], blocks: &mut [u16]) {
     decorate_observed(profile, placements, blocks, |_, _, _| {});
 }
-pub(crate) fn decorate_observed(
+pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
     profile: Option<&WorldProfile>,
     placements: &[Placement],
-    blocks: &mut [u16],
+    blocks: &mut B,
     mut write: impl FnMut(usize, u16, u16),
 ) {
     let Some(profile) = profile else {
@@ -2345,7 +2345,7 @@ pub(crate) fn decorate_observed(
             if index >= blocks.len() {
                 continue;
             }
-            let previous = blocks[index];
+            let previous = blocks.value(index);
             let flags = profile.material_flags[previous as usize];
             let replace = match role {
                 FEATURE => true,
@@ -2363,7 +2363,7 @@ pub(crate) fn decorate_observed(
                 let x = (index % 16) as i32 - dx;
                 let z = ((index % COLUMNS) / 16) as i32 - dz;
                 let supported = if (0..16).contains(&x) && (0..16).contains(&z) {
-                    let neighbor = blocks[index / COLUMNS * COLUMNS + z as usize * 16 + x as usize];
+                    let neighbor = blocks.value(index / COLUMNS * COLUMNS + z as usize * 16 + x as usize);
                     profile.material_flags[neighbor as usize]
                         & if role == COCOA { 32 } else { 4 | 8 }
                         != 0
@@ -2372,20 +2372,20 @@ pub(crate) fn decorate_observed(
                 }; // The owner tree validated its supporting block in the halo.
                 let hanging = role == VINE
                     && index + COLUMNS < blocks.len()
-                    && blocks[index + COLUMNS] == placement.material;
+                    && blocks.value(index + COLUMNS) == placement.material;
                 if !supported && !hanging {
                     continue;
                 }
             }
             if role == PLANT && placement.upper != 0 {
-                if index + COLUMNS >= blocks.len() || blocks[index + COLUMNS] != 0 {
+                if index + COLUMNS >= blocks.len() || blocks.value(index + COLUMNS) != 0 {
                     continue;
                 }
-                write(index + COLUMNS, blocks[index + COLUMNS], placement.upper);
-                blocks[index + COLUMNS] = placement.upper;
+                write(index + COLUMNS, blocks.value(index + COLUMNS), placement.upper);
+                blocks.put(index + COLUMNS, placement.upper);
             }
             write(index, previous, placement.material);
-            blocks[index] = placement.material;
+            blocks.put(index, placement.material);
         }
     }
 }

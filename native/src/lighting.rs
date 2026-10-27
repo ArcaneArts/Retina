@@ -775,11 +775,11 @@ impl Tile {
 
 /// Reuses only the 32x32 region's final blocks; a one-chunk ring guarantees the core.
 /// At most two readbacks per region are in flight; scratch buffers remain shared on the ordered queue.
-pub(crate) fn region(
+pub(crate) fn region<B: crate::material_blocks::Read>(
     engine: &crate::TerrainEngine,
     request: crate::ChunkRequest,
     profile: &Profile,
-    chunks: &[Vec<u16>],
+    chunks: &[B],
     job: &crate::timings::Timings,
     mut consume: impl FnMut(Tile) -> Result<(), String>,
 ) -> Result<(), String> {
@@ -833,17 +833,21 @@ pub(crate) fn region(
                     &mut packed,
                     indices
                         .iter()
-                        .map(|&i| (&chunks[i][..], &descriptors[i][..])),
+                        .map(|&i| (&chunks[i], &descriptors[i][..])),
                     request.height,
                 );
                 bytemuck::cast_slice(&packed)
             } else {
                 input.clear();
                 for i in indices {
-                    input.extend_from_slice(&chunks[i]);
+                    chunks[i].extend_dense(&mut input);
                 }
                 bytemuck::cast_slice(&input)
             };
+            if crate::performance::enabled() {
+                engine.timings(request.reserved).performance.add(
+                    crate::performance::Counter::lighting_material_upload_bytes, payload.len() as u64);
+            }
             let layout = constants.as_ref().map(|c| {
                 c.tile((0..core).flat_map(|z| (0..core).map(move |x| (cz + z) * 32 + cx + x)))
             });

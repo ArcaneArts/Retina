@@ -6,6 +6,7 @@ mod climate;
 #[global_allocator]
 static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+mod material_blocks;
 mod column_cache;
 mod column_program;
 mod nbt;

@@ -691,3 +691,40 @@ defaults measured 116.8 ms versus 82.1 ms median for the two sampled void positi
 (four measurements per variant); that small comparison establishes the local gain,
 not final category tail confidence or whole-host isolation. Final category and
 caller-scaling acceptance are tracked separately.
+
+## Compact final material sections
+
+Final End replay keeps uniform sections as material descriptors. A block array is
+allocated when an actual nonuniform write needs it. The existing ordered command
+and metadata replay, snow support and final plant checks use the same material
+access rules for dense and compact chunks. Storage padding moves whole sections
+without expanding air. Lighting transport and NBT encoding consume uniform
+sections directly, including empty chunks and the input-only lighting boundary.
+
+This path applies to End profiles whose complete mutations are represented by the
+ordered stream. Profiles with separate ore/cave dressing or base-plant work retain
+the existing native dense path. This is an internal storage choice, not an adapter
+rejection or a user-facing generation toggle. Existing structure-template workspace
+is still materialized for chunks that need actual structure processing.
+
+Four complete regions (void, islands, city and boss area) matched their previous
+decompressed NBT hashes without normalization. A boundary-slot repair regenerated
+one chunk, preserved 1,023 records and retained the complete region's exact NBT.
+Across those requests, final material storage held 28,483,840 bytes versus a dense
+equivalent of 537,001,984 bytes: 94.7% less, including section descriptors. There
+were 62,203 uniform sections. These counters describe final material allocations,
+not total process memory; planner workspace, allocator overhead and GPU resources
+are separate. Final lighting material uploads totaled 30,035,968 bytes including
+overlapping tile guards. The existing compact GPU protocol is unchanged.
+
+A small ABBA check improved void median from 102.0 to 86.7 ms. Island samples
+varied, so their apparent improvement is not a precise speedup claim. Matched
+Overworld/Nether controls retained exact NBT and showed no material median
+regression (234/650 ms before, 229/643 ms after; four samples per variant).
+
+At fixed 16-worker region and global Rayon limits, eight identical new regions
+were requested with 1/2/4/8 callers. All four corpus hashes matched. Batch
+throughput was approximately 6,000/12,600/15,500/19,400 chunks per second; request
+latency is reported separately. The eight-caller median was 390 ms and generation
+peak process RSS was 1.65 GB. These bounded samples do not establish long-run
+memory stability or high-confidence tails; host process snapshots were retained.

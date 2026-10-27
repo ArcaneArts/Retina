@@ -1,5 +1,5 @@
 //! Complete saved-definition region benchmark. Deletes only its own fresh MCA outputs.
-//! world_region_benchmark <retina.dat> <dimension> <void|islands|heavy|control> <output-dir> [samples=8] [warmups=2]
+//! world_region_benchmark <retina.dat> <dimension> <void|islands|heavy|control|mixed> <output-dir> [samples=8,mixed=4] [warmups=2] [reference.json]
 use retina_worldgen::{
     TerrainEngine,
     region::{self, codec::Compression},
@@ -86,6 +86,8 @@ fn coordinates(category: &str, i: usize) -> Result<[i32; 2], String> {
         ]
         .get(i)
         .ok_or("heavy catalog contains eight distinct regions")?,
+        "mixed" => *[[1, 0], [8, 8], [-2, -3], [0, 0]].get(i)
+            .ok_or("mixed correctness catalog contains four distinct regions")?,
         "islands" | "control" => [8 + i as i32, 8],
         _ => return Err(format!("unknown workload {category}")),
     };
@@ -175,11 +177,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let key = args.next().ok_or("dimension required")?;
     let category = args.next().ok_or("workload required")?;
     let output = PathBuf::from(args.next().ok_or("output directory required")?);
-    let count: usize = args.next().map(|s| s.parse()).transpose()?.unwrap_or(8);
+    let count: usize = args.next().map(|s| s.parse()).transpose()?.unwrap_or(if category == "mixed" { 4 } else { 8 });
     let warmups: usize = args.next().map(|s| s.parse()).transpose()?.unwrap_or(2);
     if count == 0 {
         return Err("at least one sample required".into());
     }
+    let reference = if let Some(path) = args.next() {
+        Some(serde_json::from_slice::<Value>(&fs::read(path)?)?)
+    } else { None };
     let bytes = fs::read(&file)?;
     let definition_hash = format!("{:x}", Sha256::digest(&bytes));
     let executable_hash = format!("{:x}", Sha256::digest(fs::read(std::env::current_exe()?)?));
@@ -221,13 +226,40 @@ fn main() -> Result<(), Box<dyn Error>> {
             return Err("benchmark did not generate a fresh complete region".into());
         }
         let signature = signature(&path)?;
+        if !warm {
+            if let Some(reference) = &reference {
+                let expected = reference["rows"].as_array().ok_or("reference has no rows")?
+                    .iter().find(|row| row["region"] == json!(at)).ok_or("reference lacks measured region")?;
+                if expected["output"] != signature {
+                    fs::write(output.join("mismatch.json"), serde_json::to_vec_pretty(
+                        &json!({"region":at,"path":path,"expected":expected["output"],"actual":signature}))?)?;
+                    return Err(format!("decompressed NBT mismatch; retained {}", path.display()).into());
+                }
+            }
+        }
+        let partial = if category == "mixed" && !warm && sample == warmups {
+            // Repair one input-only boundary slot. The other 1,023 records must
+            // survive, and the regenerated FEATURES slot must match exactly.
+            let mut damaged = fs::read(&path)?;
+            damaged[..4].fill(0);
+            fs::write(&path, damaged)?;
+            let repaired = region::generate_region_profiled(&engine, request, &path,
+                world.definition().data_version(), biome, None)?;
+            if repaired.region.generated != 1 || repaired.region.preserved != 1023 {
+                return Err("partial End repair did not preserve existing records".into());
+            }
+            if self::signature(&path)? != signature {
+                return Err("partial boundary repair changed decompressed chunk output".into());
+            }
+            Some(json!({"generated":1,"preserved":1023,"exact_nbt_matches":true}))
+        } else { None };
         fs::remove_file(&path)?; // Output verification/deletion outside generation timing.
         let stages: serde_json::Map<_, _> = STAGES
             .iter()
             .zip(report.stages.nanos)
             .map(|(name, n)| (name.to_string(), json!(n as f64 / 1e6)))
             .collect();
-        let row = json!({"warmup":warm,"region":at,"ms":ms,"bytes":report.region.bytes,"gpu_host_ms":report.region.gpu_nanos as f64/1e6,"assembly_host_ms":report.region.assembly_nanos as f64/1e6,"write_host_ms":report.region.write_nanos as f64/1e6,"stages_ms":stages,"output":signature});
+        let row = json!({"warmup":warm,"region":at,"ms":ms,"bytes":report.region.bytes,"gpu_host_ms":report.region.gpu_nanos as f64/1e6,"assembly_host_ms":report.region.assembly_nanos as f64/1e6,"write_host_ms":report.region.write_nanos as f64/1e6,"stages_ms":stages,"output":signature,"partial_boundary_repair":partial});
         eprintln!("Region {:?}, warmup={}, {:.3} ms", at, warm, ms);
         rows.push(row);
     }
