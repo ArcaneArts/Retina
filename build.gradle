@@ -24,6 +24,11 @@ tasks.register('buildBukkit') {
     description = 'Build the installable Bukkit plugin with bundled vanilla data and native libraries.'
     dependsOn ':bukkit:build'
 }
+tasks.register('bukkitServerTest') {
+    group = 'verification'
+    description = 'Run the Bukkit dedicated-server acceptance suite with -PbukkitServerJar=/absolute/server.jar.'
+    dependsOn ':bukkit:serverTest'
+}
 
 ['test', 'runClient', 'runServer'].each { name ->
     tasks.register(name) {

@@ -21,6 +21,7 @@ final class WorldRepository implements AutoCloseable {
     private final Map<String, Binding> bindings = new HashMap<>();
     private final Map<Path, Owner> owners = new HashMap<>();
     private final Set<String> unloaded = new HashSet<>();
+    private final Map<String, Long> generations = new HashMap<>();
     private final Path container, mappingFile;
     private boolean closed;
 
@@ -63,10 +64,17 @@ final class WorldRepository implements AutoCloseable {
         saved.save(mappingFile.toFile());
     }
 
-    synchronized void select(String world) { requireOpen(); unloaded.remove(world); }
-
-    synchronized Binding resolve(WorldInfo info, String selection) {
+    record Selection(String world, long generation) { }
+    synchronized Selection select(String world) {
         requireOpen();
+        if (unloaded.remove(world)) generations.merge(world, 1L, Long::sum);
+        return new Selection(world, generations.computeIfAbsent(world, ignored -> 1L));
+    }
+
+    synchronized Binding resolve(WorldInfo info, String selection, Selection session) {
+        requireOpen();
+        if (!session.world().equals(info.getName()) || !Objects.equals(generations.get(info.getName()), session.generation()))
+            throw new IllegalStateException("Retina generator belongs to an earlier world lifetime: " + session.world());
         if (unloaded.contains(info.getName())) throw new IllegalStateException("Retina world is unloading: " + info.getName());
         String chosen = selection == null || selection.isBlank() ? null : switch (selection) {
             case "overworld", "minecraft:overworld" -> "minecraft:overworld";
@@ -140,7 +148,7 @@ final class WorldRepository implements AutoCloseable {
             } catch (IOException error) { throw new IllegalStateException("Cannot materialize Retina definition in " + root, error); }
         }
         try {
-            var owner = new Owner(root, definition);
+            var owner = new Owner(root, definition, plugin.getLogger());
             plugin.getLogger().info((created ? "Created and reopened " : "Opened ") + root.resolve("retina.dat")
                     + " seed=" + owner.seed + " in " + ((System.nanoTime() - started) / 1_000_000) + "ms");
             return owner;
@@ -178,13 +186,18 @@ final class WorldRepository implements AutoCloseable {
             owner.lock.readLock().lock();
             try {
                 if (closed || owner.closed) throw new IllegalStateException("Retina world is closed: " + owner.root);
-                return job.get();
+                try { return job.get(); }
+                catch (RuntimeException | Error error) {
+                    owner.log.log(java.util.logging.Level.SEVERE, "Retina generation callback failed for " + owner.root + " / " + dimension.key, error);
+                    throw error;
+                }
             } finally { owner.lock.readLock().unlock(); }
         }
     }
 
     static final class Owner implements AutoCloseable {
         final Path root;
+        final java.util.logging.Logger log;
         final NativeWorldDefinition definition;
         final JsonObject metadata;
         final long seed;
@@ -192,8 +205,9 @@ final class WorldRepository implements AutoCloseable {
         final Map<String, DimensionContext> dimensions = new HashMap<>();
         int references;
         boolean closed;
-        Owner(Path root, NativeWorldDefinition definition) {
+        Owner(Path root, NativeWorldDefinition definition, java.util.logging.Logger log) {
             this.root = root; this.definition = definition;
+            this.log = log;
             metadata = JsonParser.parseString(definition.metadata()).getAsJsonObject();
             seed = metadata.get("seed").getAsLong(); // Never round a 64-bit seed through double.
         }
