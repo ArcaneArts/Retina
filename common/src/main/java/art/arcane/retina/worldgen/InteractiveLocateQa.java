@@ -12,6 +12,9 @@ import java.util.concurrent.CompletableFuture;
 /** Observe the real asynchronous player-command path without installing a result callback. */
 final class InteractiveLocateQa {
     static CompletableFuture<BlockPos> locate(ServerPlayer player, String structure) {
+        return locate(player,structure,player.level(),player.blockPosition());
+    }
+    static CompletableFuture<BlockPos> locate(ServerPlayer player,String structure,net.minecraft.server.level.ServerLevel level,BlockPos origin) {
         var result = new CompletableFuture<BlockPos>();
         var receiver = new CommandSource() {
             public boolean acceptsSuccess() { return true; }
@@ -32,7 +35,7 @@ final class InteractiveLocateQa {
             }
         };
         var server = player.level().getServer();
-        var source = player.createCommandSourceStack().withSource(receiver)
+        var source = player.createCommandSourceStack().withLevel(level).withPosition(net.minecraft.world.phys.Vec3.atCenterOf(origin)).withSource(receiver)
                 .withPermission(server.createCommandSourceStack().permissions());
         require(source.callback() == CommandResultCallback.EMPTY, "interactive locate path has no result callback");
         server.getCommands().performPrefixedCommand(source, "locate structure " + structure);

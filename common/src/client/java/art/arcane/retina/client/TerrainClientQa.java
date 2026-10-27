@@ -86,6 +86,7 @@ public final class TerrainClientQa {
             }
             case 1 -> {
                 if (acceptExperimentalBackup(minecraft)) return;
+                if (!art.arcane.retina.worldgen.EndLifecycleQa.ready(minecraft.getSingleplayerServer())) return;
                 if (!NetherClientQa.ready(minecraft)) return;
                 if (!ready(minecraft) || packets == 0) return;
                 if (readySince == 0) {
@@ -132,6 +133,7 @@ public final class TerrainClientQa {
             }
             case 4 -> {
                 if (acceptExperimentalBackup(minecraft)) return;
+                if (!art.arcane.retina.worldgen.EndLifecycleQa.ready(minecraft.getSingleplayerServer())) return;
                 if (!NetherClientQa.ready(minecraft)) return;
                 if (!ready(minecraft) || packets <= packetsBeforeReopen) return;
                 if (readySince == 0) readySince = System.nanoTime();

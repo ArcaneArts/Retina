@@ -20,6 +20,7 @@ neoForge {
             // Java 25 permits their FFM calls through this explicit policy.
             jvmArguments.add '--illegal-native-access=allow'
             if (providers.gradleProperty('retinaQa').isPresent()) {
+                if (providers.gradleProperty('retinaEndLifecycleQa').isPresent()) systemProperty 'retina.qa.end.lifecycle', 'true'
                 if (providers.gradleProperty('retinaDefinitionFailCompilerQa').isPresent()) systemProperty 'retina.qa.definition.failCompiler', 'true'
                 systemProperty 'retina.qa', 'true'
                 [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',
