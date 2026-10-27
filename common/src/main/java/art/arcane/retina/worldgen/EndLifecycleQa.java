@@ -44,7 +44,7 @@ public final class EndLifecycleQa {
     }
 
     public static void prepareDefinition(MinecraftServer server) {
-        if(!ENABLED)return;
+        if(!ENABLED&&!Boolean.getBoolean("retina.qa.end.travel"))return;
         var root=server.getWorldPath(LevelResource.ROOT);var file=root.resolve(WorldDefinitionFile.NAME);
         if(Files.exists(file))return; // Preserve the exact file on reopen.
         var definition=WorldDefinitionCompiler.compile(server);

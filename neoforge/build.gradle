@@ -21,6 +21,7 @@ neoForge {
             jvmArguments.add '--illegal-native-access=allow'
             if (providers.gradleProperty('retinaQa').isPresent()) {
                 if (providers.gradleProperty('retinaEndLifecycleQa').isPresent()) systemProperty 'retina.qa.end.lifecycle', 'true'
+                if (providers.gradleProperty('retinaEndTravelQa').isPresent()) systemProperty 'retina.qa.end.travel', 'true'
                 if (providers.gradleProperty('retinaDefinitionFailCompilerQa').isPresent()) systemProperty 'retina.qa.definition.failCompiler', 'true'
                 systemProperty 'retina.qa', 'true'
                 [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',

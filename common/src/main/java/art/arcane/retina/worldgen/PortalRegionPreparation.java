@@ -61,7 +61,7 @@ public final class PortalRegionPreparation {
         return Math.max(searchRadius + EXISTING_FRAME_REACH, FRAME_REACH) + TICKING_HALO;
     }
 
-    private static CompletableFuture<Void> prepare(ServerLevel level, List<ChunkPos> regions) {
+    static CompletableFuture<Void> prepare(ServerLevel level, List<ChunkPos> regions) {
         var worker = (RegionIoBridge) level.getChunkSource().chunkMap.chunkScanner();
         if (!worker.retina$regionMode()) return CompletableFuture.completedFuture(null);
         var futures = regions.stream().map(worker::retina$prepareForeground).toArray(CompletableFuture[]::new);

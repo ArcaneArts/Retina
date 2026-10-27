@@ -53,6 +53,8 @@ public final class TerrainClientQa {
 
     public static void tick(Minecraft minecraft) {
         if (!ENABLED || phase == 6) return;
+        if (Boolean.getBoolean("retina.qa.end.travel") && minecraft.gui.screen() instanceof net.minecraft.client.gui.screens.WinScreen credits)
+            credits.onClose(); // Normal client completion sends the respawn packet to the server.
         if (started == 0) started = System.nanoTime();
         long deadline = Boolean.getBoolean("retina.qa.nether.integrations") ? 2_400_000_000_000L
                 : Boolean.getBoolean("retina.qa.nether.structures") ? 2_400_000_000_000L
@@ -87,6 +89,7 @@ public final class TerrainClientQa {
             case 1 -> {
                 if (acceptExperimentalBackup(minecraft)) return;
                 if (!art.arcane.retina.worldgen.EndLifecycleQa.ready(minecraft.getSingleplayerServer())) return;
+                if (!art.arcane.retina.worldgen.EndTravelQa.ready(minecraft.getSingleplayerServer())) return;
                 if (!NetherClientQa.ready(minecraft)) return;
                 if (!ready(minecraft) || packets == 0) return;
                 if (readySince == 0) {
@@ -134,6 +137,7 @@ public final class TerrainClientQa {
             case 4 -> {
                 if (acceptExperimentalBackup(minecraft)) return;
                 if (!art.arcane.retina.worldgen.EndLifecycleQa.ready(minecraft.getSingleplayerServer())) return;
+                if (!art.arcane.retina.worldgen.EndTravelQa.ready(minecraft.getSingleplayerServer())) return;
                 if (!NetherClientQa.ready(minecraft)) return;
                 if (!ready(minecraft) || packets <= packetsBeforeReopen) return;
                 if (readySince == 0) readySince = System.nanoTime();
