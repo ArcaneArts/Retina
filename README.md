@@ -98,6 +98,8 @@ stopped. Ctrl-C finishes the active region and exits with status 130.
 This produces region data; creating `level.dat` and initializing a playable
 save remain outside the executable's scope. See [world definitions and headless
 usage](docs/WORLD_DEFINITION.md) for layouts, compression, errors and validation.
+The [implementation acceptance report](docs/WORLD_DEFINITION_ACCEPTANCE.md)
+records merged PRs, executed mod/headless comparisons and file size/load measurements.
 
 ## Configuration
 

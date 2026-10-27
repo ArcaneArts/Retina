@@ -5,12 +5,14 @@ input. One file contains shared types and every dimension's definition. The
 Rust `world_definition` module reads it without initializing Minecraft, loading
 datapacks, or creating a GPU device.
 
-Implementation is being delivered in separate cycles. The format, reader,
-Java compiler, atomic file writer, native session binding and JDK-only bridge
-and automatic Fabric/NeoForge startup integration are implemented. Normal
-server generation opens the saved definition. The standalone runner uses the
-same loader and generation session. Final legacy tooling migration and the
-broader frozen-dependency/feature audit remain subsequent cycles.
+Fabric, NeoForge and the standalone runner use the same Rust loader and
+generation engine. Java compiles and atomically publishes a missing file, then
+discards its compiler output and reopens the published file through Rust. Later
+starts load the saved file directly. Runtime registries resolve platform
+identities; they do not supply generation rules. Production JSON profile upload
+and profile-zero generation have been removed. See the
+[implementation acceptance report](WORLD_DEFINITION_ACCEPTANCE.md) for merged
+deliveries, executed verification, artifact measurements and current limits.
 
 ## Wire format and storage geometry
 
@@ -59,8 +61,8 @@ dimensions. No profile is synthesized for it.
 `generator_depth`, `sea_level`, `spawn_height`, `logical_height`; boolean Byte
 `skylight`, `ceiling`; Double `coordinate_scale`; and Float `base_height`,
 `amplitude`, `frequency`. The last three preserve existing procedural request
-parameters during migration. Requests take their seed and settings from the
-loaded definition and add coordinates plus a registered native profile handle.
+parameters for fixed procedural terrain. Requests take their seed and settings
+from the loaded definition and add coordinates plus a registered native profile handle.
 The writer preserves these floats' exact bits, including negative zero and
 subnormal values; native metadata and requests retain the saved values.
 
@@ -177,9 +179,8 @@ and reference errors, truncated files, and preserving the source after a
 failed read. They do not initialize a GPU or claim mod/headless integration.
 
 Fresh-process tests reproduce mod-captured regions from only `retina.dat`,
-including legacy format 1 files and format 2 cropped native ranges. Remaining
-cycles finish the hidden-dependency audit and retire the legacy JSON tooling path. The startup cycle adds an explicit
-compilation path for serialized Retina biome-source generators, including their
+including legacy format 1 files and format 2 cropped native ranges. The compiler
+supports serialized Retina biome-source generators, including their
 procedural parameters and density-composition setting. Legacy fixed-biome
 procedural Retina generators also compile to an explicit saved terrain kind.
 Ordinary fixed biome noise generators retain their registry-profile terrain.
@@ -322,7 +323,7 @@ The second generates saved/legacy Overworld and Nether regions and compares
 the complete decoded NBT of every chunk (2,048 comparisons). Native generation
 content is compared independently of MCA header timestamps and compound-key
 serialization order. This includes every field emitted in those chunks;
-targeted rare-feature and cross-boundary coverage remains part of end-to-end QA.
+targeted rare-feature and cross-boundary runs are recorded in the acceptance report.
 
 The Java bridge tests compile and run with a JDK-only classpath:
 
@@ -382,9 +383,9 @@ and `-PretinaNativePath=/absolute/native-library` for isolated local runs.
 The equivalent tasks are `:fabric:runServer --args=--nogui` and
 `:neoforge:runNeoForgeServer`.
 
-The broader frozen-template decoder audit and removal of the old direct
-registration helpers remain subsequent work; startup passing alone does not
-complete the world-definition goal.
+Saved structure installation uses frozen piece data rather than current
+templates, pools or processors. Generation tools and integration fixtures use
+the file loader; the production direct-registration helpers have been removed.
 
 Startup verification on Metal / Apple M4 Max used separate disposable Fabric
 (seed 731) and NeoForge (seed 9007199254740993) worlds. Both created the file,
@@ -494,8 +495,9 @@ damaged output failed unchanged. An actual SIGINT during generation finished
 one complete region, left no unpublished region file and exited 130. CPU CLI
 unit/process tests and the existing native unit suite also passed. These checks
 establish Retina-to-Retina equality on this backend, not new vanilla parity or
-cross-GPU determinism. The remaining goal still includes targeted rare-feature
-coverage, frozen runtime-template binding and legacy JSON tooling migration.
+cross-GPU determinism. Subsequent verification covers rare features, structures
+crossing chunk/region boundaries, frozen runtime-template binding and migrated
+tooling; see the acceptance report for those results.
 
 Cropped chunk delivery installs native section data and saved heightmaps directly;
 its feature stage restores those saved heightmaps after ordinary Minecraft
@@ -560,8 +562,10 @@ The registry compiler and benchmark fixtures share `WorldDefinitionAssembler`
 for structural profiles, shared type dictionaries, palettes and world headers.
 The pipeline, retained-column and ore-planning/raster tools open actual files through
 `WorldDefinition::read` and `WorldSession`; their request seed and parameters
-come from the selected dimension. They accept no seed override. Other legacy
-benchmark and integration fixtures remain scheduled for migration.
+come from the selected dimension. They accept no seed override. Generation
+benchmarks, Python campaigns and Java/Rust integration fixtures use saved files.
+Explicit unit-test migration and shader oracles may still read legacy JSON;
+their private registration helper is absent from production builds.
 
 Compile an Overworld fixture without loading the native library or GPU:
 
@@ -708,9 +712,9 @@ and composed programs are separate explicitly compiled generation definitions.
 `create(..., execution)` supports cases that need one selected dispatch binding.
 These helpers all use the production assembler, file writer and Rust loader.
 
-The coordinate/interpolation JSON diagnostic artifacts remain temporary inputs
-to the existing low-level GPU shader comparison probes; those probes' fixture
-migration is separate. They are not uploaded by these Java generation tests.
+Coordinate/interpolation JSON diagnostics are used only by explicit low-level
+shader comparison oracles compiled under `cfg(test)`. They provide no production
+registration path and are not uploaded by these Java generation tests.
 
 ### Frozen density semantics and compilation diagnostics
 
