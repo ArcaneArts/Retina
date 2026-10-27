@@ -14,11 +14,15 @@ final class RegistryDefinitionFixture {
     }
 
     static DefinitionFixture create(JsonObject model, long seed, int minY, int height, float base, float amplitude) {
+        return create(model, seed, minY, height, base, amplitude, .008F);
+    }
+
+    static DefinitionFixture create(JsonObject model, long seed, int minY, int height, float base, float amplitude, float frequency) {
         var execution = model.has("program_execution") ? NativeWorldDefinition.ProgramExecution.valueOf(
                 model.get("program_execution").getAsString().toUpperCase(Locale.ROOT)) : NativeWorldDefinition.ProgramExecution.AUTO;
         try {
             return DefinitionFixture.create("minecraft:overworld", model,
-                    new TerrainRequest(seed, 0, 0, minY, height, base, amplitude, .008F, 0),
+                    new TerrainRequest(seed, 0, 0, minY, height, base, amplitude, frequency, 0),
                     -64, 384, true, false, execution);
         } catch (IOException error) { throw new UncheckedIOException(error); }
     }

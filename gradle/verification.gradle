@@ -512,6 +512,8 @@ tasks.register('geologyTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeGeologyIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('featureTest', JavaExec) {
@@ -522,6 +524,8 @@ tasks.register('featureTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeFeatureIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('snowTest', JavaExec) {
@@ -568,6 +572,8 @@ tasks.register('decorationCountTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeDecorationCountIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('blockFeatureTest', JavaExec) {
@@ -588,6 +594,8 @@ tasks.register('providerNoiseTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeProviderNoiseIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('previewTest', JavaExec) {
@@ -665,6 +673,8 @@ tasks.register('landscapeTest', JavaExec) {
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeLandscapeIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('shoreTest', JavaExec) {
