@@ -813,3 +813,9 @@ Ordering tests open the same file independently for their cold concurrent pass;
 processor and ordered-region captures retain a copy of the definition and use
 its DataVersion. Exclusion search bindings use metadata reconstructed from the
 loaded definition.
+
+`netherStructureTest --args=--families-only` covers fortress, bastion, fossil and
+ruined-portal reference generation plus complete mixed-feature Nether regions.
+Each world seed binds its own saved definition, including baseline terrain for
+Minecraft's reference pieces. Cold concurrent passes independently open the same
+file. Region captures retain that file and use its DataVersion for output.

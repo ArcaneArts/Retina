@@ -1,7 +1,6 @@
 package art.arcane.retina.worldgen;
 
 import com.google.gson.*;
-import net.minecraft.SharedConstants;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.*;
 import net.minecraft.nbt.*;
@@ -35,7 +34,7 @@ final class PortalIntegrationTest {
     static void run(RegistryAccess registry,ResourceManager resources,JsonObject source,BlockState[] materials) throws Exception {
         waterloggedPlacements=0;scheduledBlockTicks=0;
         var fixture=fixture(source);var terrain=NativeTerrain.instance();
-        var base=fixture.deepCopy();base.add("structures",JsonParser.parseString("{\"templates\":[],\"definitions\":[],\"pools\":{},\"sets\":[]}"));int baseline=terrain.registerProfile(base.toString());
+        var base=fixture.deepCopy();base.add("structures",JsonParser.parseString("{\"templates\":[],\"definitions\":[],\"pools\":{},\"sets\":[]}"));
         var work=Files.createTempDirectory(Path.of("build/nether"),"portal-reference-");
         int cases=0,chunks=0;var chosen=new LinkedHashMap<String,Long>();
         for(long seed=0;chosen.size()<8;seed++) {
@@ -46,16 +45,19 @@ final class PortalIntegrationTest {
             var manager=new StructureTemplateManager(resources,storage,DataFixers.getDataFixer(),registry.lookupOrThrow(Registries.BLOCK));
             for(int template=0;template<13;template++) {
                 var variant=fixture.deepCopy();var kit=variant.getAsJsonObject("structures").getAsJsonObject("portals");var pair=kit.getAsJsonArray("templates").get(template).deepCopy();var ids=new JsonArray();for(int i=0;i<13;i++)ids.add(pair.deepCopy());kit.add("templates",ids);
-                int profile=terrain.registerProfile(variant.toString());
                 for(long seed:chosen.values()) {
-                    var plan=plan(terrain,profile,seed,variant,materials,template,manager);
-                    chunks+=placement(registry,resources,manager,terrain,profile,baseline,seed,plan,materials,variant,false);cases++;
+                    try(var profile=NetherTerrainTest.fixture(variant,seed);var baseline=NetherTerrainTest.fixture(base,seed)) {
+                        var plan=plan(terrain,profile,seed,variant,materials,template,manager);
+                        chunks+=placement(registry,resources,manager,terrain,profile,baseline,seed,plan,materials,variant,false);cases++;
+                    }
                 }
             }
-            var custom=custom(fixture);int profile=terrain.registerProfile(custom.toString());var setups=new HashSet<Integer>();var air=new HashSet<Boolean>();
+            var custom=custom(fixture);var setups=new HashSet<Integer>();var air=new HashSet<Boolean>();
             for(long seed=0;seed<24;seed++) {
-                var plan=plan(terrain,profile,seed,custom,materials,-1,manager,new ChunkPos(-512,512));setups.add(plan.setup);air.add(plan.air);
-                chunks+=placement(registry,resources,manager,terrain,profile,baseline,seed,plan,materials,custom,seed==0);cases++;
+                try(var profile=NetherTerrainTest.fixture(custom,seed);var baseline=NetherTerrainTest.fixture(base,seed)) {
+                    var plan=plan(terrain,profile,seed,custom,materials,-1,manager,new ChunkPos(-512,512));setups.add(plan.setup);air.add(plan.air);
+                    chunks+=placement(registry,resources,manager,terrain,profile,baseline,seed,plan,materials,custom,seed==0);cases++;
+                }
             }
             require(setups.size()==3&&air.size()==2,"weighted setups and both air-pocket outcomes exercised");
             var flooded=fixture.deepCopy();var palette=new LinkedHashMap<BlockState,Integer>();for(var state:materials)palette.put(state,palette.size());
@@ -67,11 +69,12 @@ final class PortalIntegrationTest {
             var biomes=new JsonArray();biomes.add(flooded.getAsJsonArray("biomes").get(0));flooded.add("biomes",biomes);
             flooded.getAsJsonObject("structures").getAsJsonArray("definitions").get(0).getAsJsonObject().add("biomes",StructureProfile.ints(0));
             var flat=new JsonObject();var layers=new JsonArray();for(int i=0;i<256;i++)layers.add(water);flat.add("base_layers",layers);flat.add("deferred_layers",new JsonArray());flat.add("air_materials",StructureProfile.ints(0));flooded.add("flat",flat);
-            var floodedBase=flooded.deepCopy();floodedBase.add("structures",base.get("structures").deepCopy());int floodedBaseline=terrain.registerProfile(floodedBase.toString());
-            int floodedProfile=terrain.registerProfile(flooded.toString());
+            var floodedBase=flooded.deepCopy();floodedBase.add("structures",base.get("structures").deepCopy());
             for(long seed=0;seed<8;seed++) {
-                var plan=plan(terrain,floodedProfile,seed,flooded,wetMaterials,-1,manager);
-                chunks+=placement(registry,resources,manager,terrain,floodedProfile,floodedBaseline,seed,plan,wetMaterials,flooded,false);cases++;
+                try(var floodedProfile=NetherTerrainTest.fixture(flooded,seed);var floodedBaseline=NetherTerrainTest.fixture(floodedBase,seed)) {
+                    var plan=plan(terrain,floodedProfile,seed,flooded,wetMaterials,-1,manager);
+                    chunks+=placement(registry,resources,manager,terrain,floodedProfile,floodedBaseline,seed,plan,wetMaterials,flooded,false);cases++;
+                }
             }
         }
         require(waterloggedPlacements>0&&scheduledBlockTicks>0,"wet placements and bubble-column block ticks exercised");
@@ -105,12 +108,13 @@ final class PortalIntegrationTest {
         var base = variant.deepCopy();
         base.add("structures", JsonParser.parseString("{\"templates\":[],\"definitions\":[],\"pools\":{},\"sets\":[]}"));
         var terrain = NativeTerrain.instance();
-        int profile = terrain.registerProfile(variant.toString()), baseline = terrain.registerProfile(base.toString());
-        var work = Files.createTempDirectory(Path.of("build/nether"), "portal-live-reference-");
-        try (var storage = LevelStorageSource.createDefault(work).createAccess("templates")) {
-            var manager = new StructureTemplateManager(resources, storage, DataFixers.getDataFixer(), registry.lookupOrThrow(Registries.BLOCK));
-            var plan = plan(terrain, profile, 123456789L, variant, materials, -1, manager, new ChunkPos(24, 21));
-            placement(registry, resources, manager, terrain, profile, baseline, 123456789L, plan, materials, variant, false);
+        try(var profile=NetherTerrainTest.fixture(variant,123456789L);var baseline=NetherTerrainTest.fixture(base,123456789L)) {
+            var work = Files.createTempDirectory(Path.of("build/nether"), "portal-live-reference-");
+            try (var storage = LevelStorageSource.createDefault(work).createAccess("templates")) {
+                var manager = new StructureTemplateManager(resources, storage, DataFixers.getDataFixer(), registry.lookupOrThrow(Registries.BLOCK));
+                var plan = plan(terrain, profile, 123456789L, variant, materials, -1, manager, new ChunkPos(24, 21));
+                placement(registry, resources, manager, terrain, profile, baseline, 123456789L, plan, materials, variant, false);
+            }
         }
     }
     static String templateName(int index){return "minecraft:ruined_portal/"+(index<10?"portal_"+(index+1):"giant_portal_"+(index-9));}
@@ -139,10 +143,10 @@ final class PortalIntegrationTest {
         structures.add("sets",JsonParser.parseString("[{\"id\":\"retina:portal_fixture\",\"placement\":{\"type\":\"minecraft:random_spread\",\"spacing\":512,\"separation\":511,\"salt\":0},\"entries\":[{\"definition\":0,\"weight\":1}]}]"));
         return fixture;
     }
-    static Plan plan(NativeTerrain terrain,int profile,long seed,JsonObject fixture,BlockState[] materials,int forcedTemplate,StructureTemplateManager manager) {
+    static Plan plan(NativeTerrain terrain,DefinitionFixture profile,long seed,JsonObject fixture,BlockState[] materials,int forcedTemplate,StructureTemplateManager manager) {
         return plan(terrain,profile,seed,fixture,materials,forcedTemplate,manager,new ChunkPos(0,0));
     }
-    static Plan plan(NativeTerrain terrain,int profile,long seed,JsonObject fixture,BlockState[] materials,int forcedTemplate,StructureTemplateManager manager,ChunkPos at) {
+    static Plan plan(NativeTerrain terrain,DefinitionFixture profile,long seed,JsonObject fixture,BlockState[] materials,int forcedTemplate,StructureTemplateManager manager,ChunkPos at) {
         var set=fixture.getAsJsonObject("structures").getAsJsonArray("sets").get(0).getAsJsonObject();
         long randomSeed=mix(seed^(long)at.x()*341873128712L^(long)at.z()*132897987541L^set.getAsJsonObject("placement").get("salt").getAsLong());
         var random=RandomSource.create(randomSeed);
@@ -165,12 +169,12 @@ final class PortalIntegrationTest {
         var bounds=template.getBoundingBox(at.getWorldPosition(),rotation,pivot,mirror);
         int y=air?32+random.nextInt(69):random.nextFloat()<.5f?27+random.nextInt(3):29+random.nextInt(72);
         var columns=new ArrayList<short[]>();for(int[] corner:new int[][]{{bounds.minX(),bounds.minZ()},{bounds.maxX(),bounds.minZ()},{bounds.minX(),bounds.maxZ()},{bounds.maxX(),bounds.maxZ()}}) {
-            var request=request(profile,seed,Math.floorDiv(corner[0],16),Math.floorDiv(corner[1],16));columns.add(terrain.column(request,(corner[1]&15)*16+(corner[0]&15)));
+            var request=profile.request(Math.floorDiv(corner[0],16),Math.floorDiv(corner[1],16));columns.add(terrain.column(request,(corner[1]&15)*16+(corner[0]&15)));
         }
         for(;y>15;y--){int corners=0;for(var column:columns)if(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE_WG.isOpaque().test(materials[Short.toUnsignedInt(column[y])]))corners++;if(corners>=3)break;}
         return new Plan(new BlockPos(at.getMinBlockX(),y,at.getMinBlockZ()),rotation,mirror,forcedTemplate,air,randomSeed,selected);
     }
-    static int placement(RegistryAccess registry,ResourceManager resources,StructureTemplateManager manager,NativeTerrain terrain,int profile,int base,long seed,Plan plan,BlockState[] materials,JsonObject fixture,boolean mca) throws Exception {
+    static int placement(RegistryAccess registry,ResourceManager resources,StructureTemplateManager manager,NativeTerrain terrain,DefinitionFixture profile,DefinitionFixture base,long seed,Plan plan,BlockState[] materials,JsonObject fixture,boolean mca) throws Exception {
         var setup=fixture.getAsJsonObject("structures").getAsJsonArray("definitions").get(0).getAsJsonObject().getAsJsonObject("config").getAsJsonArray("setups").get(plan.setup).getAsJsonObject();
         var name=Identifier.parse(templateName(plan.template));var template=manager.getOrCreate(name);var size=template.getSize();
         var piece=new RuinedPortalPiece(registry,manager,plan.pos,RuinedPortalPiece.VerticalPlacement.IN_NETHER,
@@ -180,7 +184,7 @@ final class PortalIntegrationTest {
             Reference(){super(registry);random=RandomSource.create(plan.randomSeed);}
             @Override BlockState state(BlockPos p) {
                 if(blocks.containsKey(p))return blocks.get(p);if(p.getY()<0||p.getY()>=256)return Blocks.AIR.defaultBlockState();
-                var at=ChunkPos.containing(p);var values=baseline.computeIfAbsent(at,k->PortalIntegrationTest.blocks(terrain,request(base,seed,k.x(),k.z())));
+                var at=ChunkPos.containing(p);var values=baseline.computeIfAbsent(at,k->PortalIntegrationTest.blocks(terrain,base.request(k.x(),k.z())));
                 return materials[Short.toUnsignedInt(values[p.getY()*256+(p.getZ()&15)*16+(p.getX()&15)])];
             }
             int surface(int x,int z){for(int y=255;y>=0;y--)if(!state(new BlockPos(x,y,z)).isAir())return y+1;return 0;}
@@ -218,19 +222,19 @@ final class PortalIntegrationTest {
         scheduledBlockTicks+=blockTicks.size();
         var ids=new HashMap<BlockState,Integer>();for(int i=0;i<materials.length;i++)ids.put(materials[i],i);
         var box=piece.getBoundingBox();var center=box.getCenter();int minX=Math.min(box.minX(),center.getX()-14)-1,maxX=Math.max(box.maxX(),center.getX()+14)+1,minZ=Math.min(box.minZ(),center.getZ()-14)-1,maxZ=Math.max(box.maxZ(),center.getZ()+14)+1;
-        var start=ChunkPos.containing(plan.pos);var metadata=terrain.structureStarts(request(profile,seed,start.x(),start.z()));var tag=metadata.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty("minecraft:ruined_portal_nether");
+        var start=ChunkPos.containing(plan.pos);var metadata=terrain.structureStarts(profile.request(start.x(),start.z()));var tag=metadata.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty("minecraft:ruined_portal_nether");
         var saved=StructureStart.loadStaticStart(new StructurePieceSerializationContext(resources,registry,manager),tag,seed);
         require(saved!=null&&saved.isValid()&&saved.getBoundingBox().equals(box),"actual portal floor/template/mirror/pivot bounds "+plan);
-        require(terrain.queryStructureStarts(request(profile,seed,start.x(),start.z()),new int[]{start.x(),start.z(),0})[0]==0,"portal locate shares accepted start");
+        require(terrain.queryStructureStarts(profile.request(start.x(),start.z()),new int[]{start.x(),start.z(),0})[0]==0,"portal locate shares accepted start");
         if (seed == 123456789L && start.equals(new ChunkPos(24, 21))) {
             require(reference.entities.isEmpty(), "Minecraft source also removes the integrated fixture's submerged chest");
             System.out.println("QA_EVT {\"event\":\"nether_submerged_portal_reference\",\"status\":\"pass\",\"context\":{\"seed\":123456789,\"x\":384,\"z\":336,\"source_block_entities\":0}}");
         }
         int count=0;var generated=new LinkedHashMap<ChunkPos,short[]>();
         for(int z=Math.floorDiv(minZ,16);z<=Math.floorDiv(maxZ,16);z++)for(int x=Math.floorDiv(minX,16);x<=Math.floorDiv(maxX,16);x++) {
-            var at=new ChunkPos(x,z);var expected=baseline.computeIfAbsent(at,k->blocks(terrain,request(base,seed,k.x(),k.z()))).clone();
+            var at=new ChunkPos(x,z);var expected=baseline.computeIfAbsent(at,k->blocks(terrain,base.request(k.x(),k.z()))).clone();
             reference.blocks.forEach((p,state)->{if(ChunkPos.containing(p).equals(at))expected[p.getY()*256+(p.getZ()&15)*16+(p.getX()&15)]=Objects.requireNonNull(ids.get(state),"unexported portal state "+state).shortValue();});
-            var r=request(profile,seed,x,z);var actual=blocks(terrain,r);generated.put(at,actual);int mismatch=Arrays.mismatch(expected,actual);
+            var r=profile.request(x,z);var actual=blocks(terrain,r);generated.put(at,actual);int mismatch=Arrays.mismatch(expected,actual);
             require(mismatch<0,"portal full postProcess "+plan+" chunk="+at+" index="+mismatch+(mismatch<0?"":" expected="+materials[Short.toUnsignedInt(expected[mismatch])]+" actual="+materials[Short.toUnsignedInt(actual[mismatch])]));
             var data=terrain.structureData(r);var expectedEntities=new HashMap<BlockPos,CompoundTag>();
             reference.entities.forEach((p,entity)->{if(ChunkPos.containing(p).equals(at))expectedEntities.put(p,entity.saveWithFullMetadata(registry));});
@@ -254,22 +258,24 @@ final class PortalIntegrationTest {
         if(mca)persist(terrain,profile,seed,generated,materials,registry,resources,manager,start,box,fixture);
         return count;
     }
-    static TerrainRequest request(int profile,long seed,int x,int z){return new TerrainRequest(seed,x,z,0,256,64,48,.008f,profile);}
-    static void persist(NativeTerrain terrain,int profile,long seed,Map<ChunkPos,short[]> generated,BlockState[] materials,RegistryAccess registry,ResourceManager resources,StructureTemplateManager manager,ChunkPos start,BoundingBox box,JsonObject fixture) throws Exception {
-        int cold=terrain.registerProfile(fixture.toString());Files.writeString(Path.of("build/nether/portal-fixture-profile.json"),fixture.toString());
-        try(var workers=Executors.newFixedThreadPool(4)) {
-            var jobs=new ArrayList<Future<?>>();var reverse=new ArrayList<>(generated.entrySet());Collections.reverse(reverse);
-            for(var entry:reverse)jobs.add(workers.submit(()->require(Arrays.equals(entry.getValue(),blocks(terrain,request(cold,seed,entry.getKey().x(),entry.getKey().z()))),"cold concurrent portal replay")));
-            for(var job:jobs)job.get();
+    static void persist(NativeTerrain terrain,DefinitionFixture profile,long seed,Map<ChunkPos,short[]> generated,BlockState[] materials,RegistryAccess registry,ResourceManager resources,StructureTemplateManager manager,ChunkPos start,BoundingBox box,JsonObject fixture) throws Exception {
+        try(var cold=DefinitionFixture.open(profile.file(),"minecraft:the_nether",2)) {
+            Files.writeString(Path.of("build/nether/portal-fixture-profile.json"),fixture.toString());
+            try(var workers=Executors.newFixedThreadPool(4)) {
+                var jobs=new ArrayList<Future<?>>();var reverse=new ArrayList<>(generated.entrySet());Collections.reverse(reverse);
+                for(var entry:reverse)jobs.add(workers.submit(()->require(Arrays.equals(entry.getValue(),blocks(terrain,cold.request(entry.getKey().x(),entry.getKey().z()))),"cold concurrent portal replay")));
+                for(var job:jobs)job.get();
+            }
         }
         var directory=Files.createTempDirectory(Path.of("build/nether"),"portal-regions-");Files.writeString(Path.of("build/nether/portal-regions-path.txt"),directory.toAbsolutePath().toString());
+        Files.copy(profile.file(),directory.resolve(WorldDefinitionFile.NAME));
         var regions=new HashSet<ChunkPos>();generated.keySet().forEach(p->regions.add(new ChunkPos(p.getRegionX()*32,p.getRegionZ()*32)));
         require(regions.size()>1,"portal footprint crosses MCA region boundary");
-        for(var p:regions)terrain.generateRegion(request(profile,seed,p.x(),p.z()),directory.resolve("r."+p.getRegionX()+"."+p.getRegionZ()+".mca"),SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:nether_wastes");
+        for(var p:regions)terrain.generateRegion(profile.request(p.x(),p.z()),directory.resolve("r."+p.getRegionX()+"."+p.getRegionZ()+".mca"),profile.dataVersion(),"minecraft:nether_wastes");
         var context=new StructurePieceSerializationContext(resources,registry,manager);var codec=PalettedContainer.codecRW(BlockState.CODEC,Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
         try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-portals",Level.NETHER,"chunk"),directory,false)) {
             for(var entry:generated.entrySet()) {
-                var chunk=Objects.requireNonNull(storage.read(entry.getKey()),"saved portal chunk");var data=terrain.structureData(request(profile,seed,entry.getKey().x(),entry.getKey().z()));
+                var chunk=Objects.requireNonNull(storage.read(entry.getKey()),"saved portal chunk");var data=terrain.structureData(profile.request(entry.getKey().x(),entry.getKey().z()));
                 for(String key:List.of("structures","block_entities","fluid_ticks","block_ticks"))require(Objects.equals(chunk.get(key),data.get(key))||chunk.getListOrEmpty(key).isEmpty()&&data.getListOrEmpty(key).isEmpty()&&!key.equals("structures"),"saved portal "+key);
                 if(entry.getKey().equals(start)) {
                     var reopened=StructureStart.loadStaticStart(context,chunk.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty("minecraft:ruined_portal_nether"),seed);

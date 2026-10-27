@@ -1,7 +1,6 @@
 package art.arcane.retina.worldgen;
 
 import com.google.gson.*;
-import net.minecraft.SharedConstants;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.*;
 import net.minecraft.nbt.*;
@@ -38,33 +37,39 @@ final class FortressAssemblyTest {
         definitions.get(index).getAsJsonObject().add("biomes",allowed);
         structures.add("sets",JsonParser.parseString("[{\"id\":\"retina:fortress_fixture\",\"placement\":{\"type\":\"minecraft:random_spread\",\"spacing\":512,\"separation\":511,\"salt\":0},\"entries\":[{\"definition\":"+index+",\"weight\":1}]}]"));
         Files.writeString(Path.of("build/nether/fortress-fixture-profile.json"),fixture.toString());
-        var nativeTerrain = NativeTerrain.instance(); int profile = nativeTerrain.registerProfile(fixture.toString());
+        var nativeTerrain = NativeTerrain.instance();
         var baseline = fixture.deepCopy(); baseline.add("structures",JsonParser.parseString("{\"templates\":[],\"definitions\":[],\"pools\":{},\"sets\":[]}"));
-        int baseProfile = nativeTerrain.registerProfile(baseline.toString());
         var kinds = new HashSet<String>(); int layouts=0,pieces=0; List<StructurePiece> selected=null; long selectedSeed=0; long mostChests=0;
-        for(long seed:new long[]{0,1,42,1945,123456789,-1}) for(int[] at:new int[][]{{0,0},{-512,512}}) {
-            var request = request(profile,seed,at[0],at[1]);
-            var tag = nativeTerrain.structureStarts(request).getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty("minecraft:fortress");
-            var expected = reference(seed,at[0],at[1]); var children = tag.getListOrEmpty("Children");
-            require(children.size()==expected.size(),"source connected-piece count seed="+seed+" at="+Arrays.toString(at)+" native="+children.size()+" source="+expected.size());
-            for(int i=0;i<children.size();i++) {
-                var actual=(CompoundTag)children.get(i); var piece=expected.get(i); String kind=kind(piece); kinds.add(kind);
-                int variant=piece.createTag(null).getBooleanOr("Chest",false)?1:0;
-                String id="retina:captured/fortress/"+kind+"/"+piece.getOrientation().getName()+(kind.equals("end_filler")?"":"/"+variant);
-                require(actual.getStringOr("template","").equals(id),"source weighted piece/orientation/variant seed="+seed+" piece="+i+" expected="+id+" native="+actual.getStringOr("template",""));
-                require(actual.read("BB",BoundingBox.CODEC).orElseThrow().equals(piece.getBoundingBox()),"source attachment/collision/height bounds "+i);
-                require(actual.getIntOr("GD",-1)==piece.getGenDepth(),"source graph depth");
+        for(long seed:new long[]{0,1,42,1945,123456789,-1}) {
+            try(var profile=NetherTerrainTest.fixture(fixture,seed)) {
+                for(int[] at:new int[][]{{0,0},{-512,512}}) {
+                var request = profile.request(at[0],at[1]);
+                var tag = nativeTerrain.structureStarts(request).getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty("minecraft:fortress");
+                var expected = reference(seed,at[0],at[1]); var children = tag.getListOrEmpty("Children");
+                require(children.size()==expected.size(),"source connected-piece count seed="+seed+" at="+Arrays.toString(at)+" native="+children.size()+" source="+expected.size());
+                for(int i=0;i<children.size();i++) {
+                    var actual=(CompoundTag)children.get(i); var piece=expected.get(i); String kind=kind(piece); kinds.add(kind);
+                    int variant=piece.createTag(null).getBooleanOr("Chest",false)?1:0;
+                    String id="retina:captured/fortress/"+kind+"/"+piece.getOrientation().getName()+(kind.equals("end_filler")?"":"/"+variant);
+                    require(actual.getStringOr("template","").equals(id),"source weighted piece/orientation/variant seed="+seed+" piece="+i+" expected="+id+" native="+actual.getStringOr("template",""));
+                    require(actual.read("BB",BoundingBox.CODEC).orElseThrow().equals(piece.getBoundingBox()),"source attachment/collision/height bounds "+i);
+                    require(actual.getIntOr("GD",-1)==piece.getGenDepth(),"source graph depth");
+                }
+                var decoded=StructureStart.loadStaticStart(context,tag,seed); require(decoded!=null && decoded.isValid(),"saved fortress loads");
+                require(decoded.getStructure()==registry.lookupOrThrow(Registries.STRUCTURE).getValue(Identifier.parse("minecraft:fortress")),"actual fortress identity for spawning/locate");
+                require(decoded.getStructure().spawnOverrides().containsKey(MobCategory.MONSTER),"loaded fortress monster override");
+                require(nativeTerrain.queryStructureStarts(request,new int[]{at[0],at[1],0})[0]==index,"locate candidate shares native start");
+                long chests=expected.stream().filter(p->p.createTag(null).getBooleanOr("Chest",false)).count();
+                if(chests>mostChests && at[0]==0 && expected.stream().anyMatch(p->p instanceof NetherFortressPieces.MonsterThrone)) {selected=expected;selectedSeed=seed;mostChests=chests;}
+                layouts++;pieces+=expected.size();
             }
-            var decoded=StructureStart.loadStaticStart(context,tag,seed); require(decoded!=null && decoded.isValid(),"saved fortress loads");
-            require(decoded.getStructure()==registry.lookupOrThrow(Registries.STRUCTURE).getValue(Identifier.parse("minecraft:fortress")),"actual fortress identity for spawning/locate");
-            require(decoded.getStructure().spawnOverrides().containsKey(MobCategory.MONSTER),"loaded fortress monster override");
-            require(nativeTerrain.queryStructureStarts(request,new int[]{at[0],at[1],0})[0]==index,"locate candidate shares native start");
-            long chests=expected.stream().filter(p->p.createTag(null).getBooleanOr("Chest",false)).count();
-            if(chests>mostChests && at[0]==0 && expected.stream().anyMatch(p->p instanceof NetherFortressPieces.MonsterThrone)) {selected=expected;selectedSeed=seed;mostChests=chests;}
-            layouts++;pieces+=expected.size();
+            }
         }
         require(kinds.size()==14,"all fortress families reached: "+kinds); require(selected!=null,"progression layout selected");
-        int chunks=placement(registry,context,nativeTerrain,profile,baseProfile,selectedSeed,selected,materials);
+        int chunks;
+        try(var profile=NetherTerrainTest.fixture(fixture,selectedSeed);var baseProfile=NetherTerrainTest.fixture(baseline,selectedSeed)) {
+                chunks=placement(registry,context,nativeTerrain,profile,baseProfile,selectedSeed,selected,materials);
+        }
         var report=new JsonObject();report.addProperty("layouts",layouts);report.addProperty("pieces",pieces);report.addProperty("families",kinds.size());report.addProperty("placement_chunks",chunks);report.addProperty("selected_seed",selectedSeed);
         Files.writeString(Path.of("build/nether/fortress-assembly.json"),new GsonBuilder().setPrettyPrinting().create().toJson(report));
         System.out.println("QA_EVT {\"event\":\"native_fortress_assembly\",\"status\":\"pass\",\"context\":"+report+"}");
@@ -76,14 +81,14 @@ final class FortressAssemblyTest {
         while(!start.pendingChildren.isEmpty())start.pendingChildren.remove(random.nextInt(start.pendingChildren.size())).addChildren(start,builder,random);
         builder.moveInsideHeights(random,48,70);return builder.build().pieces();
     }
-    private static int placement(RegistryAccess registry,StructurePieceSerializationContext context,NativeTerrain terrain,int profile,int base,long seed,List<StructurePiece> source,BlockState[] materials) throws Exception {
+    private static int placement(RegistryAccess registry,StructurePieceSerializationContext context,NativeTerrain terrain,DefinitionFixture profile,DefinitionFixture base,long seed,List<StructurePiece> source,BlockState[] materials) throws Exception {
         var baseline=new HashMap<ChunkPos,short[]>();
         class Reference extends FortressProfile.Capture {
             Reference(){super(registry);random=RandomSource.create(1945);}
             @Override BlockState state(BlockPos pos) {
                 var current=blocks.get(pos);if(current!=null)return current;
                 if(pos.getY()<0 || pos.getY()>=256)return Blocks.VOID_AIR.defaultBlockState();
-                var at=ChunkPos.containing(pos);var values=baseline.computeIfAbsent(at,p->{try(var chunk=terrain.generate(request(base,seed,p.x(),p.z()))){return chunk.blocks().toArray(ValueLayout.JAVA_SHORT);}});
+                var at=ChunkPos.containing(pos);var values=baseline.computeIfAbsent(at,p->{try(var chunk=terrain.generate(base.request(p.x(),p.z()))){return chunk.blocks().toArray(ValueLayout.JAVA_SHORT);}});
                 return materials[Short.toUnsignedInt(values[pos.getY()*256+(pos.getZ()&15)*16+(pos.getX()&15)])];
             }
         }
@@ -100,8 +105,8 @@ final class FortressAssemblyTest {
         var lootSeeds=new HashSet<Long>();
         var materialIds=new HashMap<BlockState,Integer>();for(int i=0;i<materials.length;i++)materialIds.put(materials[i],i);
         for(int z=Math.floorDiv(bounds.minZ(),16);z<=Math.floorDiv(bounds.maxZ(),16);z++)for(int x=Math.floorDiv(bounds.minX(),16);x<=Math.floorDiv(bounds.maxX(),16);x++) {
-            var at=new ChunkPos(x,z);var r=request(profile,seed,x,z);
-            var expected=baseline.computeIfAbsent(at,p->{try(var chunk=terrain.generate(request(base,seed,p.x(),p.z()))){return chunk.blocks().toArray(ValueLayout.JAVA_SHORT);}}).clone();
+            var at=new ChunkPos(x,z);var r=profile.request(x,z);
+            var expected=baseline.computeIfAbsent(at,p->{try(var chunk=terrain.generate(base.request(p.x(),p.z()))){return chunk.blocks().toArray(ValueLayout.JAVA_SHORT);}}).clone();
             for(var e:reference.blocks.entrySet())if(ChunkPos.containing(e.getKey()).equals(at)) {
                 var p=e.getKey();expected[p.getY()*256+(p.getZ()&15)*16+(p.getX()&15)]=materialIds.get(e.getValue()).shortValue();
                 if(p.getY()<bounds.minY())supports++;
@@ -145,15 +150,16 @@ final class FortressAssemblyTest {
         require(spawners>0&&chests>0&&ticks>0&&supports>0,"progression and terrain-aware supports: "+spawners+"/"+chests+"/"+ticks+"/"+supports);
         try(var pool=Executors.newFixedThreadPool(4)) {
             var jobs=new ArrayList<Future<?>>();for(var e:generated.entrySet())jobs.add(pool.submit(()->{
-                var p=e.getKey();try(var chunk=terrain.generate(request(profile,seed,p.x(),p.z()))){require(Arrays.equals(e.getValue(),chunk.blocks().toArray(ValueLayout.JAVA_SHORT)),"parallel fortress determinism");}
-                require(metadata.get(p).equals(terrain.structureData(request(profile,seed,p.x(),p.z()))),"parallel fortress metadata");
+                var p=e.getKey();try(var chunk=terrain.generate(profile.request(p.x(),p.z()))){require(Arrays.equals(e.getValue(),chunk.blocks().toArray(ValueLayout.JAVA_SHORT)),"parallel fortress determinism");}
+                require(metadata.get(p).equals(terrain.structureData(profile.request(p.x(),p.z()))),"parallel fortress metadata");
             }));for(var job:jobs)job.get();
         }
         var directory=Files.createTempDirectory(Path.of("build/nether"),"fortress-regions-");
         Files.writeString(Path.of("build/nether/fortress-regions-path.txt"),directory.toAbsolutePath().toString());
+        Files.copy(profile.file(),directory.resolve(WorldDefinitionFile.NAME));
         var regions=new HashSet<ChunkPos>();
         for(var p:generated.keySet())regions.add(new ChunkPos(p.getRegionX()*32,p.getRegionZ()*32));
-        for(var p:regions)terrain.generateRegion(request(profile,seed,p.x(),p.z()),directory.resolve("r."+p.getRegionX()+"."+p.getRegionZ()+".mca"),SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:nether_wastes");
+        for(var p:regions)terrain.generateRegion(profile.request(p.x(),p.z()),directory.resolve("r."+p.getRegionX()+"."+p.getRegionZ()+".mca"),profile.dataVersion(),"minecraft:nether_wastes");
         var codec=PalettedContainer.codecRW(BlockState.CODEC,Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
         try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-fortress",Level.NETHER,"chunk"),directory,false)) {
             for(var e:generated.entrySet()) {
@@ -187,7 +193,6 @@ final class FortressAssemblyTest {
         var frozen=MappedRegistry.class.getDeclaredField("frozen");frozen.setAccessible(true);frozen.setBoolean(BuiltInRegistries.STRUCTURE_PIECE,false);
         RetinaStructurePiece.register();var bind=Holder.Reference.class.getDeclaredMethod("bindValue",Object.class);bind.setAccessible(true);bind.invoke(BuiltInRegistries.STRUCTURE_PIECE.get(Identifier.parse("retina:template")).orElseThrow(),RetinaStructurePiece.TYPE);frozen.setBoolean(BuiltInRegistries.STRUCTURE_PIECE,true);
     }
-    private static TerrainRequest request(int profile,long seed,int x,int z){return new TerrainRequest(seed,x,z,0,256,64,48,.008f,profile);}
     private static long mix(long v){v=(v^v>>>30)*0xbf58476d1ce4e5b9L;v=(v^v>>>27)*0x94d049bb133111ebL;return v^v>>>31;}
     private static void require(boolean v,String message){if(!v)throw new AssertionError(message);}
 }
