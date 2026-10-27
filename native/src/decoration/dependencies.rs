@@ -339,6 +339,11 @@ impl Versions {
         (x >= 0 && z >= 0 && x < self.width as i64 && z < self.width as i64)
             .then(|| z as usize * self.width + x as usize)
     }
+    fn untouched_before(&self, before: usize, x: i32, z: i32) -> bool {
+        self.index(x, z).is_some_and(|column| {
+            self.changed[column].first().is_none_or(|version| version.root >= before)
+        })
+    }
     fn before(&self, column: usize, before: usize) -> (usize, &ColumnCell) {
         let versions = &self.changed[column];
         let count = versions.partition_point(|version| version.root < before);
@@ -1041,11 +1046,22 @@ impl Planner<'_> {
     fn city_shapes(&self, root: usize, x: i32, z: i32) -> Result<Output, String> {
         self.check()?;
         let kit = self.profile.structures.end_cities.as_ref().unwrap();
+        // End substrate contains only air and its registered base material. The
+        // joined interior writer index proves an untouched column has no other
+        // states. Do not materialize that column merely to look for stairs.
+        // Exterior reads and custom stair substrates retain exact evaluation.
+        let plain_base = !kit.stairs.contains_key(&0) && self.profile.end.as_ref()
+            .is_some_and(|end| !kit.stairs.contains_key(&end.material));
+        let joined_prefix = root <= self.completed.len();
         let mut writes = Vec::new();
         for dz in 0..16 {
             for dx in 0..16 {
                 let bx = x * 16 + dx;
                 let bz = z * 16 + dz;
+                if plain_base && joined_prefix && self.versions.untouched_before(root, bx, bz) {
+                    self.metrics.performance.add(Perf::end_stair_columns_skipped, 1);
+                    continue;
+                }
                 let column = self.column(root, bx, bz)?;
                 let mut top = self.request.height as usize;
                 for &run in column.runs.slice() {
@@ -1943,6 +1959,21 @@ pub(crate) fn plan(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn untouched_column_proof_requires_interior_and_no_earlier_writer() {
+        let (_, field, _) = super::super::replay_tests::fixture(42, -32);
+        let mut versions = Versions::new(ChunkRequest { chunk_x: field.origin_x, chunk_z: field.origin_z, seed: 42, min_y: 0, height: 256, base_height: 64.0, amplitude: 0.0, frequency: 1.0, reserved: 0 }, 1);
+        let [x, z] = versions.origin;
+        assert!(versions.untouched_before(3, x, z));
+        assert!(!versions.untouched_before(3, x - 1, z));
+        assert!(!versions.untouched_before(3, x + 16, z));
+        assert!(!versions.untouched_before(3, x, z - 1));
+        assert!(!versions.untouched_before(3, x, z + 16));
+        versions.changed[0].push(ColumnVersion { root: 2, state: OnceLock::new() });
+        assert!(versions.untouched_before(2, x, z));
+        assert!(!versions.untouched_before(3, x, z));
+        assert!(versions.untouched_before(3, x + 1, z));
+    }
     #[test]
     fn terrain_reference_borrows_exact_existing_tiles_including_negative_boundaries() {
         for tile in [-32, -16, 0, 16] {
