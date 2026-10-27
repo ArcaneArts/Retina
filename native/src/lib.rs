@@ -278,6 +278,11 @@ impl TerrainEngine {
             .or_default()
             .clone()
     }
+    /// Opt-in diagnostics shared by native benchmark tools and the Java bridge.
+    pub fn performance_snapshot(&self, profile: u32) -> serde_json::Value {
+        self.timings(profile).performance.snapshot()
+    }
+
     pub fn backend(&self) -> &str {
         &self.backend
     }
