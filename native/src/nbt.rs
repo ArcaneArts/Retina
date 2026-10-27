@@ -107,14 +107,25 @@ fn payload(out: &mut Vec<u8>, tag: &Value) {
         _ => unreachable!("validated NBT tag"),
     }
 }
+fn integer_fits(value: &Value, kind: u64) -> bool {
+    value.as_i64().is_some_and(|n| match kind {
+        1 | 7 => i8::try_from(n).is_ok(),
+        2 => i16::try_from(n).is_ok(),
+        3 | 11 => i32::try_from(n).is_ok(),
+        4 | 12 => true,
+        _ => false,
+    })
+}
+
 pub fn validate(tag: &Value, depth: u32) -> bool {
     if depth > 128 || tag.as_array().is_none_or(|a| a.len() != 2) {
         return false;
     }
     let v = &tag[1];
     match tag[0].as_u64() {
-        Some(1..=4) => v.as_i64().is_some(),
-        Some(5 | 6) => v.as_f64().is_some_and(f64::is_finite),
+        Some(kind @ 1..=4) => integer_fits(v, kind),
+        Some(5) => v.as_f64().is_some_and(|n| (n as f32).is_finite()),
+        Some(6) => v.as_f64().is_some_and(f64::is_finite),
         Some(8) => v.as_str().is_some_and(|s| {
             s.encode_utf16()
                 .map(|c| {
@@ -129,9 +140,9 @@ pub fn validate(tag: &Value, depth: u32) -> bool {
                 .sum::<usize>()
                 <= 65535
         }),
-        Some(7 | 11 | 12) => v
+        Some(kind @ (7 | 11 | 12)) => v
             .as_array()
-            .is_some_and(|a| a.iter().all(|n| n.as_i64().is_some())),
+            .is_some_and(|a| a.iter().all(|n| integer_fits(n, kind))),
         Some(9) => v.as_array().is_some_and(|a| {
             a.len() == 2
                 && a[0].as_u64().is_some_and(|k| k <= 12)

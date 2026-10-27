@@ -319,3 +319,5 @@ fn identifier(id: &str) -> bool {
 mod tests;
 #[cfg(test)]
 mod procedural_tests;
+#[cfg(test)]
+mod embedded_nbt_tests;

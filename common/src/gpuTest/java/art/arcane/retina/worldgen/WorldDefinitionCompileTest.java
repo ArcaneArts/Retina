@@ -177,8 +177,29 @@ public final class WorldDefinitionCompileTest {
              "floating":[-0.0,1.25,0.3333333333333333],"bools":[true,false],
              "mixed":[null,true,-1,"你好🦊",{"v":null},[4,9223372036854775807]],"empty":[]}
             """);
+        var embedded = new CompoundTag();
+        embedded.putByte("byte_min", Byte.MIN_VALUE); embedded.putByte("byte_max", Byte.MAX_VALUE);
+        embedded.putShort("short_min", Short.MIN_VALUE); embedded.putShort("short_max", Short.MAX_VALUE);
+        embedded.putInt("int_min", Integer.MIN_VALUE); embedded.putInt("int_max", Integer.MAX_VALUE);
+        embedded.putLong("long_min", Long.MIN_VALUE); embedded.putLong("long_max", Long.MAX_VALUE);
+        embedded.putFloat("float_min", -Float.MAX_VALUE); embedded.putFloat("float_max", Float.MAX_VALUE);
+        embedded.putFloat("float_tiny", Float.MIN_VALUE);
+        // The valueOf caches used by putFloat/putDouble normalize negative zero.
+        embedded.put("float_zero", new FloatTag(-0.0F));
+        embedded.putDouble("double_min", -Double.MAX_VALUE); embedded.putDouble("double_max", Double.MAX_VALUE);
+        embedded.putDouble("double_tiny", Double.MIN_VALUE); embedded.put("double_zero", new DoubleTag(-0.0D));
+        embedded.putByteArray("bytes", new byte[]{Byte.MIN_VALUE, 0, Byte.MAX_VALUE});
+        embedded.putIntArray("ints", new int[]{Integer.MIN_VALUE, 0, Integer.MAX_VALUE});
+        embedded.putLongArray("longs", new long[]{Long.MIN_VALUE, 9007199254740993L, Long.MAX_VALUE});
+        embedded.putString("text", "A\0你好🦊");
+        var mixed = new ListTag(); mixed.add(IntTag.valueOf(7)); mixed.add(StringTag.valueOf("mixed"));
+        mixed.add(embedded.copy()); embedded.put("nested", mixed);
         var root = new CompoundTag(); root.put("values", ProfileNbt.encode(original));
+        root.put("template_nbt", ProfileNbt.encode(StructureProfile.tag(embedded)));
         WorldDefinitionFile.writeNew(directory, root);
+        try (var output = new java.io.DataOutputStream(Files.newOutputStream(directory.resolve("embedded.nbt")))) {
+            NbtIo.write(embedded, output);
+        }
         Files.writeString(directory.resolve("expected.json"), original.toString());
     }
 
