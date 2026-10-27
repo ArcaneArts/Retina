@@ -4,9 +4,8 @@ New MCA and chunk presets now save `density_composition: true` and select this
 GPU path in normal generation. Existing saved generators without the option
 keep legacy final-field interpolation; their runtime exports explicitly disable
 composition. Datapack adaptation and save/reopen retain the saved choice. The
-native profile flag controls selection, and `RETINA_DENSITY_COMPOSITION=0`
-remains a diagnostic disable. Profiles without the native flag retain legacy
-semantics. See [production selection](PRODUCTION_DENSITY_COMPOSITION.md) for
+saved profile flag controls selection; environment variables cannot override it.
+Profiles without the flag retain legacy semantics. See [production selection](PRODUCTION_DENSITY_COMPOSITION.md) for
 current validation, startup measurements and the fidelity/throughput tradeoff.
 
 The path evaluates arithmetic and range choices at block positions after

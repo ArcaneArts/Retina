@@ -2455,44 +2455,44 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore = "requires RETINA_PROGRAM_PARITY_PROFILE and a fresh RETINA_COMPILE_OUT directory"]
+    #[ignore = "requires RETINA_COMPILE_DEFINITION and RETINA_COMPILE_DIMENSION and a fresh RETINA_COMPILE_OUT directory"]
     fn actual_interpreter_pipeline_compile() {
-        let path = std::env::var("RETINA_PROGRAM_PARITY_PROFILE").unwrap();
+        use crate::world_definition::{WorldDefinition, runtime::{ProgramExecution, WorldSession}};
+        let path = std::env::var("RETINA_COMPILE_DEFINITION").unwrap();
+        let key = std::env::var("RETINA_COMPILE_DIMENSION").unwrap();
         let out = std::path::PathBuf::from(std::env::var("RETINA_COMPILE_OUT").unwrap());
         std::fs::create_dir(&out).unwrap();
-        let mut json: serde_json::Value =
-            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
         let mode = std::env::var("RETINA_COMPILE_MODE").unwrap_or_else(|_| "interpreter".into());
-        json["program_execution"] = serde_json::json!(mode);
-        let bytes = serde_json::to_vec(&json).unwrap();
+        let execution = match mode.as_str() {
+            "interpreter" => ProgramExecution::Interpreter,
+            "specialized" => ProgramExecution::Specialized,
+            "auto" => ProgramExecution::Auto,
+            _ => panic!("invalid program execution {mode}"),
+        };
         let count: u32 = std::env::var("RETINA_COMPILE_REGIONS").map_or(20, |n| n.parse().unwrap());
         let start = Instant::now();
-        let engine = TerrainEngine::new().unwrap();
+        let engine = Arc::new(TerrainEngine::new().unwrap());
         let initialize_ms = start.elapsed().as_secs_f64() * 1000.0;
         let start = Instant::now();
-        let profile = engine.register_profile(&bytes).unwrap();
-        let registration_ms = start.elapsed().as_secs_f64() * 1000.0;
+        let definition = Arc::new(WorldDefinition::read(&path).unwrap());
+        let world = WorldSession::bind_with_execution(engine.clone(),definition.clone(),region::codec::Compression::Zlib,Some(execution)).unwrap();
+        let dimension = world.dimension(&key).unwrap();
+        let profile = dimension.profile_id();
+        let loaded = definition.dimension(&key).unwrap().profile().unwrap();
+        let fallback = loaded.biomes[0].id.as_str();
+        let composition = loaded.registry_program.as_ref().is_some_and(|p|p.density_composition);
+        let load_and_bind_ms = start.elapsed().as_secs_f64() * 1000.0;
         let start = Instant::now();
         let mut regions = Vec::new();
         for index in 0..count {
-            let request = ChunkRequest {
-                seed: 123456789,
-                chunk_x: (index as i32 % 3 - 1) * 32,
-                chunk_z: (index as i32 / 3 - 1) * 32,
-                min_y: -64,
-                height: 384,
-                base_height: 64.0,
-                amplitude: 48.0,
-                frequency: 0.008,
-                reserved: profile,
-            };
+            let request = dimension.request((index as i32 % 3 - 1) * 32,(index as i32 / 3 - 1) * 32).unwrap();
             let region_start = Instant::now();
             let report = region::generate_region_profiled(
                 &engine,
                 request,
                 &out.join(format!("{index}.mca")),
-                0,
-                "minecraft:plains",
+                definition.data_version(),
+                fallback,
                 None,
             )
             .unwrap();
@@ -2505,14 +2505,14 @@ mod tests {
         }
         let total_ms = start.elapsed().as_secs_f64() * 1000.0;
         let program = engine.pipeline.program_snapshot(profile);
-        let result = serde_json::json!({"profile":path,"pipeline_tag":std::env::var("RETINA_GENERIC_PIPELINE_TAG").ok(),
+        let result = serde_json::json!({"definition":path,"dimension":key,"seed":definition.seed(),"data_version":definition.data_version(),"density_composition":composition,"pipeline_tag":std::env::var("RETINA_GENERIC_PIPELINE_TAG").ok(),
             "specialized_pipeline_tag":std::env::var("RETINA_SPECIALIZED_PIPELINE_TAG").ok(),"program_execution":mode,
             "material_dispatch_requested":std::env::var("RETINA_MATERIAL_DISPATCH").as_deref()==Ok("1"),
             "program":{"status":program.status,"compile_ms":program.compile_nanos as f64/1e6,"source_bytes":program.source_bytes,"upload_bytes":program.upload_bytes,"readback_bytes":program.readback_bytes},
             "reuse":std::env::var("RETINA_COMPILE_REUSE").as_deref()!=Ok("0"),
             "shared_dispatch":std::env::var("RETINA_INTERPRETER_DISPATCH").as_deref()==Ok("1"),
             "preload_requested":std::env::var("RETINA_INTERPRETER_PRELOAD").as_deref()==Ok("1"),
-            "initialize_ms":initialize_ms,"registration_ms":registration_ms,
+            "initialize_ms":initialize_ms,"load_and_bind_ms":load_and_bind_ms,
             "total_ms":total_ms,"chunks_per_second":count as f64*1024.0*1000.0/total_ms,"regions":regions});
         std::fs::write(
             out.join("measurements.json"),

@@ -142,7 +142,7 @@ fresh processes, trace actual compilation and compare complete decoded chunks:
 ```sh
 python3 scripts/native-interpreter-compile-benchmark.py \
   --test-binary build/native-target/release/deps/retina_worldgen-<test-id> \
-  --profile /absolute/path/to/exported-profile.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out /absolute/path/to/fresh-private-output --comparison preload \
   --count 20 --order candidate-first
 ```

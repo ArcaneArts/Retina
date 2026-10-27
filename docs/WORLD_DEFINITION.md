@@ -676,3 +676,33 @@ These helpers all use the production assembler, file writer and Rust loader.
 The coordinate/interpolation JSON diagnostic artifacts remain temporary inputs
 to the existing low-level GPU shader comparison probes; those probes' fixture
 migration is separate. They are not uploaded by these Java generation tests.
+
+### Frozen density semantics and compilation diagnostics
+
+`registry_program.density_composition` selects generation semantics from the saved
+file. `RETINA_DENSITY_COMPOSITION` no longer disables or enables that rule. This
+preserves normal output when the old environment override was unset, and makes
+a copied definition authoritative even in a process carrying that legacy variable.
+The adapter's registry-program metadata reports the actual saved choice.
+
+For comparisons, compile separate files with
+`:common:exportBenchmarkDefinition -PbenchmarkDefinitionRoot=NEW_DIRECTORY -PbenchmarkDensityComposition=true|false`.
+That property changes the compiler's model before publication; it never rewrites
+an existing definition. Region benchmarks no longer accept a density-composition
+runtime override and report the saved value instead.
+
+The ignored `actual_interpreter_pipeline_compile` probe and its interpreter/material
+Python campaign scripts take `--definition` and `--dimension`. The probe opens the
+actual file, binds its chosen execution preference, and uses loaded requests,
+DataVersion and biome identity for every measured region. Reports distinguish
+GPU initialization from `load_and_bind_ms`, and include saved seed and composition
+semantics. Use a separately compiled false-flag definition to repeat the historical
+legacy-composition workloads. Execution/cache/dispatch comparisons continue to use
+the same immutable definition.
+
+The opt-in headless test `saved_density_semantics_ignore_environment_overrides`
+takes `RETINA_DENSITY_DEFINITIONS` pointing to a JSON object with `composed` and
+`baseline` file paths. Each must be compiled independently with the corresponding
+flag. It launches fresh, environment-cleared processes using only a copied file,
+compares all decoded chunks across absent/0/1 legacy environment values, and also
+requires the two explicit generation variants to produce different terrain.

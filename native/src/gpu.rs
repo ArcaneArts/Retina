@@ -101,7 +101,6 @@ pub(crate) struct Gpu {
     specialized_interpolation: bool,
     interpreter_dispatch: bool,
     preloaded_interpreters: HashMap<bool, std::sync::Arc<crate::specialize::State>>,
-    density_composition: bool,
     cached_density_masks: bool,
     lake_point_cache: bool,
     lake_primed_corners: bool,
@@ -468,9 +467,6 @@ impl Gpu {
             specialized_interpolation,
             interpreter_dispatch,
             preloaded_interpreters: HashMap::new(),
-            // The saved profile selects graph semantics. This diagnostic may
-            // disable composition, but cannot opt a legacy saved profile in.
-            density_composition: std::env::var("RETINA_DENSITY_COMPOSITION").as_deref() != Ok("0"),
             lake_sparse_fields,
             interpreter_columns,
             aquifer_columns,
@@ -492,12 +488,7 @@ impl Gpu {
         {
             // New presets use composition; absent saved fields use legacy.
             // Each inventory has its own immutable source/layout identity.
-            let modes: &[bool] = if self.density_composition {
-                &[true, false]
-            } else {
-                &[false]
-            };
-            for &composition in modes {
+            for composition in [true, false] {
                 match self.compiler.compact_interpreter(composition) {
                     Ok(state) => {
                         self.preloaded_interpreters.insert(composition, state);
@@ -655,7 +646,7 @@ impl Gpu {
                     match self.compiler.request(
                         program,
                         self.specialized_terrain,
-                        self.density_composition && program.density_composition,
+                        program.density_composition,
                         self.cached_density_masks,
                         self.lake_point_cache,
                         self.lake_primed_corners,
@@ -693,10 +684,9 @@ impl Gpu {
             .and_then(|p| p.registry_program.as_ref())
             .map_or(0, |p| p.interpolation_depth());
         let needs_interpreter = specialized.is_none() || !self.specialized_terrain;
-        let composition = self.density_composition
-            && profile
-                .and_then(|p| p.registry_program.as_ref())
-                .is_some_and(|p| p.density_composition);
+        let composition = profile
+            .and_then(|p| p.registry_program.as_ref())
+            .is_some_and(|p| p.density_composition);
         if depth == 0
             && needs_interpreter
             && self.wide_profiles.contains(&profile_id)
@@ -840,7 +830,7 @@ impl Gpu {
             });
         let mut sparse_dispatch = 0u32;
         if let Some(program) = density_program {
-            let compose = self.density_composition && program.density_composition;
+            let compose = program.density_composition;
             let [sx, sy] = program.terrain_cell;
             let mut floats = SURFACE_METADATA_FLOATS as u64;
             for request in &mut gpu_requests {

@@ -52,11 +52,11 @@ def main():
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--compare", type=Path)
     args = parser.parse_args()
-    os.environ["RETINA_DENSITY_COMPOSITION"] = "0"
     os.environ["RETINA_SPECIALIZED_TERRAIN"] = "0"
     args.out.mkdir(parents=True, exist_ok=False)
     profile = json.loads(args.profile.read_bytes())
     profile["program_execution"] = "interpreter"
+    profile["registry_program"]["density_composition"] = False
     variants = ["original", "climate", "material"]
     aquifer = profile["registry_program"].get("aquifer")
     if aquifer and aquifer["enabled"]:

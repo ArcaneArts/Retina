@@ -122,7 +122,7 @@ repository's two-job Cargo configuration, then pass its exact path:
 ```sh
 python3 scripts/native-interpreter-compile-benchmark.py \
   --test-binary build/native-target/release/deps/retina_worldgen-<test-id> \
-  --profile /absolute/path/to/exported-profile.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out /absolute/path/to/fresh-private-output --count 20 --order shared-first
 ```
 

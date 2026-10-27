@@ -60,7 +60,6 @@ def main():
                         help="Whether measurement may overlap specialization or waits for a ready/final status")
     parser.add_argument("--program-execution", choices=("auto", "interpreter", "specialized"), help="Override GPU program mode for matched diagnostics")
     parser.add_argument("--interpolation-cache", choices=("enabled", "disabled"), help="A/B diagnostic for resident interpolation-field reuse")
-    parser.add_argument("--density-composition", choices=("enabled", "disabled"), help="Experimental block-position composition of registered density fields")
     parser.add_argument("--cached-density-masks", choices=("enabled", "disabled"), help="Resident-only density samplers for proven mask queries")
     parser.add_argument("--lake-point-cache", choices=("enabled", "disabled"), help="Invocation-local interpolation corner reuse for composed lake scans")
     parser.add_argument("--lake-primed-corners", choices=("enabled", "disabled"), help="Reuse interval vertices in the composed lake point cache")
@@ -85,8 +84,6 @@ def main():
     os.environ["RETINA_LIGHTING_DENSE"] = "1" if args.lighting == "dense" else "0"
     if args.interpolation_cache:
         os.environ["RETINA_INTERPOLATION_CACHE"] = "1" if args.interpolation_cache == "enabled" else "0"
-    if args.density_composition:
-        os.environ["RETINA_DENSITY_COMPOSITION"] = "1" if args.density_composition == "enabled" else "0"
     if args.cached_density_masks:
         os.environ["RETINA_CACHED_DENSITY_MASKS"] = "1" if args.cached_density_masks == "enabled" else "0"
     if args.lake_point_cache:
@@ -225,7 +222,7 @@ def main():
                     library=str(args.library), parallel=args.parallel, seed=seed, dimension=args.dimension, request=request_context,
                     coordinates={"origin_x": args.origin_x, "origin_z": args.origin_z, "grid_width": args.grid_width},
                     request_order=args.request_order,
-                    regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=args.density_composition, cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
+                    regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=definition.dimension["profile_metadata"].get("registry_program", {}).get("density_composition"), cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
                     lake_point_cache=args.lake_point_cache,
                     lake_primed_corners=args.lake_primed_corners,
                     lake_sparse_fields=args.lake_sparse_fields or os.environ.get("RETINA_LAKE_SPARSE_FIELDS"),

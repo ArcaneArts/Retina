@@ -224,7 +224,6 @@ tasks.register('interpolationTest', JavaExec) {
     mainClass = 'art.arcane.retina.worldgen.NativeInterpolationIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
-    environment 'RETINA_DENSITY_COMPOSITION', '1'
 }
 
 tasks.register('nativeInterpolationGpuTest', Exec) {
@@ -665,6 +664,8 @@ tasks.register('shoreTest', JavaExec) {
         systemProperty 'retina.benchmark.seed', providers.gradleProperty('benchmarkSeed').getOrElse('123456789')
         if (providers.gradleProperty('benchmarkMaterialHalo').isPresent())
             systemProperty 'retina.benchmark.materialHalo', providers.gradleProperty('benchmarkMaterialHalo').get()
+        if (providers.gradleProperty('benchmarkDensityComposition').isPresent())
+            systemProperty 'retina.benchmark.densityComposition', providers.gradleProperty('benchmarkDensityComposition').get()
         if (nether) systemProperty 'retina.benchmark.nether', 'true'
         args providers.gradleProperty('benchmarkDefinitionRoot').getOrElse(nether
                 ? 'build/benchmark-definition/nether' : 'build/benchmark-definition/overworld')
