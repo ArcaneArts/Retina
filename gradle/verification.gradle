@@ -613,6 +613,9 @@ tasks.register('structureTest', JavaExec) {
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeStructureIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    args rootProject.layout.buildDirectory.dir('structure-definition-fixtures').get().asFile.absolutePath
 }
 
 tasks.register('locateTest', JavaExec) {

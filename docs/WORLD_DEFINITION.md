@@ -765,3 +765,18 @@ produce a storage-shaped chunk containing air. This fixes a reader restriction;
 it changes neither the file format nor existing valid generation semantics.
 The zero-depth fixture was checked against Minecraft's codecs and the prior
 native registration path before removing that temporary comparison.
+
+### Saved structure fixtures
+
+`./gradlew :common:structureTest` writes resolved structure fixtures under
+`build/structure-definition-fixtures/<structure>/retina.dat` and generates through
+the saved-file loader. It checks authentic pools/templates, attachment entity NBT,
+placement, concurrent requests, and decoded blocks, 3D biomes, heightmaps, structures,
+entities, block entities and ticks across region boundaries. Chunk output defers
+lighting until the host has neighbors. Corresponding `region/` directories can be
+supplied to the ignored
+`copied_definition_matches_structure_regions_in_fresh_processes` headless test
+with `RETINA_STRUCTURE_PROOFS`: a JSON array of `name`, `definition`, and `regions`
+paths. That test copies only each definition into an empty directory, launches
+fresh Rust processes without a JVM or datapacks, and compares every decoded chunk
+including lighting and status.

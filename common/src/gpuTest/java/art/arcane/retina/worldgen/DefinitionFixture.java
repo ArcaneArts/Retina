@@ -128,6 +128,7 @@ final class DefinitionFixture implements AutoCloseable {
     }
 
     TerrainRequest request(int x,int z) {return world.request(dimension,x,z);}
+    byte[] chunk(int x,int z) {return world.chunk(dimension,x,z);}
     /** Borrow runtime metadata from the same loaded file; this fixture owns its native lifetime. */
     WorldDefinitionContext.Dimension savedDimension() {return new WorldDefinitionContext(world).dimension(dimension);}
     int dataVersion() {return com.google.gson.JsonParser.parseString(world.metadata()).getAsJsonObject().get("data_version").getAsInt();}

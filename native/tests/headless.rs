@@ -295,6 +295,66 @@ fn copied_definition_matches_mod_regions_in_fresh_processes() {
     fs::remove_dir_all(root).unwrap();
 }
 
+#[test]
+#[ignore = "requires a GPU and RETINA_STRUCTURE_PROOFS JSON listing file-backed Java structure fixtures"]
+fn copied_definition_matches_structure_regions_in_fresh_processes() {
+    let proofs: Vec<Proof> = serde_json::from_slice(
+        &fs::read(std::env::var("RETINA_STRUCTURE_PROOFS").expect("set RETINA_STRUCTURE_PROOFS"))
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(!proofs.is_empty());
+    let root = scratch();
+    eprintln!("Structure headless proof artifacts: {}", root.display());
+    for (index, proof) in proofs.iter().enumerate() {
+        let working = root.join(index.to_string());
+        fs::create_dir(&working).unwrap();
+        fs::copy(&proof.definition, working.join("retina.dat")).unwrap();
+        assert_eq!(
+            fs::read_dir(&working).unwrap().count(),
+            1,
+            "only retina.dat is supplied"
+        );
+        let before = fs::read(working.join("retina.dat")).unwrap();
+        let mut files: Vec<_> = fs::read_dir(&proof.regions)
+            .unwrap()
+            .map(|entry| entry.unwrap().path())
+            .filter(|path| path.extension().is_some_and(|extension| extension == "mca"))
+            .collect();
+        files.sort();
+        assert!(!files.is_empty(), "structure regions must exist");
+        for expected in &files {
+            let name = expected.file_name().unwrap().to_str().unwrap();
+            let fields: Vec<_> = name.split('.').collect();
+            assert_eq!(fields.len(), 4);
+            assert_eq!((fields[0], fields[3]), ("r", "mca"));
+            let x = fields[1].parse::<i32>().unwrap();
+            let z = fields[2].parse::<i32>().unwrap();
+            let report = summary(
+                command(
+                    &working,
+                    "minecraft:overworld",
+                    &format!("{x},{z}"),
+                    "generated",
+                    "zlib",
+                )
+                .output()
+                .unwrap(),
+            );
+            assert_eq!(report["generated_chunks"], 1024);
+            compare(expected, &working.join("generated/region").join(name));
+        }
+        assert_eq!(fs::read(working.join("retina.dat")).unwrap(), before);
+        println!(
+            "QA_EVT {}",
+            serde_json::json!({"event":"headless_structure_content_parity",
+            "case":proof.name,"regions":files.len(),"chunks":files.len()*1024,
+            "definition_only":true,"status":"pass"})
+        );
+    }
+    fs::remove_dir_all(root).unwrap();
+}
+
 fn compare(expected: &Path, actual: &Path) {
     let expected_bytes = fs::read(expected).unwrap();
     let actual_bytes = fs::read(actual).unwrap();
