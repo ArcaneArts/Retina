@@ -40,7 +40,7 @@ final class NetherSurvivalTest {
                 require(matching.size()==1 && matching.getFirst().get("kind").getAsString().equals("simple_block"),"loaded survival feature exported once: "+name);
                 recipes.add(matching.getFirst().deepCopy());
             }
-            original.add("decorations",recipes);original.add("ores",new JsonArray());original.addProperty("program_execution","interpreter");
+            original.add("decorations",recipes);original.add("ores",new JsonArray());
             for(var b:original.getAsJsonArray("biomes")) {
                 for(String key:List.of("decorations","ores","carvers"))b.getAsJsonObject().add(key,new JsonArray());b.getAsJsonObject().remove("cave_features");
             }
@@ -83,16 +83,18 @@ final class NetherSurvivalTest {
                     root=material.node(23,z,value,root,p.getZ(),p.getZ()+1);
                 }
                 material.roots.add(root);for(int i=0;i<source.biomes().size();i++)programs.set(3+i,material.finish());
-                int profile=NativeTerrain.instance().registerProfile(data.toString());var request=new TerrainRequest(42,-2,-2,0,256,64,48,.008f,profile);var terrain=new HashMap<ChunkPos,short[]>();
-                for(var site:positions)for(int height:new int[]{0,32,64,127,128,255})for(int id=0;id<features.size();id++) {
-                    var at=new BlockPos(site.getX(),height,site.getZ());
-                    var world=new NetherFeatureTest.World(request,materials,terrain,p->p.getY()>=128?Blocks.AIR.defaultBlockState():scene.getOrDefault(p,p.getY()<63?Blocks.NETHERRACK.defaultBlockState():p.getY()==63?floor:Blocks.AIR.defaultBlockState()));
-                    world.lighting=light;
-                    boolean placed=features.get(id).place(world.level,generator,new NativeBlockFeatureIntegrationTest.Stream(42,false),at);
-                    var actual=new HashMap<BlockPos,BlockState>();var output=NativeTerrain.instance().decorationFeature(request,id,new int[]{at.getX(),at.getY(),at.getZ()},42);
-                    for(int i=0;i<output.length;i+=4)actual.put(new BlockPos(output[i],output[i+1],output[i+2]),materials[output[i+3]]);
-                    require(actual.equals(world.changed),"survival parity "+names.get(id)+" sky="+sky+" floor="+floor+" at="+at+": "+NativeBlockFeatureIntegrationTest.differences(world.changed,actual));
-                    if(placed) {accepted++;successes.merge(names.get(id)+"/sky="+sky,1,Integer::sum);}cases++;
+                try(var saved=NetherTerrainTest.fixture(data,42,NativeWorldDefinition.ProgramExecution.INTERPRETER)) {
+                    var request=saved.request(-2,-2);var terrain=new HashMap<ChunkPos,short[]>();
+                    for(var site:positions)for(int height:new int[]{0,32,64,127,128,255})for(int id=0;id<features.size();id++) {
+                        var at=new BlockPos(site.getX(),height,site.getZ());
+                        var world=new NetherFeatureTest.World(request,materials,terrain,p->p.getY()>=128?Blocks.AIR.defaultBlockState():scene.getOrDefault(p,p.getY()<63?Blocks.NETHERRACK.defaultBlockState():p.getY()==63?floor:Blocks.AIR.defaultBlockState()));
+                        world.lighting=light;
+                        boolean placed=features.get(id).place(world.level,generator,new NativeBlockFeatureIntegrationTest.Stream(42,false),at);
+                        var actual=new HashMap<BlockPos,BlockState>();var output=NativeTerrain.instance().decorationFeature(request,id,new int[]{at.getX(),at.getY(),at.getZ()},42);
+                        for(int i=0;i<output.length;i+=4)actual.put(new BlockPos(output[i],output[i+1],output[i+2]),materials[output[i+3]]);
+                        require(actual.equals(world.changed),"survival parity "+names.get(id)+" sky="+sky+" floor="+floor+" at="+at+": "+NativeBlockFeatureIntegrationTest.differences(world.changed,actual));
+                        if(placed) {accepted++;successes.merge(names.get(id)+"/sky="+sky,1,Integer::sum);}cases++;
+                    }
                 }
             }
         }

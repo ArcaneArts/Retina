@@ -56,7 +56,7 @@ final class NetherSpringTest {
         var materials=palette.keySet().toArray(BlockState[]::new);var serialized=new JsonArray();var carveable=new JsonArray();
         for(var state:materials) {serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow());carveable.add(!state.isAir() && state.getFluidState().isEmpty() && !state.is(net.minecraft.tags.BlockTags.UNCARVABLE));}
         original.add("materials",serialized);original.add("carveable",carveable);original.add("lighting",LightingProfile.export(palette.keySet(),false));
-        original.add("decorations",recipes);original.add("decoration_ticks",definitions);original.add("ores",new JsonArray());original.addProperty("program_execution","interpreter");
+        original.add("decorations",recipes);original.add("decoration_ticks",definitions);original.add("ores",new JsonArray());
         for(var b:original.getAsJsonArray("biomes")) {
             for(String key:List.of("decorations","ores","carvers"))b.getAsJsonObject().add(key,new JsonArray());b.getAsJsonObject().remove("cave_features");
         }
@@ -80,30 +80,32 @@ final class NetherSpringTest {
                 root=material.node(23,z,value,root,p.getZ(),p.getZ()+1);
             }
             material.roots.add(root);for(int i=0;i<exported.biomes().size();i++)programs.set(3+i,material.finish());
-            int profile=NativeTerrain.instance().registerProfile(data.toString());var request=new TerrainRequest(42,-2,-2,0,256,64,48,.008f,profile);
-            var terrain=new HashMap<ChunkPos,short[]>();
-            for(int origin=0;origin<origins.size();origin++)for(int id=0;id<features.size();id++) {
-                var at=new BlockPos(-25+origin*4,64,-17);var world=new NetherFeatureTest.World(request,materials,terrain,
-                        p->p.getY()>=128?Blocks.AIR.defaultBlockState():scene.getOrDefault(p,Blocks.NETHERRACK.defaultBlockState()));
-                boolean placed=features.get(id).place(world.level,generator,new NativeBlockFeatureIntegrationTest.Stream(42,false),at);
-                var actual=new HashMap<BlockPos,BlockState>();var output=NativeTerrain.instance().decorationFeature(request,id,new int[]{at.getX(),at.getY(),at.getZ()},42);
-                for(int i=0;i<output.length;i+=4)actual.put(new BlockPos(output[i],output[i+1],output[i+2]),materials[output[i+3]]);
-                String context=names.get(id)+" mask="+mask+" origin="+origins.get(origin);
-                require(actual.equals(world.changed),"spring blocks "+context+": "+NativeBlockFeatureIntegrationTest.differences(world.changed,actual));
-                var ticks=new ArrayList<NetherFeatureTest.Tick>();output=NativeTerrain.instance().decorationFeatureTicks(request,id,new int[]{at.getX(),at.getY(),at.getZ()},42);
-                for(int i=0;i<output.length;i+=4)ticks.add(new NetherFeatureTest.Tick(new BlockPos(output[i],output[i+1],output[i+2]),definitions.get(output[i+3]-1).getAsJsonObject().get("id").getAsString(),0));
-                require(ticks.equals(world.ticks),"spring scheduled updates "+context+" expected="+world.ticks+" actual="+ticks);
-                if(placed) {accepted++;successes.merge(names.get(id),1,Integer::sum);}cases++;
+            try(var saved=NetherTerrainTest.fixture(data,42,NativeWorldDefinition.ProgramExecution.INTERPRETER)) {
+                var request=saved.request(-2,-2);
+                var terrain=new HashMap<ChunkPos,short[]>();
+                for(int origin=0;origin<origins.size();origin++)for(int id=0;id<features.size();id++) {
+                    var at=new BlockPos(-25+origin*4,64,-17);var world=new NetherFeatureTest.World(request,materials,terrain,
+                            p->p.getY()>=128?Blocks.AIR.defaultBlockState():scene.getOrDefault(p,Blocks.NETHERRACK.defaultBlockState()));
+                    boolean placed=features.get(id).place(world.level,generator,new NativeBlockFeatureIntegrationTest.Stream(42,false),at);
+                    var actual=new HashMap<BlockPos,BlockState>();var output=NativeTerrain.instance().decorationFeature(request,id,new int[]{at.getX(),at.getY(),at.getZ()},42);
+                    for(int i=0;i<output.length;i+=4)actual.put(new BlockPos(output[i],output[i+1],output[i+2]),materials[output[i+3]]);
+                    String context=names.get(id)+" mask="+mask+" origin="+origins.get(origin);
+                    require(actual.equals(world.changed),"spring blocks "+context+": "+NativeBlockFeatureIntegrationTest.differences(world.changed,actual));
+                    var ticks=new ArrayList<NetherFeatureTest.Tick>();output=NativeTerrain.instance().decorationFeatureTicks(request,id,new int[]{at.getX(),at.getY(),at.getZ()},42);
+                    for(int i=0;i<output.length;i+=4)ticks.add(new NetherFeatureTest.Tick(new BlockPos(output[i],output[i+1],output[i+2]),definitions.get(output[i+3]-1).getAsJsonObject().get("id").getAsString(),0));
+                    require(ticks.equals(world.ticks),"spring scheduled updates "+context+" expected="+world.ticks+" actual="+ticks);
+                    if(placed) {accepted++;successes.merge(names.get(id),1,Integer::sum);}cases++;
+                }
             }
         }
         require(accepted>100 && successes.size()==features.size()-3,"every possible spring recipe accepted; negative/excess rock counts and five holes with required rock below rejected: "+successes);
-        checkInstallation(registry,exported);
+        checkInstallation(registry,exported,generator);
         var stats=new JsonObject();stats.addProperty("cases",cases);stats.addProperty("accepted",accepted);stats.addProperty("rejected",cases-accepted);stats.addProperty("fluid_types",definitions.size());stats.add("successes",new Gson().toJsonTree(successes));
         Files.writeString(Path.of("build/nether/spring-reference-stats.json"),stats.toString());
         System.out.println("QA_EVT {\"event\":\"nether_springs_reference\",\"status\":\"pass\",\"context\":"+stats+"}");
     }
 
-    private static void checkInstallation(RegistryAccess registry,TerrainProfileData exported) {
+    private static void checkInstallation(RegistryAccess registry,TerrainProfileData exported,NoiseBasedChunkGenerator source) throws Exception {
         var at=new BlockPos(-17,64,-33);var pos=ChunkPos.containing(at);
         var lava=new SavedTick<Fluid>(Fluids.LAVA,at,0,TickPriority.NORMAL);
         var water=new SavedTick<Fluid>(Fluids.WATER,at,0,TickPriority.NORMAL);
@@ -123,14 +125,15 @@ final class NetherSpringTest {
         var active=new LevelChunkTicks<>(reloaded.scheduledTicks());active.unpack(12345);
         var first=active.poll();var second=active.poll();
         require(first.type()==Fluids.LAVA && second.type()==Fluids.WATER && first.triggerTick()==12345 && second.triggerTick()==12345,"saved updates become immediately runnable after chunk activation");
-        var profile=BiomeTerrainProfile.register(exported);
-        var request=NetherTerrainTest.request(profile,-15,16,0,256);
-        var metadata=NativeTerrain.instance().structureData(request);
-        var expected=fluidCodec.parse(NbtOps.INSTANCE,metadata.getListOrEmpty("fluid_ticks")).getOrThrow();
-        require(!expected.isEmpty(),"real native chunk supplies fluid updates");
-        var generated=new ProtoChunk(new ChunkPos(-15,16),UpgradeData.EMPTY,LevelHeightAccessor.create(0,256),PalettedContainerFactory.create(registry),null);
-        generator.installDecorationData(generated,metadata,null,registry);
-        require(generated.getTicksForSerialization(12345).fluids().equals(expected),"actual native metadata reaches Minecraft's serialized proto-chunk ticks");
+        try(var definition=NetherTerrainTest.fixture(registry,source,exported,42)) {
+            var request=definition.request(-15,16);
+            var metadata=NativeTerrain.instance().structureData(request);
+            var expected=fluidCodec.parse(NbtOps.INSTANCE,metadata.getListOrEmpty("fluid_ticks")).getOrThrow();
+            require(!expected.isEmpty(),"real native chunk supplies fluid updates");
+            var generated=new ProtoChunk(new ChunkPos(-15,16),UpgradeData.EMPTY,LevelHeightAccessor.create(0,256),PalettedContainerFactory.create(registry),null);
+            generator.installDecorationData(generated,metadata,null,registry);
+            require(generated.getTicksForSerialization(12345).fluids().equals(expected),"actual native metadata reaches Minecraft's serialized proto-chunk ticks");
+        }
     }
 
     static int checkRegionTicks(CompoundTag tag,ChunkPos chunk) {

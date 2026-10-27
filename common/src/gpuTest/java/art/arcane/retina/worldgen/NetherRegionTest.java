@@ -1,7 +1,6 @@
 package art.arcane.retina.worldgen;
 
 import com.google.gson.JsonObject;
-import net.minecraft.SharedConstants;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.util.SimpleBitStorage;
 import net.minecraft.world.level.ChunkPos;
@@ -26,16 +25,16 @@ import java.util.stream.Collectors;
 
 /** Persist a complete negative-coordinate Nether region and decode it with Minecraft. */
 final class NetherRegionTest {
-    static void check(TerrainProfileData data, BiomeTerrainProfile profile) throws Exception {
+    static void check(TerrainProfileData data, DefinitionFixture profile) throws Exception {
         check(data,profile,false);
     }
 
-    static void check(TerrainProfileData data, BiomeTerrainProfile profile, boolean features) throws Exception {
+    static void check(TerrainProfileData data, DefinitionFixture profile, boolean features) throws Exception {
         check(data,profile,features,features ? Set.of(Blocks.GLOWSTONE,Blocks.BROWN_MUSHROOM,Blocks.RED_MUSHROOM,Blocks.FIRE,Blocks.SOUL_FIRE,
                 Blocks.NETHER_QUARTZ_ORE,Blocks.NETHER_GOLD_ORE,Blocks.ANCIENT_DEBRIS) : Set.of());
     }
 
-    static void check(TerrainProfileData data, BiomeTerrainProfile profile, boolean features, Set<Block> requiredFeatures) throws Exception {
+    static void check(TerrainProfileData data, DefinitionFixture profile, boolean features, Set<Block> requiredFeatures) throws Exception {
         var terrain = NativeTerrain.instance();
         var materials = data.materials();
         Files.createDirectories(Path.of("build/nether"));
@@ -43,9 +42,11 @@ final class NetherRegionTest {
         if(data.biomes().size()==1)label+="-"+data.biomes().getFirst().unwrapKey().orElseThrow().identifier().getPath();
         var directory = Files.createTempDirectory(Path.of("build/nether"), label+"-");
         var path = directory.resolve("r.-1.0.mca");
-        int version = SharedConstants.getCurrentVersion().dataVersion().version();
+        int version = profile.dataVersion();
+        byte[] definition=Files.readAllBytes(profile.file());
+        Files.copy(profile.file(),directory.resolve(WorldDefinitionFile.NAME));
         long start = System.nanoTime();
-        var report = terrain.generateRegion(NetherTerrainTest.request(profile, -1, 0, 0, 256), path, version, "minecraft:nether_wastes");
+        var report = terrain.generateRegion(profile.request(-1,0), path, version, "minecraft:nether_wastes");
         double ms = (System.nanoTime() - start) / 1e6;
         require(report.generated() == 1024 && report.preserved() == 0, "fresh complete Nether region");
         var codec = PalettedContainer.codecRW(BlockState.CODEC,
@@ -99,7 +100,7 @@ final class NetherRegionTest {
                     for(int c=0;c<256;c++)require(bits.get(c)==128+(roofPlants[c]!=null && opaque.test(roofPlants[c])?1:0),"saved heightmap follows bedrock roof and accepted decorations");
                 }
                 if (!probes.contains(position)) continue;
-                var request = NetherTerrainTest.request(profile, x, z, 0, 256);
+                var request = profile.request(x,z);
                 try (var generated = terrain.generate(request)) {
                     var metadata = terrain.structureData(request);
                     for(String key:List.of("block_ticks","fluid_ticks"))
@@ -129,8 +130,9 @@ final class NetherRegionTest {
             }
         }
         byte[] saved = Files.readAllBytes(path);
-        var repeat = terrain.generateRegion(NetherTerrainTest.request(profile, -1, 0, 0, 256), path, version, "minecraft:nether_wastes");
+        var repeat = terrain.generateRegion(profile.request(-1,0), path, version, "minecraft:nether_wastes");
         require(repeat.generated() == 0 && repeat.preserved() == 1024 && Arrays.equals(saved, Files.readAllBytes(path)), "repeated publication preserves complete region");
+        require(Arrays.equals(definition,Files.readAllBytes(profile.file())),"saved Nether definition stays unchanged");
         var stats = new JsonObject(); stats.addProperty("chunks", 1024); stats.addProperty("compared_voxels", compared);
         if(features) {
             require(activeFluidTicks>0 && comparedFluidTicks>0,"published feature region and independent probes contain active scheduled lava updates");

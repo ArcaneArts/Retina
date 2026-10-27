@@ -789,3 +789,19 @@ and `retina.dat` must still be absent. The test then publishes the original vali
 definition while the orphan remains present and verifies the complete NBT and
 Rust-loaded world metadata. It uses the real writer and loader without a GPU;
 root `check` includes it.
+
+### Nether terrain and feature fixtures
+
+`netherTerrainTest` and `netherFeatureTest` now publish definitions before native
+generation. Terrain, fixed-biome, ore, ordering, spring, survival and fungus
+fixtures obtain requests from the saved file. Source generators retain their
+actual generation depth and dimension storage; synthetic replay fixtures save
+their declared geometry. Interpreter selection for changing replay programs is
+an execution binding option.
+
+With `--args=--region`, each saved region directory contains its own copied
+`retina.dat`, including the mixed-biome and fixed forest feature cases. Region
+output uses the saved seed and DataVersion, checks independent chunk content and
+active fluid ticks, and preserves the definition and existing region on repeat.
+The terrain fixture's definition is also retained at `build/nether/retina.dat`.
+These tasks accept `-PretinaNativePath=/absolute/path/to/native/library`.

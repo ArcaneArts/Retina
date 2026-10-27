@@ -19,7 +19,7 @@ import java.util.*;
 
 /** Loaded feature DAG order, shared-root membership and observable native replacement ordering. */
 final class NetherFeatureOrderTest {
-    static void check(RegistryAccess registry, TerrainProfileData exported) {
+    static void check(RegistryAccess registry, TerrainProfileData exported) throws Exception {
         var data = JsonParser.parseString(exported.json()).getAsJsonObject();
         var steps = FeatureSorter.buildFeaturesPerStep(exported.biomes(), b -> b.value().getGenerationSettings().features(), true);
         var roots = new ArrayList<PlacedFeature>();
@@ -127,32 +127,35 @@ final class NetherFeatureOrderTest {
         return Holder.direct(PlacedFeature.DIRECT_CODEC.parse(registry.createSerializationContext(JsonOps.INSTANCE), root).getOrThrow());
     }
 
-    private static void nativeReplay(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder) {
+    private static void nativeReplay(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder) throws Exception {
         nativeReplay(registry, source, fixture, wrongOrder, false);
     }
 
-    private static void nativeReplay(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder, boolean oreChain) {
-        var profile = replayProfile(registry, source, fixture, wrongOrder, true);
-        var states = profile.states;
-        int transitioned = 0;
-        for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
-            var request = new TerrainRequest(42, position[0], position[1], 0, 256, 64, 48, .008f, profile.id);
-            try (var chunk = NativeTerrain.instance().generate(request)) {
-                for (int c = 0; c < 256; c++) {
-                    var expected = c == 8 * 16 + 8 ? wrongOrder ? Blocks.MAGMA_BLOCK : Blocks.GOLD_BLOCK : Blocks.NETHERRACK;
-                    int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (64 * 256L + c) * 2));
-                    // Scattered ores may choose zero attempts. Every nonempty ore run includes its origin first.
-                    if (oreChain && c == 8 * 16 + 8 && states[actual].is(Blocks.BASALT)) continue;
-                    require(states[actual].is(expected), "native live placement order at " + Arrays.toString(position) + ":" + c + " wrongOrder=" + wrongOrder + ": " + states[actual]);
-                    if (c == 8 * 16 + 8) transitioned++;
+    private static void nativeReplay(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder, boolean oreChain) throws Exception {
+        try(var profile=replayProfile(registry,source,fixture,wrongOrder,true)) {
+            var states = profile.states;
+            int transitioned = 0;
+            for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
+                var request = profile.saved.request(position[0],position[1]);
+                try (var chunk = NativeTerrain.instance().generate(request)) {
+                    for (int c = 0; c < 256; c++) {
+                        var expected = c == 8 * 16 + 8 ? wrongOrder ? Blocks.MAGMA_BLOCK : Blocks.GOLD_BLOCK : Blocks.NETHERRACK;
+                        int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (64 * 256L + c) * 2));
+                        // Scattered ores may choose zero attempts. Every nonempty ore run includes its origin first.
+                        if (oreChain && c == 8 * 16 + 8 && states[actual].is(Blocks.BASALT)) continue;
+                        require(states[actual].is(expected), "native live placement order at " + Arrays.toString(position) + ":" + c + " wrongOrder=" + wrongOrder + ": " + states[actual]);
+                        if (c == 8 * 16 + 8) transitioned++;
+                    }
                 }
             }
+            require(transitioned > 0, "dependent replacements must produce an observable final state");
         }
-        require(transitioned > 0, "dependent replacements must produce an observable final state");
     }
 
-    private record ReplayProfile(int id, BlockState[] states) {}
-    private static ReplayProfile replayProfile(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder, boolean sourceOrder) {
+    private record ReplayProfile(DefinitionFixture saved, BlockState[] states) implements AutoCloseable {
+        @Override public void close() {saved.close();}
+    }
+    private static ReplayProfile replayProfile(RegistryAccess registry, TerrainProfileData source, Export fixture, boolean wrongOrder, boolean sourceOrder) throws Exception {
         var data = fixture.world.deepCopy(); var recipes = fixture.recipes.deepCopy();
         var palette = new LinkedHashMap<>(fixture.palette);
         DecorationProfile.finishPlacements(recipes, palette, GenerationBounds.uniform(0, 256), 32);
@@ -179,10 +182,10 @@ final class NetherFeatureOrderTest {
             serialized.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow()); carveable.add(false);
         }
         data.add("materials", serialized); data.add("carveable", carveable); data.add("lighting", LightingProfile.export(palette.keySet(), false));
-        return new ReplayProfile(NativeTerrain.instance().registerProfile(data.toString()), palette.keySet().toArray(BlockState[]::new));
+        return new ReplayProfile(NetherTerrainTest.fixture(data,42), palette.keySet().toArray(BlockState[]::new));
     }
 
-    private static void crossAnchor(RegistryAccess registry, TerrainProfileData source) {
+    private static void crossAnchor(RegistryAccess registry, TerrainProfileData source) throws Exception {
         for (boolean zAxis : new boolean[]{false, true}) {
             var roots = new ArrayList<Holder<PlacedFeature>>();
             for (int i = 0; i < 2; i++) {
@@ -200,16 +203,17 @@ final class NetherFeatureOrderTest {
             var settings = new BiomeGenerationSettings.PlainBuilder().addFeature(3, roots.get(0)).addFeature(7, roots.get(1)).build();
             var fixture = export(registry, source, source.biomes().subList(0, 1), List.of(settings));
             for (boolean ordered : new boolean[]{true, false}) {
-                var profile = replayProfile(registry, source, fixture, false, ordered);
-                for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
-                    var request = new TerrainRequest(42, position[0], position[1], 0, 256, 64, 48, .008f, profile.id);
-                    try (var chunk = NativeTerrain.instance().generate(request)) {
-                        for (int c = 0; c < 256; c++) {
-                            var expected = c == (zAxis ? 15 * 16 + 8 : 8 * 16 + 15)
-                                    ? ordered ? Blocks.GOLD_BLOCK : Blocks.BASALT : Blocks.NETHERRACK;
-                            int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (64 * 256L + c) * 2));
-                            require(profile.states[actual].is(expected), "cross-anchor source order " + Arrays.toString(position) + ":" + c
-                                    + " zAxis=" + zAxis + " ordered=" + ordered + ": " + profile.states[actual]);
+                try(var profile=replayProfile(registry,source,fixture,false,ordered)) {
+                    for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
+                        var request = profile.saved.request(position[0],position[1]);
+                        try (var chunk = NativeTerrain.instance().generate(request)) {
+                            for (int c = 0; c < 256; c++) {
+                                var expected = c == (zAxis ? 15 * 16 + 8 : 8 * 16 + 15)
+                                        ? ordered ? Blocks.GOLD_BLOCK : Blocks.BASALT : Blocks.NETHERRACK;
+                                int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (64 * 256L + c) * 2));
+                                require(profile.states[actual].is(expected), "cross-anchor source order " + Arrays.toString(position) + ":" + c
+                                        + " zAxis=" + zAxis + " ordered=" + ordered + ": " + profile.states[actual]);
+                            }
                         }
                     }
                 }
@@ -250,7 +254,7 @@ final class NetherFeatureOrderTest {
         return Holder.direct(PlacedFeature.DIRECT_CODEC.parse(ops, definition).getOrThrow());
     }
 
-    private static void crossDependencies(RegistryAccess registry, TerrainProfileData source) {
+    private static void crossDependencies(RegistryAccess registry, TerrainProfileData source) throws Exception {
         for (int variant = 0; variant < 5; variant++) {
             boolean zAxis = variant == 1 || variant == 4, heightmap = variant == 2;
             int destination = variant >= 3 ? 511 : 15;
@@ -262,18 +266,19 @@ final class NetherFeatureOrderTest {
             if (!heightmap) settings.addFeature(8, dependent(registry, "minecraft:diamond_block", "minecraft:gold_block", zAxis, destination, 64, 16, false));
             var fixture = export(registry, source, source.biomes().subList(0, 1), List.of(settings.build()));
             for (boolean ordered : new boolean[]{true, false}) {
-                var profile = replayProfile(registry, source, fixture, false, ordered);
-                for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
-                    var request = new TerrainRequest(42, position[0], position[1], 0, 256, 64, 48, .008f, profile.id);
-                    try (var chunk = NativeTerrain.instance().generate(request)) {
-                        int y = heightmap ? 161 : 64;
-                        for (int c = 0; c < 256; c++) {
-                            boolean target = c == (zAxis ? 15 * 16 + 8 : 8 * 16 + 15);
-                            var expected = heightmap ? target && ordered ? Blocks.GOLD_BLOCK : Blocks.AIR
-                                    : target ? ordered ? Blocks.DIAMOND_BLOCK : Blocks.BASALT : Blocks.NETHERRACK;
-                            int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (y * 256L + c) * 2));
-                            require(profile.states[actual].is(expected), "cross-anchor read dependency " + Arrays.toString(position) + ":" + c
-                                    + " variant=" + variant + " ordered=" + ordered + ": " + profile.states[actual]);
+                try(var profile=replayProfile(registry,source,fixture,false,ordered)) {
+                    for (var position : new int[][]{{0, 0}, {-1, -1}, {-33, 31}, {32, -32}, {31, 32}, {-32, -33}}) {
+                        var request = profile.saved.request(position[0],position[1]);
+                        try (var chunk = NativeTerrain.instance().generate(request)) {
+                            int y = heightmap ? 161 : 64;
+                            for (int c = 0; c < 256; c++) {
+                                boolean target = c == (zAxis ? 15 * 16 + 8 : 8 * 16 + 15);
+                                var expected = heightmap ? target && ordered ? Blocks.GOLD_BLOCK : Blocks.AIR
+                                        : target ? ordered ? Blocks.DIAMOND_BLOCK : Blocks.BASALT : Blocks.NETHERRACK;
+                                int actual = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (y * 256L + c) * 2));
+                                require(profile.states[actual].is(expected), "cross-anchor read dependency " + Arrays.toString(position) + ":" + c
+                                        + " variant=" + variant + " ordered=" + ordered + ": " + profile.states[actual]);
+                            }
                         }
                     }
                 }
