@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeWorldDefinition;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 

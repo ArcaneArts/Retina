@@ -1,4 +1,4 @@
-package art.arcane.retina.worldgen;
+package art.arcane.retina.core;
 
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -8,12 +8,12 @@ import java.nio.file.Path;
 import java.util.Locale;
 
 /** One library image shared by definition I/O and the GPU bridge. Loading is GPU-independent. */
-final class NativeLibrary {
+public final class NativeLibrary {
     private NativeLibrary() { }
     private static final class Holder {
         static final SymbolLookup SYMBOLS = SymbolLookup.libraryLookup(extract(), Arena.global());
     }
-    static SymbolLookup symbols() { return Holder.SYMBOLS; }
+    public static SymbolLookup symbols() { return Holder.SYMBOLS; }
 
     private static Path extract() {
         String override = System.getProperty("retina.native.path");

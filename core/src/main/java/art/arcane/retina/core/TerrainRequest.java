@@ -1,4 +1,4 @@
-package art.arcane.retina.worldgen;
+package art.arcane.retina.core;
 
 public record TerrainRequest(long seed, int chunkX, int chunkZ, int minY, int height,
                              float baseHeight, float amplitude, float frequency, int profile) {

@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.TerrainRequest;
+
 import art.arcane.retina.Retina;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;

@@ -1,9 +1,2 @@
-java {
-    toolchain { languageVersion = JavaLanguageVersion.of(25) }
-    withSourcesJar()
-}
+apply from: rootProject.file('gradle/java-toolchain.gradle')
 apply from: rootProject.file('gradle/configuration.gradle')
-tasks.withType(JavaCompile).configureEach {
-    options.release = 25
-    options.encoding = 'UTF-8'
-}

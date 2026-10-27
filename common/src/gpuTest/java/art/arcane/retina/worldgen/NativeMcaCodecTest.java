@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.TerrainRequest;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import net.minecraft.SharedConstants;

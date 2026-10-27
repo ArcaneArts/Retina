@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.TerrainRequest;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.Callable;

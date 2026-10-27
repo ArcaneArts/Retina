@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.TerrainRequest;
+
 import art.arcane.retina.mixin.IOWorkerAccessor;
 import com.mojang.serialization.Lifecycle;
 import net.minecraft.SharedConstants;

@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeWorldDefinition;
+
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 

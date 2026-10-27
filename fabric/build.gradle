@@ -82,7 +82,12 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
     testImplementation "net.fabricmc:fabric-loader-junit:${loader_version}"
 }
-test { useJUnitPlatform() }
+test {
+    useJUnitPlatform()
+    // The resource-authority fixture compiles two complete registry worlds.
+    maxHeapSize = '1g'
+    jvmArgs '-XX:ActiveProcessorCount=2'
+}
 if (providers.gradleProperty('retinaDefinitionMetadataQa').isPresent()) {
     test { systemProperty 'retina.qa.savedMetadataWorld', providers.gradleProperty('retinaDefinitionMetadataQa').get() }
 }

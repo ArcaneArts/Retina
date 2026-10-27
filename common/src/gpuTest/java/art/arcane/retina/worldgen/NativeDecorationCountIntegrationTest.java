@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeWorldDefinition;
+
 import com.google.gson.*;
 import net.minecraft.world.level.biome.Biome;
 import java.nio.file.*;

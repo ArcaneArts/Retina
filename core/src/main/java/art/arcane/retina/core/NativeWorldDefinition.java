@@ -1,4 +1,4 @@
-package art.arcane.retina.worldgen;
+package art.arcane.retina.core;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
