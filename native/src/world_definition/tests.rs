@@ -539,6 +539,16 @@ fn java_compiled_definitions_preserve_complete_profiles() {
         actual["floating"][0].as_f64().unwrap().to_bits(),
         (-0.0_f64).to_bits()
     );
+    let template = value::decode(root_tag.remove("template_nbt").unwrap()).unwrap();
+    assert!(crate::nbt::validate(&template, 0));
+    let actual: Nbt = fastnbt::from_bytes(&crate::nbt::root(&template)).unwrap();
+    let expected: Nbt = fastnbt::from_bytes(&std::fs::read(root.join("codec/embedded.nbt")).unwrap()).unwrap();
+    assert_eq!(actual, expected, "Java typed NBT -> structural file -> native NBT fidelity");
+    let Nbt::Compound(fields) = actual else { panic!("embedded compound lost") };
+    let Nbt::Float(float_zero) = fields["float_zero"] else { panic!() };
+    let Nbt::Double(double_zero) = fields["double_zero"] else { panic!() };
+    assert_eq!(float_zero.to_bits(), (-0.0_f32).to_bits());
+    assert_eq!(double_zero.to_bits(), (-0.0_f64).to_bits());
 }
 
 // The legacy parser is still tested above for GPU/material parity. For an
