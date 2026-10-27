@@ -518,3 +518,37 @@ The input directory contains `world/retina.dat` and the actual mod captures
 `captured/region/r.-2.1.mca` and `captured/DIM-1/region/r.-2.1.mca`. The test checks
 all saved starts and children in those regions, including their complete NBT,
 reference counts and saved adjustment bounds.
+
+## Migrating benchmark inputs
+
+The registry compiler and benchmark fixtures share `WorldDefinitionAssembler`
+for structural profiles, shared type dictionaries, palettes and world headers.
+The pipeline and retained-column tools now open actual files through
+`WorldDefinition::read` and `WorldSession`; their request seed and parameters
+come from the selected dimension. They accept no seed override. Other legacy
+benchmark and integration fixtures remain scheduled for migration.
+
+Compile an Overworld fixture without loading the native library or GPU:
+
+```sh
+./gradlew :common:exportBenchmarkDefinition -PbenchmarkSeed=9007199254741001
+```
+
+This creates `build/benchmark-definition/overworld/retina.dat`. For Nether use
+`:common:exportNetherBenchmarkDefinition`, whose default output directory is
+`build/benchmark-definition/nether`. `-PbenchmarkPack=/absolute/pack.zip` selects
+a datapack and `-PbenchmarkDefinitionRoot=/absolute/new-directory` selects a
+fresh fixture directory. Present definitions are preserved; use another
+directory when compiling a different seed or configuration. These are test
+fixtures containing the selected benchmark dimension. Ordinary world startup
+still gathers all dimensions automatically.
+
+The native tools can also consume a file copied from a real mod world:
+
+```sh
+gpu_pipeline_benchmark ./retina.dat minecraft:overworld 1 2
+column_cache_fixture ./retina.dat minecraft:the_nether ./columns.bin
+```
+
+Pipeline depth and sample counts remain execution inputs. Fixture export
+calculates seed-dependent data for `benchmarkSeed` before writing the file.

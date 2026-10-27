@@ -99,13 +99,16 @@ previewTest datapackTest structureTest` passed on Metal, including Terralith,
 temporary promotion and the actual timing packet. Packaged native bytes match the
 release library. Vulkan/DX12 runtime behavior still needs hardware testing.
 
-Reproduce the focused comparison with:
+Run the current field/readback comparison from one saved definition. The seed
+and generation parameters come from that file; pipeline depth remains an
+execution option. Use a fresh output directory when compiling a new fixture:
 
 ```sh
+./gradlew :common:exportBenchmarkDefinition
 cargo build --manifest-path native/Cargo.toml --release --locked \
   --target-dir build/native-target --example gpu_pipeline_benchmark
-build/native-target/release/examples/gpu_pipeline_benchmark build/structure-profile.json 1 12
-build/native-target/release/examples/gpu_pipeline_benchmark build/structure-profile.json 2 12
+build/native-target/release/examples/gpu_pipeline_benchmark build/benchmark-definition/overworld/retina.dat minecraft:overworld 1 12
+build/native-target/release/examples/gpu_pipeline_benchmark build/benchmark-definition/overworld/retina.dat minecraft:overworld 2 12
 ```
 
 Run measurements sequentially. `ring-final-parallel` and the first focused repeat
@@ -171,6 +174,7 @@ does not establish that all GPU ore generation would be slower.
 Reproduce each coordinate sequentially with both formats:
 
 ```sh
+./gradlew :common:exportBenchmarkDefinition
 cargo build --manifest-path native/Cargo.toml --release --locked \
   --target-dir build/native-target --features ore-raster-benchmark \
   --example ore_raster_benchmark
