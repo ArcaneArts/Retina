@@ -105,15 +105,35 @@ specialization activation. Terralith automatic cases generate while compilation
 is pending in both production and experimental modes, then compare again after
 activation. No automatic case silently changes to Minecraft generation.
 
-`scripts/native-interpreter-reuse-parity.py` registers five profile variants on
+`scripts/native-interpreter-reuse-parity.py` opens saved definition variants on
 one engine: original, nonzero interpolated temperature, interpolated material
-rules for the actually sampled biomes, interpolated aquifer barrier, and original
-again. It uses odd 7×5 cells and negative coordinates. Climate and material
-fixtures must visibly change their chunks, preventing vacuous parity. Comparisons
-with the retained library pass **1,966,080 blocks and 5,120 complete column records**
-across vanilla and Terralith. Returning to the original profile also preserves its
-output. Unit tests exercise altered dependencies, layout selection, unknown graph
+rules, interpolated aquifer barrier, and the original world handle again. Java's
+`interpreterReuseDefinitionFixtures` task publishes these structural NBT inputs;
+Python reads requests from the saved dimensions without JSON registration. The
+fixture exporter changes only registry programs, preserving other dimension data,
+palettes and embedded templates. Interpreter selection is an execution option.
+
+Odd 7×5 cells and negative coordinates remain covered. Climate and material
+variants must visibly change their chunks, preventing vacuous parity. The
+saved-file comparison with a retained library passes **1,966,080 blocks and 5,120
+complete column records** across vanilla and Terralith. Both controls change both
+sampled chunks; returning to the original handle preserves its bytes. Evidence
+is retained in `~/.cache/retina/world-definition-interpreter-tool-20261027`.
+Unit tests also exercise altered dependencies, layout selection, unknown graph
 arguments, new entrypoints and wide-profile fallback.
+
+```sh
+./gradlew :common:interpreterReuseDefinitionFixtures \
+  -PinterpreterDefinition=/path/to/world/retina.dat \
+  -PinterpreterDefinitionOutput=build/reuse-definitions \
+  -PretinaNativePath=/path/to/libretina_worldgen.dylib
+python3 scripts/native-interpreter-reuse-parity.py \
+  --library /path/to/libretina_worldgen.dylib \
+  --definitions build/reuse-definitions --out build/reuse-results
+```
+
+Use a fresh output directory. A second library run can add
+`--compare build/reuse-results` and use a different `--out` directory.
 
 `build`, `nativeGpuTest`, `interpolationTest`, `aquiferTest`, `regionTest`,
 `previewTest` and `snowTest` pass on the final native build. Earlier in this

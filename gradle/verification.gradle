@@ -752,6 +752,23 @@ tasks.register('shoreTest', JavaExec) {
     }
 }
 
+tasks.register('interpreterReuseDefinitionFixtures', JavaExec) {
+    group = 'verification'
+    description = 'Publish saved climate/material/barrier definitions for the Python interpreter reuse proof.'
+    dependsOn 'gpuTestClasses'
+    if (!providers.gradleProperty('interpreterDefinition').isPresent()) dependsOn 'exportBenchmarkDefinition'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.InterpreterReuseDefinitionFixtures'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    args providers.gradleProperty('interpreterDefinition').getOrElse('build/benchmark-definition/overworld/retina.dat'),
+        providers.gradleProperty('interpreterDefinitionOutput').getOrElse('build/interpreter-reuse-definitions'),
+        providers.gradleProperty('interpreterDimension').getOrElse('minecraft:overworld')
+}
+
 tasks.register('nativeAquiferColumnsGpuTest', Exec) {
     group = 'verification'
     description = 'Compare local aquifer X/Z values against uncached GPU graphs at many heights.'
