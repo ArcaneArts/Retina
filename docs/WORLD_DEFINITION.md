@@ -837,3 +837,25 @@ regions through Minecraft's chunk codecs. Its binding provider permits only
 biome and structure identity resolution. The check also preserves a player edit
 while repairing one missing chunk. It removes its explicitly disposable MCA
 files after validation; saved definitions and receipts remain in its output.
+
+### Registry program and biome fixtures
+
+`biomeTest` and `shoreTest` publish their loaded registry projections before
+native generation. Variant noise, climate, material and shore models each get
+an explicit seed-bound file. Density tests with different native bounds publish
+separate files while retaining the original aligned storage bounds. Shader
+execution choice remains a binding option: the specialization comparison opens
+one file independently for interpreted and specialized execution.
+
+The biome test retains `build/registry-biome-definition/retina.dat`; the shore
+test retains `build/shore-definition/retina.dat`. Full profile JSON is diagnostic
+output. `datapackProgramTest -PtestProgramDefinition=/absolute/retina.dat` loads
+the saved definition for its program comparisons. These tasks accept
+`-PretinaNativePath=/absolute/path/to/native/library`.
+
+The independent region-boundary check opens the same file in a separate world
+handle. A controlled saved flat substrate exercises removal of an orphaned tall
+seagrass upper half while preserving its replacement single seagrass. The
+broader biome test still checks plant partners across generated chunks and the
+complete decoded region. `--args=--contracts-only` selects program contracts in
+`biomeTest`, or climate, water and sediment contracts in `shoreTest`.

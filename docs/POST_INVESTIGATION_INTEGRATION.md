@@ -183,8 +183,8 @@ algorithm is changed by this optimization series' final integration cycle.
 `decorations`, `shores`, or `terrain`. The default `all` retains every original
 assertion, sample and their order. The independent phases repeat common registry,
 mode and saved-profile assertions; they do not shorten individual fixtures.
-`datapackProgramTest -PtestProgramProfile=/absolute/profile.json` runs the existing
-program comparison without reloading Minecraft registries. The raw logs preserve
+`datapackProgramTest -PtestProgramDefinition=/absolute/retina.dat` runs the
+program comparison from a saved definition without reloading Minecraft registries. The raw logs preserve
 the failed attempts and successful phase results separately.
 
 The failed forced-specialization/shore checks do not establish a new regression
