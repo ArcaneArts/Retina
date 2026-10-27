@@ -18,6 +18,15 @@ native packaging pipeline; `retinaHostOnly` packages the current host's library
 for development. Ordinary builds consume committed vanilla catalogs without
 launching Minecraft or regenerating data.
 
+The release workflow builds and stages Bukkit alongside Fabric and NeoForge.
+`scripts/stage-release.py <minecraft> <version>` reads each built JAR's six native
+entries and checks the plugin's actual descriptor, runtime classes, catalog bytes
+and manifest hash. Helper/probe JARs and bundled server/API classes are excluded.
+A local universal 0.398 build produced a 28,197,199-byte plugin; Mach-O, ELF and
+PE images were inspected for both architectures. Its packaged host library
+generated all three dimensions on a JDK-only classpath without Minecraft or an
+external native override. Foreign images were cross-compiled, not GPU-tested.
+
 Use Java 25, a supported GPU/driver, and enable FFM native access:
 
 ```sh

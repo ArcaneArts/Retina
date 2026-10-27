@@ -1,12 +1,18 @@
 # Retina
 
 Retina is a Rust and GPU terrain generator for **Minecraft 26.3**, available for
-**Fabric and NeoForge**. It compiles loaded worldgen registries and supported
+**Fabric, NeoForge, and Bukkit**. The mod integrations compile loaded worldgen registries and supported
 datapack/mod additions into `<world-root>/retina.dat`, then generates complete
 Anvil (`.mca`) regions from that saved definition with terrain, biomes,
 decorations, structures and interior lighting.
 
-Install Retina and select your usual world type. Supported Overworld, Nether and End
+The [Bukkit plugin](docs/BUKKIT.md) bundles reusable vanilla data and automatically
+creates `retina.dat` for the chosen seed. Its public-API delivery policy disables
+structures and scheduled spring roots; it uses server lighting and persistence.
+Select it through Bukkit's generator configuration. CraftBukkit/NMS acceleration
+and a launch wrapper are separate follow-up targets.
+
+On Fabric and NeoForge, install Retina and select your usual world type. Supported Overworld, Nether and End
 generators automatically use Retina when creating or reopening a world; there is no disable
 switch. Normal, Large Biomes, Amplified, Single Biome and Superflat are supported.
 The Nether uses its effective noise settings and fixed or multi-noise biome source,
@@ -47,8 +53,9 @@ be accepted separately.
 | `runClient` / `runServer` | Fabric development client/server |
 | `runFabricClient` / `runFabricServer` | Explicit Fabric aliases |
 | `runNeoForgeClient` / `runNeoForgeServer` | NeoForge client/server |
-| `build -PretinaHostOnly` | Build both loader JARs with this host's native library |
-| `build` | Build both loader JARs with the native platforms supported by the build host |
+| `:bukkit:build` / `buildBukkit` | Build the installable Bukkit plugin with bundled vanilla data |
+| `build -PretinaHostOnly` | Build mod and plugin JARs with this host's native library |
+| `build` | Build mod and plugin JARs with the native platforms supported by the build host |
 | `genSources` | Generate Minecraft sources for IDE navigation |
 
 Run these tasks with `./gradlew`. NeoForge uses `run/neoforge-client/` and
@@ -58,15 +65,17 @@ the project task, for example `:fabric:runClient` or `:fabric:test`.
 
 ### Packaged installations
 
-Install the JAR matching the loader; do not install the common module or sources JAR:
+Install the JAR matching the platform; do not install helper modules, probe plugins, or sources JARs:
 
 - Fabric: `fabric/build/libs/retina-fabric-26.3-<version>.jar`, Fabric Loader
   **0.19.5+**, and Fabric API. The development build uses Fabric API
   `0.161.0+26.3`.
 - NeoForge: `neoforge/build/libs/retina-neoforge-26.3-<version>.jar`, with
   **26.3.0.51-beta+** for Minecraft 26.3.
+- Bukkit: `bukkit/build/libs/retina-bukkit-26.3-<version>.jar`. See the
+  [installation, tested servers and API limitations](docs/BUKKIT.md).
 
-Both require Java 25 and a compatible GPU compute adapter. For a packaged Fabric
+All require Java 25 and a compatible GPU compute adapter. For packaged Fabric or Bukkit
 launcher/server, add `--enable-native-access=ALL-UNNAMED` to the JVM arguments.
 For NeoForge, also add `--illegal-native-access=allow`, since FML creates the mod's
 named module after JVM startup. Development tasks already supply these arguments.
@@ -489,14 +498,15 @@ is no force push. Running it again without new main commits does not start a new
 release. Merge your changes into main through the normal PR workflow first.
 
 The [release workflow](.github/workflows/release.yml) builds every supported
-Minecraft target on macOS, including Fabric and NeoForge and all six native
+Minecraft target on macOS, including Fabric, NeoForge, Bukkit and all six native
 libraries (macOS/Linux/Windows, each x64/ARM64) inside each installable JAR. It
 runs the normal `build` checks, inspects the built JAR contents, and publishes all
-variants together in one GitHub release. Sources and the common helper JAR are
+variants together in one GitHub release. The plugin also receives matching
+catalog assets, descriptor and private runtime dependencies. Sources, probe plugins and helper JARs are
 not release assets. This packages the supported native backends; the runtime
 validation limits described above still apply.
 
-The mod version is `0.<git rev-list --count HEAD>`: 207 reachable commits produce
+The distribution version is `0.<git rev-list --count HEAD>`: 207 reachable commits produce
 version `0.207`, tag `v0.207`, and files such as
 `retina-fabric-26.3-0.207.jar`. Actions checks out the exact release commit with
 full history, and all targets use that count. Local builds use the same rule;
@@ -506,7 +516,7 @@ main no longer needs those markers.
 
 Supported versions live in [gradle/minecraft](gradle/minecraft). The current
 target is **26.3**. Each `<minecraft-version>.properties` file pins its matching
-loader dependencies and automatically becomes a release-matrix entry. After
+loader/API dependencies and automatically becomes a release-matrix entry. After
 porting the shared source to another Minecraft version, add its property file;
 `-Pminecraft_version=<version>` selects it locally. The default development
 version and build-plugin versions remain in `gradle.properties`.
@@ -519,8 +529,8 @@ parallel project execution disabled. These compile limits are separate from the
 runtime region/assembly limits. The C compiler builds vendored libdeflate; no
 separate libdeflate runtime installation is needed.
 
-Use `./gradlew build -PretinaHostOnly` for local loader JARs. A full `build`,
-`assemble` or distributable `jar` also packages cross-compiled libraries according
+Use `./gradlew build -PretinaHostOnly` for local mod and plugin JARs. A full `build`,
+`assemble`, or Bukkit `shadowJar` also packages cross-compiled libraries according
 to the build host:
 
 | Build host | Native platforms in a full JAR |
@@ -580,7 +590,10 @@ errors propagate from the actual build.
 
 - `common/`: shared Java integration, client telemetry, resources and
   Minecraft-reference tests. Standalone compilation uses ModDevGradle/NeoForm.
+- `core/`: dependency-free JDK native bridge and saved-definition ownership.
 - `fabric/`, `neoforge/`: loader adapters, development runs and distributable JARs.
+- `bukkit/`: public Bukkit plugin, bundled catalogs and disposable server observer.
+- `assets/world-definitions/`: versioned reusable catalogs and reproducible manifests.
 - `native/`: the shared Rust engine, WGSL shaders, native tests and benchmarks.
 - `gradle/`: shared native build, packaging and verification tasks.
 - `qa/`, `docs/`: fixtures, validation procedures and detailed implementation reports.
