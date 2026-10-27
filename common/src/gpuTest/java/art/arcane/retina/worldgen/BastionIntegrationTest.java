@@ -1,7 +1,6 @@
 package art.arcane.retina.worldgen;
 
 import com.google.gson.*;
-import net.minecraft.SharedConstants;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.*;
 import net.minecraft.nbt.*;
@@ -48,7 +47,6 @@ final class BastionIntegrationTest {
         structures.add("sets", JsonParser.parseString("[{\"id\":\"retina:bastion_fixture\",\"placement\":{\"type\":\"minecraft:random_spread\",\"spacing\":512,\"separation\":511,\"salt\":0},\"entries\":[{\"definition\":" + definition + ",\"weight\":1}]}]"));
         var base = fixture.deepCopy();
         base.add("structures", JsonParser.parseString("{\"templates\":[],\"definitions\":[],\"pools\":{},\"sets\":[]}"));
-        int baseline = terrain.registerProfile(base.toString());
         var results = new JsonArray();
         for (int family = 0; family < roots.size(); family++) {
             var variant = fixture.deepCopy();
@@ -57,50 +55,54 @@ final class BastionIntegrationTest {
             int template = roots.get(family).getAsJsonObject().getAsJsonArray("parts").get(0).getAsJsonObject().get("template").getAsInt();
             String root = structures.getAsJsonArray("templates").get(template).getAsJsonObject().get("id").getAsString();
             Files.writeString(Path.of("build/nether/bastion-fixture-" + family + ".json"), variant.toString());
-            int profile = terrain.registerProfile(variant.toString());
             for (var at : List.of(new ChunkPos(0, 0), new ChunkPos(-512, 512))) {
                 CompoundTag start = null; long seed = 0;
                 for (; seed < 64; seed++) {
-                    start = terrain.structureStarts(PortalIntegrationTest.request(profile, seed, at.x(), at.z()))
-                            .getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty(BASTION);
+                    try(var probe=NetherTerrainTest.fixture(variant,seed)) {
+                            start = terrain.structureStarts(probe.request(at.x(),at.z()))
+                                    .getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty(BASTION);
+                    }
                     if (!start.isEmpty()) break;
                 }
                 require(seed < 64, "eligible loaded biome for " + root + " at " + at);
-                var children = start.getListOrEmpty("Children");
-                require(children.size() > 8, "connected multipart bastion " + root);
-                require(((CompoundTag) children.getFirst()).getStringOr("template", "").equals(root), "selected actual root family");
-                var loaded = StructureStart.loadStaticStart(context, start, seed);
-                require(loaded != null && loaded.isValid(), "saved bastion start decodes");
-                require(loaded.getStructure() == registry.lookupOrThrow(Registries.STRUCTURE).getValue(Identifier.parse(BASTION)), "saved bastion identity");
-                var referenceBounds = loaded.getBoundingBox();
-                for (int rz = Math.floorDiv(referenceBounds.minZ(), 16) - 1; rz <= Math.floorDiv(referenceBounds.maxZ(), 16) + 1; rz++)
-                    for (int rx = Math.floorDiv(referenceBounds.minX(), 16) - 1; rx <= Math.floorDiv(referenceBounds.maxX(), 16) + 1; rx++) {
-                        var refs = terrain.structureStarts(PortalIntegrationTest.request(profile, seed, rx, rz))
-                                .getCompoundOrEmpty("structures").getCompoundOrEmpty("References").getLongArray(BASTION).orElse(new long[0]);
-                        boolean expected = Math.abs(rx - at.x()) <= 8 && Math.abs(rz - at.z()) <= 8
-                                && referenceBounds.intersects(rx * 16, rz * 16, rx * 16 + 15, rz * 16 + 15);
-                        require(Arrays.stream(refs).anyMatch(key -> key == at.pack()) == expected,
-                                "every source-adjusted bounding-box reference including margin and inter-piece gaps");
-                    }
-                var boxes = new ArrayList<BoundingBox>();
-                for (var child : children) boxes.add(((CompoundTag) child).read("BB", BoundingBox.CODEC).orElseThrow());
-                require(boxes.getFirst().minY() == 33, "bastion root uses configured start height, not the Nether roof");
-                require(boxes.stream().allMatch(b -> b.minY() >= 0 && b.maxY() < 256), "pieces inside Nether storage");
-                require(terrain.queryStructureStarts(PortalIntegrationTest.request(profile, seed, at.x(), at.z()), new int[]{at.x(), at.z(), 0})[0] == definition, "locate candidates share bastion start");
-                results.add(placement(registry, context, terrain, variant, profile, baseline, seed, root, loaded.getBoundingBox(), boxes, materials));
+                try(var profile=NetherTerrainTest.fixture(variant,seed);var baseline=NetherTerrainTest.fixture(base,seed)) {
+                    var children = start.getListOrEmpty("Children");
+                    require(children.size() > 8, "connected multipart bastion " + root);
+                    require(((CompoundTag) children.getFirst()).getStringOr("template", "").equals(root), "selected actual root family");
+                    var loaded = StructureStart.loadStaticStart(context, start, seed);
+                    require(loaded != null && loaded.isValid(), "saved bastion start decodes");
+                    require(loaded.getStructure() == registry.lookupOrThrow(Registries.STRUCTURE).getValue(Identifier.parse(BASTION)), "saved bastion identity");
+                    var referenceBounds = loaded.getBoundingBox();
+                    for (int rz = Math.floorDiv(referenceBounds.minZ(), 16) - 1; rz <= Math.floorDiv(referenceBounds.maxZ(), 16) + 1; rz++)
+                        for (int rx = Math.floorDiv(referenceBounds.minX(), 16) - 1; rx <= Math.floorDiv(referenceBounds.maxX(), 16) + 1; rx++) {
+                            var refs = terrain.structureStarts(profile.request(rx, rz))
+                                    .getCompoundOrEmpty("structures").getCompoundOrEmpty("References").getLongArray(BASTION).orElse(new long[0]);
+                            boolean expected = Math.abs(rx - at.x()) <= 8 && Math.abs(rz - at.z()) <= 8
+                                    && referenceBounds.intersects(rx * 16, rz * 16, rx * 16 + 15, rz * 16 + 15);
+                            require(Arrays.stream(refs).anyMatch(key -> key == at.pack()) == expected,
+                                    "every source-adjusted bounding-box reference including margin and inter-piece gaps");
+                        }
+                    var boxes = new ArrayList<BoundingBox>();
+                    for (var child : children) boxes.add(((CompoundTag) child).read("BB", BoundingBox.CODEC).orElseThrow());
+                    require(boxes.getFirst().minY() == 33, "bastion root uses configured start height, not the Nether roof");
+                    require(boxes.stream().allMatch(b -> b.minY() >= 0 && b.maxY() < 256), "pieces inside Nether storage");
+                    require(terrain.queryStructureStarts(profile.request(at.x(), at.z()), new int[]{at.x(), at.z(), 0})[0] == definition, "locate candidates share bastion start");
+                    results.add(placement(registry, context, terrain, variant, profile, baseline, seed, root, loaded.getBoundingBox(), boxes, materials));
+                }
             }
         }
         Files.writeString(Path.of("build/nether/bastion-generation.json"), new GsonBuilder().setPrettyPrinting().create().toJson(results));
-        int natural = terrain.registerProfile(source.toString());
-        var complex = registry.lookupOrThrow(Registries.STRUCTURE_SET).getValue(Identifier.parse("minecraft:nether_complexes"));
-        var placement = (net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement) complex.placement();
-        ChunkPos selected = null;
-        for (int z = 0; z < 4 && selected == null; z++) for (int x = 0; x < 4 && selected == null; x++) {
-            var at = placement.getPotentialStructureChunk(42, x * placement.spacing(), z * placement.spacing());
-            if (terrain.structureStarts(PortalIntegrationTest.request(natural, 42, at.x(), at.z()))
-                    .getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").contains(BASTION)) selected = at;
+        ChunkPos selected=null;
+        try(var natural=NetherTerrainTest.fixture(source,42)) {
+            var complex = registry.lookupOrThrow(Registries.STRUCTURE_SET).getValue(Identifier.parse("minecraft:nether_complexes"));
+            var placement = (net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement) complex.placement();
+            for (int z = 0; z < 4 && selected == null; z++) for (int x = 0; x < 4 && selected == null; x++) {
+                var at = placement.getPotentialStructureChunk(42, x * placement.spacing(), z * placement.spacing());
+                if (terrain.structureStarts(natural.request(at.x(),at.z()))
+                        .getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").contains(BASTION)) selected = at;
+            }
+            require(selected != null, "natural weighted set selects an eligible bastion");
         }
-        require(selected != null, "natural weighted set selects an eligible bastion");
         var combined = NetherGenerationIntegrationTest.run(source, materials,
                 new ChunkPos(selected.getRegionX() * 32, selected.getRegionZ() * 32), "bastion-combined");
         require(combined.getAsJsonObject("structures").has(BASTION), "unmodified loaded profile saves a bastion with decoration");
@@ -108,7 +110,7 @@ final class BastionIntegrationTest {
     }
 
     private static JsonObject placement(RegistryAccess registry, StructurePieceSerializationContext context, NativeTerrain terrain,
-            JsonObject variant, int profile, int baseline, long seed, String root, BoundingBox bounds,
+            JsonObject variant, DefinitionFixture profile, DefinitionFixture baseline, long seed, String root, BoundingBox bounds,
             List<BoundingBox> boxes, BlockState[] materials) throws Exception {
         var generated = new LinkedHashMap<ChunkPos, Chunk>();
         var mobs = new TreeMap<String, Integer>();
@@ -119,8 +121,8 @@ final class BastionIntegrationTest {
         for (int z = Math.floorDiv(bounds.minZ(), 16); z <= Math.floorDiv(bounds.maxZ(), 16); z++)
             for (int x = Math.floorDiv(bounds.minX(), 16); x <= Math.floorDiv(bounds.maxX(), 16); x++) {
                 var at = new ChunkPos(x, z);
-                var request = PortalIntegrationTest.request(profile, seed, x, z);
-                var original = PortalIntegrationTest.blocks(terrain, PortalIntegrationTest.request(baseline, seed, x, z));
+                var request = profile.request(x, z);
+                var original = PortalIntegrationTest.blocks(terrain, baseline.request(x, z));
                 var blocks = PortalIntegrationTest.blocks(terrain, request);
                 var metadata = terrain.structureData(request);
                 generated.put(at, new Chunk(blocks, metadata));
@@ -164,22 +166,24 @@ final class BastionIntegrationTest {
             }
         require(changed > 100 && !loot.isEmpty() && !mobs.isEmpty(), "bastion geometry, loot and mobs present");
         if (root.contains("treasure")) require(spawners > 0, "treasure room contains magma cube spawner");
-        int cold = terrain.registerProfile(variant.toString());
-        var reversed = new ArrayList<>(generated.entrySet()); Collections.reverse(reversed);
-        try (var workers = Executors.newFixedThreadPool(4)) {
-            var jobs = new ArrayList<Future<?>>();
-            for (var entry : reversed) jobs.add(workers.submit(() -> {
-                var at = entry.getKey(); var request = PortalIntegrationTest.request(cold, seed, at.x(), at.z());
-                require(Arrays.equals(entry.getValue().blocks(), PortalIntegrationTest.blocks(terrain, request)), "cold concurrent bastion blocks");
-                require(entry.getValue().metadata().equals(terrain.structureData(request)), "cold concurrent bastion metadata");
-            }));
-            for (var job : jobs) job.get();
+        try(var cold=DefinitionFixture.open(profile.file(),"minecraft:the_nether",2)) {
+            var reversed = new ArrayList<>(generated.entrySet()); Collections.reverse(reversed);
+            try (var workers = Executors.newFixedThreadPool(4)) {
+                var jobs = new ArrayList<Future<?>>();
+                for (var entry : reversed) jobs.add(workers.submit(() -> {
+                    var at = entry.getKey(); var request = cold.request(at.x(), at.z());
+                    require(Arrays.equals(entry.getValue().blocks(), PortalIntegrationTest.blocks(terrain, request)), "cold concurrent bastion blocks");
+                    require(entry.getValue().metadata().equals(terrain.structureData(request)), "cold concurrent bastion metadata");
+                }));
+                for (var job : jobs) job.get();
+            }
         }
         var directory = Files.createTempDirectory(Path.of("build/nether"), "bastion-regions-");
+        Files.copy(profile.file(),directory.resolve(WorldDefinitionFile.NAME));
         var regions = new HashSet<ChunkPos>();
         generated.keySet().forEach(at -> regions.add(new ChunkPos(at.getRegionX() * 32, at.getRegionZ() * 32)));
-        for (var region : regions) terrain.generateRegion(PortalIntegrationTest.request(profile, seed, region.x(), region.z()),
-                directory.resolve("r." + region.getRegionX() + "." + region.getRegionZ() + ".mca"), SharedConstants.getCurrentVersion().dataVersion().version(), "minecraft:nether_wastes");
+        for (var region : regions) terrain.generateRegion(profile.request(region.x(), region.z()),
+                directory.resolve("r." + region.getRegionX() + "." + region.getRegionZ() + ".mca"), profile.dataVersion(), "minecraft:nether_wastes");
         var codec = PalettedContainer.codecRW(BlockState.CODEC, Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY), Blocks.AIR.defaultBlockState());
         try (var storage = new RegionFileStorage(new RegionStorageInfo("bastions", Level.NETHER, "chunk"), directory, false)) {
             for (var entry : generated.entrySet()) {

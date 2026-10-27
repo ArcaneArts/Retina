@@ -63,6 +63,15 @@ public final class NetherStructureTest {
                         new net.minecraft.world.level.ChunkPos(-32, -32), "concurrent");
                 return;
             }
+            if (Arrays.asList(args).contains("--families-only")) {
+                NetherGenerationIntegrationTest.run(profile,exported.materials());
+                FortressAssemblyTest.run(registry,resources,profile,exported.materials());
+                BastionIntegrationTest.run(registry,resources,profile,exported.materials());
+                FossilIntegrationTest.run(registry,resources,profile,exported.materials());
+                PortalIntegrationTest.run(registry,resources,profile,exported.materials());
+                PortalIntegrationTest.runtimeReference(registry,resources,profile,exported.materials());
+                return;
+            }
             if (Arrays.asList(args).contains("--contracts-only")) {
                 int checked=selectionChecks(profile,registry);
                 StructureExclusionTest.run(registry,resources,exported);
