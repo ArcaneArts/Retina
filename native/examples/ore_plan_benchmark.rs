@@ -1,7 +1,11 @@
 //! CPU ore-planning benchmark on a single real GPU field; no GPU work during measurements.
-//! cargo run --release --example ore_plan_benchmark -- <profile.json> [seed] [chunk_x] [chunk_z] [workers] [iterations]
-use retina_worldgen::{ChunkRequest, TerrainEngine, geology};
-use std::{hint::black_box, time::Instant};
+//! cargo run --release --example ore_plan_benchmark -- <retina.dat> <dimension> [chunk_x] [chunk_z] [workers] [iterations]
+use retina_worldgen::{
+    TerrainEngine, geology,
+    region::codec::Compression,
+    world_definition::{WorldDefinition, runtime::WorldSession},
+};
+use std::{hint::black_box, sync::Arc, time::Instant};
 
 fn signature(plan: &[Vec<geology::OrePlacement>]) -> (usize, u64) {
     let mut hash = 0xcbf29ce484222325u64;
@@ -21,38 +25,28 @@ fn signature(plan: &[Vec<geology::OrePlacement>]) -> (usize, u64) {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let source = std::fs::read(
+    let source = Arc::new(WorldDefinition::read(
         args.next()
-            .ok_or("usage: ore_plan_benchmark <profile.json> [seed] [chunk_x] [chunk_z] [workers] [iterations]")?,
-    )?;
-    let seed = args
-        .next()
-        .map(|s| s.parse())
-        .transpose()?
-        .unwrap_or(123456789);
+            .ok_or("usage: ore_plan_benchmark <retina.dat> <dimension> [chunk_x] [chunk_z] [workers] [iterations]")?,
+    )?);
+    let key = args.next().ok_or("dimension required")?;
     let chunk_x = args.next().map(|s| s.parse()).transpose()?.unwrap_or(0);
     let chunk_z = args.next().map(|s| s.parse()).transpose()?.unwrap_or(0);
     let threads: usize = args.next().map(|s| s.parse()).transpose()?.unwrap_or(16);
     let iterations: usize = args.next().map(|s| s.parse()).transpose()?.unwrap_or(25);
+    if args.next().is_some() {
+        return Err("unexpected argument; seed comes from retina.dat".into());
+    }
     if iterations == 0 {
         return Err("iterations must be positive".into());
     }
-    let engine = TerrainEngine::new()?;
-    let reserved = engine.register_profile(&source)?;
+    let engine = Arc::new(TerrainEngine::new()?);
+    let world = WorldSession::bind(engine.clone(), source.clone(), Compression::Zlib)?;
+    let dimension = world.dimension(&key)?;
+    let request = dimension.request(chunk_x, chunk_z)?;
     let profile = engine
-        .profile(reserved)?
-        .ok_or("missing registered profile")?;
-    let request = ChunkRequest {
-        seed,
-        chunk_x,
-        chunk_z,
-        min_y: -64,
-        height: 384,
-        base_height: 64.0,
-        amplitude: 48.0,
-        frequency: 0.008,
-        reserved,
-    };
+        .profile(request.reserved)?
+        .ok_or("dimension has no registry ore program")?;
     let (field, mask) = engine.terrain_field(request, 32)?;
     let workers = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
@@ -81,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (placements, signature) = expected.unwrap();
     println!(
         "{}",
-        serde_json::json!({"backend":engine.backend(),"seed":seed,"chunk_x":chunk_x,"chunk_z":chunk_z,"workers":threads,"warmups":5,"iterations":iterations,"ore_recipes":profile.geology.ores.len(),"ore_layout":profile.geology.ore_layout,"attempts":stats,"placements":placements,"signature":format!("{signature:016x}"),"median_ms":sorted[sorted.len()/2],"p95_ms":sorted[(sorted.len()*95/100).min(sorted.len()-1)],"samples_ms":timings})
+        serde_json::json!({"backend":engine.backend(),"dimension":key,"seed":source.seed(),"chunk_x":chunk_x,"chunk_z":chunk_z,"workers":threads,"warmups":5,"iterations":iterations,"ore_recipes":profile.geology.ores.len(),"ore_layout":profile.geology.ore_layout,"attempts":stats,"placements":placements,"signature":format!("{signature:016x}"),"median_ms":sorted[sorted.len()/2],"p95_ms":sorted[(sorted.len()*95/100).min(sorted.len()-1)],"samples_ms":timings})
     );
     Ok(())
 }

@@ -111,16 +111,17 @@ preserved baseline dynamic library. Local measurement files are in
 
 ## Reproduction
 
-Export the full registry fixture with `./gradlew structureTest`, then run:
+Compile a fresh saved definition with `./gradlew :common:exportBenchmarkDefinition`,
+or reuse a `retina.dat` copied from a mod world, then run:
 
 ```sh
 cargo run --manifest-path native/Cargo.toml --release \
   --example ore_plan_benchmark -- \
-  build/structure-profile.json 123456789 0 0 16 100
+  build/benchmark-definition/overworld/retina.dat minecraft:overworld 0 0 16 100
 ```
 
-Arguments after the profile are seed, chunk X/Z, worker count and measured
-iteration count. JSON includes all samples, median, p95, candidate count and an
+Arguments after the definition are dimension, chunk X/Z, worker count and
+measured iteration count. The file supplies the seed and generation parameters. JSON includes all samples, median, p95, candidate count and an
 ordered signature of every index, recipe and exposure random value. Hashing is
 outside the measured interval. Build baseline and candidate in distinct Cargo
 target directories, or preserve the baseline executable before editing/rebuilding
