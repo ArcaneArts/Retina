@@ -64,7 +64,7 @@ public final class EndCityReferenceTest {
         Files.writeString(out.resolve("reference.json"),new GsonBuilder().setPrettyPrinting().create().toJson(EndReferenceFixtures.canonical(report))+"\n");
         System.out.println("QA_EVT {\"event\":\"end_city_reference\",\"cases\":"+cases.size()+",\"status\":\"pass\"}");
     }
-    private static JsonObject capture(EndReferenceFixtures f,StructureTemplateManager templates,StructurePieceSerializationContext serialization,Structure city,RandomState state,long seed,ChunkPos at) {
+    static JsonObject capture(EndReferenceFixtures f,StructureTemplateManager templates,StructurePieceSerializationContext serialization,Structure city,RandomState state,long seed,ChunkPos at) {
         var context=new Structure.GenerationContext(f.registry,f.generator,f.biomes,state.createClimateSampler(SamplerContext.EMPTY_UNCACHED),state,templates,seed,at,f.height,city.biomes()::contains);
         var row=new JsonObject();row.addProperty("seed",seed);row.add("chunk",EndReferenceFixtures.ints(at.x(),at.z()));
         boolean eligible=context.couldValidBiomeExistInTerrainColumn(at.getBlockX(7),at.getBlockZ(7));row.addProperty("column_biome_eligible",eligible);

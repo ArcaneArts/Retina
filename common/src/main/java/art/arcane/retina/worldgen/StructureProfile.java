@@ -52,27 +52,27 @@ final class StructureProfile {
     final List<Holder<Biome>> biomes;
     final LinkedHashMap<BlockState,Integer> materials;
     final Context context;
+    final boolean end;
     final JsonArray templates=new JsonArray(), definitions=new JsonArray(), sets=new JsonArray();
     final JsonObject pools=new JsonObject();
-    JsonObject fortress, fossils, portals;
+    JsonObject fortress, fossils, portals, endCities;
     final Map<String,Integer> templateIds=new HashMap<>(), definitionIds=new HashMap<>();
     final Set<String> visited=new HashSet<>(), omitted=new TreeSet<>();
     StructureProfile(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context) {
-        this.registry=registry;this.biomes=biomes;this.materials=materials;this.context=context;
+        this(registry,biomes,materials,context,false);
+    }
+    StructureProfile(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context,boolean end) {
+        this.registry=registry;this.biomes=biomes;this.materials=materials;this.context=context;this.end=end;
     }
     static JsonObject export(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context) {
         return export(registry,biomes,materials,context,false);
     }
     static JsonObject export(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context,boolean end) {
-        var out=new StructureProfile(registry,biomes,materials,context);
+        var out=new StructureProfile(registry,biomes,materials,context,end);
         if(context.enabled){out.load();StructureProcessorProfile.finish(out.pools,materials);out.finishProcessors(out.pools);}
         var result=new JsonObject();result.add("templates",out.templates);result.add("definitions",out.definitions);
         result.add("pools",out.pools);result.add("sets",out.sets);
-        // Resident data only until the city execution adapter is complete. The
-        // definition remains honestly unavailable in load() in the meantime.
-        if(end && context.enabled && registry.lookupOrThrow(Registries.STRUCTURE).listElements()
-                .anyMatch(h->h.value().getClass()==EndCityStructure.class && biomes.stream().anyMatch(h.value().biomes()::contains)))
-            result.add("end_cities",EndCityProfile.export(out));
+        if(out.endCities!=null)result.add("end_cities",out.endCities);
         if(out.fortress!=null)result.add("fortress",out.fortress);
         if(out.fossils!=null)result.add("fossils",out.fossils);
         if(out.portals!=null)result.add("portals",out.portals);
@@ -113,11 +113,20 @@ final class StructureProfile {
             var config=Structure.DIRECT_CODEC.encodeStart(ops,structure).getOrThrow().getAsJsonObject();
             String type=config.get("type").getAsString().replace("minecraft:","");
             d.addProperty("kind",type);d.add("config",config);
-            if(!supportedStructure(structure)) {
+            if(!supportedStructure(structure,end)) {
                 omitted.add("structure:"+name+":"+type);
                 d.addProperty("unimplemented",true);d.addProperty("unavailable_reason","structure-type");unavailable.put(name,d);continue;
             }
-            if(structure instanceof JigsawStructure) {
+            if(structure.getClass()==EndCityStructure.class) {
+                if(endCities==null)endCities=EndCityProfile.export(this);
+                int index=0;
+                for(var earlier:registry.lookupOrThrow(Registries.STRUCTURE).listElements().toList()) {
+                    if(earlier.value()==structure)break;
+                    if(earlier.value().step()==structure.step())index++;
+                }
+                config.addProperty("retina_decoration_index",index);
+                config.addProperty("retina_decoration_step",structure.step().ordinal());
+            } else if(structure instanceof JigsawStructure) {
                 d.addProperty("kind","jigsaw");
                 String root=config.get("start_pool").getAsString();pool(root);d.addProperty("pool",root);
                 // Alias destinations may not occur in the unaliased connector graph.
@@ -185,15 +194,21 @@ final class StructureProfile {
         path.remove(name);complete.add(name);
     }
     static boolean supportedStructure(Structure structure) {
+        return supportedStructure(structure,false);
+    }
+    static boolean supportedStructure(Structure structure,boolean end) {
         var type=structure.getClass();
-        return type==JigsawStructure.class || type==DesertPyramidStructure.class || type==JungleTempleStructure.class
+        return end && type==EndCityStructure.class || type==JigsawStructure.class || type==DesertPyramidStructure.class || type==JungleTempleStructure.class
                 || type==SwampHutStructure.class || type==NetherFortressStructure.class || type==NetherFossilStructure.class
                 || type==RuinedPortalStructure.class && PortalProfile.supported((RuinedPortalStructure)structure);
     }
     static Optional<Holder<StructureSet>> supportedSet(Holder<StructureSet> holder) {
+        return supportedSet(holder,false);
+    }
+    static Optional<Holder<StructureSet>> supportedSet(Holder<StructureSet> holder,boolean end) {
         var set=holder.value();
         if(set.placement().getClass()!=net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement.class)return Optional.empty();
-        var entries=set.structures().stream().filter(e->supportedStructure(e.structure().value())).toList();
+        var entries=set.structures().stream().filter(e->supportedStructure(e.structure().value(),end)).toList();
         if(entries.isEmpty())return Optional.empty();
         // This is Java's search metadata only. Native generation retains all source
         // weights, including unavailable slots, and the registered set stays intact.

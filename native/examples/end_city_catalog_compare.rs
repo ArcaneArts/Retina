@@ -48,13 +48,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         structures
             .definitions
             .iter()
-            .all(|d| d.kind != "end_city" || d.unimplemented)
+            .any(|d| d.kind == "end_city" && !d.unimplemented)
     );
     println!(
         "{}",
         json!({"schema":"retina.end.city-catalog-native.v1","templates":kit.templates.len(),
         "blocks":blocks,"markers":markers,"marker_kinds":kinds,"derived_horizontal_reach":kit.catalog(structures).horizontal_reach(),
-        "world_profile_parsed":true,"full_regions_generated":0,"city_execution_enabled":false})
+        "world_profile_parsed":true,"full_regions_generated":0,"production_activated":false})
     );
     Ok(())
 }

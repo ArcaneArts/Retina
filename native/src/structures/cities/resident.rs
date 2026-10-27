@@ -8,6 +8,29 @@ use std::collections::BTreeMap;
 #[derive(Clone, Deserialize)]
 pub struct Resident {
     pub templates: BTreeMap<String, TemplateRef>,
+    #[serde(default)]
+    pub containers: Vec<u16>,
+    #[serde(default)]
+    pub block_entities: BTreeMap<u16, Value>,
+    #[serde(default)]
+    pub stairs: BTreeMap<u16, Stair>,
+    #[serde(default)]
+    pub attachments: BTreeMap<u16, Attachment>,
+    #[serde(default)]
+    pub solid: Vec<u16>,
+    #[serde(default)]
+    pub faces: BTreeMap<u16, u8>,
+}
+#[derive(Clone, Deserialize)]
+pub struct Attachment {
+    pub facing: usize,
+    pub solid: bool,
+}
+#[derive(Clone, Deserialize)]
+pub struct Stair {
+    pub facing: usize,
+    pub top: bool,
+    pub shapes: [u16; 5],
 }
 #[derive(Clone, Deserialize)]
 pub struct TemplateRef {
@@ -15,9 +38,23 @@ pub struct TemplateRef {
     /// Ordinals refer to the normalized source block list. Keep full typed NBT,
     /// including markers not handled by vanilla's current city adapter.
     pub markers: BTreeMap<usize, Value>,
+    #[serde(default)]
+    pub tags: Vec<BTreeMap<usize, Value>>,
 }
 impl Resident {
     pub fn validate(&self, profile: &Profile) -> Result<(), String> {
+        for definition in &profile.definitions {
+            if definition.kind == "end_city"
+                && !definition.unimplemented
+                && (definition.config["retina_decoration_index"]
+                    .as_u64()
+                    .is_none_or(|n| n > u64::from(u32::MAX))
+                    || definition.config["retina_decoration_step"].as_u64()
+                        != Some(u64::from(crate::structures::step(definition)?)))
+            {
+                return Err("invalid End city decoration stream metadata".into());
+            }
+        }
         if self.templates.len() != NAMES.len() {
             return Err("End city catalog must contain all 19 source templates".into());
         }
@@ -36,6 +73,17 @@ impl Resident {
                     .as_ref()
                     .is_some_and(|transform| transform.mirror == 0 && transform.pivot == [0; 3])
                 || entry.markers.iter().any(|(&index, tag)| {
+                    index >= template.blocks.len() / 4
+                        || tag[0].as_u64() != Some(10)
+                        || !nbt::validate(tag, 0)
+                })
+                || (!entry.tags.is_empty() && entry.tags.len() != template.palettes.len())
+                || (entry.tags.is_empty()
+                    && profile
+                        .definitions
+                        .iter()
+                        .any(|d| d.kind == "end_city" && !d.unimplemented))
+                || entry.tags.iter().flatten().any(|(&index, tag)| {
                     index >= template.blocks.len() / 4
                         || tag[0].as_u64() != Some(10)
                         || !nbt::validate(tag, 0)

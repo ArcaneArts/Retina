@@ -103,7 +103,7 @@ public final class EndCityCatalogTest {
             report.add("sizes",sizes);report.add("marker_kinds",new Gson().toJsonTree(kinds));
             report.addProperty("catalog_sha256",EndReferenceFixtures.hash(structures));
             report.addProperty("scrambled_resource_order_exact",true);report.addProperty("non_first_palette_markers_preserved",true);
-            report.addProperty("full_regions_generated",0);report.addProperty("city_execution_enabled",false);
+            report.addProperty("full_regions_generated",0);report.addProperty("production_activated",false);
             Files.writeString(out.resolve("reference.json"),new GsonBuilder().setPrettyPrinting().create().toJson(report)+"\n");
             System.out.println("QA_EVT "+report);
         }
