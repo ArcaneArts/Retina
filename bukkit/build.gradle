@@ -42,6 +42,7 @@ tasks.named('assemble') { dependsOn 'shadowJar' }
 sourceSets {
     serverTest {
         compileClasspath += configurations.compileClasspath
+        runtimeClasspath += configurations.runtimeClasspath
     }
 }
 tasks.named('processServerTestResources') {
@@ -55,6 +56,21 @@ tasks.register('serverProbeJar', Jar) {
     archiveBaseName = 'retina-bukkit-probe'
     archiveClassifier = 'server-test'
     from sourceSets.serverTest.output
+    exclude '**/DefinitionFixtures*'
+}
+tasks.register('serverTest', Exec) {
+    group = 'verification'
+    description = 'Run the actual dedicated-server create/restart/import/metadata lifecycle suite; supply -PbukkitServerJar=/absolute/server.jar.'
+    dependsOn 'shadowJar', 'serverProbeJar', ':common:worldDefinitionCompileTest'
+    def java = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    commandLine 'python3', rootProject.file('scripts/bukkit-server-test.py'),
+            '--java', java.get().executablePath.asFile,
+            '--server', providers.gradleProperty('bukkitServerJar').getOrElse(''),
+            '--plugin', tasks.named('shadowJar').get().archiveFile.get().asFile,
+            '--probe', tasks.named('serverProbeJar').get().archiveFile.get().asFile,
+            '--fixture-classpath', sourceSets.serverTest.runtimeClasspath.asPath,
+            '--mod-fixtures', rootProject.layout.buildDirectory.dir('world-definition-fixtures').get().asFile,
+            '--output', rootProject.layout.buildDirectory.dir('bukkit-server-test').get().asFile
 }
 test {
     useJUnitPlatform()

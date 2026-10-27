@@ -25,9 +25,15 @@ final class ChunkSnapshot {
             var section = (CompoundBinaryTag) raw;
             if (!section.contains("block_states")) continue; // Boundary lighting sections have no blocks.
             var blocks = section.getCompound("block_states");
-            var palette = blocks.getList("palette", BinaryTagTypes.COMPOUND);
+            var palette = blocks.getList("palette");
             var names = new String[palette.size()];
-            for (int i = 0; i < names.length; i++) names[i] = state(palette.getCompound(i));
+            for (int i = 0; i < names.length; i++) {
+                var entry = palette.get(i);
+                if (entry instanceof StringBinaryTag text) names[i] = text.value();
+                else if (entry instanceof CompoundBinaryTag compound) names[i] = state(compound);
+                else throw new IllegalStateException("Invalid native block palette entry " + entry.type());
+            }
+            if (names.length == 0) throw new IllegalStateException("Native block palette is empty");
             var biomes = section.getCompound("biomes"); var biomePalette = biomes.getList("palette", BinaryTagTypes.STRING);
             var biomeNames = new String[biomePalette.size()];
             for (int i = 0; i < biomeNames.length; i++) biomeNames[i] = biomePalette.getString(i);

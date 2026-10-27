@@ -23,13 +23,11 @@ public final class RetinaPlugin extends JavaPlugin implements Listener {
     }
 
     @Override public ChunkGenerator getDefaultWorldGenerator(String worldName, String id) {
-        worlds.select(worldName);
-        return new RetinaGenerator(worlds, id);
+        return new RetinaGenerator(worlds, id, worlds.select(worldName));
     }
 
     @Override public BiomeProvider getDefaultBiomeProvider(String worldName, String id) {
-        worlds.select(worldName);
-        return new RetinaGenerator(worlds, id).provider();
+        return new RetinaGenerator(worlds, id, worlds.select(worldName)).provider();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

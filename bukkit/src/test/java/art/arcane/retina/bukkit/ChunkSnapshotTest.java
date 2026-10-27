@@ -11,6 +11,26 @@ import static org.junit.jupiter.api.Assertions.*;
 class ChunkSnapshotTest {
     @TempDir Path output;
 
+    @Test void proceduralStringPaletteInstallsUniformNegativeHeightSection() throws Exception {
+        var root = net.kyori.adventure.nbt.TagStringIO.tagStringIO().asCompound("""
+                {sections:[{Y:-4b,block_states:{palette:["minecraft:air"]},biomes:{palette:["minecraft:forest"]}}]}
+                """);
+        var bytes = new java.io.ByteArrayOutputStream();
+        net.kyori.adventure.nbt.BinaryTagIO.writer().write(root, bytes, net.kyori.adventure.nbt.BinaryTagIO.Compression.NONE);
+        var calls = new java.util.ArrayList<String>();
+        var target = (org.bukkit.generator.ChunkGenerator.ChunkData) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class<?>[]{org.bukkit.generator.ChunkGenerator.ChunkData.class}, (proxy, method, args) -> switch (method.getName()) {
+                    case "getMinHeight" -> -64;
+                    case "getMaxHeight" -> 320;
+                    case "setRegion" -> { assertEquals(-64, args[1]); assertEquals(-48, args[4]); calls.add("region"); yield null; }
+                    default -> throw new AssertionError(method);
+                });
+        var chunk = new ChunkSnapshot(bytes.toByteArray(), -64, 384);
+        chunk.install(target, state -> { assertEquals("minecraft:air", state); return null; });
+        assertEquals(java.util.List.of("region"), calls);
+        assertEquals("minecraft:forest", chunk.biome(-16, -64, -16));
+    }
+
     @Test @EnabledIfSystemProperty(named = "retina.native.path", matches = ".+")
     void apiCatalogExecutesWithoutUnavailableTickOrStructureMetadata() {
         var delivery = new MetadataDelivery(java.util.logging.Logger.getAnonymousLogger(), false);

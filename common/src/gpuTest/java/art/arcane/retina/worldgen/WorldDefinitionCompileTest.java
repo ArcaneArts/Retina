@@ -54,6 +54,7 @@ public final class WorldDefinitionCompileTest {
             cropped.put(LevelStem.OVERWORLD, new LevelStem(overworld.type(), new RetinaChunkGenerator(
                     new FixedBiomeSource(fixed), 0, 64, 37.5F, 19.25F, .0041F, "chunk")));
             check(output.resolve("cropped"), registry, resources, cropped, Long.MIN_VALUE + 23);
+            check(output.resolve("cropped_api"), registry, resources, cropped, Long.MIN_VALUE + 23, false, false);
             var croppedRegistry = new LinkedHashMap<>(normal);
             croppedRegistry.put(LevelStem.OVERWORLD, new LevelStem(overworld.type(), new RetinaChunkGenerator(
                     RetinaBiomeSource.fromSelected(new FixedBiomeSource(fixed)), 0, 64,
@@ -84,7 +85,7 @@ public final class WorldDefinitionCompileTest {
         }
         checkCodec(output.resolve("codec"));
         checkFailedWrite(output.resolve("failed-write"));
-        System.out.println("QA_EVT {\"event\":\"world_definition_compilation\",\"status\":\"pass\",\"cases\":7,\"gpu_initialized\":false}");
+        System.out.println("QA_EVT {\"event\":\"world_definition_compilation\",\"status\":\"pass\",\"cases\":8,\"gpu_initialized\":false}");
     }
 
     private static MultiPackResourceManager resources(Path custom) {
@@ -133,10 +134,15 @@ public final class WorldDefinitionCompileTest {
 
     private static void check(Path directory, RegistryAccess.Frozen registry, ResourceManager resources,
                               Map<ResourceKey<LevelStem>, LevelStem> stems, long seed) throws Exception {
+        boolean structures = !directory.getFileName().toString().equals("flat") && !directory.getFileName().toString().startsWith("cropped");
+        check(directory, registry, resources, stems, seed, structures, !structures);
+    }
+
+    private static void check(Path directory, RegistryAccess.Frozen registry, ResourceManager resources,
+                              Map<ResourceKey<LevelStem>, LevelStem> stems, long seed, boolean structures, boolean bonus) throws Exception {
         Files.createDirectories(directory);
         Files.deleteIfExists(directory.resolve(WorldDefinitionFile.NAME)); // Only this test's build output.
-        boolean structures = !directory.getFileName().toString().equals("flat") && !directory.getFileName().toString().startsWith("cropped");
-        var options = new WorldOptions(seed, structures, !structures);
+        var options = new WorldOptions(seed, structures, bonus);
         var templates = StructureProfile.Context.of(resources);
         long start = System.nanoTime();
         var definition = WorldDefinitionCompiler.compile(registry, options, stems, templates,
@@ -146,7 +152,7 @@ public final class WorldDefinitionCompileTest {
         require(NbtIo.readCompressed(file, NbtAccounter.unlimitedHeap()).equals(definition), "Java NBT fidelity");
         require(definition.getLongOr("seed", 0) == seed, "full world seed");
         require(definition.getBooleanOr("generate_structures", !structures) == structures, "structure flag");
-        require(definition.getBooleanOr("bonus_chest", structures) == !structures, "bonus-chest flag");
+        require(definition.getBooleanOr("bonus_chest", !bonus) == bonus, "bonus-chest flag");
         require(definition.getCompoundOrEmpty("dimensions").keySet().size() == stems.size(), "all dimensions stored");
         byte[] saved = Files.readAllBytes(file);
         try { WorldDefinitionFile.writeNew(directory, definition); throw new AssertionError("Existing file replaced"); }
