@@ -641,6 +641,23 @@ tasks.register('shoreTest', JavaExec) {
     }
 }
 
+['exportBenchmarkDefinition': false, 'exportNetherBenchmarkDefinition': true].each { taskName, nether ->
+    tasks.register(taskName, JavaExec) {
+        group = 'verification'
+        description = 'Compile a seed-bound benchmark retina.dat through the shared world assembler.'
+        dependsOn 'gpuTestClasses'
+        classpath = sourceSets.gpuTest.runtimeClasspath
+        mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+        systemProperty 'retina.benchmark.definition', 'true'
+        systemProperty 'retina.benchmark.seed', providers.gradleProperty('benchmarkSeed').getOrElse('123456789')
+        if (nether) systemProperty 'retina.benchmark.nether', 'true'
+        args providers.gradleProperty('benchmarkDefinitionRoot').getOrElse(nether
+                ? 'build/benchmark-definition/nether' : 'build/benchmark-definition/overworld')
+        if (providers.gradleProperty('benchmarkPack').isPresent()) args providers.gradleProperty('benchmarkPack').get()
+    }
+}
+
 tasks.register('nativeAquiferColumnsGpuTest', Exec) {
     group = 'verification'
     description = 'Compare local aquifer X/Z values against uncached GPU graphs at many heights.'

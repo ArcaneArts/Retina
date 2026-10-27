@@ -26,6 +26,7 @@ public final class NativeProfileExport {
         var stack = new ArrayList<PackResources>();
         stack.add(ServerPacksSource.createVanillaPackSource().fullResources());
         boolean packed = args.length > 1;
+        long seed=Long.getLong("retina.benchmark.seed",123456789L);
         if (packed) {
             var location = new PackLocationInfo("benchmark-pack", Component.literal("Benchmark pack"), PackSource.DEFAULT, Optional.empty());
             stack.add((PackResources) new FilePackResources.FileResourcesSupplier(Path.of(args[1])).openMetadata(location));
@@ -39,14 +40,16 @@ public final class NativeProfileExport {
             context.addAll(loaded.listRegistries().toList());
             var dimensions = RegistryDataLoader.load(resources, context, RegistryDataLoader.DIMENSION_REGISTRIES, Runnable::run).join();
             TerrainProfileData profile;
+            LevelStem benchmarkStem;
             if (Boolean.getBoolean("retina.benchmark.nether")) {
                 var original = dimensions.lookupOrThrow(Registries.LEVEL_STEM).get(LevelStem.NETHER)
                         .map(Holder::value).orElseGet(() -> registry.lookupOrThrow(Registries.WORLD_PRESET)
                                 .getValueOrThrow(WorldPresets.NORMAL).createWorldDimensions().dimensions().get(LevelStem.NETHER));
+                benchmarkStem=original;
                 var definition = new GenerationSource(Level.NETHER, original.generator(), original.type().value());
                 var type = definition.dimension();
                 profile = TerrainProfileData.export(registry, RetinaBiomeSource.fromSelected(original.generator().getBiomeSource()),
-                        type.minY(), type.height(), 123456789L, definition.noise().generatorSettings().value(),
+                        type.minY(), type.height(), seed, definition.noise().generatorSettings().value(),
                         StructureProfile.Context.of(resources), true, type.hasSkyLight(), definition.enclosedTerrain());
                 var json = JsonParser.parseString(profile.json()).getAsJsonObject();
                 json.addProperty("dimension", Level.NETHER.identifier().toString());
@@ -55,18 +58,32 @@ public final class NativeProfileExport {
             } else {
                 // Preserve the established Overworld benchmark corpus and datapack behavior.
                 var original = packed ? dimensions.lookupOrThrow(Registries.LEVEL_STEM).getValueOrThrow(LevelStem.OVERWORLD) : null;
+                benchmarkStem=original!=null?original:registry.lookupOrThrow(Registries.WORLD_PRESET)
+                        .getValueOrThrow(WorldPresets.NORMAL).createWorldDimensions().dimensions().get(LevelStem.OVERWORLD);
                 var preset = JsonParser.parseString(Files.readString(Path.of("common/src/main/resources/data/retina/worldgen/world_preset/gpu.json")))
                         .getAsJsonObject().getAsJsonObject("dimensions").getAsJsonObject("minecraft:overworld").getAsJsonObject("generator").getAsJsonObject("biome_source");
                 var source = packed ? RetinaBiomeSource.fromRegistry(original.generator().getBiomeSource(), 128, .55f)
                         : RetinaBiomeSource.CODEC.codec().parse(registry.createSerializationContext(JsonOps.INSTANCE), preset).getOrThrow();
                 var settings = packed && original.generator() instanceof NoiseBasedChunkGenerator noise ? noise.generatorSettings().value()
                         : registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
-                profile = TerrainProfileData.export(registry, source, -64, 384, 123456789L, settings, StructureProfile.Context.of(resources));
+                profile = TerrainProfileData.export(registry, source, -64, 384, seed, settings, StructureProfile.Context.of(resources));
             }
             var data = JsonParser.parseString(profile.json()).getAsJsonObject();
             if (data.getAsJsonObject("structures").getAsJsonArray("definitions").isEmpty()) throw new AssertionError("benchmark must include structures");
             if (data.getAsJsonArray("decorations").isEmpty()) throw new AssertionError("benchmark must include decorations");
             var output = Path.of(args[0]); Files.createDirectories(output.toAbsolutePath().getParent());
+            if(Boolean.getBoolean("retina.benchmark.definition")) {
+                boolean nether=Boolean.getBoolean("retina.benchmark.nether");
+                var parameters=WorldDefinitionCompiler.parameters(benchmarkStem.generator(),benchmarkStem.type().value());
+                parameters.putInt("min_y",nether?0:-64);parameters.putInt("height",nether?256:384);
+                parameters.putInt("generator_depth",data.get("generator_depth").getAsInt());
+                var assembly=new WorldDefinitionAssembler(new net.minecraft.world.level.levelgen.WorldOptions(seed,true,false),
+                        resources.listPacks().map(PackResources::packId).toList(),"Retina benchmark fixture");
+                assembly.supported((nether?Level.NETHER:Level.OVERWORLD).identifier().toString(),parameters,profile,null);
+                var file=WorldDefinitionFile.writeNew(output,assembly.build());
+                System.out.println("Benchmark definition: "+file+", seed="+seed+", bytes="+Files.size(file));
+                return;
+            }
             Files.writeString(output, profile.json());
             System.out.println("Benchmark profile: " + output + ", biomes=" + profile.biomes().size()
                     + ", structures=" + data.getAsJsonObject("structures").getAsJsonArray("definitions").size()

@@ -97,6 +97,6 @@ cleanup. No client or server was launched.
 Use `./gradlew :common:columnCacheTest :common:columnCacheLifecycleTest` for focused
 checks. An already-built library can be supplied with `-PretinaNativePath=...`.
 Run under the bounds above. For A/B reproduction, `column_cache_fixture` takes a
-profile JSON and output path; the `ColumnCacheTest` main accepts the native library
+`retina.dat`, a namespaced dimension and an output path; the `ColumnCacheTest` main accepts the native library
 path followed by retained fixture paths. It compares both Java alternatives with
 the production native helper. The normal `./gradlew runClient` task is unchanged.
