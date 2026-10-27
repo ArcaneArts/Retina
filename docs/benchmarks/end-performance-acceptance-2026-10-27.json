@@ -1,0 +1,792 @@
+{
+  "schema": "retina.end.final-deliverable.v1",
+  "source_revision": "f944e8c9d9dc32ed2e6e457cc31f018beb61e6df",
+  "native_source_tree": "decd81621e44cfad8ac329244027c796f704fa1d",
+  "host": "macOS arm64; Apple M4 Max; Metal; Minecraft 26.3; data version 5023; JDK 25",
+  "platform_scope": "host-only Fabric and NeoForge builds; Windows/Linux and Intel macOS binaries not built/executed",
+  "artifacts": {
+    "fabric": {
+      "path": "/Users/cyberpwn/.codex/retina-end-evidence/cafb2ddd-d0c4-460f-94b7-9075fa3d8bb0/final-deliverable/artifacts/retina-fabric-26.3-0.378.jar",
+      "bytes": 5486836,
+      "sha256": "374b2060fe9adb32229f2a45b303e3bdc006b3d82605357d2618041bd2dfe3a8",
+      "executed_embedded_native_sha256": "b555a6a45fb194ca432e8a0d8fe0ccf646c4f9e92fe1bae48bb2932071470a0f",
+      "packaged_probe_status": "pass"
+    },
+    "neoforge": {
+      "path": "/Users/cyberpwn/.codex/retina-end-evidence/cafb2ddd-d0c4-460f-94b7-9075fa3d8bb0/final-deliverable/artifacts/retina-neoforge-26.3-0.378.jar",
+      "bytes": 5483333,
+      "sha256": "2c08dbf04955ba318a4596ce50925645fc1ddd9ea868039f9a4aa75763722b68",
+      "executed_embedded_native_sha256": "b555a6a45fb194ca432e8a0d8fe0ccf646c4f9e92fe1bae48bb2932071470a0f",
+      "packaged_probe_status": "pass"
+    }
+  },
+  "cold_startup_ms": {
+    "void": 1005.89125,
+    "islands": 964.484667,
+    "heavy": 1027.78425
+  },
+  "performance": {
+    "scope": "Actual packaged Java NativeTerrain.generateRegionColumns including .materials creation, .columns.z encoding/write, Java column decode, native MCA publication and synchronous generation cleanup. No GUI. Hashing and disposable file deletion outside timer. Final Minecraft chunk activation/boundary lighting measured separately in gameplay evidence.",
+    "defaults": "No RETINA environment overrides; one caller; shipping worker defaults",
+    "categories": {
+      "void": {
+        "samples": 8,
+        "median_ms": 66.602563,
+        "p95_ms": 81.435209,
+        "max_ms": 81.435209,
+        "chunks_per_second": 14810.258255234245,
+        "column_cache_median_ms": 2.2086665,
+        "all_raw_nbt_match": true,
+        "all_companions_written": true,
+        "retained_disposable_regions": 0
+      },
+      "islands": {
+        "samples": 8,
+        "median_ms": 121.2727915,
+        "p95_ms": 136.9275,
+        "max_ms": 136.9275,
+        "chunks_per_second": 8220.112785727188,
+        "column_cache_median_ms": 2.5995415,
+        "all_raw_nbt_match": true,
+        "all_companions_written": true,
+        "retained_disposable_regions": 0
+      },
+      "heavy": {
+        "samples": 8,
+        "median_ms": 81.1195205,
+        "p95_ms": 124.725334,
+        "max_ms": 124.725334,
+        "chunks_per_second": 11807.296900836795,
+        "column_cache_median_ms": 2.4049375,
+        "all_raw_nbt_match": true,
+        "all_companions_written": true,
+        "retained_disposable_regions": 0
+      }
+    },
+    "p95_note": "Nearest-rank p95 is maximum for eight samples; limited tail confidence."
+  },
+  "build": {
+    "status": "pass",
+    "tasks": 43,
+    "native_passed": 349,
+    "native_ignored": 82,
+    "native_failed": 0,
+    "command": "./gradlew --no-daemon --no-watch-fs -PretinaHostOnly build"
+  },
+  "implementation_prs": [
+    {
+      "headRefName": "codex/end-reference-fixtures",
+      "mergeCommit": {
+        "oid": "8b52bc14896064ba04d0e60f839531f2b7161287"
+      },
+      "mergedAt": "2026-10-26T21:01:18Z",
+      "number": 243,
+      "title": "Establish compact vanilla End references and bounded benchmarks",
+      "url": "https://github.com/ArcaneArts/Retina/pull/243"
+    },
+    {
+      "headRefName": "codex/end-island-density",
+      "mergeCommit": {
+        "oid": "506bed2878a7e3f1e5253f3a0b674afd6a136fce"
+      },
+      "mergedAt": "2026-10-26T21:12:59Z",
+      "number": 244,
+      "title": "Implement vanilla-seeded End island density primitives",
+      "url": "https://github.com/ArcaneArts/Retina/pull/244"
+    },
+    {
+      "headRefName": "codex/end-blended-density",
+      "mergeCommit": {
+        "oid": "0614769eda7f0d493de759e3f082729c1f12faff"
+      },
+      "mergedAt": "2026-10-26T21:44:19Z",
+      "number": 245,
+      "title": "Implement exact seeded End density and dense terrain reference",
+      "url": "https://github.com/ArcaneArts/Retina/pull/245"
+    },
+    {
+      "headRefName": "codex/end-dense-lattice",
+      "mergeCommit": {
+        "oid": "250979fcbaed9957c9bfcbe6e59972c5ff6b3808"
+      },
+      "mergedAt": "2026-10-26T22:02:15Z",
+      "number": 246,
+      "title": "Share exact End density corners across dense terrain tiles",
+      "url": "https://github.com/ArcaneArts/Retina/pull/246"
+    },
+    {
+      "headRefName": "codex/end-native-profile",
+      "mergeCommit": {
+        "oid": "e27d10955fedcec26ddf314e59479963dd1c2f7c"
+      },
+      "mergedAt": "2026-10-26T22:21:01Z",
+      "number": 247,
+      "title": "Integrate explicit End profiles with native terrain and queries",
+      "url": "https://github.com/ArcaneArts/Retina/pull/247"
+    },
+    {
+      "headRefName": "codex/end-shared-island-field",
+      "mergeCommit": {
+        "oid": "b14acfe462b551426a7210f30abfcc0a0ee25c4f"
+      },
+      "mergedAt": "2026-10-26T22:35:14Z",
+      "number": 248,
+      "title": "Share exact End island candidates and select measured CPU execution",
+      "url": "https://github.com/ArcaneArts/Retina/pull/248"
+    },
+    {
+      "headRefName": "codex/end-feature-foundation",
+      "mergeCommit": {
+        "oid": "35cd4acbc18d4168304199cd881a503175ecc5c4"
+      },
+      "mergedAt": "2026-10-26T22:53:38Z",
+      "number": 249,
+      "title": "Add fixed placement and native End arrival platform",
+      "url": "https://github.com/ArcaneArts/Retina/pull/249"
+    },
+    {
+      "headRefName": "codex/end-island-features",
+      "mergeCommit": {
+        "oid": "f56906e92f32ca86468a1caebf0a6265f0a5e6e6"
+      },
+      "mergedAt": "2026-10-26T23:22:26Z",
+      "number": 250,
+      "title": "Generate End islands with exact world-seeded decoration",
+      "url": "https://github.com/ArcaneArts/Retina/pull/250"
+    },
+    {
+      "headRefName": "codex/end-chorus",
+      "mergeCommit": {
+        "oid": "50db0d368adfc44a11c272905287871c392e6902"
+      },
+      "mergedAt": "2026-10-26T23:39:09Z",
+      "number": 251,
+      "title": "Implement exact End chorus generation and live placement reads",
+      "url": "https://github.com/ArcaneArts/Retina/pull/251"
+    },
+    {
+      "headRefName": "codex/end-spikes",
+      "mergeCommit": {
+        "oid": "2bd2539e74f42bba0bb23597d5120ec21ba286b4"
+      },
+      "mergedAt": "2026-10-26T23:56:42Z",
+      "number": 252,
+      "title": "Generate vanilla-compatible End spikes, cages and crystal entities",
+      "url": "https://github.com/ArcaneArts/Retina/pull/252"
+    },
+    {
+      "headRefName": "codex/end-gateways",
+      "mergeCommit": {
+        "oid": "169a2421ce100737986707e45554ffe0dee51f5a"
+      },
+      "mergedAt": "2026-10-27T00:15:07Z",
+      "number": 253,
+      "title": "Generate natural End gateways with exact placement and exit data",
+      "url": "https://github.com/ArcaneArts/Retina/pull/253"
+    },
+    {
+      "headRefName": "codex/end-city-planning",
+      "mergeCommit": {
+        "oid": "c12b284d5311bf63bb93409a0cb4d3a1796fe359"
+      },
+      "mergedAt": "2026-10-27T00:43:51Z",
+      "number": 254,
+      "title": "Implement exact world-seeded End city and ship plans",
+      "url": "https://github.com/ArcaneArts/Retina/pull/254"
+    },
+    {
+      "headRefName": "codex/end-city-integration",
+      "mergeCommit": {
+        "oid": "77ac043e7204c960123ed2324bdbd1c544c2191c"
+      },
+      "mergedAt": "2026-10-27T01:05:29Z",
+      "number": 256,
+      "title": "Export resident End city templates and source marker NBT",
+      "url": "https://github.com/ArcaneArts/Retina/pull/256"
+    },
+    {
+      "headRefName": "codex/end-city-execution",
+      "mergeCommit": {
+        "oid": "9f59d05c7fe5e316fc86a2f4051aa8cb4f0da88a"
+      },
+      "mergedAt": "2026-10-27T02:53:58Z",
+      "number": 260,
+      "title": "Integrate native End city execution, loot and saved structure data",
+      "url": "https://github.com/ArcaneArts/Retina/pull/260"
+    },
+    {
+      "headRefName": "codex/end-city-frozen-metadata",
+      "mergeCommit": {
+        "oid": "3a9fcfbf44630baf1899b81fcf1cff612b0bbd56"
+      },
+      "mergedAt": "2026-10-27T03:13:48Z",
+      "number": 262,
+      "title": "Preserve saved End city geometry without live templates",
+      "url": "https://github.com/ArcaneArts/Retina/pull/262"
+    },
+    {
+      "headRefName": "codex/end-combined-generation",
+      "mergeCommit": {
+        "oid": "60b3d155040e2a33660d8b779c7a8d558fd1536d"
+      },
+      "mergedAt": "2026-10-27T03:25:08Z",
+      "number": 263,
+      "title": "Reconcile End city stair shapes across chunk boundaries",
+      "url": "https://github.com/ArcaneArts/Retina/pull/263"
+    },
+    {
+      "headRefName": "codex/end-region-publication",
+      "mergeCommit": {
+        "oid": "c17e18d1aca7f58ec3c248edef6cf5431d080270"
+      },
+      "mergedAt": "2026-10-27T03:36:50Z",
+      "number": 264,
+      "title": "Validate saved End definitions through complete MCA publication",
+      "url": "https://github.com/ArcaneArts/Retina/pull/264"
+    },
+    {
+      "headRefName": "codex/native-host-thread-allocator",
+      "mergeCommit": {
+        "oid": "0f2915e019366a23498962669d991badeb6b3908"
+      },
+      "mergedAt": "2026-10-27T04:10:20Z",
+      "number": 267,
+      "title": "Fix macOS native world reopen after host-thread exit",
+      "url": "https://github.com/ArcaneArts/Retina/pull/267"
+    },
+    {
+      "headRefName": "codex/end-live-lifecycle",
+      "mergeCommit": {
+        "oid": "8f7e4354c3f8bc14a0ea9504f2f8b355732aa027"
+      },
+      "mergedAt": "2026-10-27T04:17:00Z",
+      "number": 268,
+      "title": "Validate live End city loading, loot, locate and world reopening",
+      "url": "https://github.com/ArcaneArts/Retina/pull/268"
+    },
+    {
+      "headRefName": "codex/end-region-profile",
+      "mergeCommit": {
+        "oid": "413fbcf0d4422cecb11cd01e003991934210491d"
+      },
+      "mergedAt": "2026-10-27T04:40:09Z",
+      "number": 272,
+      "title": "Measure complete saved-definition regions and preserve bounded benchmark evidence",
+      "url": "https://github.com/ArcaneArts/Retina/pull/272"
+    },
+    {
+      "headRefName": "codex/end-cell-occupancy",
+      "mergeCommit": {
+        "oid": "862f8debad84cab2f7e2827a3f75ca60887e86cc"
+      },
+      "mergedAt": "2026-10-27T04:55:12Z",
+      "number": 273,
+      "title": "Reduce End terrain work with conservative cell masks and compact columns",
+      "url": "https://github.com/ArcaneArts/Retina/pull/273"
+    },
+    {
+      "headRefName": "codex/end-noise-bounds",
+      "mergeCommit": {
+        "oid": "064f6a57a05e76ece3f6fc3b940a322f9729266f"
+      },
+      "mergedAt": "2026-10-27T05:26:45Z",
+      "number": 276,
+      "title": "Skip provably uniform End noise cells and batch exact column evaluation",
+      "url": "https://github.com/ArcaneArts/Retina/pull/276"
+    },
+    {
+      "headRefName": "codex/end-substrate-reuse",
+      "mergeCommit": {
+        "oid": "cdb3d3c9a715f1bb81373706cdf7e54b6aa625a1"
+      },
+      "mergedAt": "2026-10-27T07:18:40Z",
+      "number": 283,
+      "title": "Reuse End substrate across decoration dependencies",
+      "url": "https://github.com/ArcaneArts/Retina/pull/283"
+    },
+    {
+      "headRefName": "codex/end-portal-preparation",
+      "mergeCommit": {
+        "oid": "9d1ef7a187853d17c624702dcad8dca41d1427f6"
+      },
+      "mergedAt": "2026-10-27T07:35:27Z",
+      "number": 284,
+      "title": "Prepare End portal entry and return before vanilla transitions",
+      "url": "https://github.com/ArcaneArts/Retina/pull/284"
+    },
+    {
+      "headRefName": "codex/end-gateway-preparation",
+      "mergeCommit": {
+        "oid": "e7bd16d6625a2d56cd66244caba1321dc8bbdf3c"
+      },
+      "mergedAt": "2026-10-27T07:55:32Z",
+      "number": 285,
+      "title": "Prepare End gateways and preserve pending pearl travel",
+      "url": "https://github.com/ArcaneArts/Retina/pull/285"
+    },
+    {
+      "headRefName": "codex/end-gateway-fallback-proof",
+      "mergeCommit": {
+        "oid": "28a735395320bd01f1cbb4cba07f2353b514c4a6"
+      },
+      "mergedAt": "2026-10-27T08:08:37Z",
+      "number": 286,
+      "title": "Verify dynamic End islands and pending dedicated shutdown",
+      "url": "https://github.com/ArcaneArts/Retina/pull/286"
+    },
+    {
+      "headRefName": "codex/end-test-bootstrap",
+      "mergeCommit": {
+        "oid": "227e6bff362bf74c75b7ad01312ee131ae28af5f"
+      },
+      "mergedAt": "2026-10-27T09:30:00Z",
+      "number": 288,
+      "title": "Initialize shared Fabric End test registries once",
+      "url": "https://github.com/ArcaneArts/Retina/pull/288"
+    },
+    {
+      "headRefName": "codex/end-automatic-activation",
+      "mergeCommit": {
+        "oid": "24108d705112d647efd88b222e8e741ad0073ebb"
+      },
+      "mergedAt": "2026-10-27T09:32:41Z",
+      "number": 289,
+      "title": "Activate supported End generation automatically",
+      "url": "https://github.com/ArcaneArts/Retina/pull/289"
+    },
+    {
+      "headRefName": "codex/end-installed-integrations",
+      "mergeCommit": {
+        "oid": "8d906550e458a4b44b9c10c0ead6ae368330549e"
+      },
+      "mergedAt": "2026-10-27T09:45:03Z",
+      "number": 290,
+      "title": "Verify installed End integrations and foreground work during DH",
+      "url": "https://github.com/ArcaneArts/Retina/pull/290"
+    },
+    {
+      "headRefName": "codex/end-untouched-stair-columns",
+      "mergeCommit": {
+        "oid": "a299997f11f0003817603979a295ec86c3fce35a"
+      },
+      "mergedAt": "2026-10-27T09:59:22Z",
+      "number": 292,
+      "title": "Avoid untouched End column allocations in city shape updates",
+      "url": "https://github.com/ArcaneArts/Retina/pull/292"
+    },
+    {
+      "headRefName": "codex/end-compact-final-sections",
+      "mergeCommit": {
+        "oid": "f944e8c9d9dc32ed2e6e457cc31f018beb61e6df"
+      },
+      "mergedAt": "2026-10-27T10:44:16Z",
+      "number": 296,
+      "title": "Keep End air sections compact through lighting and publication",
+      "url": "https://github.com/ArcaneArts/Retina/pull/296"
+    }
+  ],
+  "evidence_files": {
+    "cycle4b-city-catalog/validation.json": {
+      "sha256": "15ef2114f52e70cad2361856651256bd054a303854d0987a6b144895750770f8",
+      "bytes": 3087
+    },
+    "cycle7b-installed-integrations/validation.json": {
+      "sha256": "18b3cd62471bc1bd6b515442fd00ec115f90ab3e14b2bf45d864ec22e542ccd3",
+      "bytes": 21475
+    },
+    "cycle2c-dense-lattice/validation.json": {
+      "sha256": "93f1e9280a99b6ef563114beeb8344f237ccddf6af67891cd21b6162ff7fddac",
+      "bytes": 3127
+    },
+    "cycle6a-end-travel/validation.json": {
+      "sha256": "dabd9b205f2e846e93854892fe9e4e0c129e2be84da7b4da56b6ffde96576432",
+      "bytes": 2237
+    },
+    "cycle3e-gateways/validation.json": {
+      "sha256": "24a7b22b4befa1159e62cdd8e1621d5511f92424e0a287b3602deb27e8aaed92",
+      "bytes": 2050
+    },
+    "cycle2a-island-density/validation.json": {
+      "sha256": "fd86d5e0e6fba10896fc36db851cfa410b369ecae48734a54511441b561a36ed",
+      "bytes": 3630
+    },
+    "cycle3b-islands/validation.json": {
+      "sha256": "29b42a4bc39fd42ab40380b606dd0f1ad13d00b5bc87097bcfdb0cc345f6bbb4",
+      "bytes": 3355
+    },
+    "cycle4e-combined-generation/validation.json": {
+      "sha256": "e0357cc08a59539ef19d1c60df647b0c1b9cd25f194dd48f08720923dcaed2d9",
+      "bytes": 8524
+    },
+    "cycle4h-native-host-threads/validation.json": {
+      "sha256": "ac332ff991f3afeace82f63c7d4c929a0f196db5e67911e6fa8b18396670a385",
+      "bytes": 1199
+    },
+    "cycle4c-city-execution/validation.json": {
+      "sha256": "5c9260427d103b74ad0a62bab07fbde7abc14cc3757992bf017275d9e65bdf4f",
+      "bytes": 8485
+    },
+    "cycle4f-region-publication/validation.json": {
+      "sha256": "921cf67638c5e7c8561f0a23af9e52fbcb26187f24aa65fe224362d2e3ed3921",
+      "bytes": 3511
+    },
+    "cycle7-automatic-activation/validation.json": {
+      "sha256": "850d24b896e46adfe035886e934d60bb3bb530eceee532ded2b12741b2b345f4",
+      "bytes": 1090
+    },
+    "cycle2d-native-profile/validation.json": {
+      "sha256": "6f8d2b4ca1c38be5ed61052795a0ac618323221621ba694ff9bf90ca0a54efde",
+      "bytes": 2683
+    },
+    "cycle8d-compact-final-sections/validation.json": {
+      "sha256": "ce8dc4819c2e1fe7d37865c171e9b88eea4c95a3280fd7b04fa4896406ec79f8",
+      "bytes": 7427
+    },
+    "cycle3a-fixed-platform/validation.json": {
+      "sha256": "4aa3589c60e1c84464a1daa55f06a11b47d3323158f0793f111f470e76f7ab5e",
+      "bytes": 2950
+    },
+    "cycle4d-frozen-city-metadata/validation.json": {
+      "sha256": "9c493e658cbdf4cdc58cc867939d083048b7bb5b89fbe9efe46faf9ebfb84524",
+      "bytes": 780
+    },
+    "cycle8b-untouched-stair-columns/validation.json": {
+      "sha256": "024aadc3a953e453909a5e1aa5b49281dd16af25cd832caf3ff467a5bd0db6f3",
+      "bytes": 5935
+    },
+    "cycle3d-spikes/validation.json": {
+      "sha256": "a2b8c8ac45d72c83cc3d76f17df18438f223ab3aeb203248f2220db765de07f8",
+      "bytes": 2134
+    },
+    "cycle8c-shipping-category-confirmation/validation.json": {
+      "sha256": "2d6c96762843f9d536931146edc43101f66d86bd550291d46146bffdc3bc923b",
+      "bytes": 1763
+    },
+    "cycle4a-city-planning/validation.json": {
+      "sha256": "39059908f9a7d99e8e7bce70ed5965471e7b3df36bbfc1340cbd29e81286fd22",
+      "bytes": 1924
+    },
+    "cycle1-reference/validation.json": {
+      "sha256": "1a4dcbe6fe292657d75c1c6e6215465570c7f18238f09632f693d135ba733eaf",
+      "bytes": 4105
+    },
+    "cycle2b-blended-density/validation.json": {
+      "sha256": "8b4835066c971b39c208660ddfb67c850459d2498b376a78a5a2696ceeeb8864",
+      "bytes": 6343
+    },
+    "cycle4g-live-city/validation.json": {
+      "sha256": "a8a05ff35303e6909bee7244f96453a56dc7ade291a91ad71918c90838d48933",
+      "bytes": 1648
+    },
+    "cycle6c-fallback-and-unload/validation.json": {
+      "sha256": "2a424306f984eece8b76df8a3dcd84de8e390ed3bdf5e0c486df1e8d1ae6ecba",
+      "bytes": 1713
+    },
+    "cycle6b-gateways-respawn/validation.json": {
+      "sha256": "1de5841d01aaae163cb0582b9c5f0a613ad7778f392d9fbd992b9fe431540509",
+      "bytes": 2126
+    },
+    "cycle2e-shared-island-field/validation.json": {
+      "sha256": "c24b6fda0ffe940a43e898046442ccf98a0e88c9d279737dc23a1443d1477768",
+      "bytes": 4318
+    },
+    "cycle3c-chorus/validation.json": {
+      "sha256": "78d0e17a8a090194b3a56b11b21109073c3e7c3f16c1ddc58dc26da2a3f8b3d1",
+      "bytes": 1841
+    },
+    "cycle5a-region-profile/manifest.json": {
+      "sha256": "a43944917271c5962104999e44b67fa35cca7edd9cf4525c6ab96ef91611f4e0",
+      "bytes": 2421
+    },
+    "cycle5b-cell-occupancy/manifest.json": {
+      "sha256": "8b4edd0103388023960c9c94f536405f69a87f2a9fb6bf0335ffe70d3c711d90",
+      "bytes": 4546
+    },
+    "cycle5d-substrate-reuse/final/manifest.json": {
+      "sha256": "88e205e3943353e75666288239df7e6c27b4fef344d6b9dd5616e9142ed75a59",
+      "bytes": 5757
+    },
+    "cycle8e-caller-scaling/summary.json": {
+      "sha256": "ef10945a1bbcaec4d6b26a132e42c83ad76e13261d97d516e5ef5c968aee98ef",
+      "bytes": 1965
+    },
+    "cycle8f-matched-dimension-controls/summary.json": {
+      "sha256": "164d03b7f3edf087ed281c4f32f11bd442f0c124dd84a31de3db7cda382240e0",
+      "bytes": 4553
+    },
+    "final-deliverable/host-build.log": {
+      "sha256": "4fb6d4a35ab854d66f7b91a0174af128f07903990a4f7c74bb2ca370cf5f581b",
+      "bytes": 141051
+    },
+    "final-deliverable/actual-fabric-runtime.log": {
+      "sha256": "2c932f17cd4636dda58f3ed2eba31605b7e6e5481b1975a0a0fa952d3bd99654",
+      "bytes": 67641
+    },
+    "final-deliverable/preview-timing/summary.json": {
+      "sha256": "7d07e4aeda10b80ae253ac7cb4900d392fb76e760455d6b18f91bdfc0ca3eef2",
+      "bytes": 1543
+    }
+  },
+  "caller_scaling": {
+    "status": "pass",
+    "worker_limits": {
+      "region": 16,
+      "global_rayon": 16
+    },
+    "scope": "Native FFI full MCA generation with fixed workers; excludes mod preview sidecars/Java decode. Per-request latency separate from throughput.",
+    "host": "Bukkit terminal confirmed; process snapshots retained; no full-host isolation claim",
+    "rows": [
+      {
+        "callers": 1,
+        "regions": 8,
+        "batch_ms": 1365.7572909723967,
+        "median_request_ms": 160.68029159214348,
+        "p95_request_ms": 244.53415421303362,
+        "maximum_request_ms": 272.5183751899749,
+        "chunks_per_second": 5998.13748324743,
+        "generation_peak_rss_bytes": 1182253056,
+        "all_corpus_hashes_match": true,
+        "removed_disposable_bytes": 42094592
+      },
+      {
+        "callers": 2,
+        "regions": 8,
+        "batch_ms": 648.9933340344578,
+        "median_request_ms": 160.665875650011,
+        "p95_request_ms": 192.68448592629287,
+        "maximum_request_ms": 204.16420907713473,
+        "chunks_per_second": 12622.625796592623,
+        "generation_peak_rss_bytes": 1243545600,
+        "all_corpus_hashes_match": true,
+        "removed_disposable_bytes": 42094592
+      },
+      {
+        "callers": 4,
+        "regions": 8,
+        "batch_ms": 530.118958093226,
+        "median_request_ms": 258.52120853960514,
+        "p95_request_ms": 264.47594619821757,
+        "maximum_request_ms": 267.53754215314984,
+        "chunks_per_second": 15453.135329220515,
+        "generation_peak_rss_bytes": 1417265152,
+        "all_corpus_hashes_match": true,
+        "removed_disposable_bytes": 42094592
+      },
+      {
+        "callers": 8,
+        "regions": 8,
+        "batch_ms": 422.23475011996925,
+        "median_request_ms": 389.52027063351125,
+        "p95_request_ms": 416.1626665852964,
+        "maximum_request_ms": 416.24141694046557,
+        "chunks_per_second": 19401.529593839477,
+        "generation_peak_rss_bytes": 1646215168,
+        "all_corpus_hashes_match": true,
+        "removed_disposable_bytes": 42094592
+      }
+    ]
+  },
+  "controls": {
+    "scope": "ABBA, two warmups + two measured regions per process, shipping defaults, actual final program readiness; four samples per variant/dimension; limited tail confidence",
+    "host": "Bukkit confirmed terminal; process snapshots retained, whole-host isolation not certified",
+    "dimensions": {
+      "minecraft:overworld": {
+        "summary": {
+          "baseline": {
+            "samples": 4,
+            "median_ms": 233.56799990870059,
+            "maximum_ms": 240.52941682748497
+          },
+          "candidate": {
+            "samples": 4,
+            "median_ms": 228.60081179533154,
+            "maximum_ms": 232.67412488348782
+          }
+        },
+        "candidate_median_change_percent": -2.1266560981430094,
+        "full_NBT_hashes_match": true,
+        "rows": [
+          {
+            "variant": "baseline",
+            "trial": 0,
+            "region": [
+              8,
+              10
+            ],
+            "ms": 236.36120790615678,
+            "program_status": 4
+          },
+          {
+            "variant": "baseline",
+            "trial": 0,
+            "region": [
+              9,
+              10
+            ],
+            "ms": 227.9777079820633,
+            "program_status": 4
+          },
+          {
+            "variant": "candidate",
+            "trial": 1,
+            "region": [
+              8,
+              10
+            ],
+            "ms": 232.67412488348782,
+            "program_status": 4
+          },
+          {
+            "variant": "candidate",
+            "trial": 1,
+            "region": [
+              9,
+              10
+            ],
+            "ms": 228.54304080829024,
+            "program_status": 4
+          },
+          {
+            "variant": "candidate",
+            "trial": 2,
+            "region": [
+              8,
+              10
+            ],
+            "ms": 226.30312503315508,
+            "program_status": 4
+          },
+          {
+            "variant": "candidate",
+            "trial": 2,
+            "region": [
+              9,
+              10
+            ],
+            "ms": 228.65858278237283,
+            "program_status": 4
+          },
+          {
+            "variant": "baseline",
+            "trial": 3,
+            "region": [
+              8,
+              10
+            ],
+            "ms": 240.52941682748497,
+            "program_status": 4
+          },
+          {
+            "variant": "baseline",
+            "trial": 3,
+            "region": [
+              9,
+              10
+            ],
+            "ms": 230.7747919112444,
+            "program_status": 4
+          }
+        ]
+      },
+      "minecraft:the_nether": {
+        "summary": {
+          "baseline": {
+            "samples": 4,
+            "median_ms": 649.8669170541689,
+            "maximum_ms": 695.855834055692
+          },
+          "candidate": {
+            "samples": 4,
+            "median_ms": 643.188271089457,
+            "maximum_ms": 684.3617910053581
+          }
+        },
+        "candidate_median_change_percent": -1.0276944078006056,
+        "full_NBT_hashes_match": true,
+        "rows": [
+          {
+            "variant": "baseline",
+            "trial": 0,
+            "region": [
+              8,
+              10
+            ],
+            "ms": 611.1059160903096,
+            "program_status": 4
+          },
+          {
+            "variant": "baseline",
+            "trial": 0,
+            "region": [
+              9,
+              10
+            ],
+            "ms": 695.855834055692,
+            "program_status": 4
+          },
+          {
+            "variant": "candidate",
+            "trial": 1,
+            "region": [
+              8,
+              10
+            ],
+            "ms": 602.468374883756,
+            "program_status": 4
+          },
+          {
+            "variant": "candidate",
+            "trial": 1,
+            "region": [
+              9,
+              10
+            ],
+            "ms": 684.3617910053581,
+            "program_status": 4
+          },
+          {
+            "variant": "candidate",
+            "trial": 2,
+            "region": [
+              8,
+              10
+            ],
+            "ms": 606.0985000804067,
+            "program_status": 4
+          },
+          {
+            "variant": "candidate",
+            "trial": 2,
+            "region": [
+              9,
+              10
+            ],
+            "ms": 680.2780420985073,
+            "program_status": 4
+          },
+          {
+            "variant": "baseline",
+            "trial": 3,
+            "region": [
+              8,
+              10
+            ],
+            "ms": 611.788084032014,
+            "program_status": 4
+          },
+          {
+            "variant": "baseline",
+            "trial": 3,
+            "region": [
+              9,
+              10
+            ],
+            "ms": 687.9457500763237,
+            "program_status": 4
+          }
+        ]
+      }
+    }
+  },
+  "evidence_root": "/Users/cyberpwn/.codex/retina-end-evidence/cafb2ddd-d0c4-460f-94b7-9075fa3d8bb0"
+}
