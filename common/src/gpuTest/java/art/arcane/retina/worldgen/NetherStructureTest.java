@@ -63,6 +63,14 @@ public final class NetherStructureTest {
                         new net.minecraft.world.level.ChunkPos(-32, -32), "concurrent");
                 return;
             }
+            if (Arrays.asList(args).contains("--contracts-only")) {
+                int checked=selectionChecks(profile,registry);
+                StructureExclusionTest.run(registry,resources,exported);
+                GenerationStepIntegrationTest.run(registry,profile,exported.materials());
+                StructureProcessorIntegrationTest.run(registry,profile);
+                System.out.println("QA_EVT {\"event\":\"nether_saved_structure_contracts\",\"status\":\"pass\",\"candidate_checks\":"+checked+"}");
+                return;
+            }
             var nativeStructures = profile.getAsJsonObject("structures");
             var definitions = new HashMap<String, JsonObject>();
             for (var value : nativeStructures.getAsJsonArray("definitions")) {
@@ -156,7 +164,7 @@ public final class NetherStructureTest {
             System.out.println("QA_EVT {\"event\":\"nether_structure_sets\",\"status\":\"pass\",\"context\":{\"candidate_checks\":" + checked + "}}");
         }
     }
-    private static int selectionChecks(JsonObject source, RegistryAccess registry) {
+    private static int selectionChecks(JsonObject source, RegistryAccess registry) throws Exception {
         var nativeTerrain = NativeTerrain.instance(); int checked = 0;
         for (int variant = 0; variant < 6; variant++) {
             var fixture = source.deepCopy(); var structures = fixture.getAsJsonObject("structures");
@@ -190,35 +198,37 @@ public final class NetherStructureTest {
             var placement = (net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement)
                     net.minecraft.world.level.levelgen.structure.placement.StructurePlacement.CODEC.parse(
                             registry.createSerializationContext(JsonOps.INSTANCE), set.get("placement")).getOrThrow();
-            int profile = nativeTerrain.registerProfile(fixture.toString());
-            long chunks = nativeTerrain.timings(profile).chunks(); int found = 0, reserved = 0, retried = 0;
+            int found = 0, reserved = 0, retried = 0;
             for (long seed : new long[]{0, 42, 123456789}) {
-                int[] candidates = new int[16 * 3]; int[] expected = new int[16];
-                for (int i = 0; i < 16; i++) {
-                    var at = placement.getPotentialStructureChunk(seed, (i - 8) * 97, (7 - i) * 53);
-                    candidates[i * 3] = at.x(); candidates[i * 3 + 1] = at.z(); candidates[i * 3 + 2] = 0;
-                    long mixed = mix(seed ^ (long) at.x() * 341873128712L ^ (long) at.z() * 132897987541L ^ set.getAsJsonObject("placement").get("salt").getAsLong());
-                    var random = new Random(mixed);
-                    var choices = new ArrayList<>(entries.asList()); expected[i] = -1;
-                    while (!choices.isEmpty()) {
-                        int total = choices.stream().map(JsonElement::getAsJsonObject).mapToInt(e -> e.get("weight").getAsInt()).sum();
-                        int roll = random.nextInt(total), index = 0;
-                        while ((roll -= choices.get(index).getAsJsonObject().get("weight").getAsInt()) >= 0) index++;
-                        int selected = choices.remove(index).getAsJsonObject().get("definition").getAsInt();
-                        if (selected == fortress && (variant == 1 || variant >= 4) || selected == bastion && variant == 2) { retried++; continue; }
-                        if (selected != fortress) expected[i] = selected;
-                        break;
+                try(var saved=NetherTerrainTest.fixture(fixture,seed)) {
+                    int profile=saved.request(0,0).profile();long chunks=nativeTerrain.timings(profile).chunks();
+                    int[] candidates = new int[16 * 3]; int[] expected = new int[16];
+                    for (int i = 0; i < 16; i++) {
+                        var at = placement.getPotentialStructureChunk(seed, (i - 8) * 97, (7 - i) * 53);
+                        candidates[i * 3] = at.x(); candidates[i * 3 + 1] = at.z(); candidates[i * 3 + 2] = 0;
+                        long mixed = mix(seed ^ (long) at.x() * 341873128712L ^ (long) at.z() * 132897987541L ^ set.getAsJsonObject("placement").get("salt").getAsLong());
+                        var random = new Random(mixed);
+                        var choices = new ArrayList<>(entries.asList()); expected[i] = -1;
+                        while (!choices.isEmpty()) {
+                            int total = choices.stream().map(JsonElement::getAsJsonObject).mapToInt(e -> e.get("weight").getAsInt()).sum();
+                            int roll = random.nextInt(total), index = 0;
+                            while ((roll -= choices.get(index).getAsJsonObject().get("weight").getAsInt()) >= 0) index++;
+                            int selected = choices.remove(index).getAsJsonObject().get("definition").getAsInt();
+                            if (selected == fortress && (variant == 1 || variant >= 4) || selected == bastion && variant == 2) { retried++; continue; }
+                            if (selected != fortress) expected[i] = selected;
+                            break;
+                        }
                     }
+                    var request = saved.request(0,0);
+                    int[] actual = nativeTerrain.queryStructureStarts(request, candidates);
+                    require(Arrays.equals(actual, expected), "native weighted selection/retry variant=" + variant + " seed=" + seed
+                            + " expected=" + Arrays.toString(expected) + " actual=" + Arrays.toString(actual));
+                    require(Arrays.equals(actual, nativeTerrain.queryStructureStarts(request, candidates)), "cached selection remains stable");
+                    for (int value : actual) { if (value < 0) reserved++; else found++; }
+                    checked += actual.length;
+                    require(nativeTerrain.timings(profile).chunks() == chunks, "candidate queries do not generate chunks");
                 }
-                var request = new TerrainRequest(seed, 0, 0, 0, 256, 64, 48, .008f, profile);
-                int[] actual = nativeTerrain.queryStructureStarts(request, candidates);
-                require(Arrays.equals(actual, expected), "native weighted selection/retry variant=" + variant + " seed=" + seed
-                        + " expected=" + Arrays.toString(expected) + " actual=" + Arrays.toString(actual));
-                require(Arrays.equals(actual, nativeTerrain.queryStructureStarts(request, candidates)), "cached selection remains stable");
-                for (int value : actual) { if (value < 0) reserved++; else found++; }
-                checked += actual.length;
             }
-            require(nativeTerrain.timings(profile).chunks() == chunks, "candidate queries do not generate chunks");
             require(variant == 2 ? found == 0 && reserved > 0 : found > 0, "observable selection behavior for variant " + variant);
             if (variant == 0 || variant == 3) require(reserved > 0, "unimplemented selections are not reassigned to bastions");
             if (variant == 1 || variant >= 4) require(reserved == 0 && retried > 0, "rejected candidates retry the remaining supported entry");

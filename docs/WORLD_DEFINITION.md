@@ -805,3 +805,11 @@ output uses the saved seed and DataVersion, checks independent chunk content and
 active fluid ticks, and preserves the definition and existing region on repeat.
 The terrain fixture's definition is also retained at `build/nether/retina.dat`.
 These tasks accept `-PretinaNativePath=/absolute/path/to/native/library`.
+
+`netherStructureTest --args=--contracts-only` isolates saved-file weighted
+selection, exclusion dependencies, feature/structure ordering and template
+processors. Every tested world seed owns a definition and its native lifetime.
+Ordering tests open the same file independently for their cold concurrent pass;
+processor and ordered-region captures retain a copy of the definition and use
+its DataVersion. Exclusion search bindings use metadata reconstructed from the
+loaded definition.
