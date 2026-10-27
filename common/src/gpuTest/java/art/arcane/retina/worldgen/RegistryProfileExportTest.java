@@ -81,16 +81,21 @@ public final class RegistryProfileExportTest {
                 Files.createDirectories(destination.getParent());
                 Files.writeString(destination, data.json());
                 if (rust) {
-                    var registered = BiomeTerrainProfile.register(data);
-                    require(registered.nativeId() == NativeTerrain.instance().registerProfile(data.json()), "same Rust profile cache key");
-                    require(registered.json().equals(data.json()) && registered.seaLevel() == data.seaLevel()
-                            && Arrays.equals(registered.materials(), data.materials()) && registered.biomes().equals(data.biomes()),
-                            "Rust adapter preserves exact projection and ID ordering");
-                    var columns = NativeTerrain.instance().sampleColumns(new TerrainRequest(Long.MIN_VALUE + 123456789,
-                            -33, 63, -64, 384, 64, 48, .008f, registered.nativeId()));
-                    for (int i = 0; i < 256; i++) {
-                        require(columns.biome(i) < data.biomes().size(), "Rust receives valid shared biome indices");
-                        require(columns.heights()[i] >= -64 && columns.heights()[i] <= 320, "Rust samples shared registry terrain");
+                    var model=JsonParser.parseString(data.json()).getAsJsonObject();
+                    try(var saved=RegistryDefinitionFixture.create(model,Long.MIN_VALUE+123456789);
+                        var cold=DefinitionFixture.open(saved.file(),"minecraft:overworld",2)) {
+                        var registered=saved.savedDimension().bind(registry);
+                        require(registered.seaLevel()==data.seaLevel()
+                                && Arrays.equals(registered.materials(),data.materials()) && registered.biomes().equals(data.biomes()),
+                                "saved adapter preserves exact projection and ID ordering");
+                        var columns=NativeTerrain.instance().sampleColumns(saved.request(-33,63));
+                        var reopened=NativeTerrain.instance().sampleColumns(cold.request(-33,63));
+                        require(Arrays.equals(columns.heights(),reopened.heights())&&Arrays.equals(columns.packed(),reopened.packed())
+                                &&Arrays.equals(columns.materials(),reopened.materials()),"independent reopen preserves saved columns");
+                        for(int i=0;i<256;i++) {
+                            require(columns.biome(i)<data.biomes().size(),"Rust receives valid saved biome indices");
+                            require(columns.heights()[i]>=-64&&columns.heights()[i]<=320,"Rust samples saved registry terrain");
+                        }
                     }
                 } else {
                     // Positive control: an actual Rust initialization must fail in
@@ -102,7 +107,7 @@ public final class RegistryProfileExportTest {
                         require(expected.getCause() instanceof IllegalArgumentException, "actual native library lookup failure");
                     }
                 }
-                System.out.println("QA_EVT {\"event\":\"registry_profile_" + (rust ? "rust_registration" : "independent_export")
+                System.out.println("QA_EVT {\"event\":\"registry_profile_" + (rust ? "saved_file_binding" : "independent_export")
                         + "\",\"status\":\"pass\",\"context\":{\"packs\":" + packs + ",\"biomes\":"
                         + data.biomes().size() + ",\"materials\":" + data.materials().length + "}}");
             }
@@ -149,7 +154,7 @@ public final class RegistryProfileExportTest {
             data.biomes().clear();
             throw new AssertionError("mutable shared biome ordering");
         } catch (UnsupportedOperationException expected) {
-            // Snapshot is immutable across backend registrations.
+            // Snapshot is immutable across backend bindings.
         }
     }
 
