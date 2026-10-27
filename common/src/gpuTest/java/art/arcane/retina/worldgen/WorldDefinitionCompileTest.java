@@ -47,6 +47,7 @@ public final class WorldDefinitionCompileTest {
                     new FixedBiomeSource(registry.lookupOrThrow(Registries.BIOME).getOrThrow(net.minecraft.world.level.biome.Biomes.NETHER_WASTES)),
                     0, 256, 64F, 12F, .0027F, "mca")));
             check(output.resolve("procedural"), registry, resources, procedural, Long.MIN_VALUE + 19);
+            checkParameterBits(output.resolve("parameters"),registry,overworld.type(),fixed);
             var cropped = new LinkedHashMap<>(normal);
             cropped.put(LevelStem.OVERWORLD, new LevelStem(overworld.type(), new RetinaChunkGenerator(
                     new FixedBiomeSource(fixed), 0, 64, 37.5F, 19.25F, .0041F, "chunk")));
@@ -90,6 +91,36 @@ public final class WorldDefinitionCompileTest {
         if (custom != null) packs.add(new PathPackResources(new PackLocationInfo("definition-test",
                 Component.literal("World definition test"), PackSource.DEFAULT, Optional.empty()), custom));
         return new MultiPackResourceManager(PackType.SERVER_DATA, packs);
+    }
+
+    private static void checkParameterBits(Path output,RegistryAccess registry,
+            Holder<net.minecraft.world.level.dimension.DimensionType> type,
+            Holder<net.minecraft.world.level.biome.Biome> biome) throws Exception {
+        float[][] values={{-0.0F,-0.0F,.008F},{-Float.MIN_VALUE,Float.MIN_VALUE,Math.nextUp(.000001F)},
+                {-37.125F,19.25F,.0041F}};
+        for(int index=0;index<values.length;index++) {
+            long seed=Long.MIN_VALUE+101+index;
+            var value=values[index];var directory=output.resolve(Integer.toString(index));Files.createDirectories(directory);
+            var source=new RetinaChunkGenerator(new FixedBiomeSource(biome),-64,384,value[0],value[1],value[2],"mca");
+            var definition=WorldDefinitionCompiler.compile(registry,new WorldOptions(seed,true,false),
+                    Map.of(LevelStem.OVERWORLD,new LevelStem(type,source)),StructureProfile.Context.NONE,List.of("vanilla"),"Parameter bits fixture");
+            var sourceDirectory=directory.resolve("source");Files.createDirectories(sourceDirectory);
+            Files.deleteIfExists(sourceDirectory.resolve(WorldDefinitionFile.NAME));
+            WorldDefinitionFile.writeNew(sourceDirectory,definition);
+            var data=source.exportDefinition(registry,seed,StructureProfile.Context.NONE,true);
+            var model=JsonParser.parseString(data.json()).getAsJsonObject();var materials=new JsonArray();
+            for(var state:data.materials())materials.add(net.minecraft.world.level.block.state.BlockState.CODEC
+                    .encodeStart(com.mojang.serialization.JsonOps.INSTANCE,state).getOrThrow());
+            model.add("materials",materials);
+            var fixtureDirectory=directory.resolve("fixture");Files.createDirectories(fixtureDirectory);
+            Files.deleteIfExists(fixtureDirectory.resolve(WorldDefinitionFile.NAME));
+            DefinitionFixture.write(fixtureDirectory,"minecraft:overworld",model,
+                    new TerrainRequest(seed,0,0,-64,384,value[0],value[1],value[2],0),-64,384,true,false);
+            try(var expected=new java.io.DataOutputStream(Files.newOutputStream(directory.resolve("expected.bin")))) {
+                expected.writeLong(seed);expected.writeInt(-64);expected.writeInt(384);
+                for(float number:value)expected.writeInt(Float.floatToRawIntBits(number));
+            }
+        }
     }
 
     private static RegistryAccess.Frozen load(ResourceManager resources) {

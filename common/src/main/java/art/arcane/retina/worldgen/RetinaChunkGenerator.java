@@ -190,9 +190,10 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     void definitionParameters(net.minecraft.nbt.CompoundTag parameters) {
         parameters.putInt("min_y", minY);
         parameters.putInt("height", height);
-        parameters.putFloat("base_height", baseHeight);
-        parameters.putFloat("amplitude", amplitude);
-        parameters.putFloat("frequency", frequency);
+        // FloatTag.valueOf (used by putFloat) caches both zero signs as positive zero.
+        parameters.put("base_height", new net.minecraft.nbt.FloatTag(baseHeight));
+        parameters.put("amplitude", new net.minecraft.nbt.FloatTag(amplitude));
+        parameters.put("frequency", new net.minecraft.nbt.FloatTag(frequency));
     }
     public net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension() { return worldDimension; }
 

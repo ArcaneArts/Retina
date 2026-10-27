@@ -38,6 +38,7 @@ public final class NativeWorldDefinitionBridgeTest {
                 }
             }
         }
+        checkParameterBits(fixtures.resolve("parameters"),bind);
         var copied = directory.resolve("retina.dat");
         Files.copy(fixtures.resolve("flat/retina.dat"),copied);
         var world = NativeWorldDefinition.open(copied);
@@ -74,6 +75,42 @@ public final class NativeWorldDefinitionBridgeTest {
         require(Files.readString(copied).equals("damaged"),"failed open preserves file");
         Files.delete(copied); Files.delete(directory);
         System.out.println("QA_EVT {\"event\":\"jdk_only_world_definition_bridge\",\"status\":\"pass\",\"cases\":4,\"bound\":"+bind+",\"minecraft_classes\":false}");
+    }
+
+    private static void checkParameterBits(Path fixtures,boolean bind) throws Exception {
+        String[] fields={"base_height","amplitude","frequency"};
+        for(int index=0;index<3;index++) {
+            var directory=fixtures.resolve(Integer.toString(index));
+            long seed;int minimum,height;var bits=new int[3];
+            try(var expected=new java.io.DataInputStream(Files.newInputStream(directory.resolve("expected.bin")))) {
+                seed=expected.readLong();minimum=expected.readInt();height=expected.readInt();
+                for(int field=0;field<bits.length;field++)bits[field]=expected.readInt();
+                require(expected.read()==-1,"complete parameter expectation");
+            }
+            for(String producer:new String[]{"source","fixture"}) {
+                var file=directory.resolve(producer).resolve("retina.dat");byte[] before=Files.readAllBytes(file);
+                try(var world=NativeWorldDefinition.open(file)) {
+                    String metadata=world.metadata();require(metadata.contains("\"seed\":"+seed),"parameter fixture saved seed");
+                    for(int field=0;field<bits.length;field++) {
+                        var match=java.util.regex.Pattern.compile("\""+fields[field]+"\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)").matcher(metadata);
+                        require(match.find(),"loaded parameter "+fields[field]);
+                        require(Float.floatToRawIntBits(Float.parseFloat(match.group(1)))==bits[field],
+                                producer+"/"+index+": saved "+fields[field]+" bit fidelity");
+                    }
+                    if(bind) {
+                        int profile=world.bindDimension("minecraft:overworld",2);
+                        var request=world.request("minecraft:overworld",-33,32);
+                        require(request.seed()==seed && request.minY()==minimum && request.height()==height
+                                && request.profile()==profile,"saved parameter request identity");
+                        float[] actual={request.baseHeight(),request.amplitude(),request.frequency()};
+                        for(int field=0;field<bits.length;field++)require(Float.floatToRawIntBits(actual[field])==bits[field],
+                                producer+"/"+index+": request "+fields[field]+" bit fidelity");
+                    }
+                }
+                require(java.util.Arrays.equals(before,Files.readAllBytes(file)),"parameter definition stays unchanged");
+            }
+        }
+        System.out.println("QA_EVT {\"event\":\"jdk_only_parameter_bits\",\"status\":\"pass\",\"definitions\":6,\"bound\":"+bind+"}");
     }
 
     private static void expectFailure(Runnable action,String message) {

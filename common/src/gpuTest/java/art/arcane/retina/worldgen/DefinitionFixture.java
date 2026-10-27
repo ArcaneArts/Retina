@@ -103,8 +103,9 @@ final class DefinitionFixture implements AutoCloseable {
         parameters.putInt("spawn_height",profile.get("sea_level").getAsInt()+1);
         parameters.putBoolean("skylight",skylight);parameters.putBoolean("ceiling",ceiling);
         parameters.putInt("logical_height",storageHeight);parameters.putDouble("coordinate_scale",1.0);
-        parameters.putFloat("base_height",identity.baseHeight());parameters.putFloat("amplitude",identity.amplitude());
-        parameters.putFloat("frequency",identity.frequency());
+        parameters.put("base_height",new net.minecraft.nbt.FloatTag(identity.baseHeight()));
+        parameters.put("amplitude",new net.minecraft.nbt.FloatTag(identity.amplitude()));
+        parameters.put("frequency",new net.minecraft.nbt.FloatTag(identity.frequency()));
         var assembly=new WorldDefinitionAssembler(new WorldOptions(identity.seed(),true,false),List.of(),"Retina integration fixture");
         assembly.supported(dimension,parameters,profile,null);
         return WorldDefinitionFile.writeNew(directory,assembly.build());
