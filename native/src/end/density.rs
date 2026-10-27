@@ -9,15 +9,37 @@ pub struct VanillaDensity {
 }
 
 /// Dense terrain lattice for a rectangle of block columns. Only the shared
-/// 8×4×8 noise corners are stored; no occupancy shortcut is applied. Columns
-/// retain the exact bulk interpolator's operation order, including Y stepping.
+/// 8×4×8 noise corners are stored. Exact density queries retain the dense
+/// evaluator; solidity queries can use conservative signs of complete cells.
 pub struct DenseTile {
     origin: [i32; 2],
     size: [u32; 2],
     corner_origin: [i32; 2],
     corners_x: usize,
     corners: Vec<[f32; 33]>,
+    occupancy: Vec<[Occupancy; 32]>,
+    mask_nanos: u64,
     islands: super::CandidateField,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Occupancy { Empty, Solid, Uncertain }
+
+/// Interpolation uses two convex lerps followed by at most three accumulated
+/// quarter steps. Each rounded add/multiply contributes at most a few ulps of
+/// the largest corner. 64 epsilon is deliberately larger than that complete
+/// error budget, including subnormals. Near-zero and nonfinite inputs remain
+/// uncertain. This bounds the actual eight corners, not sampled block points.
+fn classify(corners: [f32; 8]) -> Occupancy {
+    if corners.iter().any(|v| !v.is_finite()) { return Occupancy::Uncertain; }
+    let min = corners.into_iter().fold(f32::INFINITY, f32::min);
+    let max = corners.into_iter().fold(f32::NEG_INFINITY, f32::max);
+    let magnitude = min.abs().max(max.abs());
+    if magnitude > f32::MAX / 4.0 { return Occupancy::Uncertain; }
+    let margin = 64.0 * f32::EPSILON * magnitude.max(f32::MIN_POSITIVE);
+    if max < -margin { Occupancy::Empty }
+    else if min > margin { Occupancy::Solid }
+    else { Occupancy::Uncertain }
 }
 
 impl DenseTile {
@@ -57,9 +79,54 @@ impl DenseTile {
     }
 
     pub fn column(&self, x: i32, z: i32) -> Option<[bool; 256]> {
-        let densities = self.column_densities(x, z)?;
-        Some(std::array::from_fn(|y| y < 128 && densities[y] > 0.0))
+        let bits = self.column_bits(x, z)?;
+        Some(std::array::from_fn(|y| y < 128 && bits & (1u128 << y) != 0))
     }
+
+    /// Compact base-terrain column. Features and structures are deliberately
+    /// outside this mask and still run through ordered decoration normally.
+    pub(crate) fn column_bits(&self, x: i32, z: i32) -> Option<u128> {
+        let lx = i64::from(x) - i64::from(self.origin[0]);
+        let lz = i64::from(z) - i64::from(self.origin[1]);
+        if lx < 0 || lz < 0 || lx >= i64::from(self.size[0]) || lz >= i64::from(self.size[1]) { return None; }
+        let dx = x.rem_euclid(8); let dz = z.rem_euclid(8);
+        let cx = ((i64::from(x) - i64::from(dx) - i64::from(self.corner_origin[0])) / 8) as usize;
+        let cz = ((i64::from(z) - i64::from(dz) - i64::from(self.corner_origin[1])) / 8) as usize;
+        let index = cz * self.corners_x + cx;
+        let mask = &self.occupancy[cz * (self.corners_x - 1) + cx];
+        let [a,b,c,d] = [&self.corners[index], &self.corners[index+1],
+            &self.corners[index+self.corners_x], &self.corners[index+self.corners_x+1]];
+        let ax = dx as f32 * 0.125; let az = dz as f32 * 0.125;
+        let mut bits = 0u128;
+        for cell in 0..32 {
+            match mask[cell] {
+                Occupancy::Empty => {},
+                Occupancy::Solid => bits |= 15u128 << (cell * 4),
+                Occupancy::Uncertain => {
+                    let bottom = lerp(ax, lerp(az,a[cell],c[cell]), lerp(az,b[cell],d[cell]));
+                    let top = lerp(ax, lerp(az,a[cell+1],c[cell+1]), lerp(az,b[cell+1],d[cell+1]));
+                    let step = (top - bottom) * 0.25;
+                    let mut value = bottom + step * 0.0;
+                    for dy in 0..4 {
+                        if squeeze(value) + 0.0 > 0.0 { bits |= 1u128 << (cell*4+dy); }
+                        value += step;
+                    }
+                },
+            }
+        }
+        Some(bits)
+    }
+
+    pub(crate) fn occupancy_counts(&self) -> [u64; 3] {
+        let mut counts = [0;3];
+        for cells in &self.occupancy { for cell in cells {
+            counts[match cell { Occupancy::Empty=>0,Occupancy::Solid=>1,Occupancy::Uncertain=>2 }] += 1;
+        }}
+        counts
+    }
+
+    pub(crate) fn mask_nanos(&self) -> u64 { self.mask_nanos }
+    pub(crate) fn mask_bytes(&self) -> usize { self.occupancy.len()*std::mem::size_of::<[Occupancy;32]>() }
 
     pub fn lattice_points(&self) -> usize { self.corners.len() * 33 }
     pub fn lattice_bytes(&self) -> usize { self.corners.len() * std::mem::size_of::<[f32; 33]>() }
@@ -106,7 +173,15 @@ impl VanillaDensity {
                 corners.push(std::array::from_fn(|cy| self.raw(block_x, cy as i32 * 4, block_z, island, true)));
             }
         }
-        Ok(DenseTile { origin: [x, z], size: [width, depth], corner_origin: [corner_x, corner_z], corners_x, corners, islands })
+        let mask_start = crate::performance::enabled().then(std::time::Instant::now);
+        let occupancy = (0..(corners_z-1)*(corners_x-1)).map(|i| {
+            let at = i / (corners_x-1) * corners_x + i % (corners_x-1);
+            std::array::from_fn(|cy| classify([
+                corners[at][cy],corners[at+1][cy],corners[at+corners_x][cy],corners[at+corners_x+1][cy],
+                corners[at][cy+1],corners[at+1][cy+1],corners[at+corners_x][cy+1],corners[at+corners_x+1][cy+1]]))
+        }).collect();
+        let mask_nanos = mask_start.map_or(0,|t|t.elapsed().as_nanos() as u64);
+        Ok(DenseTile { origin: [x, z], size: [width, depth], corner_origin: [corner_x, corner_z], corners_x, corners, occupancy, mask_nanos, islands })
     }
 
     fn raw(&self, x: i32, y: i32, z: i32, island: f32, volume: bool) -> f32 {
@@ -229,12 +304,37 @@ mod tests {
                     let actual = tile.column_densities(x + dx, z + dz).unwrap().map(f32::to_bits);
                     let expected = noise.column_densities(x + dx, z + dz).map(f32::to_bits);
                     assert_eq!(actual, expected, "seed={seed} at {},{}", x + dx, z + dz);
+                    let solid = tile.column(x+dx,z+dz).unwrap();
+                    assert_eq!(solid,std::array::from_fn(|y|y<128 && f32::from_bits(actual[y])>0.0),
+                        "sparse solidity seed={seed} at {},{}",x+dx,z+dz);
                 }
             }
             assert!(tile.column_densities(x - 1, z).is_none());
             assert!(tile.column_densities(x + 19, z).is_none());
             assert!(tile.column_densities(x, z - 1).is_none());
             assert!(tile.column_densities(x, z + 11).is_none());
+        }
+    }
+
+    #[test]
+    fn conservative_cell_signs_include_the_interpolator_rounding_budget() {
+        assert_eq!(classify([0.0;8]),Occupancy::Uncertain);
+        assert_eq!(classify([f32::NAN;8]),Occupancy::Uncertain);
+        assert_eq!(classify([f32::INFINITY;8]),Occupancy::Uncertain);
+        assert_eq!(classify([-1.0,-1.0e-9,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0]),Occupancy::Uncertain);
+        for scale in [f32::MIN_POSITIVE,1.0e-30,0.001,1.0,1.0e30] {
+            for sign in [-1.0,1.0] {
+                let corners = std::array::from_fn(|i|sign*scale*(i as f32+1.0));
+                let mask = classify(corners);
+                assert_eq!(mask,if sign<0.0 {Occupancy::Empty}else{Occupancy::Solid});
+                for z in 0..8 { for x in 0..8 {
+                    let ax=x as f32*0.125;let az=z as f32*0.125;
+                    let bottom=lerp(ax,lerp(az,corners[0],corners[2]),lerp(az,corners[1],corners[3]));
+                    let top=lerp(ax,lerp(az,corners[4],corners[6]),lerp(az,corners[5],corners[7]));
+                    let step=(top-bottom)*0.25;let mut value=bottom+step*0.0;
+                    for _ in 0..4 { assert_eq!(squeeze(value)+0.0>0.0,mask==Occupancy::Solid);value+=step; }
+                }}
+            }
         }
     }
 

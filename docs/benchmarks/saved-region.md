@@ -63,3 +63,55 @@ respectively, versus 12.1 ms lighting and 13.7 ms publication I/O. A separate
 instrumented probe attributes most dependency cost to surrounding End terrain
 tiles. Later optimizations must retain complete feature, structure, and lighting
 coverage and compare their output against the dense baseline.
+
+## Conservative cell occupancy and compact columns
+
+The next End-only implementation retains every coarse noise corner and the
+dense density-query API. It classifies each complete 8×4×8 interpolation cell
+from all eight corners, with a conservative floating-point rounding margin.
+Empty and solid cells avoid voxel interpolation; uncertain cells retain the
+exact bulk evaluator. A 128-bit base-terrain column replaces repeated scans of
+256 stored heights when constructing material runs and height columns. The air
+plane starts filled and clears occupied voxels, with padding bits kept zero.
+No finished chunk, decoration root, structure, entity, biome, or lighting work
+is skipped based on the base-terrain mask.
+
+Matched development batches used the same saved definition, coordinates,
+Metal backend, ZLIB, one caller, eight workers, two warmups, and eight samples:
+
+| Workload | Dense median ms | Compact median ms | Compact p95/max ms |
+| --- | ---: | ---: | ---: |
+| Mostly void | 854.7 | 332.1 | 341.7 |
+| Outer islands | 856.5 | 358.7 | 368.5 |
+| Cities/central arena | 806.0 | 297.8 | 361.7 |
+
+Four complete raw-record hashes match the dense baseline exactly: regions
+(1,0), (8,8), (-2,-3), and (0,0). These cover mostly void, outer islands, a city,
+and one central-arena quadrant. Independent source fixtures, unaligned and far
+coordinates, near-zero classification, and clipped material-run encoding also
+pass. The native suite reports 336 passed, zero failed, 81 optional ignored.
+
+A separate instrumented region (1,0), including all surrounding terrain tiles,
+records 862,486 empty cells, 34,538 solid cells, and 31,232 uncertain cells.
+That avoids 229,638,144 voxel interpolations across the complete required
+neighborhood. Mask construction costs 3.12 ms additive and 928,256 allocated
+mask bytes cumulatively across 13 tiles; these are not peak residency or wall
+time. The masks do not yet avoid coarse noise evaluations. Peak process RSS
+is approximately 892–912 MB across the timed categories and includes startup,
+driver caches, and all generation state; no process-memory reduction is claimed.
+
+Mostly-void stage medians fall to 68.9 ms initial terrain and 224.9 ms decoration
+planning. Required surrounding terrain remains the primary cost. Void and
+ordinary-island latency still miss the final goal targets; this is one measured
+optimization, not final shipping/defaults/gameplay acceptance.
+
+The normal-world Overworld control has a 233.0 ms candidate median versus
+417.3 ms initially; this unrelated variation is not attributed to End code.
+An initial Nether subprocess guard failed during overlapping Rust compilation.
+Both the unchanged baseline and candidate slowed, so that failed evidence is
+retained as contaminated. After the other workload ended, an alternating ABBA
+check used four measured region samples per binary (two matched coordinates
+per fresh process): baseline median 784.3 ms/max 945.6 ms, candidate median
+759.7 ms/max 804.9 ms. The region-timer regression comparison passes 5%; the
+3.1% median difference is inconclusive. This small check resolves the local
+regression concern, not the final multi-caller or shipping-default acceptance.
