@@ -42,6 +42,30 @@ pub struct TemplateRef {
     pub tags: Vec<BTreeMap<usize, Value>>,
 }
 impl Resident {
+    /// Stair shape depends on neighboring facing/half, never their shape. A
+    /// second ordered pass can therefore reconcile chunk edges without cycles.
+    pub(crate) fn stair_shape(&self, material: u16, neighbor_material: impl Fn(usize) -> Option<u16>) -> Option<u16> {
+        let stair = self.stairs.get(&material)?;
+        let neighbor = |direction| neighbor_material(direction).and_then(|m| self.stairs.get(&m));
+        let opposite = |f: usize| f ^ 1;
+        let left = [0, 0, 4, 5, 3, 2][stair.facing];
+        let can_take = |direction| neighbor(direction).is_none_or(|n| n.facing != stair.facing || n.top != stair.top);
+        let mut shape = 0;
+        if let Some(front) = neighbor(stair.facing) {
+            if front.top == stair.top && (front.facing <= 3) != (stair.facing <= 3) && can_take(opposite(front.facing)) {
+                shape = if front.facing == left { 3 } else { 4 };
+            }
+        }
+        if shape == 0 {
+            if let Some(back) = neighbor(opposite(stair.facing)) {
+                if back.top == stair.top && (back.facing <= 3) != (stair.facing <= 3) && can_take(back.facing) {
+                    shape = if back.facing == left { 1 } else { 2 };
+                }
+            }
+        }
+        Some(stair.shapes[shape])
+    }
+
     pub fn validate(&self, profile: &Profile) -> Result<(), String> {
         for definition in &profile.definitions {
             if definition.kind == "end_city"

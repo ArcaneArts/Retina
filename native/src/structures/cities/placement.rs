@@ -210,38 +210,9 @@ impl Placement {
                 .materials
                 .iter()
                 .filter_map(|(&pos, &material)| {
-                    let stair = kit.stairs.get(&material)?;
-                    let neighbor = |direction: usize| {
-                        self.materials
-                            .get(&structures::add(pos, structures::DIRECTIONS[direction]))
-                            .and_then(|m| kit.stairs.get(m))
-                    };
-                    let opposite = |f: usize| if f % 2 == 0 { f + 1 } else { f - 1 };
-                    let left = [0, 0, 4, 5, 3, 2][stair.facing];
-                    let can_take = |direction: usize| {
-                        neighbor(direction)
-                            .is_none_or(|n| n.facing != stair.facing || n.top != stair.top)
-                    };
-                    let mut shape = 0;
-                    if let Some(front) = neighbor(stair.facing) {
-                        if front.top == stair.top
-                            && (front.facing <= 3) != (stair.facing <= 3)
-                            && can_take(opposite(front.facing))
-                        {
-                            shape = if front.facing == left { 3 } else { 4 };
-                        }
-                    }
-                    if shape == 0 {
-                        if let Some(back) = neighbor(opposite(stair.facing)) {
-                            if back.top == stair.top
-                                && (back.facing <= 3) != (stair.facing <= 3)
-                                && can_take(back.facing)
-                            {
-                                shape = if back.facing == left { 1 } else { 2 };
-                            }
-                        }
-                    }
-                    let updated = stair.shapes[shape];
+                    let updated = kit.stair_shape(material, |direction| {
+                        self.materials.get(&structures::add(pos, structures::DIRECTIONS[direction])).copied()
+                    })?;
                     (updated != material).then_some((pos, updated))
                 })
                 .collect();

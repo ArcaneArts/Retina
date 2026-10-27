@@ -300,6 +300,7 @@ mod tests {
                     profile.decorations[0].reach = Some(reach);
                     let recipe = &profile.decorations[0];
                     let root = Root {
+                        city_shapes: false,
                         definition: None,
                         ids: vec![0],
                         bounds: Bounds::recipe(recipe).unwrap(),
@@ -376,6 +377,7 @@ mod tests {
             );
             profile.decorations[0].reach = Some(reach);
             let root = Root {
+                city_shapes: false,
                 definition: None,
                 ids: vec![0],
                 bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),
@@ -397,6 +399,7 @@ mod tests {
             profile.decorations[0].reach = Some(1);
             assert!(!eligible(&profile, &[0]));
             let root = Root {
+                city_shapes: false,
                 definition: None,
                 ids: vec![0],
                 bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),
@@ -466,6 +469,7 @@ mod tests {
                         {"type":"count","count":2},{"type":"in_square"},{"type":"biome"}
                     ])).unwrap());
                     let root = Root {
+                        city_shapes: false,
                         definition: None,
                         ids: vec![0],
                         bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),
@@ -534,6 +538,7 @@ mod tests {
         ] {
             profile.decorations[0].placement = Some(serde_json::from_value(placement).unwrap());
             let root = Root {
+                city_shapes: false,
                 definition: None,
                 ids: vec![0],
                 bounds: Bounds::recipe(&profile.decorations[0]).unwrap(),

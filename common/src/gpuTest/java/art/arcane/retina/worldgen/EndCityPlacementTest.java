@@ -110,10 +110,24 @@ public final class EndCityPlacementTest {
                 var keys=new it.unimi.dsi.fastutil.longs.LongOpenHashSet();referenced.keySet().forEach(c->keys.add(c.pack()));
                 int decorationIndex=f.registry.lookupOrThrow(Registries.STRUCTURE).stream()
                         .filter(value->value.step()==city.value().step()).toList().indexOf(city.value());
-                var random=new WorldgenRandom(new XoroshiroRandomSource(0));long decoration=random.setDecorationSeed(seed,at.getMinBlockX(),at.getMinBlockZ());
-                random.setFeatureSeed(decoration,decorationIndex,city.value().step().ordinal());
-                var bounds=new BoundingBox(at.getMinBlockX(),f.height.getMinY()+1,at.getMinBlockZ(),at.getMaxBlockX(),f.height.getMaxY(),at.getMaxBlockZ());
-                for(long key:keys)referenced.get(ChunkPos.unpack(key)).placeInChunk(capture.level,null,f.generator,random,bounds,at);
+                // Compare finished neighboring chunks: source template edge
+                // updates can reshape a stair in a previously placed chunk.
+                for(int nz=at.z()-1;nz<=at.z()+1;nz++)for(int nx=at.x()-1;nx<=at.x()+1;nx++) {
+                    var neighbor=new ChunkPos(nx,nz);
+                    var nearby=new TreeMap<ChunkPos,StructureStart>(Comparator.comparingInt(ChunkPos::x).thenComparingInt(ChunkPos::z));
+                    for(int gx=Math.floorDiv(nx-8,activePlacement.spacing());gx<=Math.floorDiv(nx+8,activePlacement.spacing());gx++)
+                        for(int gz=Math.floorDiv(nz-8,activePlacement.spacing());gz<=Math.floorDiv(nz+8,activePlacement.spacing());gz++) {
+                            var candidate=activePlacement.getPotentialStructureChunk(seed,gx*activePlacement.spacing(),gz*activePlacement.spacing());
+                            if(Math.abs(candidate.x()-nx)>8||Math.abs(candidate.z()-nz)>8)continue;
+                            var value=starts.computeIfAbsent(new Target(seed,candidate),key->start(f,manager,city,key.seed(),key.chunk()));
+                            if(value.isValid()&&value.getBoundingBox().intersects(neighbor.getMinBlockX(),neighbor.getMinBlockZ(),neighbor.getMaxBlockX(),neighbor.getMaxBlockZ()))nearby.put(candidate,value);
+                        }
+                    var neighborKeys=new it.unimi.dsi.fastutil.longs.LongOpenHashSet();nearby.keySet().forEach(c->neighborKeys.add(c.pack()));
+                    var random=new WorldgenRandom(new XoroshiroRandomSource(0));long decoration=random.setDecorationSeed(seed,nx*16,nz*16);
+                    random.setFeatureSeed(decoration,decorationIndex,city.value().step().ordinal());
+                    var bounds=new BoundingBox(nx*16,f.height.getMinY()+1,nz*16,nx*16+15,f.height.getMaxY(),nz*16+15);
+                    for(long key:neighborKeys)nearby.get(ChunkPos.unpack(key)).placeInChunk(capture.level,null,f.generator,random,bounds,neighbor);
+                }
                 var request=new TerrainRequest(seed,at.x(),at.z(),0,256,64,0,1,profile.nativeId());
                 try(var chunk=NativeTerrain.instance().generate(request)) {
                     for(int y=0;y<256;y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
@@ -128,7 +142,7 @@ public final class EndCityPlacementTest {
                 for(var value:metadata.getListOrEmpty("block_entities")){var tag=(CompoundTag)value;actualBlockEntities.put(new BlockPos(tag.getIntOr("x",0),tag.getIntOr("y",0),tag.getIntOr("z",0)).toShortString(),tag);}
                 require(actualBlockEntities.equals(wantedBlockEntities),"city block entity data seed="+seed+" chunk="+at+" source="+wantedBlockEntities+" actual="+actualBlockEntities);
                 wantedBlockEntities.values().forEach(tag->blockEntityKinds.merge(tag.getStringOr("id",""),1,Integer::sum));
-                var wantedEntities=capture.entities.stream().map(entityLevel::save).toList();var actualEntities=metadata.getListOrEmpty("entities");
+                var wantedEntities=capture.entities.stream().filter(entity->ChunkPos.containing(entity.blockPosition()).equals(at)).map(entityLevel::save).toList();var actualEntities=metadata.getListOrEmpty("entities");
                 require(wantedEntities.size()==actualEntities.size(),"city entity count");
                 for(int i=0;i<wantedEntities.size();i++) {
                     var actual=(CompoundTag)actualEntities.get(i);checkEntity(wantedEntities.get(i),actual);
