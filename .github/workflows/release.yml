@@ -43,7 +43,7 @@ jobs:
           PY
 
   build:
-    name: Minecraft ${{ matrix.minecraft }} / all loaders and native platforms
+    name: Minecraft ${{ matrix.minecraft }} / mods, Bukkit and native platforms
     needs: prepare
     runs-on: macos-15
     strategy:
@@ -77,9 +77,9 @@ jobs:
           python -m pip install cargo-xwin==0.23.1 cargo-zigbuild==0.23.4 ziglang==0.13.0
           echo "$(brew --prefix llvm@20)/bin" >> "$GITHUB_PATH"
           echo "$(brew --prefix lld)/bin" >> "$GITHUB_PATH"
-      - name: Build and check both loaders with all six native binaries
+      - name: Build and check Fabric, NeoForge and Bukkit with all six native binaries
         run: ./gradlew build --no-daemon "-Pminecraft_version=$MINECRAFT_VERSION"
-      - name: Collect universal mod JARs
+      - name: Inspect and collect universal mod and plugin JARs
         run: python scripts/stage-release.py "$MINECRAFT_VERSION" "$RETINA_VERSION"
       - uses: actions/upload-artifact@v7
         with:
