@@ -85,6 +85,7 @@ final class DecorationProfile {
             profiles.get(i).getAsJsonObject().add("decorations", selected);
         }
         Retina.LOGGER.info("Exported {} registered decoration recipes; omitted feature kinds: {}", exporter.recipes.size(), exporter.unsupported);
+        world.add("decoration_omissions", new Gson().toJsonTree(exporter.unsupported));
         world.add("decoration_provider_noises", exporter.providerNoise.programs);
         world.add("decoration_ticks", exporter.ticks);
         nativeDisks.addAll(exporter.nativeDisks);
@@ -827,6 +828,7 @@ final class DecorationProfile {
     }
     /** One palette-indexed table serves all contextual SimpleBlock recipes. */
     static void reserveCurrentSurvival(JsonObject world,LinkedHashMap<BlockState,Integer> palette) {
+        world.add("simple_current_omissions",new JsonArray());
         if(!needsCurrentSurvival(world.getAsJsonArray("decorations")))return;
         var rows=new JsonArray();var omissions=new TreeSet<String>();
         // Required transform outputs and wet/paired variants all participate in

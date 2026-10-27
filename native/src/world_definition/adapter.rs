@@ -47,6 +47,7 @@ impl WorldDefinition {
                         "material_halo":profile.material_halo()});
                 }
                 data["profile_metadata"] = summary;
+                data["limitations"] = limitations(self.source().dimensions[key].profile.as_ref().expect("supported profile"));
             }
             (key.clone(),data)
         }).collect();
@@ -70,4 +71,25 @@ impl WorldDefinition {
         data["materials"] = Value::Array(profile.materials.clone());
         Ok(data)
     }
+}
+
+/// Keep exporter reports available even though they are not execution programs.
+/// Missing fields in older files remain absent; absence does not mean no omissions.
+fn limitations(profile:&fastnbt::Value) -> Value {
+    let fastnbt::Value::Compound(fields)=profile else { unreachable!("validated profile compound") };
+    let mut report=serde_json::Map::new();
+    for (source,target) in [("decoration_omissions","decorations"),("geology_omissions","geology"),
+                            ("simple_current_omissions","simple_block_survival")] {
+        if let Some(saved)=fields.get(source) {
+            report.insert(target.into(),value::decode(saved.clone()).expect("validated structural profile"));
+        }
+    }
+    for (source,field,target) in [("structures","omissions","structures"),("registry_program","approximations","approximations")] {
+        if let Some(fastnbt::Value::Compound(saved))=fields.get(source) {
+            if let Some(saved)=saved.get(field) {
+                report.insert(target.into(),value::decode(saved.clone()).expect("validated structural profile"));
+            }
+        }
+    }
+    Value::Object(report)
 }

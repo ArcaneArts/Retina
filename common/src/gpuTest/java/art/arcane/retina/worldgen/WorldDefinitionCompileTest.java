@@ -140,6 +140,20 @@ public final class WorldDefinitionCompileTest {
                         : WorldDefinitionCompiler.export(registry, selected, seed, effectiveTemplates);
                 var baseline = JsonParser.parseString(exported.json())
                         .getAsJsonObject();
+                if (!baseline.has("terrain_kind")) {
+                    var savedProfile=entry.getCompoundOrEmpty("profile");
+                    for(String field:List.of("decoration_omissions","geology_omissions","simple_current_omissions")) {
+                        require(baseline.get(field).isJsonArray(),"explicit exporter report: "+field);
+                        require(savedProfile.getListOrEmpty(field).size()==baseline.getAsJsonArray(field).size(),"saved exporter report: "+field);
+                    }
+                    require(savedProfile.getCompoundOrEmpty("structures").getListOrEmpty("omissions").size()
+                            ==baseline.getAsJsonObject("structures").getAsJsonArray("omissions").size(),"saved structure omissions");
+                    if (directory.getFileName().toString().equals("vanilla")&&level.equals(net.minecraft.world.level.Level.OVERWORLD)) {
+                        require(!baseline.getAsJsonArray("decoration_omissions").isEmpty(),"real vanilla omitted decorators reported");
+                        require(baseline.getAsJsonObject("structures").getAsJsonArray("omissions").asList().stream()
+                                .anyMatch(v->v.getAsString().equals("placement:minecraft:strongholds")),"unsupported strongholds reported");
+                    }
+                }
                 baseline.addProperty("dimension", level.identifier().toString());
                 if (selected != null) baseline.add("generation", selected.describe());
                 Files.writeString(directory.resolve("expected-" + level.identifier().toString().replace(':', '_').replace('/', '_') + ".json"),
