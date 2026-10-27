@@ -3,6 +3,19 @@
 //! and gradient-summation orders. Neither path uses fused multiply-add.
 use crate::structures::Random;
 use serde::{Deserialize, Serialize};
+#[path="blended_column.rs"]
+mod column;
+
+// Every gradient has two unit components. Local X/Z are in [0,1];
+// smeared Y is in [-1.1e-7,1]. A nonzero floor requires fudge_y
+// <=1/(1-epsilon); its epsilon can overshoot by at most 1.1e-7.
+// Dot magnitudes are below 2.000001. Rounded fade weights differ from
+// [0,1] by less than 1e-5; three lerps remain far inside magnitude 4.
+// Lower/upper stack amplitudes sum to <1; 0.01 also covers their 16
+// rounded products/adds and the final clamped-alpha lerp. Main noise
+// only selects alpha, so it cannot enlarge this conservative bound.
+pub(super) const VOLUME_BOUND: f32 = 4.01;
+const LAYER_BOUND: f64 = 4.0;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct Parameters {
@@ -83,6 +96,25 @@ impl BlendedNoise {
         self.value(x, y, z, true)
     }
 
+    /// Bound the complete volume result using only the four largest-amplitude
+    /// layers of each limit stack. Unknown layers and alpha remain intervals;
+    /// this result is never substituted for an exact density value.
+    #[cfg(test)]
+    pub(super) fn volume_bounds(&self, x: i32, y: i32, z: i32) -> [f32; 2] {
+        let p = self.parameters;
+        let bounds = |layers: &[Layer]| {
+            let split = layers.len()-4;
+            let known: f64 = layers[split..].iter().map(|layer|
+                f64::from(Self::layer_value(layer,x,y,z,684.412*p.xz_scale,684.412*p.y_scale,true))).sum();
+            let unknown: f64 = layers[..split].iter().map(|layer|f64::from(layer.amplitude.abs())*LAYER_BOUND).sum();
+            // Reserve much more than all source-order f32 accumulation error,
+            // including the final blend and unknown rounded products.
+            [known-unknown-0.001,known+unknown+0.001]
+        };
+        let a=bounds(&self.lower);let b=bounds(&self.upper);
+        [(a[0].min(b[0]) as f32).next_down(),(a[1].max(b[1]) as f32).next_up()]
+    }
+
     fn value(&self, x: i32, y: i32, z: i32, volume: bool) -> f32 {
         let p = self.parameters;
         let xz_scale = 684.412 * p.xz_scale;
@@ -103,16 +135,20 @@ impl BlendedNoise {
     fn sample_stack(layers: &[Layer], x: i32, y: i32, z: i32, xz_scale: f64, y_scale: f64, volume: bool) -> f32 {
         let mut value = 0.0f32;
         for layer in layers {
-            let point = if volume {
+            value += Self::layer_value(layer,x,y,z,xz_scale,y_scale,volume);
+        }
+        value
+    }
+
+    fn layer_value(layer: &Layer,x:i32,y:i32,z:i32,xz_scale:f64,y_scale:f64,volume:bool)->f32 {
+        let point = if volume {
                 [x as f64 * (xz_scale * layer.frequency), y as f64 * (y_scale * layer.frequency),
                     z as f64 * (xz_scale * layer.frequency)]
             } else {
                 [(x as f64 * xz_scale) * layer.frequency, (y as f64 * y_scale) * layer.frequency,
                     (z as f64 * xz_scale) * layer.frequency]
             };
-            value += layer.amplitude * layer.sample(point, volume);
-        }
-        value
+        layer.amplitude * layer.sample(point, volume)
     }
 }
 
@@ -188,6 +224,33 @@ mod tests {
                 }
                 assert_eq!(noise.volume_point(x, y, z).to_bits(), point["volume_bits"].as_i64().unwrap() as u32,
                     "bulk seed={seed} at {x},{y},{z}");
+                let value=f32::from_bits(point["volume_bits"].as_i64().unwrap() as u32);
+                let [low,high]=noise.volume_bounds(x,y,z);
+                assert!(low<=value && value<=high,"source value outside bound seed={seed} at {x},{y},{z}: {low}..{high} versus {value}");
+                assert!(value.abs()<=VOLUME_BOUND);
+                if (0..=128).contains(&y) && y%4==0 {
+                    let flags=1u64<<(y/4);
+                    assert_eq!(noise.volume_column(x,z,flags)[(y/4) as usize].to_bits(),value.to_bits());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn noise_bounds_cover_codec_extremes_and_wrapped_coordinates() {
+        for seed in [0,42,u64::MAX] {
+            for parameters in [Parameters::default(),
+                Parameters{xz_scale:0.001,y_scale:1000.0,xz_factor:0.001,y_factor:1000.0,smear_scale_multiplier:1.0},
+                Parameters{xz_scale:1000.0,y_scale:0.001,xz_factor:1000.0,y_factor:0.001,smear_scale_multiplier:8.0},
+                Parameters{y_scale:32.0*1.00000005/(684.412*4.0),..Parameters::default()}] {
+                let noise=BlendedNoise::new(seed,parameters).unwrap();
+                for (x,z) in [(0,0),(-1,1),(16777217,-16777211),(i32::MIN+8,i32::MAX-8)] {
+                    for y in [-65,-1,0,1,4,32,56,128,312] {
+                        let value=noise.volume_point(x,y,z);let [low,high]=noise.volume_bounds(x,y,z);
+                        assert!(low<=value && value<=high,"{seed} {x},{y},{z}: {low}..{high} versus {value}");
+                        assert!(value.abs()<=VOLUME_BOUND);
+                    }
+                }
             }
         }
     }

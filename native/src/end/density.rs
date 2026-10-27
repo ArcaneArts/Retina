@@ -2,6 +2,9 @@
 //! The scalar interpolator and bulk column use their respective Minecraft operation
 //! orders. This reference is not an adapter for arbitrary custom density graphs.
 use super::{BlendedNoise, BlendedParameters, IslandNoise};
+#[path="sparse.rs"]
+mod sparse;
+pub(crate) use sparse::SparseTile;
 
 pub struct VanillaDensity {
     islands: IslandNoise,
@@ -34,6 +37,10 @@ fn classify(corners: [f32; 8]) -> Occupancy {
     if corners.iter().any(|v| !v.is_finite()) { return Occupancy::Uncertain; }
     let min = corners.into_iter().fold(f32::INFINITY, f32::min);
     let max = corners.into_iter().fold(f32::NEG_INFINITY, f32::max);
+    classify_range(min,max)
+}
+fn classify_range(min:f32,max:f32)->Occupancy {
+    if !min.is_finite() || !max.is_finite() { return Occupancy::Uncertain; }
     let magnitude = min.abs().max(max.abs());
     if magnitude > f32::MAX / 4.0 { return Occupancy::Uncertain; }
     let margin = 64.0 * f32::EPSILON * magnitude.max(f32::MIN_POSITIVE);
@@ -141,6 +148,16 @@ fn squeeze(value: f32) -> f32 {
     x / 2.0 - x * x * x / 24.0
 }
 
+// At lattice heights 0..128 both lerp factors are nonnegative. Every operation
+// is monotone in noise, so the same source-order expression propagates bounds.
+fn vertical(y:i32,island:f32,noise:impl FnOnce()->f32)->f32 {
+    let bottom = (y.clamp(4,32)-4) as f32 * (1.0f32/28.0);
+    if bottom == 0.0 { return -0.234375*0.64; }
+    let top=1.0+(y.clamp(56,312)-56) as f32 * (-1.0f32/256.0);
+    let shape=if top==0.0 {-23.4375}else{select_lerp(top,-23.4375,island+noise())};
+    select_lerp(bottom,-0.234375,shape)*0.64
+}
+
 impl VanillaDensity {
     pub fn new(seed: u64) -> Self {
         Self { islands: IslandNoise::new(seed), noise: BlendedNoise::new(seed, BlendedParameters::default()).unwrap() }
@@ -150,6 +167,32 @@ impl VanillaDensity {
     /// Callers can interpolate columns in parallel without locks or new noise
     /// evaluation. The rectangle may be unaligned or cross chunk/region edges.
     pub fn tile(&self, x: i32, z: i32, width: u32, depth: u32) -> Result<DenseTile, String> {
+        let (mut tile,corners_z)=self.tile_layout(x,z,width,depth)?;
+        let corners_x=tile.corners_x;
+        for cz in 0..corners_z {
+            let block_z = (i64::from(tile.corner_origin[1]) + cz as i64 * 8) as i32;
+            for cx in 0..corners_x {
+                let block_x = (i64::from(tile.corner_origin[0]) + cx as i64 * 8) as i32;
+                let island = tile.islands.sample(block_x, block_z).unwrap();
+                tile.corners.push(std::array::from_fn(|cy| self.raw(block_x, cy as i32 * 4, block_z, island, true)));
+            }
+        }
+        let mask_start = crate::performance::enabled().then(std::time::Instant::now);
+        tile.occupancy = (0..(corners_z-1)*(corners_x-1)).map(|i| {
+            let at = i / (corners_x-1) * corners_x + i % (corners_x-1);
+            std::array::from_fn(|cy| classify([
+                tile.corners[at][cy],tile.corners[at+1][cy],tile.corners[at+corners_x][cy],tile.corners[at+corners_x+1][cy],
+                tile.corners[at][cy+1],tile.corners[at+1][cy+1],tile.corners[at+corners_x][cy+1],tile.corners[at+corners_x+1][cy+1]]))
+        }).collect();
+        tile.mask_nanos=mask_start.map_or(0,|t|t.elapsed().as_nanos() as u64);
+        Ok(tile)
+    }
+
+    pub(crate) fn sparse_tile(&self,x:i32,z:i32,width:u32,depth:u32)->Result<SparseTile,String> {
+        SparseTile::new(self,x,z,width,depth)
+    }
+
+    fn tile_layout(&self,x:i32,z:i32,width:u32,depth:u32)->Result<(DenseTile,usize),String> {
         fn axis(origin: i32, length: u32) -> Result<(i32, usize), String> {
             if length == 0 { return Err("End tile dimensions must be nonzero".into()); }
             let first = i64::from(origin).div_euclid(8) * 8;
@@ -165,34 +208,12 @@ impl VanillaDensity {
         let islands = self.islands.candidate_field(corner_x, corner_z,
             (i64::from(corner_x) + (corners_x as i64 - 1) * 8) as i32,
             (i64::from(corner_z) + (corners_z as i64 - 1) * 8) as i32)?;
-        for cz in 0..corners_z {
-            let block_z = (i64::from(corner_z) + cz as i64 * 8) as i32;
-            for cx in 0..corners_x {
-                let block_x = (i64::from(corner_x) + cx as i64 * 8) as i32;
-                let island = islands.sample(block_x, block_z).unwrap();
-                corners.push(std::array::from_fn(|cy| self.raw(block_x, cy as i32 * 4, block_z, island, true)));
-            }
-        }
-        let mask_start = crate::performance::enabled().then(std::time::Instant::now);
-        let occupancy = (0..(corners_z-1)*(corners_x-1)).map(|i| {
-            let at = i / (corners_x-1) * corners_x + i % (corners_x-1);
-            std::array::from_fn(|cy| classify([
-                corners[at][cy],corners[at+1][cy],corners[at+corners_x][cy],corners[at+corners_x+1][cy],
-                corners[at][cy+1],corners[at+1][cy+1],corners[at+corners_x][cy+1],corners[at+corners_x+1][cy+1]]))
-        }).collect();
-        let mask_nanos = mask_start.map_or(0,|t|t.elapsed().as_nanos() as u64);
-        Ok(DenseTile { origin: [x, z], size: [width, depth], corner_origin: [corner_x, corner_z], corners_x, corners, occupancy, mask_nanos, islands })
+        Ok((DenseTile { origin:[x,z],size:[width,depth],corner_origin:[corner_x,corner_z],corners_x,
+            corners,occupancy:Vec::new(),mask_nanos:0,islands },corners_z))
     }
 
     fn raw(&self, x: i32, y: i32, z: i32, island: f32, volume: bool) -> f32 {
-        let bottom = (y.clamp(4, 32) - 4) as f32 * (1.0f32 / 28.0);
-        if bottom == 0.0 { return -0.234375 * 0.64; }
-        let top = 1.0 + (y.clamp(56, 312) - 56) as f32 * (-1.0f32 / 256.0);
-        let shape = if top == 0.0 { -23.4375 } else {
-            let noise = if volume { self.noise.volume_point(x, y, z) } else { self.noise.sample(x, y, z) };
-            select_lerp(top, -23.4375, island + noise)
-        };
-        select_lerp(bottom, -0.234375, shape) * 0.64
+        vertical(y,island,||if volume {self.noise.volume_point(x,y,z)}else{self.noise.sample(x,y,z)})
     }
 
     fn island_corners(&self, x: i32, z: i32) -> [f32; 4] {

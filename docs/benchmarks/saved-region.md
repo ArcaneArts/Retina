@@ -50,6 +50,11 @@ compare two Retina implementations; they do not establish vanilla parity.
 The initial full-feature End measurements at generation revision 234347cc
 (seed 123456789, Metal, 8 workers, 1 caller, 2 warmups/8 samples) were:
 
+Historical tables here retain the nearest-rank p50 reported at capture. The
+runner now averages the central pair for an even-count median; see
+[the noise-bound comparison](end-noise-bounds.md) for recomputed medians from
+the original timing rows. P95 and maximum values are unchanged.
+
 | Workload | Median ms | Maximum/p95 ms |
 | --- | ---: | ---: |
 | Mostly void | 854.7 | 871.8 |
