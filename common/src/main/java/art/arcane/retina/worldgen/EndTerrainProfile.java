@@ -83,7 +83,7 @@ final class EndTerrainProfile {
         var disks = Collections.newSetFromMap(new IdentityHashMap<PlacedFeature, Boolean>());
         world.add("decorations", DecorationProfile.export(registry, biomes, entries, palette, world, disks, b -> b.value().getGenerationSettings(), new java.util.ArrayList<>(source.generator().getBiomeSource().possibleBiomes())));
         TerrainFeatureProfile.export(registry, biomes, entries, palette, world, settings.materialRule().value(), seed, List.of());
-        world.add("structures", StructureProfile.export(registry, biomes, palette, structures));
+        world.add("structures", StructureProfile.export(registry, biomes, palette, structures, true));
         GeologyProfile.export(registry, biomes, entries, palette, world, minY, height, source.generator().getSeaLevel());
         DecorationProfile.finishPlacements(world.getAsJsonArray("decorations"), palette, minY, height);
         int beforeStructureTransforms = palette.size();
