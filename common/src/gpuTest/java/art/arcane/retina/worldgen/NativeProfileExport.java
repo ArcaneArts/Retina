@@ -22,7 +22,7 @@ import java.util.*;
 /** Benchmark profiles use the actual merged dimension, features and template resources. */
 public final class NativeProfileExport {
     public static void main(String[] args) throws Exception {
-        export(args,Boolean.getBoolean("retina.benchmark.definition"));
+        export(args,Boolean.getBoolean("retina.benchmark.definition") || !Boolean.getBoolean("retina.qa.legacyProfile"));
     }
 
     /** Publish a fresh retained test input; callers reopen its bytes for all sampling. */

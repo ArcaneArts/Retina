@@ -17,7 +17,7 @@ fn fixture(engine: &TerrainEngine, name: &str) -> (u32, Arc<WorldProfile>, i32, 
         .as_u64()
         .unwrap_or(384) as u32;
     let id = engine
-        .register_profile(&serde_json::to_vec(&source).unwrap())
+        .register_reference_profile(&serde_json::to_vec(&source).unwrap())
         .unwrap();
     (id, engine.profile(id).unwrap().unwrap(), min_y, height)
 }

@@ -410,7 +410,7 @@ mod tests {
         for name in ["nether", "custom", "direct-stem", "overworld"] {
             let bytes = std::fs::read(directory.join(format!("{name}.json"))).unwrap();
             let source: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-            let id = engine.register_profile(&bytes).unwrap();
+            let id = engine.register_reference_profile(&bytes).unwrap();
             let profile = engine.profile(id).unwrap().unwrap();
             let eligible = profile.decoration_patch_halo
                 && profile

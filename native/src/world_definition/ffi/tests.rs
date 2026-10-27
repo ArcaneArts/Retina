@@ -171,7 +171,7 @@ fn saved_file_generates_regions_and_keeps_active_dimension_leases_alive() {
     let request = lease.request(-33, 32).unwrap();
     assert_eq!(request.seed, definition.seed() as u64);
     let legacy = engine
-        .register_profile(
+        .register_reference_profile(
             &std::fs::read(root.join("flat/expected-minecraft_overworld.json")).unwrap(),
         )
         .unwrap();
@@ -273,7 +273,7 @@ fn saved_overworld_and_nether_regions_match_legacy_generation() {
         let original =
             std::fs::read(root.join(format!("vanilla/expected-{}.json", key.replace(':', "_"))))
                 .unwrap();
-        let legacy = engine.register_profile(&original).unwrap();
+        let legacy = engine.register_reference_profile(&original).unwrap();
         let label = key.replace(':', "_");
         let actual_path = directory.join(format!("{label}-saved.mca"));
         let baseline_path = directory.join(format!("{label}-legacy.mca"));
@@ -379,7 +379,7 @@ fn cropped_native_ranges_preserve_generation_and_encode_dimension_storage() {
         let request=lease.request(-64,32).unwrap();
         assert_eq!((request.min_y,request.height),(0,64));
         let baseline_id=if case=="cropped" { 0 } else {
-            engine.register_profile(&std::fs::read(root.join(case).join("expected-minecraft_overworld.json")).unwrap()).unwrap()
+            engine.register_reference_profile(&std::fs::read(root.join(case).join("expected-minecraft_overworld.json")).unwrap()).unwrap()
         };
         let original=ChunkRequest { reserved:baseline_id,..request };
         let mut actual=vec![0;request.block_count()];

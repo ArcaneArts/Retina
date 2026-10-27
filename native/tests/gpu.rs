@@ -27,6 +27,9 @@ fn actual_gpu_parallel_chunks_and_height_queries() {
         "QA_EVT {{\"event\":\"gpu_backend\",\"status\":\"pass\",\"details\":\"{}\"}}",
         engine.backend()
     );
+    // Integration tests link the production library, where no legacy profile-zero route exists.
+    assert!(engine.sample_heights(parameters(0,0)).unwrap_err().contains("unknown world profile"));
+    assert_eq!(engine.timings(0).snapshot().gpu_jobs,0,"missing file binding cannot dispatch");
     let primitive = serde_json::json!({"terrain_kind":"procedural","sea_level":-64,
         "materials":["minecraft:air","minecraft:stone"],"biomes":[{"id":"minecraft:plains"}]});
     let saved = SavedFixture::new(engine.clone(),primitive.clone(),parameters(0,0));

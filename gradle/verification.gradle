@@ -719,10 +719,11 @@ tasks.register('shoreTest', JavaExec) {
 ['exportBenchmarkProfile': false, 'exportNetherBenchmarkProfile': true].each { taskName, nether ->
     tasks.register(taskName, JavaExec) {
         group = 'verification'
-        description = 'Export actual world registries including structure templates for native benchmarks.'
+        description = 'Export legacy JSON for unit-test shader and migration reference oracles.'
         dependsOn 'gpuTestClasses', ':packageNative'
         classpath = sourceSets.gpuTest.runtimeClasspath
         mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
+        systemProperty 'retina.qa.legacyProfile', 'true'
         jvmArgs '--enable-native-access=ALL-UNNAMED'
         if (nether) systemProperty 'retina.benchmark.nether', 'true'
         args providers.gradleProperty('benchmarkProfile').getOrElse(nether
@@ -792,13 +793,13 @@ def registryExportSupplement = tasks.register('registryExportSupplement', Zip) {
 
 tasks.register('regionBenchmarkProfile', JavaExec) {
     group = 'verification'
-    description = 'Export the loaded vanilla or datapack profile for complete-region backend benchmarks.'
+    description = 'Compile a saved vanilla or datapack definition for complete-region benchmarks.'
     dependsOn 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     workingDir rootProject.projectDir
-    args rootProject.layout.buildDirectory.file('backend-benchmark/profile.json').get().asFile.absolutePath
+    args rootProject.layout.buildDirectory.dir('backend-benchmark/definition').get().asFile.absolutePath
     if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
 }
 

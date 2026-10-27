@@ -25,8 +25,14 @@ fn scratch() -> PathBuf {
     root
 }
 
+// Allows parity proofs to exercise the exact release executable packaged for delivery.
+fn executable() -> PathBuf {
+    std::env::var_os("RETINA_HEADLESS_EXECUTABLE").map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_retina")))
+}
+
 fn command(root: &Path, dimension: &str, range: &str, output: &str, codec: &str) -> Command {
-    let mut process = Command::new(env!("CARGO_BIN_EXE_retina"));
+    let mut process = Command::new(executable());
     process
         .current_dir(root)
         .env_clear()
@@ -60,14 +66,14 @@ fn summary(output: Output) -> serde_json::Value {
 #[test]
 fn executable_help_usage_and_real_definition_errors() {
     let root = scratch();
-    let help = Command::new(env!("CARGO_BIN_EXE_retina"))
+    let help = Command::new(executable())
         .arg("--help")
         .current_dir(&root)
         .output()
         .unwrap();
     assert!(help.status.success());
     assert!(String::from_utf8_lossy(&help.stdout).contains("inclusive"));
-    let usage = Command::new(env!("CARGO_BIN_EXE_retina"))
+    let usage = Command::new(executable())
         .args(["generate", "--seed=1"])
         .output()
         .unwrap();
@@ -447,7 +453,7 @@ fn cancellation(root: &Path) {
             }
         })
         .collect();
-    let mut process = Command::new(env!("CARGO_BIN_EXE_retina"));
+    let mut process = Command::new(executable());
     process
         .current_dir(root)
         .env_clear()

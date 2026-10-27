@@ -111,10 +111,11 @@ processResources {
 
 tasks.register('exportBenchmarkProfile', JavaExec) {
     group = 'verification'
-    description = 'Export the benchmark profile against Fabric Minecraft runtime classes.'
+    description = 'Export legacy JSON for explicit shader and migration reference oracles.'
     dependsOn 'gpuTestClasses'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
+    systemProperty 'retina.qa.legacyProfile', 'true'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     workingDir rootProject.projectDir
