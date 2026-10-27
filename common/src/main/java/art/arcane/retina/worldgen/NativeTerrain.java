@@ -30,7 +30,6 @@ public final class NativeTerrain {
     private final MethodHandle profiledRegion;
     private final MethodHandle publishRegionCache;
     private final MethodHandle writeColumnCache;
-    private final MethodHandle registerProfile;
     private final MethodHandle sampleColumns;
     private final MethodHandle lightVolume;
     private final MethodHandle sampleBiomes;
@@ -64,8 +63,6 @@ public final class NativeTerrain {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
         publishRegionCache = linker.downcallHandle(symbols.findOrThrow("retina_publish_region_cache"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
-        registerProfile = linker.downcallHandle(symbols.findOrThrow("retina_register_profile"),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS));
         sampleColumns = linker.downcallHandle(symbols.findOrThrow("retina_sample_columns"),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
         lightVolume = linker.downcallHandle(symbols.findOrThrow("retina_light_volume"),
@@ -181,15 +178,6 @@ public final class NativeTerrain {
         } catch (Throwable error) {
             throw failure(error);
         }
-    }
-
-    public int registerProfile(String json) {
-        try (var arena = Arena.ofConfined()) {
-            var bytes = json.getBytes(StandardCharsets.UTF_8);
-            var id = arena.allocate(JAVA_INT);
-            check((int) registerProfile.invokeExact(arena.allocateFrom(JAVA_BYTE, bytes), (long) bytes.length, id));
-            return id.get(JAVA_INT, 0);
-        } catch (Throwable error) { throw failure(error); }
     }
 
     public Columns sampleColumns(TerrainRequest request) {

@@ -95,7 +95,7 @@ final class TerrainQa {
         generator.biomeAt(position.getMinBlockX(),position.getMinBlockZ());
         var chunk=level.getChunk(position.x(),position.z());
         if (generator.metrics().snapshot().promotions()<=before) throw new IllegalStateException("Minecraft loader did not promote the temporary region");
-        var request=generator.request(level.getSeed(),position.x(),position.z());
+        var request=generator.request(position.x(),position.z());
         int compared=0;
         try(var generated=NativeTerrain.instance().generate(request)) {
             for(int y=0;y<request.height();y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
@@ -126,7 +126,7 @@ final class TerrainQa {
         var start=chunk.getAllStarts().get(structure);
         if(start==null || !start.isValid() || start.getPieces().size()<5)throw new IllegalStateException("Live loader lost the native structure start");
         if(start.getPieces().stream().anyMatch(p->!(p instanceof RetinaStructurePiece)))throw new IllegalStateException("Structure unexpectedly used a Java piece");
-        var request=generator.request(level.getSeed(),position.x(),position.z());int gold=0,compared=0;
+        var request=generator.request(position.x(),position.z());int gold=0,compared=0;
         try(var generated=NativeTerrain.instance().generate(request)) {
             for(int y=0;y<request.height();y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
                 var expected=generator.profile().materials()[Short.toUnsignedInt(generated.blocks().get(java.lang.foreign.ValueLayout.JAVA_SHORT,((long)y*256+z*16+x)*2))];
@@ -172,9 +172,9 @@ final class TerrainQa {
         }
         CHECKED.add(generator);
         var chunk = level.getChunk(position.x(), position.z());
-        var request = generator.request(level.getSeed(), position.x(), position.z());
+        var request = generator.request(position.x(), position.z());
         var profile = generator.profile();
-        var materials = profile == null ? new net.minecraft.world.level.block.state.BlockState[]{Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState()} : profile.materials();
+        var materials = profile.materials();
         try (var generated = NativeTerrain.instance().generate(request)) {
             var blocks = generated.blocks();
             int plants = 0, logs = 0, leaves = 0, caveAir = 0, ores = 0, geologySamples = 0;

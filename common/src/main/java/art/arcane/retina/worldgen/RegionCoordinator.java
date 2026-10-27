@@ -16,7 +16,6 @@ import java.util.concurrent.ExecutorService;
 /** Requests share region preparation before enqueueing their serialized MCA publication/read jobs. */
 public final class RegionCoordinator {
     private final RetinaChunkGenerator generator;
-    private final long seed;
     private final Path folder;
     private final TemporaryRegions previews;
     // Budget waiters must not occupy all preparation workers before portal work
@@ -31,9 +30,8 @@ public final class RegionCoordinator {
     // Written on the I/O queue; request admission can read this from other threads.
     private final Set<Long> prepared = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
-    public RegionCoordinator(RetinaChunkGenerator generator, long seed, Path folder) {
+    public RegionCoordinator(RetinaChunkGenerator generator, Path folder) {
         this.generator = generator;
-        this.seed = seed;
         this.folder = folder;
         this.previews = generator.previewCache();
     }
@@ -89,7 +87,7 @@ public final class RegionCoordinator {
             var releaseGeneration = RegionGenerationBudget.SHARED.request(true).acquire();
             try {
                 report = NativeTerrain.instance().generateRegion(
-                        generator.request(seed, position.x(), position.z()), destination,
+                        generator.request(position.x(), position.z()), destination,
                         SharedConstants.getCurrentVersion().dataVersion().version(), generator.regionBiome());
             } finally { releaseGeneration.run(); }
             long elapsed = System.nanoTime() - started;

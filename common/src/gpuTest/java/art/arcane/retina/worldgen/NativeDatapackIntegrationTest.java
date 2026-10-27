@@ -66,7 +66,7 @@ public final class NativeDatapackIntegrationTest {
                     var dim=saved.savedDimension();dim.bindDimensionType(original.type().value());
                     var automatic=RetinaChunkGenerator.fromDefinition(dim,world);
                     try {
-                        automatic.bindWorld(world,123456789L,net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
+                        automatic.bindWorld(net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
                         require(new HashSet<>(automatic.profile().biomes()).equals(original.generator().getBiomeSource().possibleBiomes()),"automatic saved source pool remains exact");
                         require(ChunkGenerator.CODEC.encodeStart(originalOps,original.generator()).getOrThrow().equals(originalJson),"saved compilation preserves source");
                         retain(saved,"automatic");
@@ -100,7 +100,7 @@ public final class NativeDatapackIntegrationTest {
                     var dim=saved.savedDimension();dim.bindDimensionType(original.type().value());
                     var fileGenerator=RetinaChunkGenerator.fromDefinition(dim,world);
                     try {
-                        fileGenerator.bindWorld(world,123456789L,net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
+                        fileGenerator.bindWorld(net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
                         retain(saved,mode);
                         var profile = fileGenerator.profile();
                         Files.writeString(Path.of("build/terralith-profile.json"),profile.diagnosticJson());
@@ -248,9 +248,9 @@ public final class NativeDatapackIntegrationTest {
         try(var storage = new net.minecraft.world.level.chunk.storage.RegionFileStorage(info,dir,false)) {
             for(var position:List.of(new net.minecraft.world.level.ChunkPos(0,0),new net.minecraft.world.level.ChunkPos(8,7),new net.minecraft.world.level.ChunkPos(20,19),new net.minecraft.world.level.ChunkPos(31,31))) {
                 var tag=storage.read(position); require(tag!=null,"promoted MCA is readable by Minecraft");
-                try(var data=NativeTerrain.instance().generate(generator.request(123456789L,position.x(),position.z()))) {
+                try(var data=NativeTerrain.instance().generate(generator.request(position.x(),position.z()))) {
                     var blocks=data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
-                    var samples=NativeTerrain.instance().sampleBiomes(generator.request(123456789L,position.x(),position.z()));
+                    var samples=NativeTerrain.instance().sampleBiomes(generator.request(position.x(),position.z()));
                     var sections=McaTestSections.terrain(tag,-64,384);
                     for(int section=0;section<24;section++) {
                         var nbt=sections.get(section);

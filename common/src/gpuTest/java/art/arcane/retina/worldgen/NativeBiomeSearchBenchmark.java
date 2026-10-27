@@ -52,7 +52,7 @@ public final class NativeBiomeSearchBenchmark {
                 var source = (RetinaBiomeSource) generator.getBiomeSource();
                 var query = generator.queries();
                 var terrain = NativeTerrain.instance();
-                int profile = generator.request(seed, 0, 0).profile();
+                int profile = generator.request(0, 0).profile();
                 String profileHash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
                         .digest(generator.profile().diagnosticJson().getBytes(StandardCharsets.UTF_8)));
                 String definitionHash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")

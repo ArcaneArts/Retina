@@ -1,50 +1,18 @@
 package art.arcane.retina.worldgen;
 
-import art.arcane.retina.Retina;
 import net.minecraft.core.Holder;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 
 import java.util.List;
+import java.util.Objects;
 
-/** Rust registration of the shared registry projection, preserving existing callers. */
+/** Platform identities bound to an immutable dimension loaded from retina.dat. */
 public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] materials, List<Holder<Biome>> biomes, String json,
                                   WorldDefinitionContext.Dimension savedDefinition) {
-    public BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] materials, List<Holder<Biome>> biomes, String json) {
-        this(nativeId, seaLevel, materials, biomes, json, null);
+    public BiomeTerrainProfile {
+        Objects.requireNonNull(savedDefinition, "A runtime terrain profile requires retina.dat");
     }
     /** Full data is requested only by explicit QA; ordinary adapters receive compact metadata. */
-    public String diagnosticJson() { return savedDefinition == null ? json : savedDefinition.diagnosticProfile(); }
-    public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height) {
-        return load(registry, source, minY, height, 0L);
-    }
-    public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed) {
-        return load(registry, source, minY, height, seed, registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD).value());
-    }
-    public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed, NoiseGeneratorSettings settings) {
-        return load(registry,source,minY,height,seed,settings,StructureProfile.Context.NONE);
-    }
-    static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed, NoiseGeneratorSettings settings, StructureProfile.Context structures) {
-        return load(registry,source,minY,height,seed,settings,structures,true);
-    }
-    static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed, NoiseGeneratorSettings settings, StructureProfile.Context structures, boolean densityComposition) {
-        return load(registry,source,minY,height,seed,settings,structures,densityComposition,true);
-    }
-    static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height, long seed, NoiseGeneratorSettings settings, StructureProfile.Context structures, boolean densityComposition, boolean skyLight) {
-        return register(TerrainProfileData.export(registry, source, minY, height, seed, settings, structures, densityComposition, skyLight));
-    }
-
-    /** Register the exported world profile with the Rust generator. */
-    public static BiomeTerrainProfile register(TerrainProfileData data) {
-        int nativeId = NativeTerrain.instance().registerProfile(data.json());
-        var materials = data.materials();
-        Retina.LOGGER.info("GPU biome profile {}: {} biomes, {} block states, sea level {}, {} bytes uploaded once",
-                nativeId, data.biomes().size(), materials.length, data.seaLevel(), data.json().length());
-        if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info("QA_EVT {\"event\":\"registry_biome_profile\",\"status\":\"pass\",\"context\":{\"biomes\":{},\"materials\":{},\"profile\":{}}}",
-                data.biomes().size(), materials.length, nativeId);
-        return new BiomeTerrainProfile(nativeId, data.seaLevel(), materials, data.biomes(), data.json());
-    }
+    public String diagnosticJson() { return savedDefinition.diagnosticProfile(); }
 }

@@ -56,7 +56,7 @@ public final class EndRegionPublicationTest {
                     var dimension=world.dimension(Level.END);dimension.bindDimensionType(type.value());
                     var generator=RetinaChunkGenerator.fromDefinition(dimension,bindingOnly);
                     require(generator.hasFrozenStructurePieces(),"saved city decoder selected");
-                    var request=generator.request(999,c.x()*32,c.z()*32);require(request.seed()==c.seed(),"saved seed owns request");
+                    var request=generator.request(c.x()*32,c.z()*32);require(request.seed()==c.seed(),"saved seed owns request");
                     long started=System.nanoTime();var report=NativeTerrain.instance().generateRegion(request,path,0,"invalid:ignored_saved_biome");long nanos=System.nanoTime()-started;
                     require(report.generated()==1024&&report.preserved()==0,"all region slots generated");
                     var row=check(f,manager,c,direct,generator,directory);
@@ -140,7 +140,7 @@ public final class EndRegionPublicationTest {
                         }
                     }
                     var metadata=nativeTerrain.structureData(request);for(String key:List.of("structures","block_entities","entities","block_ticks","fluid_ticks","PostProcessing"))require(metadata.get(key)==null?tag.getListOrEmpty(key).isEmpty():metadata.get(key).equals(tag.get(key)),"region/chunk metadata "+at+" "+key);
-                    require(Arrays.equals(nativeTerrain.sampleBiomes(request),nativeTerrain.sampleBiomes(generator.request(999,x,z))),"saved/direct biome profile binding");
+                    require(Arrays.equals(nativeTerrain.sampleBiomes(request),nativeTerrain.sampleBiomes(generator.request(x,z))),"saved/direct biome profile binding");
                 }
                 chunks++;
             }

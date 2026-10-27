@@ -56,7 +56,7 @@ public final class NativeLocateIntegrationTest {
                     var generator=fixture.generator();
                     var source=(RetinaBiomeSource)generator.getBiomeSource();
                     try {
-                        var query=generator.queries(); var terrain=NativeTerrain.instance(); var request=generator.request(SEED,0,0);
+                        var query=generator.queries(); var terrain=NativeTerrain.instance(); var request=generator.request(0,0);
                         var before=terrain.timings(request.profile());
                         var points=new ArrayList<BlockPos>();
                         for (int[] chunk : new int[][]{{-1,-1},{31,-32},{10000,-10000}})
@@ -71,11 +71,11 @@ public final class NativeLocateIntegrationTest {
                         var columns=new HashMap<Long,NativeTerrain.Columns>();
                         for (int i=0;i<points.size();i++) {
                             var p=points.get(i); int x=Math.floorDiv(p.getX(),16),z=Math.floorDiv(p.getZ(),16);
-                            var field=fields.computeIfAbsent(ChunkPos.pack(x,z),key -> terrain.sampleBiomes(generator.request(SEED,x,z)));
+                            var field=fields.computeIfAbsent(ChunkPos.pack(x,z),key -> terrain.sampleBiomes(generator.request(x,z)));
                             int y=Math.floorDiv(Math.clamp(p.getY(),-64,319)+64,4);
                             int index=(y*4+Math.floorMod(p.getZ(),16)/4)*4+Math.floorMod(p.getX(),16)/4;
                             require(actual.get(i).equals(generator.profile().biomes().get(Short.toUnsignedInt(field[index]))),"quart parity at "+p+" composition="+composition);
-                            var column=columns.computeIfAbsent(ChunkPos.pack(x,z),key -> terrain.sampleColumns(generator.request(SEED,x,z)));
+                            var column=columns.computeIfAbsent(ChunkPos.pack(x,z),key -> terrain.sampleColumns(generator.request(x,z)));
                             require(heights[i]==column.heights()[Math.floorMod(p.getZ(),16)*16+Math.floorMod(p.getX(),16)],"exact point height at "+p);
                         }
                         long jobs=terrain.timings(request.profile()).gpuJobs(); start=System.nanoTime();
@@ -167,7 +167,7 @@ public final class NativeLocateIntegrationTest {
                     var source = (RetinaBiomeSource) generator.getBiomeSource();
                     var query = generator.queries();
                     var terrain = NativeTerrain.instance();
-                    var request = generator.request(seed, 0, 0);
+                    var request = generator.request(0, 0);
                     long chunksBefore = terrain.timings(request.profile()).chunks();
                     var random = RandomState.create(registry.lookupOrThrow(Registries.NOISE), seed, settings.value());
                     var reference = new BiomeSource() {

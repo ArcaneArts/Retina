@@ -115,7 +115,7 @@ public final class NetherCompatibilityTest {
                 require(biomeFuture.isDone() && biomeFuture.join() == proto, "synchronous preview biome completion");
                 var terrainFuture = generator.buildTerrain(proto, Blender.empty(), random, null, null, null, biomes.possibleBiomes());
                 require(terrainFuture.isDone() && terrainFuture.join() == proto, "synchronous preview terrain completion");
-                try (var nativeChunk = NativeTerrain.instance().generate(generator.request(seed, position.x(), position.z()))) {
+                try (var nativeChunk = NativeTerrain.instance().generate(generator.request(position.x(), position.z()))) {
                     var blocks = nativeChunk.blocks().toArray(ValueLayout.JAVA_SHORT);
                     for (int y = 0; y < 256; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++)
                         require(proto.getBlockState(new net.minecraft.core.BlockPos(position.getMinBlockX() + x, y, z))

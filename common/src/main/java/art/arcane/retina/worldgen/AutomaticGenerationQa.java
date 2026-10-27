@@ -23,7 +23,7 @@ public final class AutomaticGenerationQa {
         var source = stems.getValueOrThrow(LevelStem.OVERWORLD).generator();
         require(runtime.savedDefinition() != null, "saved definition owns generation");
         require(runtime.selectedSource() == null, "runtime retains no selected generator");
-        require(runtime.request(42, -1, -2).seed() == WorldDefinitions.get(server).seed(), "file supplies seed");
+        require(runtime.request(-1, -2).seed() == WorldDefinitions.get(server).seed(), "file supplies seed");
         require(runtime.profile().savedDefinition() == runtime.savedDefinition(), "one definition binding");
         var nether = server.getLevel(Level.NETHER);
         if (nether != null) {
@@ -47,7 +47,7 @@ public final class AutomaticGenerationQa {
                 require(saved.unsupportedReason() == null && adapted.savedDefinition() == saved, "End owned by supported saved definition");
                 require(adapted.selectedSource() == null && adapted.dimension().equals(Level.END), "End has no live generation source");
                 require(com.google.gson.JsonParser.parseString(adapted.profile().json()).getAsJsonObject().has("end"), "actual native End strategy");
-                require(adapted.request(0, 0, 0).seed() == WorldDefinitions.get(server).seed(), "End uses frozen seed");
+                require(adapted.request(0, 0).seed() == WorldDefinitions.get(server).seed(), "End uses frozen seed");
                 Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_automatic_end_activation\",\"status\":\"pass\",\"context\":{\"dedicated\":{}}}", server.isDedicatedServer());
             }
         }

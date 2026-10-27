@@ -71,7 +71,7 @@ public final class NativePreviewIntegrationTest {
                 require(biomeFuture.isDone() && biomeFuture.join() == proto, "DH receives a completed biome future");
                 var surfaceFuture = generator.buildTerrain(proto, Blender.empty(), random, null, null, null, Set.copyOf(biomes));
                 require(surfaceFuture.isDone() && surfaceFuture.join() == proto, "DH terrain is available before buildTerrain returns");
-                try (var generated = NativeTerrain.instance().generate(generator.request(seed, position.x(), position.z()))) {
+                try (var generated = NativeTerrain.instance().generate(generator.request(position.x(), position.z()))) {
                     var bytes = generated.blocks().toArray(ValueLayout.JAVA_SHORT);
                     for (int layer = 0; layer < 384; layer++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
                         var at = new net.minecraft.core.BlockPos(position.getMinBlockX() + x, layer - 64, z);
@@ -80,7 +80,7 @@ public final class NativePreviewIntegrationTest {
                 }
                 for (int z : new int[]{0, 7, 15}) for (int x : new int[]{0, 4, 15}) {
                     var actual = generator.getBaseColumn(position.getMinBlockX() + x, z, bounds, random);
-                    var nativeColumn = NativeTerrain.instance().column(generator.request(seed, position.x(), position.z()), z * 16 + x);
+                    var nativeColumn = NativeTerrain.instance().column(generator.request(position.x(), position.z()), z * 16 + x);
                     for (int layer = 0; layer < 384; layer++) require(actual.getBlock(layer - 64).equals(generator.profile().materials()[Short.toUnsignedInt(nativeColumn[layer])]), "cached GPU columns preserve undecorated height/base-column semantics");
                     int top = generator.getBaseHeight(position.getMinBlockX() + x, z, Heightmap.Types.WORLD_SURFACE, bounds, random);
                     require(actual.getBlock(top).isAir() && !actual.getBlock(top - 1).isAir(), "height query uses the same temporary batch");
@@ -112,7 +112,7 @@ public final class NativePreviewIntegrationTest {
                 Files.createFile(save.resolve("r.-1.0.mca")); // DH probes leave empty RegionFile placeholders.
                 var beforeMetrics=generator.metrics().snapshot();
                 var beforePromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
-                new RegionCoordinator(generator, seed, save).prepare(position, bridge);
+                new RegionCoordinator(generator, save).prepare(position, bridge);
                 var afterPromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
                 require(afterPromotion.chunks()==beforePromotion.chunks() && afterPromotion.gpuJobs()==beforePromotion.gpuJobs()
                         && afterPromotion.workerNanos()==beforePromotion.workerNanos(), "promotion adds neither GPU nor Rust generation time");
@@ -123,7 +123,7 @@ public final class NativePreviewIntegrationTest {
                 require(Files.isRegularFile(save.resolve("r.-1.0.mca")), "actual Minecraft load publishes the cached region");
                 System.out.println("QA_EVT {\"event\":\"temporary_mca_promotion\",\"status\":\"pass\"}");
 
-                var coordinator = new RegionCoordinator(generator, seed, save);
+                var coordinator = new RegionCoordinator(generator, save);
                 var next = new ChunkPos(64, 0);
                 var following = new ChunkPos(96, 0);
                 long before = generator.metrics().snapshot().previewRegions();
@@ -175,7 +175,7 @@ public final class NativePreviewIntegrationTest {
                     "late DH decoration after unload neither dereferences previews nor starts native work");
             System.out.println("QA_EVT {\"event\":\"dh_decoration_after_world_unload\",\"status\":\"pass\"}");
 
-            var request = generator.request(seed, -1, 0);
+            var request = generator.request(-1, 0);
             var metrics = new GenerationMetrics();
             Path previewFolder;
             try (var cache = new TemporaryRegions(request, "minecraft:plains", generator.profile(), metrics, 2, 1)) {
@@ -191,7 +191,7 @@ public final class NativePreviewIntegrationTest {
                             var tag = cache.read(pos);
                             require(tag.getIntOr("xPos", 99) == pos.x(), "concurrent region readers receive their own chunk");
                             var actual = cache.columns(pos);
-                            var r = generator.request(seed, pos.x(), pos.z());
+                            var r = generator.request(pos.x(), pos.z());
                             var expected = NativeTerrain.instance().sampleColumns(r);
                             require(Arrays.equals(actual.heights(), expected.heights()) && Arrays.equals(actual.packed(), expected.packed()), "bulk region columns match GPU queries");
                             return null;
@@ -253,7 +253,7 @@ public final class NativePreviewIntegrationTest {
             require(!Files.exists(previewFolder), "world close deletes all temporary regions and their directory");
 
             var raceMetrics = new GenerationMetrics();
-            var race = new TemporaryRegions(generator.request(seed, 320, 320), "minecraft:plains", generator.profile(), raceMetrics, 1);
+            var race = new TemporaryRegions(generator.request(320, 320), "minecraft:plains", generator.profile(), raceMetrics, 1);
             try (var workers = Executors.newSingleThreadExecutor()) {
                 var future = workers.submit(() -> race.readIfOpen(new ChunkPos(320, 320)));
                 long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
