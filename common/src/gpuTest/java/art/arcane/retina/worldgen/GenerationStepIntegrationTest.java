@@ -2,7 +2,6 @@ package art.arcane.retina.worldgen;
 
 import com.google.gson.*;
 import com.mojang.serialization.JsonOps;
-import net.minecraft.SharedConstants;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.*;
 import net.minecraft.nbt.*;
@@ -59,38 +58,46 @@ final class GenerationStepIntegrationTest {
         StructureProfile.finishMaterials(structures,palette);exporter.finishProcessors(pools);
         DecorationProfile.finishPlacements(recipes,palette,GenerationBounds.uniform(0,256),32);DecorationProfile.materialFlags(world,palette);
         var materials=new JsonArray();var carveable=new JsonArray();palette.keySet().forEach(s->{materials.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,s).getOrThrow());carveable.add(false);});world.add("materials",materials);world.add("carveable",carveable);
-        var states=palette.keySet().toArray(BlockState[]::new);var terrain=NativeTerrain.instance();int profile=terrain.registerProfile(world.toString());
-        Files.writeString(Path.of("build/nether/generation-step-fixture.json"),world.toString());
-        var expected=new LinkedHashMap<ChunkPos,short[]>();
-        for(var start:List.of(new ChunkPos(0,0),new ChunkPos(-512,512))) {
-            for(int z=start.z()-1;z<=start.z()+1;z++)for(int x=start.x()-1;x<=start.x()+1;x++) {
-                var at=new ChunkPos(x,z);var request=PortalIntegrationTest.request(profile,42,x,z);var blocks=PortalIntegrationTest.blocks(terrain,request);expected.put(at,blocks);
-                if(at.equals(start)) {
-                    require(states[Short.toUnsignedInt(blocks[64*256])].is(Blocks.EMERALD_BLOCK),"both structures and features observe their predecessor at "+at+": "+states[Short.toUnsignedInt(blocks[64*256])]);
-                    require(states[Short.toUnsignedInt(blocks[65*256])].is(Blocks.CHEST),"later structure chest survives");
-                    require(states[Short.toUnsignedInt(blocks[66*256])].is(Blocks.GLOWSTONE),"later heightmap placement sees structure height");
-                    require(terrain.structureData(request).getListOrEmpty("block_entities").size()==1,"replaced chest metadata removed and surviving chest retained");
-                } else require(terrain.structureData(request).getListOrEmpty("block_entities").isEmpty(),"cross-chunk replaced chest metadata removed");
-                if(x==start.x()-1&&z==start.z())require(states[Short.toUnsignedInt(blocks[64*256+15])].is(Blocks.ANCIENT_DEBRIS),"neighbor feature reads structure/feature chain at "+at+": "+states[Short.toUnsignedInt(blocks[64*256+15])]);
+        var states=palette.keySet().toArray(BlockState[]::new);var terrain=NativeTerrain.instance();
+        try(var snapshot=DefinitionFixture.snapshot("minecraft:the_nether",world,
+                new TerrainRequest(42,0,0,0,256,64,48,.008f,0),0,256,false,true);
+            var profile=snapshot.open(null)) {
+            Files.writeString(Path.of("build/nether/generation-step-fixture.json"),world.toString());
+            var expected=new LinkedHashMap<ChunkPos,short[]>();
+            for(var start:List.of(new ChunkPos(0,0),new ChunkPos(-512,512))) {
+                for(int z=start.z()-1;z<=start.z()+1;z++)for(int x=start.x()-1;x<=start.x()+1;x++) {
+                    var at=new ChunkPos(x,z);var request=profile.request(x,z);var blocks=PortalIntegrationTest.blocks(terrain,request);expected.put(at,blocks);
+                    if(at.equals(start)) {
+                        require(states[Short.toUnsignedInt(blocks[64*256])].is(Blocks.EMERALD_BLOCK),"both structures and features observe their predecessor at "+at+": "+states[Short.toUnsignedInt(blocks[64*256])]);
+                        require(states[Short.toUnsignedInt(blocks[65*256])].is(Blocks.CHEST),"later structure chest survives");
+                        require(states[Short.toUnsignedInt(blocks[66*256])].is(Blocks.GLOWSTONE),"later heightmap placement sees structure height");
+                        require(terrain.structureData(request).getListOrEmpty("block_entities").size()==1,"replaced chest metadata removed and surviving chest retained");
+                    } else require(terrain.structureData(request).getListOrEmpty("block_entities").isEmpty(),"cross-chunk replaced chest metadata removed");
+                    if(x==start.x()-1&&z==start.z())require(states[Short.toUnsignedInt(blocks[64*256+15])].is(Blocks.ANCIENT_DEBRIS),"neighbor feature reads structure/feature chain at "+at+": "+states[Short.toUnsignedInt(blocks[64*256+15])]);
+                }
             }
-        }
-        int cold=terrain.registerProfile(world.toString());
-        try(var workers=Executors.newFixedThreadPool(4)){var jobs=new ArrayList<Future<?>>();var entries=new ArrayList<>(expected.entrySet());Collections.reverse(entries);for(var entry:entries)jobs.add(workers.submit(()->require(Arrays.equals(entry.getValue(),PortalIntegrationTest.blocks(terrain,PortalIntegrationTest.request(cold,42,entry.getKey().x(),entry.getKey().z()))),"cold concurrent ordered generation")));for(var job:jobs)job.get();}
-        var directory=Files.createTempDirectory(Path.of("build/nether"),"ordered-structure-regions-");var regions=new HashSet<ChunkPos>();expected.keySet().stream().filter(p->Math.abs(p.x())<32).forEach(p->regions.add(new ChunkPos(p.getRegionX()*32,p.getRegionZ()*32)));
-        for(var at:regions)terrain.generateRegion(PortalIntegrationTest.request(profile,42,at.x(),at.z()),directory.resolve("r."+at.getRegionX()+"."+at.getRegionZ()+".mca"),SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:nether_wastes");
-        var codec=PalettedContainer.codecRW(BlockState.CODEC,Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
-        try(var storage=new RegionFileStorage(new RegionStorageInfo("ordered-structures",Level.NETHER,"chunk"),directory,false)) {
-            for(var entry:expected.entrySet())if(Math.abs(entry.getKey().x())<32) {
-                var chunk=Objects.requireNonNull(storage.read(entry.getKey()));var data=terrain.structureData(PortalIntegrationTest.request(profile,42,entry.getKey().x(),entry.getKey().z()));
-                for(String key:List.of("structures","block_entities","fluid_ticks","block_ticks"))require(Objects.equals(chunk.get(key),data.get(key)),"ordered MCA metadata "+key);
-                for(var section:McaTestSections.terrain(chunk,0,256)){int y=section.getIntOr("Y",0)*16;var blocks=codec.parse(NbtOps.INSTANCE,section.getCompoundOrEmpty("block_states")).getOrThrow();for(int dy=0;dy<16;dy++)for(int z=0;z<16;z++)for(int x=0;x<16;x++)require(blocks.get(x,dy,z).equals(states[Short.toUnsignedInt(entry.getValue()[(y+dy)*256+z*16+x])]),"ordered MCA voxel parity");}
+            try(var cold=snapshot.open(null)) {
+                try(var workers=Executors.newFixedThreadPool(4)){var jobs=new ArrayList<Future<?>>();var entries=new ArrayList<>(expected.entrySet());Collections.reverse(entries);for(var entry:entries)jobs.add(workers.submit(()->require(Arrays.equals(entry.getValue(),PortalIntegrationTest.blocks(terrain,cold.request(entry.getKey().x(),entry.getKey().z()))),"cold concurrent ordered generation")));for(var job:jobs)job.get();}
             }
+            var directory=Files.createTempDirectory(Path.of("build/nether"),"ordered-structure-regions-");var regions=new HashSet<ChunkPos>();expected.keySet().stream().filter(p->Math.abs(p.x())<32).forEach(p->regions.add(new ChunkPos(p.getRegionX()*32,p.getRegionZ()*32)));
+            for(var at:regions)terrain.generateRegion(profile.request(at.x(),at.z()),directory.resolve("r."+at.getRegionX()+"."+at.getRegionZ()+".mca"),profile.dataVersion(),"minecraft:nether_wastes");
+            var codec=PalettedContainer.codecRW(BlockState.CODEC,Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
+            try(var storage=new RegionFileStorage(new RegionStorageInfo("ordered-structures",Level.NETHER,"chunk"),directory,false)) {
+                for(var entry:expected.entrySet())if(Math.abs(entry.getKey().x())<32) {
+                    var chunk=Objects.requireNonNull(storage.read(entry.getKey()));var data=terrain.structureData(profile.request(entry.getKey().x(),entry.getKey().z()));
+                    for(String key:List.of("structures","block_entities","fluid_ticks","block_ticks"))require(Objects.equals(chunk.get(key),data.get(key)),"ordered MCA metadata "+key);
+                    for(var section:McaTestSections.terrain(chunk,0,256)){int y=section.getIntOr("Y",0)*16;var blocks=codec.parse(NbtOps.INSTANCE,section.getCompoundOrEmpty("block_states")).getOrThrow();for(int dy=0;dy<16;dy++)for(int z=0;z<16;z++)for(int x=0;x<16;x++)require(blocks.get(x,dy,z).equals(states[Short.toUnsignedInt(entry.getValue()[(y+dy)*256+z*16+x])]),"ordered MCA voxel parity");}
+                }
+            }
+            // Reversing only structure generation steps must visibly break the chain.
+            var wrong=world.deepCopy();wrong.getAsJsonObject("structures").getAsJsonArray("definitions").get(0).getAsJsonObject().getAsJsonObject("config").addProperty("step","top_layer_modification");
+            try(var reversed=NetherTerrainTest.fixture(wrong,42)) {
+                require(!states[Short.toUnsignedInt(PortalIntegrationTest.blocks(terrain,reversed.request(0,0))[64*256])].is(Blocks.EMERALD_BLOCK),"fixture detects wrong structure step");
+            }
+            Files.copy(profile.file(),directory.resolve(WorldDefinitionFile.NAME));
+            Files.writeString(Path.of("build/nether/generation-step-fixture.json"),world.toString());Files.writeString(Path.of("build/nether/generation-step-regions-path.txt"),directory.toAbsolutePath().toString());
+            System.out.println("QA_EVT {\"event\":\"structure_feature_dependencies\",\"status\":\"pass\",\"context\":{\"chunks\":"+expected.size()+",\"regions\":"+regions.size()+"}}");
         }
-        // Reversing only structure generation steps must visibly break the chain.
-        var wrong=world.deepCopy();wrong.getAsJsonObject("structures").getAsJsonArray("definitions").get(0).getAsJsonObject().getAsJsonObject("config").addProperty("step","top_layer_modification");int reversed=terrain.registerProfile(wrong.toString());
-        require(!states[Short.toUnsignedInt(PortalIntegrationTest.blocks(terrain,PortalIntegrationTest.request(reversed,42,0,0))[64*256])].is(Blocks.EMERALD_BLOCK),"fixture detects wrong structure step");
-        Files.writeString(Path.of("build/nether/generation-step-fixture.json"),world.toString());Files.writeString(Path.of("build/nether/generation-step-regions-path.txt"),directory.toAbsolutePath().toString());
-        System.out.println("QA_EVT {\"event\":\"structure_feature_dependencies\",\"status\":\"pass\",\"context\":{\"chunks\":"+expected.size()+",\"regions\":"+regions.size()+"}}");
     }
     static Holder<PlacedFeature> feature(RegistryAccess registry,String material,String previous,int x,int z,int y,int probe,boolean heightmap) {
         var root=JsonParser.parseString("""

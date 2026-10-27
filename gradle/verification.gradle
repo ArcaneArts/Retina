@@ -783,6 +783,8 @@ tasks.register('netherStructureTest', JavaExec) {
     dependsOn 'gpuTestClasses', ':packageNative'
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NetherStructureTest'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
     environment 'RAYON_NUM_THREADS', '2'

@@ -15,7 +15,6 @@ import java.lang.reflect.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
-import net.minecraft.SharedConstants;
 import net.minecraft.world.level.chunk.*;
 import net.minecraft.world.level.chunk.storage.*;
 
@@ -77,7 +76,7 @@ final class StructureProcessorIntegrationTest {
             var biomes=new JsonArray();var b=JsonParser.parseString("{\"id\":\"minecraft:nether_wastes\",\"climate\":[0,0,0,0],\"terrain\":[0,0,0],\"top\":0,\"filler\":0,\"underwater\":0,\"flags\":0,\"decorations\":[]}");biomes.add(b);fixture.add("biomes",biomes);fixture.add("climate_targets",new JsonArray());
             var flat=new JsonObject();var layers=new JsonArray();for(int i=0;i<256;i++)layers.add(palette.get(world));flat.add("base_layers",layers);flat.add("deferred_layers",new JsonArray());flat.add("air_materials",StructureProfile.ints(0));fixture.add("flat",flat);
             DecorationProfile.materialFlags(fixture,palette);var materials=new JsonArray();palette.keySet().forEach(state->materials.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow()));fixture.add("materials",materials);
-            var states=palette.keySet().toArray(BlockState[]::new);var terrain=NativeTerrain.instance();int profile=terrain.registerProfile(fixture.toString());profiles++;
+            var states=palette.keySet().toArray(BlockState[]::new);var terrain=NativeTerrain.instance();
             WorldGenLevel level=(WorldGenLevel)Proxy.newProxyInstance(WorldGenLevel.class.getClassLoader(),new Class<?>[]{WorldGenLevel.class},(proxy,method,args)->switch(method.getName()) {
                 case "getBlockState" -> world;
                 case "getFluidState" -> world.getFluidState();
@@ -87,33 +86,36 @@ final class StructureProcessorIntegrationTest {
                 default -> {if(method.isDefault())yield InvocationHandler.invokeDefault(proxy,method,args);throw new UnsupportedOperationException(method.toString());}
             });
             for(var rotation:Rotation.values()) {
-                long seed=seeds[rotation.ordinal()];var expected=new HashMap<ChunkPos,short[]>();var expectedEntities=new HashMap<ChunkPos,Integer>();
-                var settings=new StructurePlaceSettings().setRotation(rotation).setMirror(mirror).setRotationPivot(pivot);var origin=new BlockPos(0,64,0);
-                for(int i=0;i<cases.size();i++) {
-                    var local=new BlockPos(i%16,i/256,i/16%16);var pos=StructureTemplate.transform(local,mirror,rotation,pivot).offset(origin);
-                    var input=cases.get(i);var info=new StructureTemplate.StructureBlockInfo(pos,input,null);
-                    for(var processor:processors) {info=processor.processBlock(level,origin,origin,local,info,settings);if(info==null)break;}
-                    var result=info==null?world:info.state().mirror(mirror).rotate(rotation);var chunk=ChunkPos.containing(pos);
-                    var blocks=expected.computeIfAbsent(chunk,key->{var array=new short[65536];Arrays.fill(array,palette.get(world).shortValue());return array;});
-                    blocks[pos.getY()*256+(pos.getZ()&15)*16+(pos.getX()&15)]=palette.get(result).shortValue();
-                    if(info!=null&&input.is(Blocks.CHEST)&&result.getBlock() instanceof EntityBlock)expectedEntities.merge(chunk,1,Integer::sum);
-                    if(!result.equals(input.mirror(mirror).rotate(rotation)))changed++;checks++;if(style>0)transformedChecks++;
-                }
-                var sourceTemplate=new StructureTemplate();sourceTemplate.load(registry.lookupOrThrow(Registries.BLOCK),template(cases));
-                var box=sourceTemplate.getBoundingBox(settings,origin);
-                var start=terrain.structureStarts(new TerrainRequest(seed,0,0,0,256,64,48,.008f,profile)).getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty("retina:processor_fixture");
-                require(start.getListOrEmpty("Children").getCompound(0).orElseThrow().read("BB",net.minecraft.world.level.levelgen.structure.BoundingBox.CODEC).orElseThrow().equals(box),"actual source template bounding box");boundsChecks++;
-                for(int z=Math.floorDiv(box.minZ(),16);z<=Math.floorDiv(box.maxZ(),16);z++)for(int x=Math.floorDiv(box.minX(),16);x<=Math.floorDiv(box.maxX(),16);x++)
-                    expected.computeIfAbsent(new ChunkPos(x,z),key->{var array=new short[65536];Arrays.fill(array,palette.get(world).shortValue());return array;});
-                for(var entry:expected.entrySet()) {
-                    var at=entry.getKey();var request=new TerrainRequest(seed,at.x(),at.z(),0,256,64,48,.008f,profile);
-                    try(var generated=terrain.generate(request)) {
-                        var actual=generated.blocks().toArray(ValueLayout.JAVA_SHORT);int mismatch=Arrays.mismatch(entry.getValue(),actual);
-                        require(mismatch<0,"processor style="+style+" mode="+mode+" world="+world+" rotation="+rotation+" chunk="+at+" index="+mismatch+(mismatch<0?"":" expected="+states[Short.toUnsignedInt(entry.getValue()[mismatch])]+" actual="+states[Short.toUnsignedInt(actual[mismatch])]));
+                long seed=seeds[rotation.ordinal()];
+                try(var saved=NetherTerrainTest.fixture(fixture,seed)) {
+                    profiles++;var expected=new HashMap<ChunkPos,short[]>();var expectedEntities=new HashMap<ChunkPos,Integer>();
+                    var settings=new StructurePlaceSettings().setRotation(rotation).setMirror(mirror).setRotationPivot(pivot);var origin=new BlockPos(0,64,0);
+                    for(int i=0;i<cases.size();i++) {
+                        var local=new BlockPos(i%16,i/256,i/16%16);var pos=StructureTemplate.transform(local,mirror,rotation,pivot).offset(origin);
+                        var input=cases.get(i);var info=new StructureTemplate.StructureBlockInfo(pos,input,null);
+                        for(var processor:processors) {info=processor.processBlock(level,origin,origin,local,info,settings);if(info==null)break;}
+                        var result=info==null?world:info.state().mirror(mirror).rotate(rotation);var chunk=ChunkPos.containing(pos);
+                        var blocks=expected.computeIfAbsent(chunk,key->{var array=new short[65536];Arrays.fill(array,palette.get(world).shortValue());return array;});
+                        blocks[pos.getY()*256+(pos.getZ()&15)*16+(pos.getX()&15)]=palette.get(result).shortValue();
+                        if(info!=null&&input.is(Blocks.CHEST)&&result.getBlock() instanceof EntityBlock)expectedEntities.merge(chunk,1,Integer::sum);
+                        if(!result.equals(input.mirror(mirror).rotate(rotation)))changed++;checks++;if(style>0)transformedChecks++;
                     }
-                    int entities=terrain.structureData(request).getListOrEmpty("block_entities").size();require(entities==expectedEntities.getOrDefault(at,0),"lava and protected blocks preserve valid block entities only");blockEntities+=entities;
+                    var sourceTemplate=new StructureTemplate();sourceTemplate.load(registry.lookupOrThrow(Registries.BLOCK),template(cases));
+                    var box=sourceTemplate.getBoundingBox(settings,origin);
+                    var start=terrain.structureStarts(saved.request(0,0)).getCompoundOrEmpty("structures").getCompoundOrEmpty("starts").getCompoundOrEmpty("retina:processor_fixture");
+                    require(start.getListOrEmpty("Children").getCompound(0).orElseThrow().read("BB",net.minecraft.world.level.levelgen.structure.BoundingBox.CODEC).orElseThrow().equals(box),"actual source template bounding box");boundsChecks++;
+                    for(int z=Math.floorDiv(box.minZ(),16);z<=Math.floorDiv(box.maxZ(),16);z++)for(int x=Math.floorDiv(box.minX(),16);x<=Math.floorDiv(box.maxX(),16);x++)
+                        expected.computeIfAbsent(new ChunkPos(x,z),key->{var array=new short[65536];Arrays.fill(array,palette.get(world).shortValue());return array;});
+                    for(var entry:expected.entrySet()) {
+                        var at=entry.getKey();var request=saved.request(at.x(),at.z());
+                        try(var generated=terrain.generate(request)) {
+                            var actual=generated.blocks().toArray(ValueLayout.JAVA_SHORT);int mismatch=Arrays.mismatch(entry.getValue(),actual);
+                            require(mismatch<0,"processor style="+style+" mode="+mode+" world="+world+" rotation="+rotation+" chunk="+at+" index="+mismatch+(mismatch<0?"":" expected="+states[Short.toUnsignedInt(entry.getValue()[mismatch])]+" actual="+states[Short.toUnsignedInt(actual[mismatch])]));
+                        }
+                        int entities=terrain.structureData(request).getListOrEmpty("block_entities").size();require(entities==expectedEntities.getOrDefault(at,0),"lava and protected blocks preserve valid block entities only");blockEntities+=entities;
+                    }
+                    if(style==3&&mode==6&&world.isAir()&&rotation==Rotation.NONE)saveFixture(terrain,saved,states,expected);
                 }
-                if(style==3&&mode==6&&world.isAir()&&rotation==Rotation.NONE)saveFixture(terrain,profile,seed,states,expected);
             }
             if(mode==6&&world.is(Blocks.LAVA))Files.writeString(Path.of(style==0?"build/nether/portal-processor-fixture.json":"build/nether/portal-transform-fixture-"+style+".json"),fixture.toString());
         }
@@ -121,24 +123,25 @@ final class StructureProcessorIntegrationTest {
         var report=new JsonObject();report.addProperty("profiles",profiles);report.addProperty("states_per_template",cases.size());report.addProperty("source_comparisons",checks);report.addProperty("changed_states",changed);report.addProperty("retained_block_entities",blockEntities);report.addProperty("transformed_source_comparisons",transformedChecks);report.addProperty("source_bounds_comparisons",boundsChecks);
         Files.writeString(Path.of("build/nether/portal-processors.json"),report.toString());System.out.println("QA_EVT {\"event\":\"nether_portal_processors\",\"status\":\"pass\",\"context\":"+report+"}");
     }
-    static void saveFixture(NativeTerrain terrain,int profile,long seed,BlockState[] states,Map<ChunkPos,short[]> expected) throws Exception {
+    static void saveFixture(NativeTerrain terrain,DefinitionFixture profile,BlockState[] states,Map<ChunkPos,short[]> expected) throws Exception {
         try(var workers=Executors.newFixedThreadPool(4)) {
             var jobs=new ArrayList<Future<?>>();
             for(var e:expected.entrySet())jobs.add(workers.submit(()->{
-                var request=new TerrainRequest(seed,e.getKey().x(),e.getKey().z(),0,256,64,48,.008f,profile);
+                var request=profile.request(e.getKey().x(),e.getKey().z());
                 try(var chunk=terrain.generate(request)){require(Arrays.equals(e.getValue(),chunk.blocks().toArray(ValueLayout.JAVA_SHORT)),"concurrent transformed template replay");}
             }));
             for(var job:jobs)job.get();
         }
         var directory=Files.createTempDirectory(Path.of("build/nether"),"portal-transform-regions-");
+        Files.copy(profile.file(),directory.resolve(WorldDefinitionFile.NAME));
         Files.writeString(Path.of("build/nether/portal-transform-regions-path.txt"),directory.toAbsolutePath().toString());
         var regions=new HashSet<ChunkPos>();expected.keySet().forEach(p->regions.add(new ChunkPos(p.getRegionX()*32,p.getRegionZ()*32)));
-        for(var p:regions)terrain.generateRegion(new TerrainRequest(seed,p.x(),p.z(),0,256,64,48,.008f,profile),directory.resolve("r."+p.getRegionX()+"."+p.getRegionZ()+".mca"),SharedConstants.getCurrentVersion().dataVersion().version(),"minecraft:nether_wastes");
+        for(var p:regions)terrain.generateRegion(profile.request(p.x(),p.z()),directory.resolve("r."+p.getRegionX()+"."+p.getRegionZ()+".mca"),profile.dataVersion(),"minecraft:nether_wastes");
         var codec=PalettedContainer.codecRW(BlockState.CODEC,Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
         try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-portal-transforms",Level.NETHER,"chunk"),directory,false)) {
             for(var e:expected.entrySet()) {
                 var chunk=storage.read(e.getKey());require(chunk!=null,"saved transformed template chunk");
-                var metadata=terrain.structureData(new TerrainRequest(seed,e.getKey().x(),e.getKey().z(),0,256,64,48,.008f,profile));
+                var metadata=terrain.structureData(profile.request(e.getKey().x(),e.getKey().z()));
                 require(chunk.getCompoundOrEmpty("structures").equals(metadata.getCompoundOrEmpty("structures")),"MCA transformed starts and references");
                 require(chunk.getListOrEmpty("block_entities").equals(metadata.getListOrEmpty("block_entities")),"MCA transformed block entities");
                 for(var section:McaTestSections.terrain(chunk,0,256)) {
@@ -148,7 +151,7 @@ final class StructureProcessorIntegrationTest {
                 }
             }
         }
-        var report=new JsonObject();report.addProperty("seed",seed);report.addProperty("chunks",expected.size());report.addProperty("regions",regions.size());report.addProperty("compared_voxels",expected.size()*65536);
+        var report=new JsonObject();report.addProperty("seed",profile.request(0,0).seed());report.addProperty("chunks",expected.size());report.addProperty("regions",regions.size());report.addProperty("compared_voxels",expected.size()*65536);
         Files.writeString(Path.of("build/nether/portal-transform-mca.json"),report.toString());
     }
     static void latePaletteInputs() {

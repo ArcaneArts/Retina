@@ -102,42 +102,44 @@ final class StructureExclusionTest {
             palette.keySet().forEach(state -> materials.add(BlockState.CODEC.encodeStart(com.mojang.serialization.JsonOps.INSTANCE, state).getOrThrow()));
             require(palette.size() == exported.materials().length, "probe uses existing material palette");
             fixture.add("materials", materials);
-            int profile = terrain.registerProfile(fixture.toString());
             Files.writeString(Path.of("build/nether/exclusion-fixture-" + variant + ".json"), fixture.toString());
             var samples = new JsonArray();
             for (long seed : new long[]{0, 42, -1, 123456789}) {
-                var random = RandomState.create(registry.lookupOrThrow(Registries.NOISE), seed,
-                        registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.NETHER).value());
-                var state = ChunkGeneratorStructureState.createForFlat(random, seed, new ChunkPos(0, 0),
-                        new FixedBiomeSource(exported.biomes().getFirst()), Stream.of(root));
-                int count = 64;
-                int[] input = new int[count * 3], expected = new int[count];
-                for (int i = 0; i < count; i++) {
-                    var at = rootPlacement.getPotentialStructureChunk(seed, (i - 32) * 37, (31 - i) * 29);
-                    int x = at.x() + (i % 8 == 0 ? 1 : 0), z = at.z();
-                    input[i * 3] = x; input[i * 3 + 1] = z;
-                    boolean permitted = rootPlacement.isStructureChunk(state, x, z);
-                    expected[i] = permitted ? definition : -1;
-                    if (permitted) accepted++;
-                    else if (at.x() == x && rootPlacement.applyAdditionalChunkRestrictions(x, z, seed)) excluded++;
-                    var sample = new JsonObject(); sample.addProperty("seed", seed); sample.addProperty("x", x); sample.addProperty("z", z); sample.addProperty("permitted", permitted); samples.add(sample);
+                try(var saved=NetherTerrainTest.fixture(fixture,seed)) {
+                    int profile=saved.request(0,0).profile();
+                    var random = RandomState.create(registry.lookupOrThrow(Registries.NOISE), seed,
+                            registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.NETHER).value());
+                    var state = ChunkGeneratorStructureState.createForFlat(random, seed, new ChunkPos(0, 0),
+                            new FixedBiomeSource(exported.biomes().getFirst()), Stream.of(root));
+                    int count = 64;
+                    int[] input = new int[count * 3], expected = new int[count];
+                    for (int i = 0; i < count; i++) {
+                        var at = rootPlacement.getPotentialStructureChunk(seed, (i - 32) * 37, (31 - i) * 29);
+                        int x = at.x() + (i % 8 == 0 ? 1 : 0), z = at.z();
+                        input[i * 3] = x; input[i * 3 + 1] = z;
+                        boolean permitted = rootPlacement.isStructureChunk(state, x, z);
+                        expected[i] = permitted ? definition : -1;
+                        if (permitted) accepted++;
+                        else if (at.x() == x && rootPlacement.applyAdditionalChunkRestrictions(x, z, seed)) excluded++;
+                        var sample = new JsonObject(); sample.addProperty("seed", seed); sample.addProperty("x", x); sample.addProperty("z", z); sample.addProperty("permitted", permitted); samples.add(sample);
+                    }
+                    var request = saved.request(0,0);
+                    long chunks = terrain.timings(profile).chunks();
+                    require(Arrays.equals(expected, terrain.queryStructureStarts(request, input)), "Minecraft exclusion parity variant=" + variant + " seed=" + seed);
+                    require(Arrays.equals(expected, terrain.queryStructureStarts(request, input)), "cached exclusion parity");
+                    require(terrain.timings(profile).chunks() == chunks, "placement queries do not generate chunks");
+                    for (int i = 1; i < 3; i++) {
+                        var holder = i == 1 ? middle : leaf;
+                        var at = ((RandomSpreadStructurePlacement) holder.value().placement()).getPotentialStructureChunk(seed, -39, 27);
+                        require(terrain.queryStructureStarts(request, new int[]{at.x(), at.z(), i})[0] == -1, "dependencies cannot become native starts");
+                    }
+                    var data = saved.savedDimension().bind(access);
+                    try (var queries = new TerrainQueries(request, data)) {
+                        var search = queries.prepareStructures(access, HolderSet.direct(bastion, middleFamily, pyramid), BlockPos.ZERO, 1);
+                        require(search.sets().size() == 1 && search.sets().getFirst().index() == 0, "locate never advertises dependency-only sets");
+                    }
+                    checked += count;
                 }
-                var request = PortalIntegrationTest.request(profile, seed, 0, 0);
-                long chunks = terrain.timings(profile).chunks();
-                require(Arrays.equals(expected, terrain.queryStructureStarts(request, input)), "Minecraft exclusion parity variant=" + variant + " seed=" + seed);
-                require(Arrays.equals(expected, terrain.queryStructureStarts(request, input)), "cached exclusion parity");
-                require(terrain.timings(profile).chunks() == chunks, "placement queries do not generate chunks");
-                for (int i = 1; i < 3; i++) {
-                    var holder = i == 1 ? middle : leaf;
-                    var at = ((RandomSpreadStructurePlacement) holder.value().placement()).getPotentialStructureChunk(seed, -39, 27);
-                    require(terrain.queryStructureStarts(request, new int[]{at.x(), at.z(), i})[0] == -1, "dependencies cannot become native starts");
-                }
-                var data = new BiomeTerrainProfile(profile, exported.seaLevel(), exported.materials(), exported.biomes(), fixture.toString());
-                try (var queries = new TerrainQueries(request, data)) {
-                    var search = queries.prepareStructures(access, HolderSet.direct(bastion, middleFamily, pyramid), BlockPos.ZERO, 1);
-                    require(search.sets().size() == 1 && search.sets().getFirst().index() == 0, "locate never advertises dependency-only sets");
-                }
-                checked += count;
             }
             var result = new JsonObject(); result.addProperty("variant", variant); result.addProperty("frequency_method", reduction.getSerializedName()); result.add("samples", samples); report.add(result);
         }
