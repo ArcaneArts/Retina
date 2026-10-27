@@ -61,6 +61,8 @@ dimensions. No profile is synthesized for it.
 `amplitude`, `frequency`. The last three preserve existing procedural request
 parameters during migration. Requests take their seed and settings from the
 loaded definition and add coordinates plus a registered native profile handle.
+The writer preserves these floats' exact bits, including negative zero and
+subnormal values; native metadata and requests retain the saved values.
 
 Format 2 also requires `parameters.storage`, a Compound with Int `min_y` and
 `height` for dimension storage. Legacy chunk-mode generators can evaluate a
