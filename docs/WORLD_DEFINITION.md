@@ -83,7 +83,7 @@ the saved native range and seed.
 
 The profile carries the existing generation model, including optional End,
 flat, structure and feature data. It omits `materials`, which is resolved from
-the shared palette, and `mca_compression`, which is an execution option. Its
+the shared palette, and the execution options `mca_compression` and `program_execution`. Its
 biome definitions retain their complete generation data and identifiers; the
 identifiers must agree with the dimension's `biome_palette`.
 
@@ -554,3 +554,35 @@ ore_raster_benchmark ./retina.dat minecraft:overworld 3 0 0 bits
 
 Pipeline depth and sample counts remain execution inputs. Fixture export
 calculates seed-dependent data for `benchmarkSeed` before writing the file.
+
+## Integration fixture construction and dispatch options
+
+`WorldDefinitionAssembler` builds shared dictionaries from resolved canonical
+material names/properties and biome names. Registry-backed compilation projects
+those names before assembly; literal integration programs can use the same
+structural writer without resolving platform objects. Runtime palette binding
+remains a separate adapter step. Existing compiler fixture files retain exactly
+the same compressed bytes.
+
+The test-only `DefinitionFixture` writes a complete seed-bound world file, opens
+that published file through `NativeWorldDefinition`, and obtains generation
+requests from the loaded dimension. It owns a real world handle; there are no
+virtual profile IDs or JSON-upload substitutes. Tests declare their seed and
+native/storage geometry before publication and close their bindings after jobs
+finish. The MCA codec test opens one file with zlib and LZ4 bindings. Material
+rule tests run both dispatch modes from the same file for each program.
+
+Rust callers may use `WorldSession::bind_with_execution` with an optional
+`runtime::ProgramExecution::{Auto,Interpreter,Specialized}`. Java exposes the
+matching `NativeWorldDefinition.ProgramExecution` binding overload, backed by
+`retina_bind_world_dimension_execution` (execution IDs 0, 1, 2 respectively).
+A binding's dispatch preference is fixed once initialized. A later unspecified
+bind reuses it; a conflicting explicit preference fails. Default bindings reuse
+the original loaded profile. An explicit differing preference gets an owned
+immutable dispatch copy; generation tables and the loaded definition stay
+unchanged, and outstanding dimension leases retain the copy until they finish.
+
+New files omit dispatch preferences, and format 2 rejects `program_execution`
+in a profile with an actionable binding-option error. Format 1's historical
+profile hints remain readable for compatibility. Choosing a GPU implementation
+is separate from choosing generation rules and does not rewrite `retina.dat`.

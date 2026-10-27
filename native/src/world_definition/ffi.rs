@@ -1,5 +1,8 @@
 //! Opaque world handles for hosts. Open/metadata/close do not initialize a GPU.
-use super::{WorldDefinition, runtime::WorldSession};
+use super::{
+    WorldDefinition,
+    runtime::{ProgramExecution, WorldSession},
+};
 use crate::{ChunkRequest, boundary, region::codec::Compression, shared_engine};
 use std::{
     collections::HashMap,
@@ -29,20 +32,28 @@ fn world(handle: u64) -> Result<Arc<OpenWorld>, String> {
 }
 
 impl OpenWorld {
-    fn bind(&self, compression: Compression) -> Result<&Arc<WorldSession>, String> {
+    fn bind(
+        &self,
+        compression: Compression,
+        execution: Option<ProgramExecution>,
+    ) -> Result<&Arc<WorldSession>, String> {
         let session = self
             .session
             .get_or_init(|| {
-                WorldSession::bind(
+                WorldSession::bind_with_execution(
                     shared_engine()?.clone(),
                     self.definition.clone(),
                     compression,
+                    execution,
                 )
             })
             .as_ref()
             .map_err(Clone::clone)?;
         if session.compression() != compression {
             return Err("world is already bound with different output compression".into());
+        }
+        if execution.is_some() && session.execution() != execution {
+            return Err("world is already bound with different program execution".into());
         }
         Ok(session)
     }
@@ -144,24 +155,56 @@ pub unsafe extern "C" fn retina_bind_world_dimension(
     compression: u32,
     output: *mut u32,
 ) -> i32 {
+    boundary(|| unsafe { bind_dimension(handle, key, length, compression, None, output) })
+}
+
+/// # Safety
+/// Same pointer contract as retina_bind_world_dimension. Execution: 0=auto,
+/// 1=interpreter, 2=specialized. This option never changes the loaded definition.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_bind_world_dimension_execution(
+    handle: u64,
+    key: *const u8,
+    length: u64,
+    compression: u32,
+    execution: u32,
+    output: *mut u32,
+) -> i32 {
     boundary(|| {
-        if output.is_null() {
-            return Err("null dimension profile output".into());
-        }
-        let world = world(handle)?;
-        let key = unsafe { text(key, length) }?;
-        world.definition.dimension(key)?.profile()?;
-        let compression = match compression {
-            2 => Compression::Zlib,
-            4 => Compression::Lz4,
-            _ => return Err(format!("unsupported MCA compression {compression}")),
+        let mode = match execution {
+            0 => ProgramExecution::Auto,
+            1 => ProgramExecution::Interpreter,
+            2 => ProgramExecution::Specialized,
+            _ => return Err(format!("unsupported program execution {execution}")),
         };
-        let dimension = world.bind(compression)?.dimension(key)?;
-        unsafe {
-            *output = dimension.profile_id();
-        }
-        Ok(())
+        unsafe { bind_dimension(handle, key, length, compression, Some(mode), output) }
     })
+}
+
+unsafe fn bind_dimension(
+    handle: u64,
+    key: *const u8,
+    length: u64,
+    compression: u32,
+    execution: Option<ProgramExecution>,
+    output: *mut u32,
+) -> Result<(), String> {
+    if output.is_null() {
+        return Err("null dimension profile output".into());
+    }
+    let world = world(handle)?;
+    let key = unsafe { text(key, length) }?;
+    world.definition.dimension(key)?.profile()?;
+    let compression = match compression {
+        2 => Compression::Zlib,
+        4 => Compression::Lz4,
+        _ => return Err(format!("unsupported MCA compression {compression}")),
+    };
+    let dimension = world.bind(compression, execution)?.dimension(key)?;
+    unsafe {
+        *output = dimension.profile_id();
+    }
+    Ok(())
 }
 
 /// # Safety
@@ -195,12 +238,18 @@ pub unsafe extern "C" fn retina_world_dimension_request(
 /// key is length readable UTF-8 bytes; output and size are writable. Free with retina_free_bytes.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_world_dimension_chunk(
-    handle:u64,key:*const u8,length:u64,x:i32,z:i32,output:*mut *mut u8,size:*mut u64,
+    handle: u64,
+    key: *const u8,
+    length: u64,
+    x: i32,
+    z: i32,
+    output: *mut *mut u8,
+    size: *mut u64,
 ) -> i32 {
     boundary(|| {
-        let owner=world(handle)?;
-        let dimension=owner.session()?.dimension(unsafe { text(key,length) }?)?;
-        unsafe { bytes(dimension.generate_chunk(x,z)?,output,size) }
+        let owner = world(handle)?;
+        let dimension = owner.session()?.dimension(unsafe { text(key, length) }?)?;
+        unsafe { bytes(dimension.generate_chunk(x, z)?, output, size) }
     })
 }
 
