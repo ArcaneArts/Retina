@@ -58,6 +58,18 @@ public final class NativeWorldDefinitionBridgeTest {
         } finally { world.close(); }
         world.close();
         expectFailure(() -> world.request("minecraft:overworld",0,0),"closed");
+        if(bind) for(var execution:NativeWorldDefinition.ProgramExecution.values()) {
+            try(var dispatch=NativeWorldDefinition.open(fixtures.resolve("flat/retina.dat"))) {
+                String saved=dispatch.diagnosticProfile("minecraft:overworld");
+                int id=dispatch.bindDimension("minecraft:overworld",2,execution);
+                require(dispatch.bindDimension("minecraft:overworld",2)==id,"unspecified rebind keeps execution choice");
+                require(dispatch.diagnosticProfile("minecraft:overworld").equals(saved),"dispatch does not mutate saved programs");
+                require(dispatch.request("minecraft:overworld",7,-9).seed()==Long.MAX_VALUE-11,"execution option keeps saved seed");
+                var other=execution==NativeWorldDefinition.ProgramExecution.INTERPRETER
+                        ?NativeWorldDefinition.ProgramExecution.SPECIALIZED:NativeWorldDefinition.ProgramExecution.INTERPRETER;
+                expectFailure(()->dispatch.bindDimension("minecraft:overworld",2,other),"different program execution");
+            }
+        }
         expectFailure(() -> NativeWorldDefinition.tryOpen(copied),"gzip");
         require(Files.readString(copied).equals("damaged"),"failed open preserves file");
         Files.delete(copied); Files.delete(directory);

@@ -9,6 +9,7 @@ import static java.lang.foreign.ValueLayout.*;
 
 /** JDK-only definition bridge. Rust owns parsing and saved generation settings. */
 public final class NativeWorldDefinition implements AutoCloseable {
+    public enum ProgramExecution { AUTO, INTERPRETER, SPECIALIZED }
     private long handle;
     private final String metadata;
 
@@ -24,6 +25,7 @@ public final class NativeWorldDefinition implements AutoCloseable {
         static final MethodHandle OPEN = call("retina_open_world_definition", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS));
         static final MethodHandle METADATA = call("retina_world_definition_metadata", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, ADDRESS));
         static final MethodHandle BIND = call("retina_bind_world_dimension", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS));
+        static final MethodHandle BIND_EXECUTION = call("retina_bind_world_dimension_execution", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, ADDRESS));
         static final MethodHandle REQUEST = call("retina_world_dimension_request", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, ADDRESS));
         static final MethodHandle CHUNK = call("retina_world_dimension_chunk", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, ADDRESS, ADDRESS));
         static final MethodHandle PROFILE = call("retina_world_definition_profile_json", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
@@ -69,6 +71,18 @@ public final class NativeWorldDefinition implements AutoCloseable {
             check((int) Calls.BIND.invokeExact(handle, arena.allocateFrom(JAVA_BYTE,bytes), (long) bytes.length, compression, output));
             return output.get(JAVA_INT,0);
         } catch (Throwable error) { throw failure(error); }
+    }
+
+    /** Dispatch preference is fixed for this binding without changing the saved definition. */
+    public synchronized int bindDimension(String key,int compression,ProgramExecution execution) {
+        ensureOpen();
+        java.util.Objects.requireNonNull(execution,"program execution");
+        try(var arena=Arena.ofConfined()) {
+            var bytes=key.getBytes(StandardCharsets.UTF_8);var output=arena.allocate(JAVA_INT);
+            check((int)Calls.BIND_EXECUTION.invokeExact(handle,arena.allocateFrom(JAVA_BYTE,bytes),(long)bytes.length,
+                    compression,execution.ordinal(),output));
+            return output.get(JAVA_INT,0);
+        } catch(Throwable error) {throw failure(error);}
     }
 
     /** Seed and all geometry fields are populated by Rust from the saved definition. */

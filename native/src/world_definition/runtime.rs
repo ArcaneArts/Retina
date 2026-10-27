@@ -1,6 +1,7 @@
 //! Shared mod/headless binding. Parsing is GPU-independent; binding starts the
 //! engine and registers references to the same immutable loaded profiles.
 use super::WorldDefinition;
+pub use crate::specialize::Execution as ProgramExecution;
 use crate::{
     ChunkRequest, TerrainEngine,
     region::{self, RegionReport, codec::Compression},
@@ -9,9 +10,13 @@ use std::{collections::BTreeMap, path::Path, sync::Arc};
 
 pub struct WorldSession {
     definition: Arc<WorldDefinition>,
+    // Explicit execution variants share generation values but need their own
+    // dispatch preference and an owner for the engine's weak registrations.
+    _runtime_profiles: Vec<Arc<crate::profile::WorldProfile>>,
     engine: Arc<TerrainEngine>,
     dimensions: BTreeMap<String, u32>,
     compression: Compression,
+    execution: Option<ProgramExecution>,
 }
 
 /// Keeping a dimension lease alive keeps its world and generation data alive.
@@ -29,24 +34,38 @@ impl WorldSession {
         definition: Arc<WorldDefinition>,
         compression: Compression,
     ) -> Result<Arc<Self>, String> {
+        Self::bind_with_execution(engine, definition, compression, None)
+    }
+
+    pub fn bind_with_execution(
+        engine: Arc<TerrainEngine>,
+        definition: Arc<WorldDefinition>,
+        compression: Compression,
+        execution: Option<ProgramExecution>,
+    ) -> Result<Arc<Self>, String> {
         let mut dimensions = BTreeMap::new();
+        let mut profiles = Vec::new();
         for (key, dimension) in definition.dimensions() {
             if dimension.unsupported_reason().is_some() {
                 continue;
             }
+            let profile = dispatch_profile(dimension.profile()?, execution);
             let id = engine.register_world_profile(
-                dimension.profile()?,
+                &profile,
                 compression,
                 definition.data_version(),
                 dimension.parameters().storage_bounds(),
             )?;
             dimensions.insert(key.clone(), id);
+            profiles.push(profile);
         }
         Ok(Arc::new(Self {
             engine,
             definition,
+            _runtime_profiles: profiles,
             dimensions,
             compression,
+            execution,
         }))
     }
 
@@ -58,6 +77,9 @@ impl WorldSession {
     }
     pub fn compression(&self) -> Compression {
         self.compression
+    }
+    pub fn execution(&self) -> Option<ProgramExecution> {
+        self.execution
     }
 
     pub fn dimension(self: &Arc<Self>, key: &str) -> Result<DimensionLease, String> {
@@ -71,6 +93,20 @@ impl WorldSession {
             key: key.into(),
             profile,
         })
+    }
+}
+
+fn dispatch_profile(
+    saved: &Arc<crate::profile::WorldProfile>,
+    execution: Option<ProgramExecution>,
+) -> Arc<crate::profile::WorldProfile> {
+    match execution {
+        Some(mode) if mode != saved.program_execution => {
+            let mut profile = (**saved).clone();
+            profile.program_execution = mode;
+            Arc::new(profile)
+        }
+        _ => saved.clone(),
     }
 }
 
@@ -92,10 +128,21 @@ impl DimensionLease {
         self.world.definition.request(&self.key, self.profile, x, z)
     }
 
-    pub fn generate_chunk(&self,x:i32,z:i32) -> Result<Vec<u8>,String> {
-        let request=self.request(x,z)?;
-        let biome=&self.world.definition.dimension(&self.key)?.profile()?.biomes[0].id;
-        region::generate_chunk(&self.world.engine,request,self.world.definition.data_version(),biome)
+    pub fn generate_chunk(&self, x: i32, z: i32) -> Result<Vec<u8>, String> {
+        let request = self.request(x, z)?;
+        let biome = &self
+            .world
+            .definition
+            .dimension(&self.key)?
+            .profile()?
+            .biomes[0]
+            .id;
+        region::generate_chunk(
+            &self.world.engine,
+            request,
+            self.world.definition.data_version(),
+            biome,
+        )
     }
 
     /// Region coordinates, not chunk coordinates. Saved seed/bounds/DataVersion
@@ -122,5 +169,39 @@ impl DimensionLease {
             self.world.definition.data_version(),
             biome,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn execution_variants_keep_saved_programs_immutable_and_reuse_default_ownership() {
+        let document = crate::world_definition::tests::document();
+        let world =
+            WorldDefinition::from_gzip(crate::world_definition::tests::gzip(&document).as_slice())
+                .unwrap();
+        let saved = world
+            .dimension("minecraft:overworld")
+            .unwrap()
+            .profile()
+            .unwrap();
+        let original = world.fingerprint();
+        assert!(Arc::ptr_eq(saved, &dispatch_profile(saved, None)));
+        assert!(Arc::ptr_eq(
+            saved,
+            &dispatch_profile(saved, Some(ProgramExecution::Auto))
+        ));
+        for mode in [ProgramExecution::Interpreter, ProgramExecution::Specialized] {
+            let runtime = dispatch_profile(saved, Some(mode));
+            assert!(!Arc::ptr_eq(saved, &runtime));
+            assert!(runtime.program_execution == mode);
+            assert!(saved.program_execution == ProgramExecution::Auto);
+            assert_eq!(saved.gpu_bytes(), runtime.gpu_bytes());
+            assert_eq!(saved.climate_gpu_bytes(), runtime.climate_gpu_bytes());
+            assert_eq!(saved.material_nbt, runtime.material_nbt);
+            assert_eq!(saved.encoded, runtime.encoded);
+            assert_eq!(world.fingerprint(), original);
+        }
     }
 }

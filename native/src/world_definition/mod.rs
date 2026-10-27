@@ -261,6 +261,9 @@ fn load_profile(
             "profile must use the shared material palette and omit runtime compression".into(),
         );
     }
+    if world.format_version >= 2 && object.contains_key("program_execution") {
+        return Err("program execution is a binding option, not a saved generation rule".into());
+    }
     let materials = dimension
         .material_palette
         .iter()

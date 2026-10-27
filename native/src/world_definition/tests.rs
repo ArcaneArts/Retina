@@ -337,6 +337,13 @@ fn malformed_profile_values_and_runtime_settings_are_rejected_during_decode() {
     data["mca_compression"] = "zlib".into();
     source.profile = Some(value::encode(&data).unwrap());
     assert!(error(&doc).contains("runtime compression"));
+    data.as_object_mut().unwrap().remove("mca_compression");
+    data["program_execution"]="interpreter".into();
+    doc.dimensions.get_mut("minecraft:overworld").unwrap().profile=Some(value::encode(&data).unwrap());
+    assert!(error(&doc).contains("binding option"));
+    doc.format_version=1;
+    assert!(load(&doc).dimension("minecraft:overworld").unwrap().profile().unwrap().program_execution
+            ==crate::specialize::Execution::Interpreter,"historical profile hints remain readable");
 }
 
 #[test]
