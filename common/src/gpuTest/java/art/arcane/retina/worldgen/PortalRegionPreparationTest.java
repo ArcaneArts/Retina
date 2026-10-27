@@ -23,6 +23,7 @@ public final class PortalRegionPreparationTest {
         if (!origin.equals(Set.of(new ChunkPos(-32, -32), new ChunkPos(-32, 0),
                 new ChunkPos(0, -32), new ChunkPos(0, 0)))) throw new AssertionError(origin);
         checkEnd();
+        EndGatewayPreparationTest.run();
         System.out.println("QA_EVT {\"event\":\"portal_region_coverage\",\"status\":\"pass\",\"context\":{\"nether_cases\":19,\"end_spawn_cases\":30}}");
     }
 
