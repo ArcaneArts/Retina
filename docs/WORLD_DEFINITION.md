@@ -13,6 +13,9 @@ identities; they do not supply generation rules. Production JSON profile upload
 and profile-zero generation have been removed. See the
 [implementation acceptance report](WORLD_DEFINITION_ACCEPTANCE.md) for merged
 deliveries, executed verification, artifact measurements and current limits.
+Reusable vanilla data for creating new arbitrary-seed snapshots is described in
+[world catalogs](WORLD_CATALOG.md). Materialized worlds still use this file
+format and loader; existing snapshots keep their exact original seed and rules.
 
 ## Wire format and storage geometry
 

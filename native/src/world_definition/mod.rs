@@ -3,6 +3,7 @@
 //! This module loads data only: it never creates a GPU device, reads datapacks,
 //! or calls Minecraft. Both host adapters and the headless runner use it.
 mod adapter;
+pub mod catalog;
 mod ffi;
 pub(crate) mod residency;
 pub mod runtime;

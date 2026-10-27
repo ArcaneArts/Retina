@@ -33,7 +33,15 @@ final class TerrainFeatureProfile {
         var bands = new JsonArray();
         // MaterialSystem's 26.3 band recipe. The world-seeded table is generated once;
         // its spatial offset is evaluated on the GPU using the registered noise below.
-        if (hasBands(materialRule)) for (var state : bands(seed)) bands.add(material(palette, state));
+        if (hasBands(materialRule)) {
+            // Palette identity is independent of which colored band happens to
+            // appear first. Reserve the recipe's complete type set before draws.
+            for (var block : List.of(Blocks.TERRACOTTA, Blocks.DYED_TERRACOTTA.orange(),
+                    Blocks.DYED_TERRACOTTA.yellow(), Blocks.DYED_TERRACOTTA.brown(),
+                    Blocks.DYED_TERRACOTTA.red(), Blocks.DYED_TERRACOTTA.white(), Blocks.DYED_TERRACOTTA.lightGray()))
+                material(palette, block.defaultBlockState());
+            for (var state : bands(seed)) bands.add(material(palette, state));
+        }
         terrain.add("bands", bands);
         terrain.addProperty("snow_layer",material(palette,Blocks.SNOW.defaultBlockState()));
         var noise = registry.lookupOrThrow(Registries.NOISE).getOrThrow(ResourceKey.create(Registries.NOISE,

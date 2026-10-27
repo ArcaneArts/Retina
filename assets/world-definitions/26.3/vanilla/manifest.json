@@ -1,0 +1,161 @@
+{
+  "minecraft_version": "26.3",
+  "data_version": 5023,
+  "catalog_version": 1,
+  "materialization_version": 1,
+  "generation_version": 1,
+  "exporter": "Retina vanilla catalog compiler 1",
+  "environment": "Retina mod-development registry exporter",
+  "content_mods": [],
+  "source_packs": [
+    "vanilla"
+  ],
+  "asset": "retina-catalog.dat",
+  "compressed_bytes": 2567145,
+  "sha256": "83a580287f00f3c240926542d4e4b6f60239df04ccfebfe9f642f0fd27249619",
+  "variants": {
+    "normal": {
+      "generate_structures": true,
+      "bonus_chest": false,
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_end",
+        "minecraft:the_nether"
+      ],
+      "limitations": {
+        "minecraft:overworld": {
+          "decoration_omissions": [
+            "CoralClawFeature",
+            "CoralTreeFeature",
+            "RootSystemFeature",
+            "simple_block:survival:minecraft:pale_moss_carpet",
+            "simple_block:survival:minecraft:tube_coral",
+            "tree_decorator:alter_ground",
+            "tree_decorator:attached_to_leaves",
+            "tree_decorator:beehive",
+            "tree_decorator:creaking_heart",
+            "tree_decorator:pale_moss",
+            "tree_decorator:place_on_ground",
+            "tree_decorator:shelf_mushroom",
+            "vegetation_patch:nested_feature:LakeFeature",
+            "vegetation_patch:nested_feature:SculkPatchFeature"
+          ],
+          "geology_omissions": [],
+          "simple_current_omissions": [],
+          "structures": [
+            "element:feature_pool_element",
+            "missing_pool:minecraft:trial_chambers/spawner/contents/melee",
+            "missing_pool:minecraft:trial_chambers/spawner/contents/ranged",
+            "missing_pool:minecraft:trial_chambers/spawner/contents/slow_ranged",
+            "missing_pool:minecraft:trial_chambers/spawner/contents/small_melee",
+            "missing_template:minecraft:ancient_city/walls/intact_horizontal_wall_stairs_5",
+            "placement:minecraft:strongholds",
+            "structure:minecraft:buried_treasure:buried_treasure",
+            "structure:minecraft:igloo:igloo",
+            "structure:minecraft:mansion:woodland_mansion",
+            "structure:minecraft:mineshaft:mineshaft",
+            "structure:minecraft:mineshaft_mesa:mineshaft",
+            "structure:minecraft:monument:ocean_monument",
+            "structure:minecraft:ocean_ruin_cold:ocean_ruin",
+            "structure:minecraft:ocean_ruin_warm:ocean_ruin",
+            "structure:minecraft:ruined_portal:ruined_portal",
+            "structure:minecraft:ruined_portal_desert:ruined_portal",
+            "structure:minecraft:ruined_portal_jungle:ruined_portal",
+            "structure:minecraft:ruined_portal_mountain:ruined_portal",
+            "structure:minecraft:ruined_portal_ocean:ruined_portal",
+            "structure:minecraft:ruined_portal_swamp:ruined_portal",
+            "structure:minecraft:shipwreck:shipwreck",
+            "structure:minecraft:shipwreck_beached:shipwreck",
+            "structure:minecraft:stronghold:stronghold"
+          ],
+          "approximations": [
+            "aquifer:4x4x4-barrier-interpolation",
+            "aquifer:carver-negative-density-proxy",
+            "aquifer:gpu-positional-hash",
+            "density:old_blended_noise",
+            "material:OreVeinRule",
+            "material:preliminary-surface-from-final-height"
+          ]
+        },
+        "minecraft:the_end": {
+          "decoration_omissions": [],
+          "geology_omissions": [],
+          "simple_current_omissions": [],
+          "structures": [
+            "placement:minecraft:strongholds"
+          ],
+          "approximations": []
+        },
+        "minecraft:the_nether": {
+          "decoration_omissions": [],
+          "geology_omissions": [],
+          "simple_current_omissions": [],
+          "structures": [
+            "placement:minecraft:strongholds"
+          ],
+          "approximations": [
+            "density:old_blended_noise",
+            "material:preliminary-surface-from-final-height"
+          ]
+        }
+      }
+    },
+    "normal-no-structures": {
+      "generate_structures": false,
+      "bonus_chest": false,
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_end",
+        "minecraft:the_nether"
+      ],
+      "limitations": {
+        "minecraft:overworld": {
+          "decoration_omissions": [
+            "CoralClawFeature",
+            "CoralTreeFeature",
+            "RootSystemFeature",
+            "simple_block:survival:minecraft:pale_moss_carpet",
+            "simple_block:survival:minecraft:tube_coral",
+            "tree_decorator:alter_ground",
+            "tree_decorator:attached_to_leaves",
+            "tree_decorator:beehive",
+            "tree_decorator:creaking_heart",
+            "tree_decorator:pale_moss",
+            "tree_decorator:place_on_ground",
+            "tree_decorator:shelf_mushroom",
+            "vegetation_patch:nested_feature:LakeFeature",
+            "vegetation_patch:nested_feature:SculkPatchFeature"
+          ],
+          "geology_omissions": [],
+          "simple_current_omissions": [],
+          "structures": [],
+          "approximations": [
+            "aquifer:4x4x4-barrier-interpolation",
+            "aquifer:carver-negative-density-proxy",
+            "aquifer:gpu-positional-hash",
+            "density:old_blended_noise",
+            "material:OreVeinRule",
+            "material:preliminary-surface-from-final-height"
+          ]
+        },
+        "minecraft:the_end": {
+          "decoration_omissions": [],
+          "geology_omissions": [],
+          "simple_current_omissions": [],
+          "structures": [],
+          "approximations": []
+        },
+        "minecraft:the_nether": {
+          "decoration_omissions": [],
+          "geology_omissions": [],
+          "simple_current_omissions": [],
+          "structures": [],
+          "approximations": [
+            "density:old_blended_noise",
+            "material:preliminary-surface-from-final-height"
+          ]
+        }
+      }
+    }
+  }
+}
