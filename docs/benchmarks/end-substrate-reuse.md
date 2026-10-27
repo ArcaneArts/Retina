@@ -42,7 +42,7 @@ share random state with other anchors/features.
 
 ## Validation and bounded results
 
-The native suite passes 342 tests, zero failures, with 82 optional tests ignored.
+After integration with the NBT-fidelity changes, the native suite passes 345 tests, zero failures, with 82 optional tests ignored.
 Four complete raw-record hashes match the original dense baseline: mostly void
 (1,0), islands (8,8), city (-2,-3), and arena (0,0). Valid records for all 1,024
 chunks still include biomes, heightmaps, lighting, structures, and entities.
