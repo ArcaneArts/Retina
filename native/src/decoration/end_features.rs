@@ -3,6 +3,7 @@
 pub mod islands;
 pub mod chorus;
 pub mod spikes;
+pub mod gateways;
 mod placement;
 use super::*;
 use super::placement::Overlay;

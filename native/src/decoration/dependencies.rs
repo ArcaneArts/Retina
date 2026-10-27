@@ -886,6 +886,11 @@ impl Planner<'_> {
                     ..self.request
                 };
                 if ids[0].len()==1 {
+                    if let Kind::EndGateway { end_gateway } = &self.profile.decorations[ids[0][0] as usize].feature {
+                        let (writes,metadata)=end_gateway.generate([x*16,request.min_y,z*16],&field,self.profile,request,&placement::Overlay::default());
+                        let (columns,_)=output_columns::Columns::from_writes(&writes,None,request.min_y,request.height as usize,&self.metrics.performance);
+                        return Ok(Output{writes,columns,metadata});
+                    }
                     if let Kind::EndSpikes { end_spikes } = &self.profile.decorations[ids[0][0] as usize].feature {
                         let (writes,metadata)=end_spikes.generate([x*16,request.min_y,z*16],&field,self.profile,request,&placement::Overlay::default());
                         let (columns,_)=output_columns::Columns::from_writes(&writes,None,request.min_y,request.height as usize,&self.metrics.performance);

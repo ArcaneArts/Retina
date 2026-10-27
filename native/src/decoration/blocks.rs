@@ -576,6 +576,7 @@ pub(super) fn place(
         Kind::EndPlatform { platform } => super::end_features::platform(*platform, at, field, profile, request, overlay, blocks),
         Kind::EndIsland { end_island } => end_island.place(at,field,profile,request,overlay,blocks),
         Kind::EndChorus { end_chorus } => end_chorus.place(at,field,profile,request,overlay,blocks),
+        Kind::EndGateway { end_gateway } => { let (writes,_) = end_gateway.generate(at,field,profile,request,overlay); blocks.extend(writes); },
         Kind::EndSpikes { end_spikes } => { let (writes,_) = end_spikes.generate(at,field,profile,request,overlay); blocks.extend(writes); },
         Kind::AttachmentGrowth { growth } => {
             super::attachment::place(growth, at, rng, field, profile, request, overlay, blocks);

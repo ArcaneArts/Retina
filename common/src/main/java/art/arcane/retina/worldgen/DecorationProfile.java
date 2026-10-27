@@ -136,7 +136,7 @@ final class DecorationProfile {
                 var members = membership.get(placed);
                 for (int id : selected) {
                     var recipe = recipes.get(id).getAsJsonObject();
-                    if (Set.of("end_island","end_chorus","end_spikes").contains(recipe.get("kind").getAsString())) {
+                    if (Set.of("end_island","end_chorus","end_spikes","end_gateway").contains(recipe.get("kind").getAsString())) {
                         var ids = new JsonArray(); for (int b = members.nextSetBit(0); b >= 0; b = members.nextSetBit(b+1)) ids.add(b);
                         recipe.getAsJsonObject(recipe.get("kind").getAsString()).add("biomes",ids);
                     }
@@ -273,8 +273,18 @@ final class DecorationProfile {
             platform.add(material(Blocks.COBBLESTONE.defaultBlockState()));
             data.add("platform", platform);
             emit(path, p, chance, "void_platform", data, selected);
+        } else if (end && feature instanceof EndGatewayFeature gatewayFeature) {
+            if(depth!=0 || !EndPlacementProfile.supported(p.program) || !EndPlacementProfile.owned(p.program)) {unsupported.add("end_gateway:placement_or_nested_root");return;}
+            var state=Blocks.END_GATEWAY.defaultBlockState();
+            var entity=new net.minecraft.world.level.block.entity.TheEndGatewayBlockEntity(BlockPos.ZERO,state);
+            gatewayFeature.exit().ifPresent(exit->entity.setExitPosition(exit,gatewayFeature.exact()));
+            var gateway=new JsonObject();gateway.addProperty("gateway",material(state));gateway.addProperty("bedrock",material(Blocks.BEDROCK.defaultBlockState()));gateway.addProperty("air",material(Blocks.AIR.defaultBlockState()));
+            gateway.add("tag",StructureProfile.tag(entity.saveWithFullMetadata(registry)));
+            gateway.addProperty("step",generationStep);gateway.addProperty("index",featureIndex);gateway.add("placement",p.program.deepCopy());gateway.add("biomes",new JsonArray());
+            var data=new JsonObject();data.add("end_gateway",gateway);data.addProperty("reach",EndPlacementProfile.reach(p.program,1));
+            var root=p.copy();root.program=new JsonArray();emit(path,root,chance,"end_gateway",data,selected);
         } else if (end && feature instanceof EndSpikeFeature spikeFeature) {
-            if (depth!=0 || !EndPlacementProfile.supported(p.program) || p.program.asList().stream().map(JsonElement::getAsJsonObject).anyMatch(op->Set.of("minecraft:in_square","minecraft:fixed_placement").contains(op.get("type").getAsString()))) { unsupported.add("end_spikes:placement_or_nested_root"); return; }
+            if (depth!=0 || !EndPlacementProfile.supported(p.program) || !EndPlacementProfile.owned(p.program) || p.program.asList().stream().map(JsonElement::getAsJsonObject).anyMatch(op->Set.of("minecraft:in_square","minecraft:fixed_placement").contains(op.get("type").getAsString()))) { unsupported.add("end_spikes:placement_or_nested_root"); return; }
             var spikes=EndSpikeProfile.geometry(spikeFeature);
             if(spikes==null) {unsupported.add("end_spikes:geometry");return;}
             int reach=EndPlacementProfile.reach(p.program,spikes.remove("geometry_reach").getAsInt());
@@ -536,7 +546,7 @@ final class DecorationProfile {
     }
     private static void finishFeature(JsonObject recipe,LinkedHashMap<BlockState,Integer> palette) {
             switch(recipe.get("kind").getAsString()) {
-                case "end_island", "end_chorus", "end_spikes" -> finishProgram(recipe.getAsJsonObject(recipe.get("kind").getAsString()).getAsJsonArray("placement"),palette);
+                case "end_island", "end_chorus", "end_spikes", "end_gateway" -> finishProgram(recipe.getAsJsonObject(recipe.get("kind").getAsString()).getAsJsonArray("placement"),palette);
                 case "nether_feature" -> NetherFeatureProfile.finish(recipe.getAsJsonObject("nether"),palette);
                 case "flat_lake" -> {
                     for (String key : List.of("can_place_feature", "can_replace_with_air_or_fluid", "can_replace_with_barrier", "solid", "liquid"))

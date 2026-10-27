@@ -541,14 +541,65 @@ This validates saved output, not live gameplay, final readiness or completed-End
 performance. Coverage now supports four roots; natural gateways remain omitted.
 Production End activation remains disabled.
 
+### Cycle 3e: natural gateways and saved exit data
+
+The shared exact End walker now samples loaded offset providers in X/Y/Z order,
+using the existing source integer-provider semantics. Horizontal dependency reach
+includes offset bounds. Metadata-producing roots additionally prove that terminal
+positions remain in their anchor chunk; unsupported nested/cross-chunk programs
+are reported rather than silently losing block entities. Spike ownership checks
+also cover the newly supported offset operation.
+
+Gateway export uses an actual `TheEndGatewayBlockEntity` and Minecraft's full save
+codec to retain the loaded exit, exact-teleport flag, age and components. Native
+geometry preserves the source X/Y/Z loop order, bedrock arrangement and air
+clearing, then patches each prototype's coordinates. Writes enter the live overlay
+between leaves. Later overlapping writes remove earlier gateway metadata, and
+final tags use the existing ordered per-chunk metadata event path. The delayed
+exit-search variant retains the absence of a destination. Progression-controlled
+central gateways remain owned by Minecraft's dragon fight; this recipe implements
+loaded generation features, not that runtime progression.
+
+```sh
+./gradlew --no-daemon -PretinaHostOnly \
+  -PretinaNativePath=/absolute/path/libretina_worldgen.dylib \
+  :common:endGatewayTest -x :packageNative -x :buildNative
+```
+
+Thirty-three targeted actual world-seeded roots over two seeds match: seventeen
+accepted gateways and sixteen rejected attempts. Natural placements cross region
+edges at positive and negative coordinates. Six configured fixtures cover delayed
+search, known exits with both exact modes, repeated positions and an overlapping
+placement that clears a previous gateway's block entity. These fixtures also use
+Y=134 above the base-noise range and span both region axes. Every native gateway
+tag round-trips through Minecraft's actual block-entity load/save codec.
+
+Two complete boundary chunks match 131,072 states and block entities against
+independent vanilla feature replay. The source neighborhood includes the complete
+chain of earlier feature reads, bounded by the sum of the loaded root reaches.
+All existing End regression fixtures pass, and the original vanilla reference
+hash is unchanged. Native suite: 315 passed, zero failures, 75 optional fixtures
+ignored. Initial cheap RNG discovery is retained as evidence; ordinary reruns use
+only the thirty-three recorded anchors instead of repeating that search.
+
+Two published regions at (0,585)/(1,585) retain all forty-five source gateway cells
+across four chunks from anchor (31,18721). The saved block entity exactly retains
+exit (100,50,0), exact teleport, age zero and components. All 2,048 chunk records
+were hashed, then both disposable files (8,404,992 bytes) were removed. This is
+saved-generation correctness evidence, not live gateway travel or performance
+acceptance.
+
+All five vanilla placed End feature roots now export without omissions. Cities,
+ships, progression/travel, sparse execution and final performance/compatibility
+acceptance remain unfinished. Production End activation stays disabled.
+
 ## Remaining delivery sequence
 
-1. Naturally generated gateways.
-2. End cities, ships, markers and saved structure metadata.
-3. Conservative occupancy classification and sparse execution through publication.
-4. Dragon progression and asynchronous portal/gateway preparation.
-5. Automatic activation and loader/world/preview compatibility.
-6. Measured tuning, gameplay verification and final merged-build acceptance.
+1. End cities, ships, markers and saved structure metadata.
+2. Conservative occupancy classification and sparse execution through publication.
+3. Dragon progression and asynchronous portal/gateway preparation.
+4. Automatic activation and loader/world/preview compatibility.
+5. Measured tuning, gameplay verification and final merged-build acceptance.
 
 Each cycle uses a separate worktree and PR with squash auto-merge. Complete region
 performance targets are 50–100 ms median / below 150 ms p95 for void, 100–200 ms /
