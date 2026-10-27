@@ -81,7 +81,8 @@ solidity columns, and dense/sparse comparisons across unaligned rectangles.
 Complete-region hash comparisons cover four representative regions; bounded
 timings include the full production writer and synchronous cleanup.
 
-The native suite passes 340 tests, with zero failures and 81 optional tests
+After integration with the saved-definition execution-binding change, the
+native suite passes 341 tests, with zero failures and 82 optional tests
 ignored. Four complete raw-record hashes match the original dense baseline:
 (1,0) mostly void, (8,8) islands, (-2,-3) city, and (0,0) arena. This establishes
 exact Retina output preservation separately from the independent source
@@ -94,11 +95,15 @@ claiming that every process on the machine was controlled.
 
 | Workload | Previous median ms | Batched bounds median ms | Batched p95/max ms |
 | --- | ---: | ---: | ---: |
-| Mostly void, fresh matched baseline | 294.8 | 162.0 | 180.7 |
-| Outer islands, previous cycle baseline | 358.7 | 227.0 | 234.7 |
-| Cities/central arena, previous cycle baseline | 297.8 | 135.9 | 222.1 |
+| Mostly void, fresh matched baseline | 295.9 | 162.8 | 180.7 |
+| Outer islands, previous cycle baseline | 361.2 | 228.3 | 234.7 |
+| Cities/central arena, previous cycle baseline | 318.3 | 162.9 | 222.1 |
 
-The previous void baseline varied from its earlier 332.1 ms measurement, so
+The table uses conventional medians (the mean of the central two samples for
+even counts), recomputed directly from saved timing rows. The runner now uses
+that definition too; earlier raw reports labeled nearest-rank p50 as median.
+The p95/max values remain unchanged. The previous void baseline varied from
+its earlier measurement, so
 use the fresh matched comparison for this cycle's claim. An intermediate
 pointwise-bound version improved void latency but added too much repeated
 horizontal work; its reports and binary remain retained. Batching improved
@@ -113,8 +118,8 @@ additive across 13 tiles, mask work 6.02 ms, and temporary interval/needed array
 Timed process peak RSS is approximately 900–936 MB and includes startup and
 driver state. GPU transfers and final chunk transport are unchanged.
 
-Mostly-void stage medians are 22.6 ms initial terrain, 108.0 ms decoration
-planning, 12.5 ms lighting, and 11.3 ms publication I/O. A separate root probe
+Mostly-void stage p50 values are about 23 ms initial terrain, 108 ms decoration
+planning, 13 ms lighting, and 11 ms publication I/O. A separate root probe
 still spends about 31 ms scanning for city stair-shape updates. Required halo
 terrain and that scan are the next measured costs to address. Void and ordinary
 island medians still miss the final targets; this is not final acceptance.

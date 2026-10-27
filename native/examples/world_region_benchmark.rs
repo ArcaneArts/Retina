@@ -53,6 +53,9 @@ const STAGES: [&str; 33] = [
 ];
 fn percentile(mut values: Vec<f64>, p: f64) -> f64 {
     values.sort_by(f64::total_cmp);
+    if p == 0.5 {
+        return (values[(values.len() - 1) / 2] + values[values.len() / 2]) * 0.5;
+    }
     values[((values.len() as f64 * p).ceil() as usize)
         .saturating_sub(1)
         .min(values.len() - 1)]
