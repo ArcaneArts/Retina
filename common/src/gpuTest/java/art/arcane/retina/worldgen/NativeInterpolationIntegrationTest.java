@@ -24,7 +24,9 @@ public final class NativeInterpolationIntegrationTest {
             net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources,RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY)).forEach(Registry.PendingTags::apply);
             var registry=RegistryIntegrationFixtures.load(resources);
             Holder<Biome> plains=registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.withDefaultNamespace("plains")));
-            var base=BiomeTerrainProfile.load(registry,new RetinaBiomeSource(List.of(plains),128,.55F),-64,384);
+            var base=TerrainProfileData.export(registry,new RetinaBiomeSource(List.of(plains),128,.55F),-64,384,123456789L,
+                    registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(net.minecraft.world.level.levelgen.NoiseGeneratorSettings.OVERWORLD).value(),
+                    StructureProfile.Context.NONE);
             var compiler=new RegistryGpuProgram(registry,-64,384,63);
             var field=add(add(square(axis("x")),square(axis("y"))),square(axis("z")));
             var inner=interpolate(field,4,8);
@@ -53,38 +55,43 @@ public final class NativeInterpolationIntegrationTest {
             fixture.addProperty("interpolation_noise",compiler.noise(new JsonPrimitive("minecraft:surface")));
             Files.writeString(Path.of("build/registry-interpolation-profile.json"),fixture.toString());
             int columns=0;
-            for(String execution:List.of("interpreter","specialized")) {
-                var surface=compiler.new Program();
-                surface.roots.add(surface.density(add(new JsonPrimitive(100.375F),multiply(cases.get(2),new JsonPrimitive(200F)))));
-                var data=NativeCoordinateIntegrationTest.fixture(base,compiler,List.of(NativeCoordinateIntegrationTest.zero(),surface.finish(),NativeCoordinateIntegrationTest.zero()));
-                data.getAsJsonObject("registry_program").add("surface",JsonParser.parseString("[-64,8,1]"));
-                data.addProperty("program_execution",execution);
-                int id=NativeTerrain.instance().registerProfile(data.toString());
-                for(int[] pos:new int[][]{{-32,-31},{-1,0},{0,0},{31,32}}) {
-                    var request=new TerrainRequest(123456789L,pos[0],pos[1],-64,384,64,48,.008F,id);
-                    var actual=NativeTerrain.instance().sampleColumns(request);
-                    try(var generated=NativeTerrain.instance().generate(request)) {
-                        if(!Arrays.equals(actual.heights(),generated.columns().heights()))throw new AssertionError("Interpolation height differs with halo");
-                    }
-                    for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
-                        // The explicit-height adapter uses the existing quart
-                        // height lattice. Compare its four registered samples.
-                        int wx=pos[0]*16+x,wz=pos[1]*16+z,gx=Math.floorDiv(wx,4)*4,gz=Math.floorDiv(wz,4)*4;
-                        float tx=Math.floorMod(wx,4)*.25F,tz=Math.floorMod(wz,4)*.25F;
-                        var sampler=samplers.get(2);
-                        float a=sample(sampler,gx,gz),b=sample(sampler,gx+4,gz),c=sample(sampler,gx,gz+4),d=sample(sampler,gx+4,gz+4);
-                        float height=(a+(b-a)*tx)+((c+(d-c)*tx)-(a+(b-a)*tx))*tz;
-                        int h=Math.clamp((int)Math.floor(101.375F+height*200F),-63,320);
-                        if(actual.heights()[z*16+x]!=h)throw new AssertionError(execution+" at "+wx+","+wz+": expected "+h+", got "+actual.heights()[z*16+x]);
-                        columns++;
+            var surface=compiler.new Program();
+            surface.roots.add(surface.density(add(new JsonPrimitive(100.375F),multiply(cases.get(2),new JsonPrimitive(200F)))));
+            var data=NativeCoordinateIntegrationTest.fixture(base,compiler,List.of(NativeCoordinateIntegrationTest.zero(),surface.finish(),NativeCoordinateIntegrationTest.zero()));
+            data.getAsJsonObject("registry_program").add("surface",JsonParser.parseString("[-64,8,1]"));
+            try(var snapshot=DefinitionFixture.snapshot("minecraft:overworld",data,
+                    new TerrainRequest(123456789L,0,0,-64,384,64,48,.008F),-64,384,true,false)) {
+                byte[] saved=Files.readAllBytes(snapshot.file());
+                for(var execution:List.of(NativeWorldDefinition.ProgramExecution.INTERPRETER,NativeWorldDefinition.ProgramExecution.SPECIALIZED)) {
+                    try(var definition=snapshot.open(execution)) {
+                        for(int[] pos:new int[][]{{-32,-31},{-1,0},{0,0},{31,32}}) {
+                            var request=definition.request(pos[0],pos[1]);
+                            var actual=NativeTerrain.instance().sampleColumns(request);
+                            try(var generated=NativeTerrain.instance().generate(request)) {
+                                if(!Arrays.equals(actual.heights(),generated.columns().heights()))throw new AssertionError("Interpolation height differs with halo");
+                            }
+                            for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
+                                // The explicit-height adapter uses the existing quart
+                                // height lattice. Compare its four registered samples.
+                                int wx=pos[0]*16+x,wz=pos[1]*16+z,gx=Math.floorDiv(wx,4)*4,gz=Math.floorDiv(wz,4)*4;
+                                float tx=Math.floorMod(wx,4)*.25F,tz=Math.floorMod(wz,4)*.25F;
+                                var sampler=samplers.get(2);
+                                float a=sample(sampler,gx,gz),b=sample(sampler,gx+4,gz),c=sample(sampler,gx,gz+4),d=sample(sampler,gx+4,gz+4);
+                                float height=(a+(b-a)*tx)+((c+(d-c)*tx)-(a+(b-a)*tx))*tz;
+                                int h=Math.clamp((int)Math.floor(101.375F+height*200F),-63,320);
+                                if(actual.heights()[z*16+x]!=h)throw new AssertionError(execution+" at "+wx+","+wz+": expected "+h+", got "+actual.heights()[z*16+x]);
+                                columns++;
+                            }
+                        }
                     }
                 }
+                if(!Arrays.equals(saved,Files.readAllBytes(snapshot.file())))throw new AssertionError("Interpolation dispatch changed its saved definition");
             }
             System.out.println("QA_EVT {\"event\":\"registered_interpolation_scopes\",\"status\":\"pass\",\"context\":{\"columns\":"+columns+",\"fields\":"+compiler.interpolations.size()+",\"distinct_from_flattening\":"+changed+"}}");
             checkComposition(base,registry);
         }
     }
-    private static void checkComposition(BiomeTerrainProfile base,RegistryAccess registry) throws Exception {
+    private static void checkComposition(TerrainProfileData base,RegistryAccess registry) throws Exception {
         JsonElement x=gradient("x",-32,32,-1,1),z=gradient("z",-32,32,-1,1),y=gradient("y",-64,320,-64,320);
         var a=interpolate(square(x),4,8);
         var choice=new JsonObject();choice.addProperty("type","minecraft:range_choice");choice.add("input",interpolate(x,4,8));choice.addProperty("min_inclusive",-.3);choice.addProperty("max_exclusive",.2);choice.addProperty("when_in_range",145.25);choice.addProperty("when_out_of_range",95.5);
@@ -106,27 +113,33 @@ public final class NativeInterpolationIntegrationTest {
             var graph=surface.finish();
             var common=NativeCoordinateIntegrationTest.fixture(base,compiler,List.of(NativeCoordinateIntegrationTest.zero(),graph,graph));
             common.getAsJsonObject("registry_program").addProperty("density_composition",true);
-            for(String execution:List.of("interpreter","specialized")) {
-                var data=common.deepCopy();data.addProperty("program_execution",execution);
-                int id=NativeTerrain.instance().registerProfile(data.toString());
-                var legacy=data.deepCopy();legacy.getAsJsonObject("registry_program").addProperty("density_composition",false);
-                int old=NativeTerrain.instance().registerProfile(legacy.toString());
-                for(int[] pos:new int[][]{{-2,-1},{-1,0},{0,-1},{1,1}}) {
-                    var request=new TerrainRequest(123456789L,pos[0],pos[1],-64,384,64,48,.008F,id);
-                    var actual=NativeTerrain.instance().sampleColumns(request);
-                    var before=NativeTerrain.instance().sampleColumns(new TerrainRequest(request.seed(),pos[0],pos[1],-64,384,64,48,.008F,old));
-                    try(var generated=NativeTerrain.instance().generate(request)) {
-                        if(!Arrays.equals(actual.heights(),generated.columns().heights()))throw new AssertionError("Composed density height differs with chunk halo");
-                    }
-                    for(int dz=0;dz<16;dz++)for(int dx=0;dx<16;dx++) {
-                        int wx=pos[0]*16+dx,wz=pos[1]*16+dz,h=-63;
-                        for(int wy=319;wy>=-64;wy--)if(sampler.sampleValue(SamplerContext.EMPTY_UNCACHED,wx,wy,wz)>0){h=Math.max(-63,wy+1);break;}
-                        int at=dz*16+dx;
-                        if(actual.heights()[at]!=h)throw new AssertionError("Composed density "+index+" "+execution+" at "+wx+","+wz+": expected "+h+", got "+actual.heights()[at]);
-                        if(before.heights()[at]!=h)different++;
-                        checked++;
+            var legacy=common.deepCopy();legacy.getAsJsonObject("registry_program").addProperty("density_composition",false);
+            var identity=new TerrainRequest(123456789L,0,0,-64,384,64,48,.008F);
+            try(var snapshot=DefinitionFixture.snapshot("minecraft:overworld",common,identity,-64,384,true,false);
+                var oldSnapshot=DefinitionFixture.snapshot("minecraft:overworld",legacy,identity,-64,384,true,false)) {
+                byte[] saved=Files.readAllBytes(snapshot.file()),oldSaved=Files.readAllBytes(oldSnapshot.file());
+                for(var execution:List.of(NativeWorldDefinition.ProgramExecution.INTERPRETER,NativeWorldDefinition.ProgramExecution.SPECIALIZED)) {
+                    try(var definition=snapshot.open(execution);var oldDefinition=oldSnapshot.open(execution)) {
+                        for(int[] pos:new int[][]{{-2,-1},{-1,0},{0,-1},{1,1}}) {
+                            var request=definition.request(pos[0],pos[1]);
+                            var actual=NativeTerrain.instance().sampleColumns(request);
+                            var before=NativeTerrain.instance().sampleColumns(oldDefinition.request(pos[0],pos[1]));
+                            try(var generated=NativeTerrain.instance().generate(request)) {
+                                if(!Arrays.equals(actual.heights(),generated.columns().heights()))throw new AssertionError("Composed density height differs with chunk halo");
+                            }
+                            for(int dz=0;dz<16;dz++)for(int dx=0;dx<16;dx++) {
+                                int wx=pos[0]*16+dx,wz=pos[1]*16+dz,h=-63;
+                                for(int wy=319;wy>=-64;wy--)if(sampler.sampleValue(SamplerContext.EMPTY_UNCACHED,wx,wy,wz)>0){h=Math.max(-63,wy+1);break;}
+                                int at=dz*16+dx;
+                                if(actual.heights()[at]!=h)throw new AssertionError("Composed density "+index+" "+execution+" at "+wx+","+wz+": expected "+h+", got "+actual.heights()[at]);
+                                if(before.heights()[at]!=h)different++;
+                                checked++;
+                            }
+                        }
                     }
                 }
+                if(!Arrays.equals(saved,Files.readAllBytes(snapshot.file())) || !Arrays.equals(oldSaved,Files.readAllBytes(oldSnapshot.file())))
+                    throw new AssertionError("Composition dispatch changed its saved definitions");
             }
         }
         if(different<256)throw new AssertionError("Composed fixtures must distinguish final-field interpolation: "+different);

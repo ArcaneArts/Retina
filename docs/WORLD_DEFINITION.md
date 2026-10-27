@@ -656,3 +656,23 @@ and publishes their lighting/type rules the same way.
 both current/reference libraries, and closes each case after synchronous lighting
 jobs complete. Dense/sparse/reference output comparisons retain their existing
 scope; raw blocks are explicit lighting inputs, while rules come only from the file.
+
+### Analytic terrain fixtures
+
+Coordinate scopes, interpolation/density composition, aquifer equations and
+snow/MCA integration use complete saved fixtures. Registry compilation uses the
+fixture's declared seed before writing. Every generated chunk, column query and
+region request then comes from the loaded dimension; snow MCA DataVersion also
+comes from loaded metadata.
+
+The test-only `DefinitionFixture.snapshot(...)` owns one published file without
+starting a binding. Tests can open interpreter and specialized sessions to that
+same file, close each session, and finally remove the temporary file. They assert
+that dispatch comparisons leave the file unchanged. Density-composition baseline
+and composed programs are separate explicitly compiled generation definitions.
+`create(..., execution)` supports cases that need one selected dispatch binding.
+These helpers all use the production assembler, file writer and Rust loader.
+
+The coordinate/interpolation JSON diagnostic artifacts remain temporary inputs
+to the existing low-level GPU shader comparison probes; those probes' fixture
+migration is separate. They are not uploaded by these Java generation tests.
