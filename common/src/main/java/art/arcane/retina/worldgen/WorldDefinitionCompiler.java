@@ -22,6 +22,8 @@ public final class WorldDefinitionCompiler {
     private WorldDefinitionCompiler() { }
 
     public static CompoundTag compile(MinecraftServer server) {
+        if (Boolean.getBoolean("retina.qa.definition.failCompiler"))
+            throw new IllegalStateException("World definition compiler intentionally disabled by QA");
         var stems = new LinkedHashMap<ResourceKey<LevelStem>, LevelStem>();
         server.registryAccess().lookupOrThrow(Registries.LEVEL_STEM).listElements()
                 .forEach(holder -> stems.put(holder.key(), holder.value()));
@@ -77,6 +79,7 @@ public final class WorldDefinitionCompiler {
             parameters.putFloat("base_height", 64F);
             parameters.putFloat("amplitude", 48F);
             parameters.putFloat("frequency", .008F);
+            if (generator instanceof RetinaChunkGenerator retina) retina.definitionParameters(parameters);
             entry.put("parameters", parameters);
             String unsupported = RetinaGenerators.unsupportedReason(level, generator);
             if (unsupported != null) {
@@ -84,11 +87,14 @@ public final class WorldDefinitionCompiler {
                 entry.putIntArray("material_palette", new int[0]);
                 entry.putIntArray("biome_palette", new int[0]);
             } else {
-                var source = new GenerationSource(level, generator, type);
-                var data = export(registry, source, options.seed(), effectiveStructures);
+                var source = generator instanceof RetinaChunkGenerator ? null : new GenerationSource(level, generator, type);
+                var data = generator instanceof RetinaChunkGenerator retina
+                        ? retina.exportDefinition(registry, options.seed(), effectiveStructures, type.hasSkyLight())
+                        : export(registry, source, options.seed(), effectiveStructures);
                 var profile = JsonParser.parseString(data.json()).getAsJsonObject();
+                parameters.putInt("sea_level", data.seaLevel());
                 profile.addProperty("dimension", level.identifier().toString());
-                profile.add("generation", source.describe());
+                if (source != null) profile.add("generation", source.describe());
                 profile.remove("materials");
                 profile.remove("mca_compression");
                 var localMaterials = data.materials();

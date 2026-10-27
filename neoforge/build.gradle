@@ -15,13 +15,15 @@ neoForge {
     runs {
         configureEach {
             jvmArguments.add '--enable-native-access=ALL-UNNAMED'
+            if (providers.gradleProperty('retinaNativePath').isPresent()) systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
             // FML creates named mod modules after boot, outside the JVM flag's module lookup.
             // Java 25 permits their FFM calls through this explicit policy.
             jvmArguments.add '--illegal-native-access=allow'
             if (providers.gradleProperty('retinaQa').isPresent()) {
+                if (providers.gradleProperty('retinaDefinitionFailCompilerQa').isPresent()) systemProperty 'retina.qa.definition.failCompiler', 'true'
                 systemProperty 'retina.qa', 'true'
                 [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',
-                 NetherCompatibility: 'nether.compatibility', Automatic: 'automatic', AutomaticReopen: 'automatic.reopen',
+                 DefinitionCapture: 'definition.capture', NetherCompatibility: 'nether.compatibility', Automatic: 'automatic', AutomaticReopen: 'automatic.reopen',
                  ClientDatapack: 'client.datapack', ClientServer: 'client.server', ClientHoldSeconds: 'client.holdSeconds',
                  ClientCommands: 'client.commands', ClientOpenExisting: 'client.openExisting', ExpectedFeature: 'expectedFeature', ProfileOutput: 'profileOutput'].each { flag, property ->
                     if (providers.gradleProperty("retina${flag}Qa").isPresent()) systemProperty "retina.qa.${property}", providers.gradleProperty("retina${flag}Qa").get()

@@ -18,7 +18,8 @@ abstract class ServerLevelMixin {
     @ModifyExpressionValue(method = "<init>", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/world/level/dimension/LevelStem;generator()Lnet/minecraft/world/level/chunk/ChunkGenerator;"))
     private ChunkGenerator retina$activate(ChunkGenerator generator, @Local(argsOnly = true) LevelStem stem,
-                                         @Local(argsOnly = true) ResourceKey<Level> dimension) {
-        return RetinaGenerators.adapt(dimension, stem, generator);
+                                         @Local(argsOnly = true) ResourceKey<Level> dimension,
+                                         @Local(argsOnly = true) net.minecraft.server.MinecraftServer server) {
+        return RetinaGenerators.adapt(server, dimension, stem, generator);
     }
 }

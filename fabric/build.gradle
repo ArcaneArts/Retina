@@ -6,10 +6,12 @@ loom {
 
     runs.configureEach {
         vmArg '--enable-native-access=ALL-UNNAMED'
+        if (providers.gradleProperty('retinaNativePath').isPresent()) vmArg "-Dretina.native.path=${providers.gradleProperty('retinaNativePath').get()}"
         if (providers.gradleProperty('retinaQa').isPresent()) {
+            if (providers.gradleProperty('retinaDefinitionFailCompilerQa').isPresent()) vmArg '-Dretina.qa.definition.failCompiler=true'
             vmArg '-Dretina.qa=true'
             [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',
-             NetherCompatibility: 'nether.compatibility', Automatic: 'automatic', AutomaticReopen: 'automatic.reopen',
+             DefinitionCapture: 'definition.capture', NetherCompatibility: 'nether.compatibility', Automatic: 'automatic', AutomaticReopen: 'automatic.reopen',
              ClientDatapack: 'client.datapack', ClientServer: 'client.server', ClientHoldSeconds: 'client.holdSeconds',
              ClientCommands: 'client.commands', ClientOpenExisting: 'client.openExisting', ExpectedFeature: 'expectedFeature', ProfileOutput: 'profileOutput'].each { flag, property ->
                 if (providers.gradleProperty("retina${flag}Qa").isPresent()) vmArg "-Dretina.qa.${property}=${providers.gradleProperty("retina${flag}Qa").get()}"

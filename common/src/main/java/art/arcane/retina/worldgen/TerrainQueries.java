@@ -23,7 +23,8 @@ public final class TerrainQueries implements AutoCloseable {
     private final TerrainRequest request;
     private final BiomeTerrainProfile profile;
     private final List<String> definitions;
-    private record PlacementSet(String id, boolean placementOnly) { }
+    private record PlacementSet(String id, boolean placementOnly, RandomSpreadStructurePlacement savedPlacement,
+                                Set<String> savedStructures) { }
     private final List<PlacementSet> sets;
     private final AtomicBoolean closed = new AtomicBoolean();
     static final int BATCH = 64;
@@ -35,8 +36,23 @@ public final class TerrainQueries implements AutoCloseable {
         definitions = structures == null ? List.of() : structures.getAsJsonArray("definitions").asList().stream()
                 .map(e -> e.getAsJsonObject().get("id").getAsString()).toList();
         sets = structures == null ? List.of() : structures.getAsJsonArray("sets").asList().stream()
-                .map(e -> { var set=e.getAsJsonObject(); return new PlacementSet(set.get("id").getAsString(),
-                        set.has("placement_only") && set.get("placement_only").getAsBoolean()); }).toList();
+                .map(e -> {
+                    var set=e.getAsJsonObject();
+                    RandomSpreadStructurePlacement placement = null;
+                    var names = new LinkedHashSet<String>();
+                    if (profile.savedDefinition() != null) {
+                        var rules = set.getAsJsonObject("placement").deepCopy();
+                        // These queries compute candidates only. Native selection
+                        // applies saved frequency and exclusion dependencies.
+                        rules.remove("exclusion_zone");
+                        placement = RandomSpreadStructurePlacement.CODEC.codec().parse(
+                                com.mojang.serialization.JsonOps.INSTANCE, rules).getOrThrow();
+                        for (var entry : set.getAsJsonArray("entries"))
+                            names.add(definitions.get(entry.getAsJsonObject().get("definition").getAsInt()));
+                    }
+                    return new PlacementSet(set.get("id").getAsString(),
+                            set.has("placement_only") && set.get("placement_only").getAsBoolean(), placement, Set.copyOf(names));
+                }).toList();
     }
 
     public boolean active() { return !closed.get(); }
@@ -91,14 +107,21 @@ public final class TerrainQueries implements AutoCloseable {
     record StructureSearch(List<SearchSet> sets, BlockPos origin, int radius) { }
 
     StructureSearch prepareStructures(RegistryAccess registry, HolderSet<Structure> wanted, BlockPos origin, int radius) {
-        var structureSets=registry.lookupOrThrow(Registries.STRUCTURE_SET);
+        var structureSets=profile.savedDefinition() == null ? registry.lookupOrThrow(Registries.STRUCTURE_SET) : null;
         var search=new LinkedHashMap<Integer,SearchSet>();
         // Vanilla groups placements in the requested holder order; preserve ties.
         for (var target : wanted) for (int i=0;i<sets.size();i++) {
             if (sets.get(i).placementOnly()) continue;
-            var set=structureSets.getValue(Identifier.parse(sets.get(i).id()));
-            if (set==null || !(set.placement() instanceof RandomSpreadStructurePlacement placement)) continue;
-            if (set.structures().stream().noneMatch(entry -> entry.structure().equals(target))) continue;
+            RandomSpreadStructurePlacement placement;
+            if (profile.savedDefinition() != null) {
+                if (!sets.get(i).savedStructures().contains(target.unwrapKey().orElseThrow().identifier().toString())) continue;
+                placement = sets.get(i).savedPlacement();
+            } else {
+                var set=structureSets.getValue(Identifier.parse(sets.get(i).id()));
+                if (set==null || !(set.placement() instanceof RandomSpreadStructurePlacement spread)) continue;
+                if (set.structures().stream().noneMatch(entry -> entry.structure().equals(target))) continue;
+                placement = spread;
+            }
             var group=search.computeIfAbsent(i,index -> new SearchSet(index,placement,new LinkedHashMap<>()));
             group.wanted.put(target.unwrapKey().orElseThrow().identifier().toString(),target);
         }

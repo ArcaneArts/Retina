@@ -33,6 +33,12 @@ public final class WorldDefinitionCompileTest {
             var normal = registry.lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(WorldPresets.NORMAL)
                     .value().createWorldDimensions().dimensions();
             check(output.resolve("vanilla"), registry, resources, normal, Long.MIN_VALUE + 17);
+            var legacy = new LinkedHashMap<>(normal);
+            var overworld = normal.get(LevelStem.OVERWORLD);
+            legacy.put(LevelStem.OVERWORLD, new LevelStem(overworld.type(), new RetinaChunkGenerator(
+                    RetinaBiomeSource.fromRegistry(overworld.generator().getBiomeSource(), 256F, .55F),
+                    -64, 384, 87.5F, 42.25F, .003F, "mca", Optional.empty(), true)));
+            check(output.resolve("legacy"), registry, resources, legacy, 731);
             var flat = registry.lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(WorldPresets.FLAT)
                     .value().createWorldDimensions().dimensions();
             check(output.resolve("flat"), registry, resources, flat, Long.MAX_VALUE - 11);
@@ -58,7 +64,7 @@ public final class WorldDefinitionCompileTest {
         }
         checkCodec(output.resolve("codec"));
         checkFailedWrite(output.resolve("failed-write"));
-        System.out.println("QA_EVT {\"event\":\"world_definition_compilation\",\"status\":\"pass\",\"cases\":3,\"gpu_initialized\":false}");
+        System.out.println("QA_EVT {\"event\":\"world_definition_compilation\",\"status\":\"pass\",\"cases\":4,\"gpu_initialized\":false}");
     }
 
     private static MultiPackResourceManager resources(Path custom) {
@@ -103,12 +109,15 @@ public final class WorldDefinitionCompileTest {
             if (unsupported != null) {
                 require(entry.getStringOr("unsupported_reason", "").equals(unsupported), "unsupported dimension explicit");
             } else {
-                var selected = new GenerationSource(level, stem.generator(), stem.type().value());
+                var selected = stem.generator() instanceof RetinaChunkGenerator ? null : new GenerationSource(level, stem.generator(), stem.type().value());
                 var effectiveTemplates = new StructureProfile.Context(templates.templates(), structures, templates.allowedSets());
-                var baseline = JsonParser.parseString(WorldDefinitionCompiler.export(registry, selected, seed, effectiveTemplates).json())
+                var exported = stem.generator() instanceof RetinaChunkGenerator retina
+                        ? retina.exportDefinition(registry, seed, effectiveTemplates, stem.type().value().hasSkyLight())
+                        : WorldDefinitionCompiler.export(registry, selected, seed, effectiveTemplates);
+                var baseline = JsonParser.parseString(exported.json())
                         .getAsJsonObject();
                 baseline.addProperty("dimension", level.identifier().toString());
-                baseline.add("generation", selected.describe());
+                if (selected != null) baseline.add("generation", selected.describe());
                 Files.writeString(directory.resolve("expected-" + level.identifier().toString().replace(':', '_').replace('/', '_') + ".json"),
                         baseline.toString());
             }
