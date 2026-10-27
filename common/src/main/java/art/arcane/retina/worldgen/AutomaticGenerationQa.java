@@ -21,27 +21,44 @@ public final class AutomaticGenerationQa {
         var runtime = (RetinaChunkGenerator) level.getChunkSource().getGenerator();
         var stems = server.registryAccess().lookupOrThrow(Registries.LEVEL_STEM);
         var source = stems.getValueOrThrow(LevelStem.OVERWORLD).generator();
-        if (runtime.selectedSource() != null) {
-            require(source == runtime.selectedSource().generator(), "saved registry retains original generator");
-            require(!(source instanceof RetinaChunkGenerator), "source remains a normal world type");
-            require(server.getWorldData().isFlatWorld() == runtime.selectedSource().flat(), "flat gameplay metadata");
-            require(runtime.getSpawnHeight(level) == source.getSpawnHeight(level), "source spawn height");
-        } else require(source == runtime, "legacy world is not wrapped twice");
+        require(runtime.savedDefinition() != null, "saved definition owns generation");
+        require(runtime.selectedSource() == null, "runtime retains no selected generator");
+        require(runtime.request(42, -1, -2).seed() == WorldDefinitions.get(server).seed(), "file supplies seed");
+        require(runtime.profile().savedDefinition() == runtime.savedDefinition(), "one definition binding");
         var nether = server.getLevel(Level.NETHER);
         if (nether != null) {
-            var original = stems.getValueOrThrow(LevelStem.NETHER).generator();
             require(nether.getChunkSource().getGenerator() instanceof RetinaChunkGenerator, "Nether runtime activation");
             var adapted = (RetinaChunkGenerator) nether.getChunkSource().getGenerator();
-            require(adapted.selectedSource().generator() == original, "Nether saved source remains original");
+            require(adapted.selectedSource() == null && adapted.savedDefinition() != null, "Nether uses saved definition");
             require(adapted.dimension().equals(Level.NETHER) && adapted.previewCache().dimension().equals(Level.NETHER),
                     "Nether request/storage identity");
             require(adapted.profile().nativeId() != runtime.profile().nativeId(), "independent native dimension profiles");
-            require(adapted.selectedSource().dimension() == nether.dimensionType(), "effective Nether dimension properties retained");
         }
         var end = server.getLevel(Level.END);
-        if (end != null) require(end.getChunkSource().getGenerator() == stems.getValueOrThrow(LevelStem.END).generator(), "End unchanged");
+        if (end != null) {
+            if (WorldDefinitions.get(server).dimension(Level.END).unsupportedReason() != null)
+                require(end.getChunkSource().getGenerator() == stems.getValueOrThrow(LevelStem.END).generator(), "unsupported End unchanged");
+            else require(end.getChunkSource().getGenerator() instanceof RetinaChunkGenerator adapted
+                    && adapted.savedDefinition() != null, "supported End uses saved definition");
+        }
         TerrainRegistryQa.check(runtime);
         NetherCompatibilityQa.check(server);
+        String capture = System.getProperty("retina.qa.definition.capture", "");
+        if (!capture.isBlank()) {
+            for (var key : java.util.List.of(Level.OVERWORLD, Level.NETHER)) {
+                var target = server.getLevel(key);
+                if (target == null) continue;
+                var generator = (RetinaChunkGenerator) target.getChunkSource().getGenerator();
+                var position = new net.minecraft.world.level.ChunkPos(-64, 32);
+                generator.previewCache().read(position);
+                var directory = java.nio.file.Path.of(capture).resolve(key.equals(Level.OVERWORLD) ? "region" : "DIM-1/region");
+                try { java.nio.file.Files.createDirectories(directory); }
+                catch (java.io.IOException error) { throw new java.io.UncheckedIOException(error); }
+                var report = generator.publishPreview(position, directory.resolve("r.-2.1.mca"));
+                require(report != null, "captured native preview");
+                Retina.LOGGER.info("QA_EVT {\"event\":\"world_definition_mod_region_capture\",\"dimension\":\"{}\",\"region_x\":-2,\"region_z\":1}", key.identifier());
+            }
+        }
         Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_automatic_activation\",\"status\":\"pass\",\"context\":{\"source\":\"{}\",\"flat\":{},\"dedicated\":{}}}",
                 source.getClass().getSimpleName(), level.isFlat(), server.isDedicatedServer());
     }

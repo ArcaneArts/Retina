@@ -7,9 +7,9 @@ datapacks, or creating a GPU device.
 
 Implementation is being delivered in separate cycles. The format, reader,
 Java compiler, atomic file writer, native session binding and JDK-only bridge
-are implemented. Automatic startup integration and the standalone runner
-follow; ordinary worlds still use the existing profile registration path
-until that integration is merged.
+and automatic Fabric/NeoForge startup integration are implemented. Normal
+server generation opens the saved definition. The standalone runner and final
+legacy tooling migration follow in subsequent cycles.
 
 ## Version 1 wire format
 
@@ -121,15 +121,15 @@ also cover shared palettes, explicit unsupported dimensions, actual decode
 and reference errors, truncated files, and preserving the source after a
 failed read. They do not initialize a GPU or claim mod/headless integration.
 
-The remaining delivery cycles must prove that normal mod creation writes the
-file and immediately reopens it through Rust; reopening skips compilation;
-all generation inputs come from the saved definition; and a fresh Rust
-process reproduces generated regions with only `retina.dat` available.
-Startup integration must also bootstrap legacy saves whose serialized generator
-is already a `RetinaChunkGenerator`, preserving its original parameters and
-settings. The compiler currently follows the raw adapter's support predicate;
-that legacy case needs its own compilation path before automatic startup is
-enabled. Existing mod generation is still unchanged at this stage.
+The remaining delivery cycles must prove a fresh Rust process reproduces
+regions with only `retina.dat` available, finish the hidden-dependency audit,
+and retire the legacy JSON tooling path. The startup cycle adds an explicit
+compilation path for serialized Retina biome-source generators, including their
+procedural parameters and density-composition setting. Legacy fixed-biome
+procedural Retina generators are explicitly recorded as unsupported and retain
+their existing runtime path during migration; snapshotting that path remains
+required before final JSON-path removal. Ordinary fixed biome noise generators
+are supported through saved profiles.
 
 ## Java compilation and cross-language verification
 
@@ -158,7 +158,7 @@ Generate real registry-backed fixtures without building a native library:
 ./gradlew :common:worldDefinitionCompileTest -x :buildNative -x :packageNative
 ```
 
-This writes `build/world-definition-fixtures/{vanilla,flat,datapack}/retina.dat`
+This writes `build/world-definition-fixtures/{vanilla,flat,datapack,legacy}/retina.dat`
 and legacy JSON baselines used only for migration comparison. The datapack
 case loads an actual additional biome resource and selects it as the fixed
 Overworld biome, with no decoration features. Every case includes all three
@@ -218,7 +218,7 @@ file or consults a Minecraft registry.
 single library image shared with `NativeTerrain`, keeping definition I/O
 separate from GPU initialization. The Java bridge owns a native handle,
 provides saved requests, and closes idempotently. Platform palette resolution
-and automatic server/world lifecycle integration are the next delivery cycle.
+and server/world lifecycle integration use this bridge directly.
 
 Rust dimension leases retain their session and definition while work runs.
 The profile registry holds weak references for saved profiles; active jobs
@@ -274,3 +274,67 @@ binding/request layout. The first needs no GPU initialization; the second
 binds a real native engine. `-PretinaNativePath=/path/to/library` and
 `-PretinaDefinitionFixtures=/path/to/world-definition-fixtures` can select
 existing test artifacts. Missing inputs fail their actual open/load operations.
+
+## Automatic mod startup
+
+Before `MinecraftServer.createLevels` constructs any dimension, one
+`WorldDefinitions` owner opens `<world-root>/retina.dat` through Rust. An absent
+file triggers full-world Java compilation and atomic publication; that result
+is discarded and the published file is opened through Rust. A present file
+skips compilation. Read/decode errors preserve the file and stop initialization.
+Changing datapacks does not rewrite it; replacing the generation definition is
+an explicit world-generation change. Copying the file retains its exact seed
+and supported dimension data; there is no seed override.
+
+Runtime generators enumerate the saved biome palette and use saved geometry,
+sea/spawn heights, requests, structure candidates and search placements.
+Registry lookups resolve saved block states, biome holders and Structure
+identities. Missing identifiers/properties and incompatible dimension storage
+bounds/skylight fail during actual binding. Execution compression comes from
+Retina configuration and is absent from generation identity. The server keeps
+its original LevelStem for ordinary Minecraft serialization/gameplay; the
+runtime Retina generator does not retain it as a generation source.
+
+Minecraft normally filters and builds structure placements using current
+Structure biome rules. The saved adapter installs its already resolved search
+metadata directly, including saved exclusion dependencies, and native queries
+perform generation selection. Full profile output is requested only by explicit
+QA. World shutdown closes queries and queues, drains region generation, then
+closes the native world handle.
+
+Run `:common:worldDefinitionBindingTest` with the same native/fixture properties
+as the bridge tests to resolve saved palettes and execute biome queries while
+all generation-registry lookups deliberately fail. It also exercises concrete
+missing-biome, missing-block and dimension-binding failures without rewriting
+inputs.
+
+Disposable dedicated-server runs use `-PretinaQa -PretinaAutomaticQa=true`.
+On reopen add `-PretinaAutomaticReopenQa=true
+-PretinaDefinitionFailCompilerQa`: any compiler call then throws. The startup
+QA verifies saved request ownership and saved edits in both supported dimensions.
+`-PretinaDefinitionCaptureQa=/absolute/isolated/output` also captures untouched
+native Overworld and Nether regions at region coordinate (-2,1), for complete
+mod/headless content comparisons. Use `-PretinaDatapackQa=/absolute/run-directory`
+and `-PretinaNativePath=/absolute/native-library` for isolated local runs.
+The equivalent tasks are `:fabric:runServer --args=--nogui` and
+`:neoforge:runNeoForgeServer`.
+
+The broader frozen-template decoder audit and removal of the old direct
+registration helpers remain subsequent work; startup passing alone does not
+complete the world-definition goal.
+
+Startup verification on Metal / Apple M4 Max used separate disposable Fabric
+(seed 731) and NeoForge (seed 9007199254740993) worlds. Both created the file,
+reopened it, generated Overworld/Nether regions, preserved edits after restart
+with compilation forced to fail, and left the definition's SHA-256 unchanged.
+The control run with no file failed with the intentional compiler exception.
+Both stopped and closed the native world after drain. Captured (-2,1) regions
+contain 1,024 untouched chunks per supported dimension, retained for CLI parity.
+
+The resulting files measured 2,387,049 bytes (Fabric) and 2,387,017 bytes
+(NeoForge). Create/write/reopen took 7.029 s and 5.906 s respectively; later
+native file opens took 1.274 s and 1.227 s. These are local development-build
+observations, not a release performance guarantee. Rust independently verified
+complete data/GPU/material parity for all four compiler fixtures, including the
+legacy generator with nondefault procedural parameters. The binding test and
+existing preset registry integration test also passed.

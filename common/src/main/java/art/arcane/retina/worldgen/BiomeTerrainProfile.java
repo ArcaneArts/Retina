@@ -11,7 +11,13 @@ import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import java.util.List;
 
 /** Rust registration of the shared registry projection, preserving existing callers. */
-public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] materials, List<Holder<Biome>> biomes, String json) {
+public record BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] materials, List<Holder<Biome>> biomes, String json,
+                                  WorldDefinitionContext.Dimension savedDefinition) {
+    public BiomeTerrainProfile(int nativeId, int seaLevel, BlockState[] materials, List<Holder<Biome>> biomes, String json) {
+        this(nativeId, seaLevel, materials, biomes, json, null);
+    }
+    /** Full data is requested only by explicit QA; ordinary adapters receive compact metadata. */
+    public String diagnosticJson() { return savedDefinition == null ? json : savedDefinition.diagnosticProfile(); }
     public static BiomeTerrainProfile load(HolderLookup.Provider registry, RetinaBiomeSource source, int minY, int height) {
         return load(registry, source, minY, height, 0L);
     }

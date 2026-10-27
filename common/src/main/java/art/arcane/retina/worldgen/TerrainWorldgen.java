@@ -51,6 +51,7 @@ public final class TerrainWorldgen {
         // no longer publish or start another batch while another dimension drains.
         // The loader still owns its classes until this lifecycle callback returns.
         if (caches != null) for (var cache : caches) cache.closeAndAwaitGeneration();
+        WorldDefinitions.close(server);
         NetherUnloadQa.serverDrained();
     }
 

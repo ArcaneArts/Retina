@@ -14,6 +14,18 @@ import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 public final class RetinaGenerators {
     private RetinaGenerators() { }
 
+    public static ChunkGenerator adapt(net.minecraft.server.MinecraftServer server, ResourceKey<Level> dimension,
+                                       LevelStem stem, ChunkGenerator generator) {
+        var saved = WorldDefinitions.get(server).dimension(dimension);
+        if (saved.unsupportedReason() != null) {
+            Retina.LOGGER.info("Retina leaving dimension {} on {}: {}", dimension.identifier(),
+                    generator.getClass().getName(), saved.unsupportedReason());
+            return generator;
+        }
+        saved.bindDimensionType(stem.type().value());
+        return RetinaChunkGenerator.fromDefinition(saved, server.registryAccess());
+    }
+
     public static ChunkGenerator adapt(ResourceKey<Level> dimension, LevelStem stem, ChunkGenerator generator) {
         if (generator instanceof RetinaChunkGenerator) return generator;
         String unsupported = unsupportedReason(dimension, generator);
@@ -29,6 +41,8 @@ public final class RetinaGenerators {
     }
 
     static String unsupportedReason(ResourceKey<Level> dimension, ChunkGenerator generator) {
+        if (generator instanceof RetinaChunkGenerator)
+            return generator.getBiomeSource() instanceof RetinaBiomeSource ? null : "legacy fixed Retina terrain has no registry-profile adapter";
         if (!dimension.equals(Level.OVERWORLD) && !dimension.equals(Level.NETHER)) return "dimension adapter is not implemented; End support is deferred";
         if (generator.getClass() == net.minecraft.world.level.levelgen.FlatLevelSource.class) return null;
         // Subclasses can implement arbitrary generation behavior. Adapting their fields alone would lose it.

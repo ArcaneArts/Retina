@@ -38,8 +38,11 @@ public final class NetherCompatibilityQa {
         var level = server.getLevel(Level.NETHER);
         var generator = (RetinaChunkGenerator) level.getChunkSource().getGenerator();
         var selected = generator.selectedSource();
+        if (selected == null) selected = new GenerationSource(Level.NETHER,
+                server.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.LEVEL_STEM)
+                    .getValueOrThrow(net.minecraft.world.level.dimension.LevelStem.NETHER).generator(), level.dimensionType());
         var noise = selected.noise().generatorSettings().value();
-        var profile = JsonParser.parseString(generator.profile().json()).getAsJsonObject();
+        var profile = JsonParser.parseString(generator.profile().diagnosticJson()).getAsJsonObject();
         boolean custom = SCENARIO.equals("custom");
         require(custom || SCENARIO.equals("vanilla"), "known compatibility scenario");
         require(!server.getWorldGenSettings().options().generateStructures(), "fixture structures are disabled");
@@ -107,7 +110,7 @@ public final class NetherCompatibilityQa {
                             .equals(JsonParser.parseString(definition.toString())),
                     "full source settings survive save/reopen");
             else Files.writeString(saved, definition.toString());
-            Files.writeString(root.resolve("retina-qa-nether-profile.json"), generator.profile().json());
+            Files.writeString(root.resolve("retina-qa-nether-profile.json"), generator.profile().diagnosticJson());
             Retina.LOGGER.info("QA_EVT {\"event\":\"nether_loaded_compatibility\",\"status\":\"pass\",\"context\":{\"scenario\":\"{}\",\"reopened\":{},\"flat\":{},\"outside_voxels\":{},\"lava_voxels\":{},\"solid_voxels\":{}}}",
                     SCENARIO, reopened, server.getWorldData().isFlatWorld(), outside, lava, solid);
             CHECKED.add(server);

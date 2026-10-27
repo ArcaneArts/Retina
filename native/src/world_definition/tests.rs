@@ -428,7 +428,7 @@ fn java_compiled_definitions_preserve_complete_profiles() {
         std::env::var("RETINA_WORLD_DEFINITION_FIXTURES")
             .expect("RETINA_WORLD_DEFINITION_FIXTURES must name the Java fixture directory"),
     );
-    for case in ["vanilla", "flat", "datapack"] {
+    for case in ["vanilla", "flat", "datapack", "legacy"] {
         let directory = root.join(case);
         let start = std::time::Instant::now();
         let world = WorldDefinition::read(directory.join("retina.dat")).unwrap();
