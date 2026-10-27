@@ -780,3 +780,12 @@ with `RETINA_STRUCTURE_PROOFS`: a JSON array of `name`, `definition`, and `regio
 paths. That test copies only each definition into an empty directory, launches
 fresh Rust processes without a JVM or datapacks, and compares every decoded chunk
 including lighting and status.
+
+### Interrupted publication
+
+`./gradlew :common:worldDefinitionInterruptedWriteTest` kills a child JVM during
+an actual compressed temporary-file write. Rust must reject those partial bytes,
+and `retina.dat` must still be absent. The test then publishes the original valid
+definition while the orphan remains present and verifies the complete NBT and
+Rust-loaded world metadata. It uses the real writer and loader without a GPU;
+root `check` includes it.
