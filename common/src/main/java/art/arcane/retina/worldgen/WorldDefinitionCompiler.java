@@ -46,7 +46,7 @@ public final class WorldDefinitionCompiler {
             var generator = stem.generator();
             var type = stem.type().value();
             var parameters = parameters(generator, type);
-            String unsupported = RetinaGenerators.unsupportedReason(level, generator);
+            String unsupported = RetinaGenerators.unsupportedReason(registry, level, stem);
             if (unsupported != null) {
                 assembly.unsupported(level.identifier().toString(), parameters, unsupported);
             } else {

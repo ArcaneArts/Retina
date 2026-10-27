@@ -6,16 +6,18 @@ datapack/mod additions into `<world-root>/retina.dat`, then generates complete
 Anvil (`.mca`) regions from that saved definition with terrain, biomes,
 decorations, structures and interior lighting.
 
-Install Retina and select your usual world type. Supported Overworld and Nether
+Install Retina and select your usual world type. Supported Overworld, Nether and End
 generators automatically use Retina when creating or reopening a world; there is no disable
 switch. Normal, Large Biomes, Amplified, Single Biome and Superflat are supported.
 The Nether uses its effective noise settings and fixed or multi-noise biome source,
 including compatible datapack changes. New portal destinations are prepared
 asynchronously before Minecraft selects or creates the exit, keeping server ticks
-and network connections active during generation. The End, Debug and unsupported custom
+and network connections active during generation. End terrain, biomes, features and
+cities match the loaded Minecraft 26.3 rules; Minecraft retains dragon progression
+and gateway destination selection. Debug and unsupported custom
 generators retain their original implementation, with a diagnostic identifying the missing adapter. Retina
-approximates noise worldgen rules rather than reproducing vanilla's terrain for
-the same seed. Undecorated Superflat uses the configured layers exactly.
+approximates Overworld and Nether noise worldgen rules rather than reproducing their
+vanilla terrain for the same seed. Undecorated Superflat uses the configured layers exactly.
 
 The [Nether delivery audit](docs/NETHER_GOAL_AUDIT.md) links the implementation
 cycles and validation matrix. [Inspected game captures](docs/NETHER_VISUAL_QA.md)

@@ -181,8 +181,14 @@ compilation path for serialized Retina biome-source generators, including their
 procedural parameters and density-composition setting. Legacy fixed-biome
 procedural Retina generators also compile to an explicit saved terrain kind.
 Ordinary fixed biome noise generators retain their registry-profile terrain.
-Previously saved unsupported records remain unsupported: replacing a definition
-is an explicit generation change, never an automatic startup rewrite.
+Replacing an already supported definition is an explicit generation change.
+Previously deferred End records are the one support-upgrade exception: startup
+compiles only entries carrying the historical End-adapter omission reasons. It
+appends new shared types without changing old indices, preserves all supported
+dimension definitions and root metadata, validates the actual candidate with the
+native reader, and atomically publishes it with an exact original gzip backup.
+Unsupported implementations/graphs retain their original generator. An already
+supported End definition is never recompiled on reopen.
 
 ## Java compilation and cross-language verification
 
@@ -413,13 +419,16 @@ using region coordinates (32x32 chunks). The example selects 81 regions. Rows
 advance in Z, then X within each row. There is no seed override: copying the
 file reproduces its exact seed-bound supported generation. A supported GPU
 compute adapter remains required; neither Minecraft, a JVM nor datapack files
-are runtime dependencies. End or other unsupported records report their saved
-reason when selected.
+are runtime dependencies. Unsupported records report their saved reason when
+selected. Historical files with deferred End records first need the one-time
+adapter upgrade when their world opens in the mod; the CLI has no live source
+registries with which to compile those formerly missing definitions.
 
 Output paths are `region/` for the Overworld, `DIM-1/region/` for the Nether,
 `DIM1/region/` for the End, and `dimensions/<namespace>/<path>/region/` for
 other supported dimensions. Unsafe filesystem components cannot form output
-paths. End layout support does not enable the deferred End generation adapter.
+paths. Newly compiled supported End definitions execute through the same saved
+definition path as the other dimensions.
 Use `--compression zlib` (default) or `--compression lz4` to select output
 compression independently of the snapshot. `RAYON_NUM_THREADS` and
 `RETINA_REGION_THREADS` control existing CPU execution pools.

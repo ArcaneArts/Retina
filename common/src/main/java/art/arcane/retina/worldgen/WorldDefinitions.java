@@ -30,6 +30,14 @@ public final class WorldDefinitions {
             nativeWorld = NativeWorldDefinition.open(path);
         }
         try {
+            if (!created && WorldDefinitionEndUpgrade.hasDeferred(nativeWorld.metadata())) {
+                try {
+                    if (WorldDefinitionEndUpgrade.upgrade(server, root)) {
+                        nativeWorld.close();
+                        nativeWorld = NativeWorldDefinition.open(path);
+                    }
+                } catch (IOException error) { throw new UncheckedIOException("Upgrading " + path, error); }
+            }
             var result = new WorldDefinitionContext(nativeWorld);
             WORLDS.put(server, result);
             Retina.LOGGER.info("Retina {} world definition {} in {} ms", created ? "created and reopened" : "loaded", path,

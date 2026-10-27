@@ -40,6 +40,16 @@ public final class AutomaticGenerationQa {
                 require(end.getChunkSource().getGenerator() == stems.getValueOrThrow(LevelStem.END).generator(), "unsupported End unchanged");
             else require(end.getChunkSource().getGenerator() instanceof RetinaChunkGenerator adapted
                     && adapted.savedDefinition() != null, "supported End uses saved definition");
+            if (Boolean.getBoolean("retina.qa.end.activation")) {
+                require(end.getChunkSource().getGenerator() instanceof RetinaChunkGenerator, "automatic End is required in this scenario");
+                var adapted = (RetinaChunkGenerator) end.getChunkSource().getGenerator();
+                var saved = WorldDefinitions.get(server).dimension(Level.END);
+                require(saved.unsupportedReason() == null && adapted.savedDefinition() == saved, "End owned by supported saved definition");
+                require(adapted.selectedSource() == null && adapted.dimension().equals(Level.END), "End has no live generation source");
+                require(com.google.gson.JsonParser.parseString(adapted.profile().json()).getAsJsonObject().has("end"), "actual native End strategy");
+                require(adapted.request(0, 0, 0).seed() == WorldDefinitions.get(server).seed(), "End uses frozen seed");
+                Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_automatic_end_activation\",\"status\":\"pass\",\"context\":{\"dedicated\":{}}}", server.isDedicatedServer());
+            }
         }
         TerrainRegistryQa.check(runtime);
         NetherCompatibilityQa.check(server);

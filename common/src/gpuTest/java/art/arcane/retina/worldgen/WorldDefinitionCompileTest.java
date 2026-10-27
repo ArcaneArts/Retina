@@ -121,7 +121,7 @@ public final class WorldDefinitionCompileTest {
         for (var source : stems.entrySet()) {
             var level = Registries.levelStemToLevel(source.getKey());
             var stem = source.getValue();
-            String unsupported = RetinaGenerators.unsupportedReason(level, stem.generator());
+            String unsupported = RetinaGenerators.unsupportedReason(registry, level, stem);
             var entry = definition.getCompoundOrEmpty("dimensions").getCompoundOrEmpty(level.identifier().toString());
             if (unsupported != null) {
                 require(entry.getStringOr("unsupported_reason", "").equals(unsupported), "unsupported dimension explicit");

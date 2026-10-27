@@ -1,25 +1,41 @@
 # Loader runtime QA
 
-Use a fresh, disposable run directory for each loader/world type. These opt-in checks
-create a world named `retina-qa-mca` or `retina-qa-chunk`, save an edit, reopen it,
-and shut down the client. Do not point them at an existing development run.
+Reuse a dedicated QA instance for client checks. Keep its `options.txt` and other
+client settings across runs, including when changing loader or testing a new world.
+These opt-in checks create a world named `retina-qa-mca` or `retina-qa-chunk`, save
+an edit, reopen it, and shut down the client. Use a separate QA world only when the
+scenario requires fresh generation; never use an actual player world.
+
+Keep the QA client's master sound muted and disable narrator onboarding before
+launching it. Preserve the rest of the user's settings:
+
+```text
+soundCategory_master:0.0
+narrator:0
+narratorHotkey:false
+onboardAccessibility:false
+```
+
+Prefer headless checks and combine necessary gameplay cases in the existing
+instance. Do not repeat passed gameplay campaigns without a changed behavior or
+an unresolved failure. Avoid bringing the client to the foreground unnecessarily.
 
 Set `RETINA_QA_ROOT` to an absolute directory outside your normal game directory.
 Run each client separately:
 
 ```sh
 ./gradlew runFabricClient -PretinaQa -PretinaClientGameplayQa \
-  -PretinaClientRunDir="$RETINA_QA_ROOT/fabric-mca"
+  -PretinaClientRunDir="$RETINA_QA_ROOT/client"
 ./gradlew runNeoForgeClient -PretinaQa -PretinaClientGameplayQa \
-  -PretinaClientRunDir="$RETINA_QA_ROOT/neoforge-mca"
+  -PretinaClientRunDir="$RETINA_QA_ROOT/client"
 ```
 
 The default selects `minecraft:normal` and exercises automatic activation. Repeat
-with `-PretinaClientPresetQa=minecraft:flat` and fresh `fabric-flat` /
-`neoforge-flat` directories. `minecraft_automatic_activation` verifies the actual
+with `-PretinaClientPresetQa=minecraft:flat` only when flat behavior changed; use
+a separate disposable world while preserving the same client settings. `minecraft_automatic_activation` verifies the actual
 runtime generators, original saved registry definitions, flat metadata, spawn-height
-semantics, distinct Overworld/Nether native profiles and the unchanged End generator
-on creation and reopen. `minecraft_dimension_saved_edit` checks saved edits in both
+semantics, distinct native dimension profiles on creation and reopen. Add
+`-PretinaEndActivationQa` to verify automatic End adaptation explicitly. `minecraft_dimension_saved_edit` checks saved edits in both
 dimensions, including a Nether build at Y=200.
 
 The block/heightmap round-trip probe loads a chunk outside player and spawn

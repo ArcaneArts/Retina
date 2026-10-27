@@ -13,7 +13,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-/** Explicit native End terrain; production activation remains deferred. */
+/** Explicit native End terrain from the actual loaded generator definition. */
 final class EndTerrainProfile {
     private EndTerrainProfile() { }
 
@@ -24,7 +24,8 @@ final class EndTerrainProfile {
         if (unsupported != null) throw new IllegalArgumentException(unsupported);
         var settings = source.noise().generatorSettings().value();
         var biomes = RetinaBiomeSource.fromSelected(source.generator().getBiomeSource()).biomes();
-        int minY = source.dimension().minY(), height = source.dimension().height();
+        var bounds = GenerationBounds.noise(settings.noiseSettings(),
+                source.dimension().minY(), source.dimension().height());
         var palette = new LinkedHashMap<BlockState, Integer>();
         material(palette, Blocks.AIR.defaultBlockState());
         var world = new JsonObject();
@@ -83,13 +84,19 @@ final class EndTerrainProfile {
         var disks = Collections.newSetFromMap(new IdentityHashMap<PlacedFeature, Boolean>());
         world.add("decorations", DecorationProfile.export(registry, biomes, entries, palette, world, disks, b -> b.value().getGenerationSettings(), new java.util.ArrayList<>(source.generator().getBiomeSource().possibleBiomes())));
         TerrainFeatureProfile.export(registry, biomes, entries, palette, world, settings.materialRule().value(), seed, List.of());
-        world.add("structures", StructureProfile.export(registry, biomes, palette, structures, true));
-        GeologyProfile.export(registry, biomes, entries, palette, world, minY, height, source.generator().getSeaLevel());
-        DecorationProfile.finishPlacements(world.getAsJsonArray("decorations"), palette, minY, height);
+        var structureData = StructureProfile.export(registry, biomes, palette, structures, true);
+        for (var definition : structureData.getAsJsonArray("definitions")) {
+            var config = definition.getAsJsonObject().getAsJsonObject("config");
+            if (config.has("start_height")) bounds.resolveHeightProvider(config.get("start_height"), source.generator().getSeaLevel());
+            if (config.has("height")) bounds.resolveHeightProvider(config.get("height"), source.generator().getSeaLevel());
+        }
+        world.add("structures", structureData);
+        GeologyProfile.export(registry, biomes, entries, palette, world, bounds, source.generator().getSeaLevel());
+        finishPlacements(world.getAsJsonArray("decorations"), palette, source);
         int beforeStructureTransforms = palette.size();
         StructureProfile.finishMaterials(world.getAsJsonObject("structures"),palette);
         if (palette.size() != beforeStructureTransforms)
-            DecorationProfile.finishPlacements(world.getAsJsonArray("decorations"), palette, minY, height);
+            finishPlacements(world.getAsJsonArray("decorations"), palette, source);
         TerrainFeatureProfile.finishReplacementTables(entries, palette);
         DecorationProfile.finishCurrentSurvival(world, palette);
         DecorationProfile.finishGenerationLighting(world,skyLight);
@@ -100,6 +107,12 @@ final class EndTerrainProfile {
         for (var state : palette.keySet()) materials.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow());
         world.add("materials", materials);
         return new TerrainProfileData(source.generator().getSeaLevel(), palette.keySet().toArray(BlockState[]::new), biomes, world.toString());
+    }
+
+    static void finishPlacements(JsonArray recipes, LinkedHashMap<BlockState, Integer> palette, GenerationSource source) {
+        var bounds = GenerationBounds.noise(source.noise().generatorSettings().value().noiseSettings(),
+                source.dimension().minY(), source.dimension().height());
+        DecorationProfile.finishPlacements(recipes, palette, bounds, source.generator().getSeaLevel());
     }
 
     private static int material(LinkedHashMap<BlockState, Integer> palette, BlockState state) {

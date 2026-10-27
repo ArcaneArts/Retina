@@ -1,9 +1,26 @@
 # End implementation
 
-The End implementation uses Minecraft 26.3 as its independent reference. Production
-End activation remains deferred while the native terrain, features, cities, sparse
-execution, and progression integration are implemented. Overworld and Nether
-generation are unchanged by the reference foundation.
+The End implementation uses Minecraft 26.3 as its independent reference. Supported
+End generators now activate automatically through the saved definition, alongside
+Overworld and Nether. Historical cycle sections below retain their original scope;
+final shipping-default performance and deliverable verification are tracked separately.
+
+## Automatic activation and existing saves
+
+The adapter checks the actual loaded End graph, material rule and biome source.
+Unsupported implementations retain their original generator. Fresh definitions
+include all three supported vanilla dimensions without a special world type.
+
+Older files carrying the explicit deferred-End reason receive a one-time upgrade.
+Only those omitted entries are compiled, using the frozen seed and structures flag.
+Existing supported dimensions, metadata and shared type indices stay unchanged. The
+actual candidate is validated before atomic publication and an exact original backup
+is retained. Subsequent reopen uses only the supported saved definition.
+
+`endDefinitionUpgradeTest` checks real old/new files, frozen Overworld/Nether native
+profiles and chunk NBT, fresh/upgraded End chunk NBT, unsupported actual graphs,
+duplicate shared IDs, failed candidate publication and concurrent file changes.
+The activation scenario also checks actual loader construction and saved edits.
 
 ## Cycle 1: compact vanilla references
 
