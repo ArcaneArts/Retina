@@ -11,6 +11,7 @@ loom {
             if (providers.gradleProperty('retinaEndLifecycleQa').isPresent()) vmArg '-Dretina.qa.end.lifecycle=true'
             if (providers.gradleProperty('retinaEndTravelQa').isPresent()) vmArg '-Dretina.qa.end.travel=true'
             if (providers.gradleProperty('retinaEndGatewayQa').isPresent()) vmArg '-Dretina.qa.end.gateway=true'
+            if (providers.gradleProperty('retinaEndUnloadQa').isPresent()) vmArg '-Dretina.qa.end.unload=true'
             if (providers.gradleProperty('retinaDefinitionFailCompilerQa').isPresent()) vmArg '-Dretina.qa.definition.failCompiler=true'
             vmArg '-Dretina.qa=true'
             [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',
@@ -46,6 +47,10 @@ loom {
         runDir rootProject.file(providers.gradleProperty('retinaClientRunDir').getOrElse('run')).absolutePath
     }
     runs.server {
+        if (providers.gradleProperty('retinaServerWorldQa').isPresent()) {
+            programArg '--universe'; programArg 'saves'
+            programArg '--world'; programArg providers.gradleProperty('retinaServerWorldQa').get()
+        }
         runDir rootProject.file(providers.gradleProperty('retinaDatapackQa').getOrElse('run')).absolutePath
     }
 

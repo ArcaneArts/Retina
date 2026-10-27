@@ -40,6 +40,7 @@ class EndGatewayMixinTest {
             assertEquals(motion, pearl.getDeltaMovement(), "no gravity/inertia during held flight");
             assertEquals(1, pearl.baseTicks, "vanilla projectile base tick still runs");
             assertFalse(pearl.isRemoved());
+            EndGatewayFallbackChecks.run(fixture);
         }
     }
 

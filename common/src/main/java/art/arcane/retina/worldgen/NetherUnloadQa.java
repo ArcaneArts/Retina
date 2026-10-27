@@ -23,7 +23,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /** Opt-in real world shutdown with native work still running, followed by save/reopen. */
 public final class NetherUnloadQa {
-    private static final boolean ENABLED = Boolean.getBoolean("retina.qa.nether.unload");
+    private static final boolean END_ENABLED = Boolean.getBoolean("retina.qa.end.unload");
+    private static final boolean ENABLED = Boolean.getBoolean("retina.qa.nether.unload") || END_ENABLED;
     private static final Map<MinecraftServer, Run> RUNS = new ConcurrentHashMap<>();
     private static volatile CompletableFuture<Void> lastCompletion = CompletableFuture.completedFuture(null);
 
@@ -53,11 +54,12 @@ public final class NetherUnloadQa {
 
     private NetherUnloadQa() {}
 
+
     /** The client waits for this only after disconnecting, before reopening its disposable save. */
     public static CompletableFuture<Void> completion() { return lastCompletion; }
 
     static void generationFailed(Throwable error) {
-        if (ENABLED) Retina.LOGGER.error("QA_EVT {\"event\":\"nether_unload_native_failure\",\"status\":\"fail\"}", error);
+        if (ENABLED) Retina.LOGGER.error("QA_EVT {\"event\":\"{}_unload_native_failure\",\"status\":\"fail\"}", END_ENABLED ? "end" : "nether", error);
     }
 
     static void serverDrained() {
@@ -80,7 +82,7 @@ public final class NetherUnloadQa {
         require(RUNS.putIfAbsent(server, run) == null, "one shutdown scenario per server");
         lastCompletion = run.completed;
         try {
-            var path = server.getWorldPath(LevelResource.ROOT).resolve("retina-qa-nether-unload.json");
+            var path = server.getWorldPath(LevelResource.ROOT).resolve(END_ENABLED ? "retina-qa-end-unload.json" : "retina-qa-nether-unload.json");
             if (Files.exists(path)) {
                 var prior = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
                 run.pass = prior.get("pass").getAsInt() + 1;
@@ -90,7 +92,7 @@ public final class NetherUnloadQa {
             AutomaticGenerationQa.check(server);
             AutomaticGenerationQa.checkSavedEdits(server, run.pass > 0);
             var folders = new JsonArray();
-            for (var key : List.of(Level.OVERWORLD, Level.NETHER)) {
+            for (var key : END_ENABLED ? List.of(Level.END) : List.of(Level.OVERWORLD, Level.NETHER)) {
                 var dimension = new Dimension(server.getLevel(key));
                 run.dimensions.add(dimension);
                 folders.add(dimension.previewFolder.toString());
@@ -101,7 +103,7 @@ public final class NetherUnloadQa {
             Files.writeString(path, saved.toString());
             // Native preparation uses the same global budget for both dimensions.
             // Nothing holds or replaces the actual generator: shutdown races real work.
-            int regions = RegionGenerationBudget.SHARED.admissionCapacity() + 2;
+            int regions = END_ENABLED ? 2 : RegionGenerationBudget.SHARED.admissionCapacity() + 2;
             for (int i = 0; i < regions; i++) for (var dimension : run.dimensions) {
                 int region = 32 + run.pass * 64 + i;
                 var at = new ChunkPos(region * 32, -region * 32);
@@ -184,7 +186,7 @@ public final class NetherUnloadQa {
                         RUNS.remove(level.getServer(), run);
                     }
                 } catch (Throwable error) {
-                    Retina.LOGGER.error("QA_EVT {\"event\":\"nether_unload_complete\",\"status\":\"fail\"}", error);
+                    Retina.LOGGER.error("QA_EVT {\"event\":\"{}_unload_complete\",\"status\":\"fail\"}", END_ENABLED ? "end" : "nether", error);
                     run.completed.completeExceptionally(error);
                 }
             });
@@ -192,9 +194,10 @@ public final class NetherUnloadQa {
     }
 
     private static void require(boolean condition, String message) {
-        if (!condition) throw new IllegalStateException("Nether unload QA: " + message);
+        if (!condition) throw new IllegalStateException((END_ENABLED ? "End" : "Nether") + " unload QA: " + message);
     }
     private static void event(String name, String context) {
+        if (END_ENABLED) { name = name.replace("nether_", "end_"); context = context.replace("native_in_flight", "generation_in_flight"); }
         Retina.LOGGER.info("QA_EVT {\"event\":\"{}\",\"status\":\"pass\",\"context\":{}}", name, "{" + context + "}");
     }
 }
