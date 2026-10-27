@@ -128,6 +128,24 @@ pub unsafe extern "C" fn retina_open_world_definition(
     })
 }
 
+/// Materialize and atomically publish an ordinary seed-bound retina.dat. This
+/// does not bind a GPU or retain an alternative in-memory generation profile.
+/// # Safety
+/// All strings are length-readable UTF-8 buffers for the duration of this call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_materialize_world_definition(
+    catalog: *const u8, catalog_length: u64,
+    variant: *const u8, variant_length: u64,
+    seed: i64,
+    root: *const u8, root_length: u64,
+) -> i32 {
+    boundary(|| {
+        let source = super::catalog::WorldCatalog::read(unsafe { text(catalog, catalog_length) }?)?;
+        source.publish(unsafe { text(variant, variant_length) }?, seed, unsafe { text(root, root_length) }?)?;
+        Ok(())
+    })
+}
+
 /// # Safety
 /// output and length are writable. Free the returned JSON with retina_free_bytes.
 #[unsafe(no_mangle)]

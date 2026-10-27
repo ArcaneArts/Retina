@@ -21,8 +21,12 @@ public final class WorldDefinitionFile {
     private WorldDefinitionFile() { }
 
     public static Path writeNew(Path worldRoot, CompoundTag definition) throws IOException {
+        return writeNew(worldRoot, NAME, definition);
+    }
+
+    static Path writeNew(Path worldRoot, String name, CompoundTag definition) throws IOException {
         Files.createDirectories(worldRoot);
-        Path destination = worldRoot.resolve(NAME);
+        Path destination = worldRoot.resolve(name);
         // Opening the actual destination distinguishes absence from access and
         // other I/O errors. A present (even damaged) definition is preserved.
         try (var existing = Files.newByteChannel(destination, StandardOpenOption.READ)) {
@@ -30,7 +34,7 @@ public final class WorldDefinitionFile {
         } catch (NoSuchFileException missing) {
             // The world-level coordinator serializes creation for all dimensions.
         }
-        Path temporary = Files.createTempFile(worldRoot, "retina.dat.", ".tmp");
+        Path temporary = Files.createTempFile(worldRoot, name + ".", ".tmp");
         try {
             writeExact(temporary, definition);
             Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE);

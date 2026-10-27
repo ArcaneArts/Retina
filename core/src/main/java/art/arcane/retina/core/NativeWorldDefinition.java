@@ -150,7 +150,7 @@ public final class NativeWorldDefinition implements AutoCloseable {
         }
     }
 
-    private static void check(int status) throws Throwable {
+    static void check(int status) throws Throwable {
         if (status == 0) return;
         try (var arena = Arena.ofConfined()) {
             var message = arena.allocate(4096);
@@ -160,7 +160,7 @@ public final class NativeWorldDefinition implements AutoCloseable {
         }
     }
 
-    private static RuntimeException failure(Throwable error) {
+    static RuntimeException failure(Throwable error) {
         if (error instanceof RuntimeException runtime) return runtime;
         if (error instanceof Error fatal) throw fatal;
         return new IllegalStateException("Native definition call failed",error);

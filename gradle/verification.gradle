@@ -491,7 +491,8 @@ tasks.register('worldDefinitionBindingTest', JavaExec) {
 def worldDefinitionBridgeClasses = tasks.register('worldDefinitionBridgeClasses', JavaCompile) {
     dependsOn ':core:jar'
     source file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionBridgeTest.java'),
-            file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionThreadTest.java')
+            file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionThreadTest.java'),
+            file('src/gpuTest/java/art/arcane/retina/worldgen/NativeCatalogBridgeTest.java')
     classpath = files(project(':core').tasks.named('jar').flatMap { it.archiveFile })
     destinationDirectory = layout.buildDirectory.dir('world-definition-bridge/classes')
     javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -1200,3 +1201,38 @@ tasks.register('worldDefinitionThreadTest', JavaExec) {
 }
 
 check.dependsOn 'worldDefinitionThreadTest'
+
+tasks.register('worldCatalogBridgeTest', JavaExec) {
+    group = 'verification'
+    description = 'Materialize bundled vanilla data and reopen actual world files on a JDK-only classpath.'
+    dependsOn worldDefinitionBridgeClasses
+    classpath = files(worldDefinitionBridgeClasses.flatMap { it.destinationDirectory },
+            project(':core').tasks.named('jar').flatMap { it.archiveFile })
+    mainClass = 'art.arcane.retina.worldgen.NativeCatalogBridgeTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '128m'
+    def library = providers.gradleProperty('retinaNativePath')
+            .orElse(nativeTarget.map { it.file("release/${System.mapLibraryName('retina_worldgen')}").asFile.absolutePath })
+    if (!providers.gradleProperty('retinaNativePath').isPresent()) dependsOn ':buildNative'
+    args library.get(), rootProject.file("assets/world-definitions/${minecraft_version}/vanilla/retina-catalog.dat").absolutePath
+}
+check.dependsOn 'worldCatalogBridgeTest'
+
+['exportVanillaCatalog': false, 'vanillaCatalogFixtures': true].each { taskName, fixtures ->
+    tasks.register(taskName, JavaExec) {
+        group = 'verification'
+        description = fixtures ? 'Export a vanilla catalog and independent full-seed Java reference worlds.'
+                : 'Explicitly regenerate the bundled vanilla catalog using actual Minecraft registries.'
+        dependsOn 'gpuTestClasses'
+        classpath = sourceSets.gpuTest.runtimeClasspath
+        mainClass = 'art.arcane.retina.worldgen.VanillaCatalogExport'
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+        jvmArgs '-XX:ActiveProcessorCount=2'
+        maxHeapSize = '1g'
+        workingDir rootProject.projectDir
+        args providers.gradleProperty('catalogOutput').getOrElse(fixtures ? 'build/vanilla-catalog-fixtures'
+                : "assets/world-definitions/${minecraft_version}/vanilla")
+        if (fixtures) args '--fixtures'
+    }
+}
