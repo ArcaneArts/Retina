@@ -10,6 +10,7 @@ loom {
         if (providers.gradleProperty('retinaQa').isPresent()) {
             if (providers.gradleProperty('retinaEndLifecycleQa').isPresent()) vmArg '-Dretina.qa.end.lifecycle=true'
             if (providers.gradleProperty('retinaEndTravelQa').isPresent()) vmArg '-Dretina.qa.end.travel=true'
+            if (providers.gradleProperty('retinaEndGatewayQa').isPresent()) vmArg '-Dretina.qa.end.gateway=true'
             if (providers.gradleProperty('retinaDefinitionFailCompilerQa').isPresent()) vmArg '-Dretina.qa.definition.failCompiler=true'
             vmArg '-Dretina.qa=true'
             [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',
