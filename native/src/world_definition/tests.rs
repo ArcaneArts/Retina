@@ -374,6 +374,55 @@ fn read_uses_the_published_file_and_preserves_it_after_errors() {
 }
 
 #[test]
+fn published_definitions_allow_zero_depths_but_reject_negative_depths() {
+    let directory = std::env::temp_dir().join(format!("retina-zero-depth-{}", std::process::id()));
+    std::fs::create_dir(&directory).unwrap();
+    let path = directory.join("retina.dat");
+    for (depth, logical, valid) in [
+        (0, 384, true),
+        (384, 0, true),
+        (0, 0, true),
+        (-1, 384, false),
+        (384, -1, false),
+    ] {
+        let mut doc = document();
+        let parameters = &mut doc
+            .dimensions
+            .get_mut("minecraft:overworld")
+            .unwrap()
+            .parameters;
+        parameters.generator_depth = depth;
+        parameters.logical_height = logical;
+        let bytes = gzip(&doc);
+        std::fs::write(&path, &bytes).unwrap();
+        match WorldDefinition::read(&path) {
+            Ok(world) => {
+                assert!(valid, "negative dimensions accepted");
+                let saved = world.dimension("minecraft:overworld").unwrap().parameters();
+                assert_eq!(
+                    (saved.generator_depth, saved.logical_height),
+                    (depth, logical)
+                );
+                assert_eq!(
+                    world
+                        .request("minecraft:overworld", 1, -33, 31)
+                        .unwrap()
+                        .height,
+                    384,
+                    "zero generation/gameplay depths must not erase storage bounds"
+                );
+            }
+            Err(error) => {
+                assert!(!valid, "{error}");
+                assert!(error.contains("invalid dimension parameters"), "{error}");
+            }
+        }
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+    std::fs::remove_dir_all(directory).unwrap();
+}
+
+#[test]
 fn world_profiles_retire_after_the_last_owner_and_active_job_release_them() {
     use super::residency::Profiles;
     use crate::region::codec::Compression;

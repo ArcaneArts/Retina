@@ -27,14 +27,20 @@ final class DefinitionFixture implements AutoCloseable {
     }
 
     static DefinitionFixture create(GenerationSource source,TerrainProfileData data,long seed,boolean structures) throws IOException {
+        try(var snapshot=snapshot(source,data,seed,structures)) {
+            var result=snapshot.open(null);
+            result.ownedDirectory=snapshot.directory;snapshot.directory=null;
+            return result;
+        }
+    }
+
+    static Snapshot snapshot(GenerationSource source,TerrainProfileData data,long seed,boolean structures) throws IOException {
         var directory=Files.createTempDirectory("retina-definition-source-fixture-");
         String key=source.key().identifier().toString();
         try {
             var assembly=new WorldDefinitionAssembler(new WorldOptions(seed,structures,false),List.of(),"Retina source fixture");
             assembly.supported(key,WorldDefinitionCompiler.parameters(source.generator(),source.dimension()),data,source.describe());
-            var result=open(WorldDefinitionFile.writeNew(directory,assembly.build()),key,2);
-            result.ownedDirectory=directory;
-            return result;
+            return new Snapshot(directory,WorldDefinitionFile.writeNew(directory,assembly.build()),key);
         } catch(Throwable failure) {
             try {delete(directory);}catch(Throwable cleanup){failure.addSuppressed(cleanup);}
             throw failure;

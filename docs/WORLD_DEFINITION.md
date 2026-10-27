@@ -737,3 +737,20 @@ heightmaps, lighting, and single-biome/shallow noise generators. Structure tests
 also check saved set selection and the saved global structures flag. Bare-layer
 fixture artifacts are `build/flat-profiles/<preset-or-custom-case>/retina.dat`;
 they can be supplied directly to the standalone generator.
+
+### Nether component fixtures and empty generation
+
+The bounds/fluid, carver and vertical-biome checks publish definitions before
+native generation. Each interpreter/specialized comparison opens the same file
+with a different execution preference and checks that the file stays unchanged.
+Bounds fixtures use actual Minecraft noise and dimension codecs, the production
+parameter compiler, and palettes resolved from the loaded metadata. Their six
+copyable snapshots are `build/nether/bounds-<storage-min>-<storage-height>-<noise-min>-<noise-height>/retina.dat`.
+
+Zero generator depth and zero logical height are valid source settings. The
+reader accepts and preserves them while still rejecting negative values.
+Storage bounds remain positive and independent: an empty noise volume can still
+produce a storage-shaped chunk containing air. This fixes a reader restriction;
+it changes neither the file format nor existing valid generation semantics.
+The zero-depth fixture was checked against Minecraft's codecs and the prior
+native registration path before removing that temporary comparison.

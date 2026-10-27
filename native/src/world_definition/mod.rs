@@ -213,8 +213,8 @@ impl Dimension {
                 return Err("storage bounds require aligned MCA sections with signed-byte Y".into());
             }
             if p.generator.is_empty()
-                || p.generator_depth <= 0
-                || p.logical_height <= 0
+                || p.generator_depth < 0
+                || p.logical_height < 0
                 || !p.coordinate_scale.is_finite()
                 || p.coordinate_scale <= 0.0
             {

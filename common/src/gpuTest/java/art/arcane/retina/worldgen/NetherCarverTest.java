@@ -16,7 +16,7 @@ import java.util.List;
 
 /** Isolate registered carvers from density caverns, exercising disabled and multiple-carver configurations. */
 final class NetherCarverTest {
-    static void check(RegistryAccess registry) {
+    static void check(RegistryAccess registry) throws Exception {
         var settings = registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.NETHER).value();
         var source = new FixedBiomeSource(registry.lookupOrThrow(Registries.BIOME).getOrThrow(Biomes.NETHER_WASTES));
         var exported = NetherTerrainTest.export(registry, source, settings, 0, 256);
@@ -56,16 +56,18 @@ final class NetherCarverTest {
         System.out.println("QA_EVT {\"event\":\"nether_carvers\",\"status\":\"pass\",\"context\":{\"carved_voxels\":" + carved + "}}");
     }
 
-    private static List<short[]> generate(JsonObject json, List<JsonObject> settings) {
+    private static List<short[]> generate(JsonObject json, List<JsonObject> settings) throws Exception {
         var carvers = new JsonArray(); settings.forEach(carvers::add);
         json.getAsJsonArray("biomes").get(0).getAsJsonObject().add("carvers", carvers);
-        int profile = NativeTerrain.instance().registerProfile(json.toString());
-        var result = new ArrayList<short[]>();
-        for (int[] at : new int[][]{{-2,0}, {0,0}, {12,-5}, {-32,31}}) {
-            var request = new TerrainRequest(84723612, at[0], at[1], 0, 256, 64, 48, .008f, profile);
-            try (var chunk = NativeTerrain.instance().generate(request)) {result.add(chunk.blocks().toArray(ValueLayout.JAVA_SHORT));}
+        try(var definition=DefinitionFixture.create("minecraft:the_nether",json,
+                new TerrainRequest(84723612,0,0,0,256,64,48,.008f,0),0,256,false,true)) {
+            var result = new ArrayList<short[]>();
+            for (int[] at : new int[][]{{-2,0}, {0,0}, {12,-5}, {-32,31}}) {
+                var request = definition.request(at[0],at[1]);
+                try (var chunk = NativeTerrain.instance().generate(request)) {result.add(chunk.blocks().toArray(ValueLayout.JAVA_SHORT));}
+            }
+            return result;
         }
-        return result;
     }
 
     private static boolean equal(List<short[]> a, List<short[]> b) {
