@@ -676,3 +676,18 @@ performance targets are 50–100 ms median / below 150 ms p95 for void, 100–20
 below 300 ms for ordinary islands, and 200–350 ms / below 500 ms for dense or
 structure-heavy regions. These remain unproven targets until measured on the
 completed implementation. Existing Overworld and Nether controls must remain intact.
+
+## Untouched city-stair columns
+
+The End city shape pass uses the already joined interior writer index to skip
+columns that still contain only non-stair End substrate. It retains ordinary
+evaluation for changed columns, outside-region dependencies and stair substrates.
+No structure bounds, placement or shape rules are approximated.
+
+A single full-region diagnostic preserved exact NBT and reduced actual column
+builds from 291,228 to 29,636, skipping 261,732 stair-free columns. Four complete
+city-region before/after hashes also matched. A bounded ABBA comparison at shipping
+defaults measured 116.8 ms versus 82.1 ms median for the two sampled void positions
+(four measurements per variant); that small comparison establishes the local gain,
+not final category tail confidence or whole-host isolation. Final category and
+caller-scaling acceptance are tracked separately.
