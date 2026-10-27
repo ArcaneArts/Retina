@@ -102,7 +102,7 @@ batching unit.
 ```sh
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/decoration-count-vanilla.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out build/ore-batching-vanilla --count 20 --warmups 2 \
   --program-execution specialized --compare build/retained-baseline-vanilla
 ```

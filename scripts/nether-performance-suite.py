@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run complete-region benchmarks serially and retain exact-output evidence.
 
-Profiles are actual loaded Minecraft exports, supplied separately from Git.
+Definitions are seed-bound retina.dat snapshots, supplied separately from Git.
 Large MCA outputs and retained libraries belong in an external evidence folder.
 """
 import argparse
@@ -43,7 +43,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, required=True)
     parser.add_argument("--library-revision", required=True)
-    parser.add_argument("--profiles", type=Path, required=True)
+    parser.add_argument("--definitions", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--manifest", type=Path,
                         default=Path(__file__).resolve().parents[1] / "qa/nether-performance-corpus.json")
@@ -87,9 +87,10 @@ def main():
                 sys.executable, str(Path(__file__).with_name("native-region-benchmark.py")),
                 "--library", str(args.library.resolve()),
                 "--library-revision", args.library_revision,
-                "--profile", str((args.profiles / case["profile"]).resolve()),
+                "--definition", str((args.definitions / case["definition"]).resolve()),
+                "--dimension", case["dimension"],
                 "--out", str(destination.resolve()),
-                "--seed", str(case["seed"]), "--origin-x", str(case["origin"][0]),
+                "--origin-x", str(case["origin"][0]),
                 "--origin-z", str(case["origin"][1]),
                 "--grid-width", str(case["grid_width"]),
                 "--count", str(manifest["measured_regions"]),

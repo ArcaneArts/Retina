@@ -191,7 +191,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home \
   -PbenchmarkPack=run/datapacks/Terralith.zip
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/material-vanilla.json --out build/material-vanilla \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld --out build/material-vanilla \
   --count 20 --warmups 5 --program-execution specialized
 ```
 

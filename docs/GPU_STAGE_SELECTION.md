@@ -153,12 +153,12 @@ under `build/goal-baseline/hybrid-terrain/`. The final native library is
 ```sh
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/goal-baseline/hybrid-terrain/vanilla.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --program-execution specialized --terrain-execution specialized \
   --count 20 --warmups 2 --out build/all-specialized
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/goal-baseline/hybrid-terrain/vanilla.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --program-execution specialized --terrain-execution interpreter \
   --count 20 --warmups 2 --compare build/all-specialized --out build/mixed
 ```

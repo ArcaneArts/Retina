@@ -83,10 +83,10 @@ targets. This cycle makes no production performance-policy change.
 
 ## Reproduction and provenance
 
-Build the native library for the host and export the loaded Nether profile:
+Build the native library for the host and compile a seed-bound Nether definition:
 
 ```sh
-./gradlew -PretinaHostOnly :common:exportNetherBenchmarkProfile
+./gradlew -PretinaHostOnly :common:exportNetherBenchmarkDefinition
 ```
 
 Use the built library's platform filename in the commands below. The two output
@@ -95,24 +95,24 @@ directories must not exist before running:
 ```sh
 nice -n 10 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/benchmark-nether-profile.json \
-  --seed 123456789 --origin-x -2 --origin-z -2 --grid-width 5 \
+  --definition /absolute/path/retina.dat --dimension minecraft:the_nether \
+  --origin-x -2 --origin-z -2 --grid-width 5 \
   --count 20 --warmups 5 --parallel 1 --scope lit-mca --lighting enabled \
   --out build/nether-performance/run-a
 nice -n 10 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/benchmark-nether-profile.json \
-  --seed 123456789 --origin-x -2 --origin-z -2 --grid-width 5 \
+  --definition /absolute/path/retina.dat --dimension minecraft:the_nether \
+  --origin-x -2 --origin-z -2 --grid-width 5 \
   --count 20 --warmups 5 --parallel 1 --scope lit-mca --lighting enabled \
   --out build/nether-performance/run-b --compare build/nether-performance/run-a
 ```
 
 `-PbenchmarkPack=/absolute/path/pack.zip` loads compatible datapack overrides;
-`-PbenchmarkProfile=...` selects a different export path. The exporter takes an
+`-PbenchmarkDefinitionRoot=...` selects a different export path. The exporter takes an
 explicit loaded Nether dimension when supplied, otherwise the loaded Normal
-preset's Nether. Request bounds come from dimension storage, independently of
-noise bounds. The existing `exportBenchmarkProfile` task still exports the
-established Overworld workload.
+preset's Nether. Native and storage bounds come from the saved definition, independently of
+noise bounds. Use `exportBenchmarkDefinition` for the established Overworld
+benchmark corpus, and `-PbenchmarkSeed=...` when compiling a different seed.
 
 The two measured runs used the unchanged native tree
 `6f371c9f9a2ee37555bbb3cb13089d201bfd048b`, retained library SHA-256

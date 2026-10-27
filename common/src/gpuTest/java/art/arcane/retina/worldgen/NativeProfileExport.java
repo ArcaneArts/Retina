@@ -78,6 +78,11 @@ public final class NativeProfileExport {
                     if(!halo.equals("true") && !halo.equals("false"))throw new IllegalArgumentException("benchmarkMaterialHalo must be true or false");
                     data.getAsJsonObject("registry_program").addProperty("material_halo",Boolean.parseBoolean(halo));
                 }
+                String composition=System.getProperty("retina.benchmark.densityComposition");
+                if(composition!=null) {
+                    if(!composition.equals("true") && !composition.equals("false"))throw new IllegalArgumentException("benchmarkDensityComposition must be true or false");
+                    data.getAsJsonObject("registry_program").addProperty("density_composition",Boolean.parseBoolean(composition));
+                }
                 boolean nether=Boolean.getBoolean("retina.benchmark.nether");
                 var parameters=WorldDefinitionCompiler.parameters(benchmarkStem.generator(),benchmarkStem.type().value());
                 parameters.putInt("min_y",nether?0:-64);parameters.putInt("height",nether?256:384);

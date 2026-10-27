@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 RESULT_SCHEMA = "retina.native-region-benchmark"
-RESULT_SCHEMA_VERSION = 1
+RESULT_SCHEMA_VERSION = 2
 
 
 def performance_interval(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
@@ -46,17 +46,6 @@ def region_coordinates(count: int, origin_x: int, origin_z: int, grid_width: int
     elif order != "forward":
         raise ValueError(f"unknown request order: {order}")
     return coordinates
-
-
-def profile_request_context(profile: dict[str, Any]) -> dict[str, Any]:
-    """Use dimension storage for MCA requests; noise bounds only constrain terrain."""
-    bounds = profile.get("generation_bounds", {})
-    biomes = profile.get("biomes", [])
-    return {
-        "min_y": bounds.get("storage_min_y", -64),
-        "height": bounds.get("storage_height", 384),
-        "fallback_biome": biomes[0].get("id", "minecraft:plains") if biomes else "minecraft:plains",
-    }
 
 
 def percentile(values: Iterable[float], percent: float) -> float:

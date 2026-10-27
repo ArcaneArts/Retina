@@ -194,6 +194,8 @@ tasks.register('coordinateTest', JavaExec) {
     group = 'verification'
     description = 'Validate registered SliceFunction export against Minecraft samplers and GPU chunk fields.'
     dependsOn 'gpuTestClasses'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeCoordinateIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -216,11 +218,12 @@ tasks.register('interpolationTest', JavaExec) {
     group = 'verification'
     description = 'Validate registered interpolation fields and nested/sliced scopes against Minecraft samplers.'
     dependsOn 'gpuTestClasses', ':packageNative'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeInterpolationIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
-    environment 'RETINA_DENSITY_COMPOSITION', '1'
 }
 
 tasks.register('nativeInterpolationGpuTest', Exec) {
@@ -370,6 +373,8 @@ tasks.register('lightingTest', JavaExec) {
     group = 'verification'
     description = 'Compare GPU lighting with Minecraft and validate mixed lit/unlit MCA regions.'
     dependsOn 'gpuTestClasses', ':packageNative', 'nativeLightingGpuTest'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeLightingIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -487,6 +492,8 @@ tasks.register('snowTest', JavaExec) {
     group = 'verification'
     description = 'Check loaded snow support, bare frozen oceans and MCA/chunk consistency.'
     dependsOn 'gpuTestClasses', ':packageNative'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeSnowIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -510,6 +517,8 @@ tasks.register('aquiferTest', JavaExec) {
     group = 'verification'
     description = 'Compare actual GPU local fluids and pressure barriers with Minecraft aquifer equations.'
     dependsOn 'gpuTestClasses', ':packageNative'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeAquiferIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
@@ -655,6 +664,8 @@ tasks.register('shoreTest', JavaExec) {
         systemProperty 'retina.benchmark.seed', providers.gradleProperty('benchmarkSeed').getOrElse('123456789')
         if (providers.gradleProperty('benchmarkMaterialHalo').isPresent())
             systemProperty 'retina.benchmark.materialHalo', providers.gradleProperty('benchmarkMaterialHalo').get()
+        if (providers.gradleProperty('benchmarkDensityComposition').isPresent())
+            systemProperty 'retina.benchmark.densityComposition', providers.gradleProperty('benchmarkDensityComposition').get()
         if (nether) systemProperty 'retina.benchmark.nether', 'true'
         args providers.gradleProperty('benchmarkDefinitionRoot').getOrElse(nether
                 ? 'build/benchmark-definition/nether' : 'build/benchmark-definition/overworld')

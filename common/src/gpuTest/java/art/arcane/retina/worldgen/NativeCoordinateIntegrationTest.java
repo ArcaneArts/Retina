@@ -25,7 +25,9 @@ public final class NativeCoordinateIntegrationTest {
             net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources,RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY)).forEach(Registry.PendingTags::apply);
             var registry=RegistryIntegrationFixtures.load(resources);
             Holder<Biome> plains=registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.withDefaultNamespace("plains")));
-            var base=BiomeTerrainProfile.load(registry,new RetinaBiomeSource(List.of(plains),128,.55F),-64,384);
+            var base=TerrainProfileData.export(registry,new RetinaBiomeSource(List.of(plains),128,.55F),-64,384,123456789L,
+                    registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(net.minecraft.world.level.levelgen.NoiseGeneratorSettings.OVERWORLD).value(),
+                    StructureProfile.Context.NONE);
             var compiler=new RegistryGpuProgram(registry,-64,384,63);
             JsonElement field=add(add(gradient("x",-32,32),gradient("y",-16,16)),gradient("z",-8,8));
             var cases=List.of(slice("x",-176,field),slice("y",48,field),slice("z",240,field),
@@ -73,22 +75,25 @@ public final class NativeCoordinateIntegrationTest {
                 var surface=compiler.new Program();surface.roots.add(surface.density(add(number(90.375F),cases.get(index))));
                 var data=fixture(base,compiler,List.of(zero(),surface.finish(),zero()));
                 data.getAsJsonObject("registry_program").add("surface",JsonParser.parseString("[-64,8,1]"));
-                int id=NativeTerrain.instance().registerProfile(data.toString());
-                for(int[] pos:new int[][]{{-32,-31},{-1,0},{0,0},{31,32}}) {
-                    var request=new TerrainRequest(123456789L,pos[0],pos[1],-64,384,64,48,.008F,id);
-                    var actual=NativeTerrain.instance().sampleColumns(request);
-                    var generated=NativeTerrain.instance().generate(request);
-                    try(generated) {
-                        if(!Arrays.equals(actual.heights(),generated.columns().heights()))throw new AssertionError("Slice height differs with chunk halo");
-                    }
-                    for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
-                        int wx=pos[0]*16+x,wz=pos[1]*16+z;
-                        float value=samplers.get(index).sampleValue(SamplerContext.EMPTY_UNCACHED,wx,0,wz);
-                        int h=(int)Math.floor(91.375F+value);
-                        if(actual.heights()[z*16+x]!=h)throw new AssertionError("Slice "+index+" at "+wx+","+wz+": expected "+h+", got "+actual.heights()[z*16+x]);
-                        int old=(int)Math.floor(91.375F+samplers.get(5).sampleValue(SamplerContext.EMPTY_UNCACHED,wx,0,wz));
-                        if(old!=h)different++;
-                        columns++;
+                try(var definition=DefinitionFixture.create("minecraft:overworld",data,
+                        new TerrainRequest(123456789L,0,0,-64,384,64,48,.008F),-64,384,true,false,
+                        NativeWorldDefinition.ProgramExecution.SPECIALIZED)) {
+                    for(int[] pos:new int[][]{{-32,-31},{-1,0},{0,0},{31,32}}) {
+                        var request=definition.request(pos[0],pos[1]);
+                        var actual=NativeTerrain.instance().sampleColumns(request);
+                        var generated=NativeTerrain.instance().generate(request);
+                        try(generated) {
+                            if(!Arrays.equals(actual.heights(),generated.columns().heights()))throw new AssertionError("Slice height differs with chunk halo");
+                        }
+                        for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
+                            int wx=pos[0]*16+x,wz=pos[1]*16+z;
+                            float value=samplers.get(index).sampleValue(SamplerContext.EMPTY_UNCACHED,wx,0,wz);
+                            int h=(int)Math.floor(91.375F+value);
+                            if(actual.heights()[z*16+x]!=h)throw new AssertionError("Slice "+index+" at "+wx+","+wz+": expected "+h+", got "+actual.heights()[z*16+x]);
+                            int old=(int)Math.floor(91.375F+samplers.get(5).sampleValue(SamplerContext.EMPTY_UNCACHED,wx,0,wz));
+                            if(old!=h)different++;
+                            columns++;
+                        }
                     }
                 }
             }
@@ -96,7 +101,7 @@ public final class NativeCoordinateIntegrationTest {
             System.out.println("QA_EVT {\"event\":\"registered_coordinate_scopes\",\"status\":\"pass\",\"context\":{\"columns\":"+columns+",\"different_from_flattening\":"+different+"}}");
         }
     }
-    static JsonObject fixture(BiomeTerrainProfile base,RegistryGpuProgram compiler,List<JsonObject> graphs) {
+    static JsonObject fixture(TerrainProfileData base,RegistryGpuProgram compiler,List<JsonObject> graphs) {
         var data=JsonParser.parseString(base.json()).getAsJsonObject();
         data.remove("structures");
         for(var biome:data.getAsJsonArray("biomes")) {
@@ -111,7 +116,6 @@ public final class NativeCoordinateIntegrationTest {
         registry.add("interpolations",compiler.interpolations.deepCopy());
         registry.add("surface",JsonParser.parseString("[-64,8,0]"));registry.add("terrain_cell",JsonParser.parseString("[4,8]"));
         registry.add("surface_noises",JsonParser.parseString("[0,0,0]"));data.add("registry_program",registry);
-        data.addProperty("program_execution","specialized");
         return data;
     }
     static JsonObject zero() {return JsonParser.parseString("{\"nodes\":[{\"op\":0,\"a\":0,\"b\":0,\"c\":0,\"p\":[0,0,0,0]}],\"roots\":[0]}").getAsJsonObject();}

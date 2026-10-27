@@ -4,16 +4,65 @@ import com.google.gson.JsonObject;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 
 /** Test-only complete file construction and binding; generation always requests saved inputs. */
 final class DefinitionFixture implements AutoCloseable {
     private final NativeWorldDefinition world;
     private final String dimension;
+    private final Path file;
+    private Path ownedDirectory;
 
-    private DefinitionFixture(NativeWorldDefinition world,String dimension) {
-        this.world=world;this.dimension=dimension;
+    private DefinitionFixture(NativeWorldDefinition world,String dimension,Path file) {
+        this.world=world;this.dimension=dimension;this.file=file;
+    }
+
+    static DefinitionFixture create(String dimension,JsonObject profile,TerrainRequest identity,
+                                    int storageMinY,int storageHeight,boolean skylight,boolean ceiling) throws IOException {
+        return create(dimension,profile,identity,storageMinY,storageHeight,skylight,ceiling,null);
+    }
+
+    static DefinitionFixture create(String dimension,JsonObject profile,TerrainRequest identity,
+                                    int storageMinY,int storageHeight,boolean skylight,boolean ceiling,
+                                    NativeWorldDefinition.ProgramExecution execution) throws IOException {
+        try(var snapshot=snapshot(dimension,profile,identity,storageMinY,storageHeight,skylight,ceiling)) {
+            var result=snapshot.open(execution);
+            result.ownedDirectory=snapshot.directory;snapshot.directory=null;
+            return result;
+        }
+    }
+
+    /** Own one published file while opening separate execution bindings to it. */
+    static Snapshot snapshot(String dimension,JsonObject profile,TerrainRequest identity,
+                             int storageMinY,int storageHeight,boolean skylight,boolean ceiling) throws IOException {
+        var directory=Files.createTempDirectory("retina-definition-fixture-");
+        try {
+            return new Snapshot(directory,write(directory,dimension,profile,identity,storageMinY,storageHeight,skylight,ceiling),dimension);
+        } catch(Throwable failure) {
+            try {delete(directory);}catch(Throwable cleanup){failure.addSuppressed(cleanup);}
+            throw failure;
+        }
+    }
+
+    static final class Snapshot implements AutoCloseable {
+        private Path directory;
+        private final Path file;
+        private final String dimension;
+        private Snapshot(Path directory,Path file,String dimension) {
+            this.directory=directory;this.file=file;this.dimension=dimension;
+        }
+        DefinitionFixture open(NativeWorldDefinition.ProgramExecution execution) {
+            return DefinitionFixture.open(file,dimension,2,execution);
+        }
+        Path file() {return file;}
+        @Override public void close() {
+            var owned=directory;directory=null;
+            if(owned!=null)try {delete(owned);}catch(IOException error){throw new UncheckedIOException(error);}
+        }
     }
 
     static Path write(Path directory,String dimension,JsonObject profile,TerrainRequest identity,
@@ -44,7 +93,7 @@ final class DefinitionFixture implements AutoCloseable {
         try {
             if(execution==null)world.bindDimension(dimension,compression);
             else world.bindDimension(dimension,compression,execution);
-            return new DefinitionFixture(world,dimension);
+            return new DefinitionFixture(world,dimension,file);
         } catch(Throwable failure) {
             try {world.close();}catch(Throwable cleanup){failure.addSuppressed(cleanup);}
             throw failure;
@@ -52,6 +101,24 @@ final class DefinitionFixture implements AutoCloseable {
     }
 
     TerrainRequest request(int x,int z) {return world.request(dimension,x,z);}
+    int dataVersion() {return com.google.gson.JsonParser.parseString(world.metadata()).getAsJsonObject().get("data_version").getAsInt();}
+    Path file() {return file;}
     String diagnosticProfile() {return world.diagnosticProfile(dimension);}
-    @Override public void close() {world.close();}
+    @Override public void close() {
+        try {world.close();}
+        catch(Throwable failure) {
+            try {cleanup();}catch(Throwable cleanup){failure.addSuppressed(cleanup);}
+            throw failure;
+        }
+        cleanup();
+    }
+    private void cleanup() {
+        var directory=ownedDirectory;ownedDirectory=null;
+        if(directory!=null)try {delete(directory);}catch(IOException error){throw new UncheckedIOException(error);}
+    }
+    private static void delete(Path directory) throws IOException {
+        try(var paths=Files.walk(directory)) {
+            for(var path:paths.sorted(Comparator.reverseOrder()).toList())Files.delete(path);
+        }
+    }
 }

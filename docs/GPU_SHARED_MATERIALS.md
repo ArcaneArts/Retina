@@ -108,7 +108,7 @@ records per-stage compilation and RSS, and compares every generated chunk's NBT:
 ```sh
 nice -n 10 python3 scripts/native-material-compile-benchmark.py \
   --test-binary build/native-target/release/deps/retina_worldgen-<test-id> \
-  --profile /absolute/path/to/exported-profile.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out /absolute/path/to/fresh-private-output --count 20 --warmups 2 --repeats 2
 ```
 

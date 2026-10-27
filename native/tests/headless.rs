@@ -1,5 +1,5 @@
-//! Process tests. The GPU proof requires actual mod captures, never synthesized
-//! expected chunks. Failed proofs keep their isolated directory for inspection.
+//! Process tests. Mod parity uses actual captures; density semantics uses separately
+//! compiled generation snapshots. Failed proofs retain isolated artifacts.
 use fastnbt::Value;
 use flate2::{Compression, read::ZlibDecoder, write::GzEncoder};
 use retina_worldgen::world_definition::wire;
@@ -161,6 +161,49 @@ struct Proof {
     name: String,
     definition: PathBuf,
     regions: PathBuf,
+}
+
+#[derive(serde::Deserialize)]
+struct DensityProof {
+    composed: PathBuf,
+    baseline: PathBuf,
+}
+
+#[test]
+#[ignore = "requires a GPU and RETINA_DENSITY_DEFINITIONS JSON containing separately compiled composed/baseline snapshots"]
+fn saved_density_semantics_ignore_environment_overrides() {
+    use retina_worldgen::world_definition::WorldDefinition;
+    let proof: DensityProof = serde_json::from_slice(
+        &fs::read(std::env::var("RETINA_DENSITY_DEFINITIONS").unwrap()).unwrap(),
+    ).unwrap();
+    let root = scratch();
+    eprintln!("Density semantics proof artifacts: {}",root.display());
+    let mut references = Vec::new();
+    for (name,source,expected) in [("composed",proof.composed,true),("baseline",proof.baseline,false)] {
+        let working=root.join(name);fs::create_dir(&working).unwrap();
+        fs::copy(source,working.join("retina.dat")).unwrap();
+        let before=fs::read(working.join("retina.dat")).unwrap();
+        let world=WorldDefinition::read(working.join("retina.dat")).unwrap();
+        assert_eq!(world.dimension("minecraft:overworld").unwrap().profile().unwrap()
+            .registry_program.as_ref().unwrap().density_composition,expected);
+        for mode in ["default","0","1"] {
+            let mut process=command(&working,"minecraft:overworld","0,0",mode,"zlib");
+            if mode!="default" {process.env("RETINA_DENSITY_COMPOSITION",mode);}
+            let report=summary(process.output().unwrap());
+            assert_eq!(report["generated_chunks"],1024);
+            assert_eq!(report["seed"].as_i64(),Some(world.seed()));
+            assert_eq!(report["data_version"].as_i64(),Some(world.data_version() as i64));
+            let output=working.join(mode).join("region/r.0.0.mca");
+            if mode=="default" {references.push(output);} else {compare(references.last().unwrap(),&output);}
+        }
+        assert_eq!(fs::read(working.join("retina.dat")).unwrap(),before);
+    }
+    let composed=fs::read(&references[0]).unwrap();let baseline=fs::read(&references[1]).unwrap();
+    let different=(0..1024).filter(|&slot|chunk(&composed,slot)!=chunk(&baseline,slot)).count();
+    assert!(different>0,"explicit generation variants must actually change terrain");
+    println!("QA_EVT {}",serde_json::json!({"event":"saved_density_semantics","unchanged_chunks":4096,
+        "explicitly_changed_chunks":different,"status":"pass"}));
+    fs::remove_dir_all(root).unwrap();
 }
 
 #[test]

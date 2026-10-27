@@ -72,12 +72,12 @@ library and profiles:
 ```sh
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/interpolation-vanilla.json --count 20 --warmups 2 \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld --count 20 --warmups 2 \
   --program-execution interpreter --interpolation-cache disabled \
   --out build/interpolation-cache-before
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/interpolation-vanilla.json --count 20 --warmups 2 \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld --count 20 --warmups 2 \
   --program-execution interpreter --interpolation-cache enabled \
   --compare build/interpolation-cache-before \
   --out build/interpolation-cache-after

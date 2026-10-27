@@ -30,13 +30,13 @@ def main() -> None:
     parser.add_argument("--candidate-library", type=Path, required=True)
     parser.add_argument("--baseline-revision")
     parser.add_argument("--candidate-revision")
-    parser.add_argument("--profile", type=Path, required=True)
+    parser.add_argument("--definition", type=Path, required=True)
+    parser.add_argument("--dimension", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--trials", type=int, default=4)
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--warmups", type=int, default=5)
     parser.add_argument("--parallel", type=int, choices=(1, 2), default=1)
-    parser.add_argument("--seed", type=int, default=123456789)
     parser.add_argument("--origin-x", type=int, default=-1)
     parser.add_argument("--origin-z", type=int, default=-1)
     parser.add_argument("--grid-width", type=int, default=3)
@@ -55,9 +55,9 @@ def main() -> None:
     for index, variant in enumerate(order):
         destination = args.out / f"{index:02d}-{variant}"
         library = args.baseline_library if variant == "baseline" else args.candidate_library
-        command = [sys.executable, str(runner), "--library", str(library), "--profile", str(args.profile),
+        command = [sys.executable, str(runner), "--library", str(library), "--definition", str(args.definition), "--dimension", args.dimension,
                    "--out", str(destination), "--count", str(args.count), "--warmups", str(args.warmups),
-                   "--parallel", str(args.parallel), "--seed", str(args.seed), "--scope", scope,
+                   "--parallel", str(args.parallel), "--scope", scope,
                    "--lighting", args.lighting, "--readiness", args.readiness,
                    "--origin-x", str(args.origin_x), "--origin-z", str(args.origin_z),
                    "--grid-width", str(args.grid_width)]

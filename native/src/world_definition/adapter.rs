@@ -44,7 +44,8 @@ impl WorldDefinition {
                 }
                 if profile.registry_program.is_some() || profile.end.is_some() {
                     summary["registry_program"] = json!({"material_layers":profile.material_layers(),
-                        "material_halo":profile.material_halo()});
+                        "material_halo":profile.material_halo(),
+                        "density_composition":profile.registry_program.as_ref().is_some_and(|p|p.density_composition)});
                 }
                 data["profile_metadata"] = summary;
                 data["limitations"] = limitations(self.source().dimensions[key].profile.as_ref().expect("supported profile"));

@@ -131,7 +131,7 @@ using a structures-disabled surface-test profile:
 ./gradlew exportBenchmarkProfile -PbenchmarkProfile=build/benchmark-terralith.json \
   -PbenchmarkPack=run/datapacks/Terralith.zip
 python3 scripts/native-region-benchmark.py --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/benchmark-vanilla.json --out build/benchmark-vanilla --count 20 --warmups 2
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld --out build/benchmark-vanilla --count 20 --warmups 2
 ```
 
 Retain a baseline library and matched profile/output directory, then use

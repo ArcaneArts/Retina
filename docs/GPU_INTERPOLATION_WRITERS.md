@@ -161,10 +161,10 @@ selection. To measure input-field specialization without specializing the rest:
 ```sh
 nice -n 10 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile /absolute/path/to/exported-profile.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out /absolute/path/to/fresh-private-output --count 20 --warmups 2 \
   --program-execution specialized --terrain-execution interpreter \
-  --specialized-interpolation enabled --density-composition enabled
+  --specialized-interpolation enabled
 ```
 
 The fresh-identity compiler diagnostic now also supports

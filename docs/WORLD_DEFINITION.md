@@ -604,3 +604,105 @@ The checker loads each file unchanged and binds the selected interpreter/special
 dispatch preference, including a second independent engine for cold chunk comparisons.
 It takes geometry and all requests from the files, including out-of-range probes.
 These are benchmark fixtures, not a way to change the seed or rules of an existing world.
+
+### Python region and material campaigns
+
+`scripts/native-region-benchmark.py --library LIB --definition retina.dat --dimension KEY --out NEW_DIRECTORY`
+uses the same native file loader and saved requests through `scripts/saved_definition.py`.
+The adapter transports FFI handles and metadata; it does not decode NBT or compile
+another profile. It closes handles after concurrent callers drain, including on failure.
+The region harness keeps its existing timing counters, decoded chunk comparisons,
+readiness selection, output codec options and disposable output ownership.
+
+The A/B campaign, End campaign and Nether performance suite pass definitions through
+the same runner. End campaigns default to `--readiness driver-warm`; choose
+`shader-ready` explicitly when measuring a registered shader workload. No profile
+filename or metadata guess prevents a workload from running. The Nether suite's
+version 2 manifest names a separate snapshot and dimension for each case.
+
+`scripts/native-material-continuation-check.py --baseline LIB --candidate LIB --definition retina.dat --dimension KEY --out REPORT`
+uses interpreter bindings to that same file in both libraries. Its height, seed and
+other generation parameters come from saved requests. Use separate snapshots to
+compare geometry; the script no longer has a runtime height or seed override.
+Libraries used as references must expose the saved-definition API. Historical
+JSON-era libraries and measurements remain useful archived evidence, but cannot
+be passed to this current interface. Reports identify the definition path/hash,
+saved seed, native/storage geometry, dimension, DataVersion and load/bind duration.
+The main region report uses schema version 2 for this definition identity and
+`startup.load_and_bind_ms`, replacing JSON profile identity/registration timing.
+
+Run the Python bridge integration with `RETINA_NATIVE_LIBRARY=LIB` and
+`RETINA_DEFINITION_FIXTURES=build/world-definition-fixtures` using
+`python3 -m unittest discover -s scripts -p 'test_*.py'`. These tests execute the
+actual Rust decoder/binding and use the GPU; missing optional LZ4 Python packages
+are reported as a skipped decoder test. Rust's headless decoder checks LZ4 too.
+
+### Lighting fixtures
+
+`NativeLightingIntegrationTest` publishes complete saved definitions for each
+lighting-rule/native-geometry variant, then gets its requests from the loaded file.
+The shared test fixture helper can own a temporary definition directory and removes
+it after closing its native handle. Caller-owned definition files remain untouched.
+The MCA lighting tests also get DataVersion from the loaded metadata.
+
+With `RETINA_LIGHTING_EXPORT=FRESH_DIRECTORY`, the test copies the same published
+file alongside each raw block volume. The small JSON manifest names its dimension,
+relative `CASE/retina.dat`, block file and volume side; it carries no generation
+profile or independent seed/height. Repeated boundary cases have distinct names.
+The full-height saved-region path includes all states observed in its block volumes
+and publishes their lighting/type rules the same way.
+
+`scripts/lighting-benchmark.py` uses the common Python world-handle adapter for
+both current/reference libraries, and closes each case after synchronous lighting
+jobs complete. Dense/sparse/reference output comparisons retain their existing
+scope; raw blocks are explicit lighting inputs, while rules come only from the file.
+
+### Analytic terrain fixtures
+
+Coordinate scopes, interpolation/density composition, aquifer equations and
+snow/MCA integration use complete saved fixtures. Registry compilation uses the
+fixture's declared seed before writing. Every generated chunk, column query and
+region request then comes from the loaded dimension; snow MCA DataVersion also
+comes from loaded metadata.
+
+The test-only `DefinitionFixture.snapshot(...)` owns one published file without
+starting a binding. Tests can open interpreter and specialized sessions to that
+same file, close each session, and finally remove the temporary file. They assert
+that dispatch comparisons leave the file unchanged. Density-composition baseline
+and composed programs are separate explicitly compiled generation definitions.
+`create(..., execution)` supports cases that need one selected dispatch binding.
+These helpers all use the production assembler, file writer and Rust loader.
+
+The coordinate/interpolation JSON diagnostic artifacts remain temporary inputs
+to the existing low-level GPU shader comparison probes; those probes' fixture
+migration is separate. They are not uploaded by these Java generation tests.
+
+### Frozen density semantics and compilation diagnostics
+
+`registry_program.density_composition` selects generation semantics from the saved
+file. `RETINA_DENSITY_COMPOSITION` no longer disables or enables that rule. This
+preserves normal output when the old environment override was unset, and makes
+a copied definition authoritative even in a process carrying that legacy variable.
+The adapter's registry-program metadata reports the actual saved choice.
+
+For comparisons, compile separate files with
+`:common:exportBenchmarkDefinition -PbenchmarkDefinitionRoot=NEW_DIRECTORY -PbenchmarkDensityComposition=true|false`.
+That property changes the compiler's model before publication; it never rewrites
+an existing definition. Region benchmarks no longer accept a density-composition
+runtime override and report the saved value instead.
+
+The ignored `actual_interpreter_pipeline_compile` probe and its interpreter/material
+Python campaign scripts take `--definition` and `--dimension`. The probe opens the
+actual file, binds its chosen execution preference, and uses loaded requests,
+DataVersion and biome identity for every measured region. Reports distinguish
+GPU initialization from `load_and_bind_ms`, and include saved seed and composition
+semantics. Use a separately compiled false-flag definition to repeat the historical
+legacy-composition workloads. Execution/cache/dispatch comparisons continue to use
+the same immutable definition.
+
+The opt-in headless test `saved_density_semantics_ignore_environment_overrides`
+takes `RETINA_DENSITY_DEFINITIONS` pointing to a JSON object with `composed` and
+`baseline` file paths. Each must be compiled independently with the corresponding
+flag. It launches fresh, environment-cleared processes using only a copied file,
+compares all decoded chunks across absent/0/1 legacy environment values, and also
+requires the two explicit generation variants to produce different terrain.

@@ -29,7 +29,9 @@ public final class NativeSnowIntegrationTest {
             net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources,RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY)).forEach(Registry.PendingTags::apply);
             var registry=RegistryIntegrationFixtures.load(resources);
             var choices=List.of("frozen_ocean","snowy_plains").stream().map(name -> (Holder<Biome>)registry.lookupOrThrow(Registries.BIOME).getOrThrow(ResourceKey.create(Registries.BIOME,Identifier.withDefaultNamespace(name)))).toList();
-            var base=BiomeTerrainProfile.load(registry,new RetinaBiomeSource(choices,128,.55F),-64,384);
+            var base=TerrainProfileData.export(registry,new RetinaBiomeSource(choices,128,.55F),-64,384,123456789L,
+                    registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(net.minecraft.world.level.levelgen.NoiseGeneratorSettings.OVERWORLD).value(),
+                    StructureProfile.Context.NONE);
             var source=JsonParser.parseString(base.json()).getAsJsonObject();
             var support=source.getAsJsonArray("snow_support");
             for(int i=0;i<base.materials().length;i++) {
@@ -49,36 +51,38 @@ public final class NativeSnowIntegrationTest {
                 var biome=source.getAsJsonArray("biomes").asList().stream().map(JsonElement::getAsJsonObject).filter(b -> b.get("id").getAsString().equals(name)).findFirst().orElseThrow().deepCopy();
                 biome.add("terrain",JsonParser.parseString("[0,0,0]"));biome.add("decorations",new JsonArray());biome.add("ores",new JsonArray());biome.add("carvers",new JsonArray());biome.add("lakes",JsonParser.parseString("[0,0]"));biome.addProperty("cave_kind",0);biome.addProperty("snow_surface",true);biome.addProperty("flags",1);
                 var single=new JsonArray();single.add(biome);data.add("biomes",single);
-                int profile=NativeTerrain.instance().registerProfile(data.toString());
-                var request=new TerrainRequest(123456789L,-1,-1,-64,384,ocean?32:80,0,.0035F,profile);
-                short[] expected;
-                try(var generated=NativeTerrain.instance().generate(request)) {
-                    expected=generated.blocks().toArray(ValueLayout.JAVA_SHORT);
-                    for(short m:expected) {
-                        var state=base.materials()[Short.toUnsignedInt(m)];
-                        if(state.is(Blocks.ICE))ice++;
-                        if(state.is(Blocks.SNOW)) {require(!ocean,"frozen ocean must not receive snow layers");snow++;}
+                try(var definition=DefinitionFixture.create("minecraft:overworld",data,
+                        new TerrainRequest(123456789L,0,0,-64,384,ocean?32:80,0,.0035F),-64,384,true,false)) {
+                    var request=definition.request(-1,-1);
+                    short[] expected;
+                    try(var generated=NativeTerrain.instance().generate(request)) {
+                        expected=generated.blocks().toArray(ValueLayout.JAVA_SHORT);
+                        for(short m:expected) {
+                            var state=base.materials()[Short.toUnsignedInt(m)];
+                            if(state.is(Blocks.ICE))ice++;
+                            if(state.is(Blocks.SNOW)) {require(!ocean,"frozen ocean must not receive snow layers");snow++;}
+                        }
+                        if(ocean)require(ice==256,"ocean stays frozen without a snow blanket");
+                        else require(snow==256,"snow still covers the cold land surface");
                     }
-                    if(ocean)require(ice==256,"ocean stays frozen without a snow blanket");
-                    else require(snow==256,"snow still covers the cold land surface");
-                }
-                var directory=Files.createTempDirectory("retina-snow-");
-                try {
-                    var region=new TerrainRequest(request.seed(),-32,-32,request.minY(),request.height(),request.baseHeight(),request.amplitude(),request.frequency(),profile);
-                    NativeTerrain.instance().generateRegion(region,directory.resolve("r.-1.-1.mca"),SharedConstants.getCurrentVersion().dataVersion().version(),name);
-                    try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-snow",Level.OVERWORLD,"chunk"),directory,false)) {
-                        var nbt=storage.read(new ChunkPos(-1,-1));require(nbt!=null,"MCA chunk is readable");
-                        for(var value:McaTestSections.terrain(nbt,request.minY(),request.height())) {
-                            var section=(net.minecraft.nbt.CompoundTag)value;int y=section.getByteOr("Y",(byte)0)*16;
-                            var blocks=codec.parse(net.minecraft.nbt.NbtOps.INSTANCE,section.getCompoundOrEmpty("block_states")).getOrThrow();
-                            for(int dy=0;dy<16;dy++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
-                                int at=(y+dy+64)*256+z*16+x;
-                                require(blocks.get(x,dy,z).equals(base.materials()[Short.toUnsignedInt(expected[at])]),"MCA and individual chunk snow agree");compared++;
+                    var directory=Files.createTempDirectory("retina-snow-");
+                    try {
+                        var region=definition.request(-32,-32);
+                        NativeTerrain.instance().generateRegion(region,directory.resolve("r.-1.-1.mca"),definition.dataVersion(),name);
+                        try(var storage=new RegionFileStorage(new RegionStorageInfo("retina-snow",Level.OVERWORLD,"chunk"),directory,false)) {
+                            var nbt=storage.read(new ChunkPos(-1,-1));require(nbt!=null,"MCA chunk is readable");
+                            for(var value:McaTestSections.terrain(nbt,request.minY(),request.height())) {
+                                var section=(net.minecraft.nbt.CompoundTag)value;int y=section.getByteOr("Y",(byte)0)*16;
+                                var blocks=codec.parse(net.minecraft.nbt.NbtOps.INSTANCE,section.getCompoundOrEmpty("block_states")).getOrThrow();
+                                for(int dy=0;dy<16;dy++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
+                                    int at=(y+dy+64)*256+z*16+x;
+                                    require(blocks.get(x,dy,z).equals(base.materials()[Short.toUnsignedInt(expected[at])]),"MCA and individual chunk snow agree");compared++;
+                                }
                             }
                         }
+                    } finally {
+                        try(var paths=Files.walk(directory)){for(var path:paths.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(path);}
                     }
-                } finally {
-                    try(var paths=Files.walk(directory)){for(var path:paths.sorted(Comparator.reverseOrder()).toList())Files.deleteIfExists(path);}
                 }
             }
             System.out.println("QA_EVT {\"event\":\"registered_snow_support\",\"status\":\"pass\",\"context\":{\"palette_states\":"+support.size()+",\"ice\":"+ice+",\"land_snow\":"+snow+",\"mca_blocks_compared\":"+compared+"}}");

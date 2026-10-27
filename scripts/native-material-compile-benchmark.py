@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare material sharing or input-field specialization with fresh GPU identities.
 
-Run sequentially against an exported profile and a built release test executable.
+Run sequentially against a saved world definition and a built release test executable.
 Use private output paths. Driver caches and live world saves are left intact.
 """
 import argparse
@@ -29,7 +29,8 @@ def records(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--test-binary", type=Path, required=True)
-    parser.add_argument("--profile", type=Path, required=True)
+    parser.add_argument("--definition", type=Path, required=True)
+    parser.add_argument("--dimension", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--count", type=int, default=20, help="Measured regions after warmups")
     parser.add_argument("--warmups", type=int, default=2)
@@ -52,9 +53,9 @@ def main():
                        RETINA_SPECIALIZED_PIPELINE_TAG=tag, RETINA_INTERPRETER_DISPATCH="1",
                        RETINA_MATERIAL_DISPATCH="1" if args.comparison == "interpolation" or phase == "shared" else "0",
                        RETINA_SPECIALIZED_INTERPOLATION="1" if args.comparison == "interpolation" and phase == candidate_phase else "0",
-                       RETINA_SPECIALIZED_TERRAIN="0", RETINA_DENSITY_COMPOSITION="0",
+                       RETINA_SPECIALIZED_TERRAIN="0",
                        RETINA_AQUIFER_COLUMNS="0", RETINA_COMPILE_REGIONS=str(total),
-                       RETINA_PROGRAM_PARITY_PROFILE=str(args.profile.resolve()),
+                       RETINA_COMPILE_DEFINITION=str(args.definition.resolve()), RETINA_COMPILE_DIMENSION=args.dimension,
                        RETINA_COMPILE_OUT=str(destination.resolve()))
             print(f"Starting {name}", flush=True)
             with log.open("w") as stream:
@@ -82,7 +83,7 @@ def main():
                           first_region_ms=measured["regions"][0]["ms"],
                           average_region_ms=warm_ms / args.count,
                           chunks_per_second=args.count * 1024 * 1000 / warm_ms,
-                          initialize_ms=measured["initialize_ms"], registration_ms=measured["registration_ms"],
+                          initialize_ms=measured["initialize_ms"], load_and_bind_ms=measured["load_and_bind_ms"],
                           peak_rss_bytes=int(peak.group(1)) * (1 if platform.system() == "Darwin" else 1024) if peak else None,
                           file_bytes=sum((destination / f"{i}.mca").stat().st_size for i in range(args.warmups, total)))
             results.append(result)
@@ -100,7 +101,8 @@ def main():
                 assert a == b, (result["name"], index, slot)
                 matched += 1
         result["identical_nbt_chunks"] = matched
-    report = dict(comparison=args.comparison, profile=str(args.profile.resolve()), profile_sha256=hashlib.sha256(args.profile.read_bytes()).hexdigest(),
+    report = dict(comparison=args.comparison, definition=str(args.definition.resolve()), dimension=args.dimension,
+                  seed=measured["seed"], data_version=measured["data_version"], density_composition=measured["density_composition"], definition_sha256=hashlib.sha256(args.definition.read_bytes()).hexdigest(),
                   test_binary_sha256=hashlib.sha256(args.test_binary.read_bytes()).hexdigest(),
                   count=args.count, warmups=args.warmups, repeats=args.repeats, results=results)
     (args.out / "comparison.json").write_text(json.dumps(report, indent=2) + "\n")

@@ -251,8 +251,9 @@ profiles. The normal Rust unit suite passed. No Minecraft session or GitHub Acti
 run was needed.
 
 To reproduce with retained libraries, run `scripts/native-material-continuation-check.py`
-with `--baseline`, `--candidate`, `--profile` and `--out`; `--height 384` selects the
-second workload. Run it under a 30-second process-group deadline at reduced
+with `--baseline`, `--candidate`, `--definition`, `--dimension` and `--out`.
+Request height comes from the snapshot; use separately compiled definitions for
+different generation geometry. Run it under a 30-second process-group deadline at reduced
 priority with `RETINA_INTERPRETER_PRELOAD=0`, `RETINA_REGION_THREADS=2` and
 `RAYON_NUM_THREADS=2`. Use two Cargo jobs for builds. The opt-in Rust tests are
 `material_continuations_preserve_interleaved_output`,
