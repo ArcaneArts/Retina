@@ -507,6 +507,30 @@ only the platform adapter decodes that output for installation.
 
 ## Saved structure pieces
 
+The live-resource authority test creates two actual datapacks with the same pack
+identity and resource names. B changes the temperature noise and replaces A's
+diamond/chest structure template with gold/chest data. Fresh compilation of B
+must change both outputs. Reopening saved A against B's registries and template
+manager must preserve A's canonical biomes, complete decoded chunks, structure
+starts and block-entity NBT, including when installed into a real `ProtoChunk`.
+Runtime generation-registry lookups deliberately fail; only biome and structure
+identity resolution is allowed. Run with Fabric's accessor mixins and a built
+native library:
+
+```sh
+./gradlew :fabric:test \
+  --tests '*WorldDefinitionResourceAuthorityIntegrationTest' --no-watch-fs \
+  -PretinaNativePath=/absolute/path/to/libretina_worldgen.dylib \
+  -x :buildNative -x :packageNative
+```
+
+The test writes both datapacks, both definitions and a `receipt.json` beneath
+`fabric/build/world-definition-resource-authority/`. On Metal / Apple M4 Max,
+B changed 195 of 400 canonical biome probes. Three saved-A decoded chunks stayed
+exact; five diamond blocks and two block entities remained A's while fresh B
+contained five gold blocks. The installed structure starts and block-entity NBT
+also retained A's data under B's runtime context.
+
 Native structure starts use the saved child-piece NBT and bounding boxes on
 initial installation and saved MCA reopen. The platform resolves structure and
 piece-type identifiers for runtime identity, while the shared metadata reader
