@@ -882,3 +882,16 @@ storage volume; feature RNG seeds remain independent sampler inputs.
 Region checks use the saved request factory and DataVersion, including neighbor
 queries around canopy boundaries. The task accepts
 `-PretinaNativePath=/absolute/path/to/native/library`.
+
+The registry-export Rust check, Nether profile checks, and datapack integration
+fixture also bind through saved files. Registry projection checks compare saved
+palettes and independently reopened column results; their export-only companion
+still runs with the native library deliberately unavailable.
+
+`netherProfileTest --args=--rust` checks normal and cropped native ranges against
+the same dimension storage, plus custom dimension attributes and runtime preview
+binding. `datapackTest` compiles the effective original source for automatic
+activation, and compiles legacy serialized Retina inputs before creating their
+runtime replacement from the file. Its controlled noise/arithmetic variants have
+separate definitions. The retained inputs are under
+`build/terralith-definition-{automatic,mca,chunk}/retina.dat`.

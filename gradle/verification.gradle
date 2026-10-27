@@ -622,6 +622,8 @@ tasks.register('datapackTest', JavaExec) {
     systemProperty 'retina.datapack.test.phase', providers.gradleProperty('testDatapackPhase').getOrElse('all')
     args providers.gradleProperty('testDatapack').getOrElse('run/datapacks/Terralith.zip')
     if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('datapackProgramTest', JavaExec) {
@@ -775,13 +777,15 @@ tasks.register('regionDecodeBenchmark', JavaExec) {
 ['registryExportTest': false, 'registryExportRustTest': true].each { taskName, rust ->
     tasks.register(taskName, JavaExec) {
         group = 'verification'
-        description = rust ? 'Register the shared registry projection in Rust and query actual GPU terrain.'
+        description = rust ? 'Load the shared registry projection from retina.dat and query actual GPU terrain.'
                 : 'Export complete loaded registries while the Rust library is unavailable.'
         dependsOn 'gpuTestClasses'
         classpath = sourceSets.gpuTest.runtimeClasspath
         mainClass = 'art.arcane.retina.worldgen.RegistryProfileExportTest'
         javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
         jvmArgs '--enable-native-access=ALL-UNNAMED'
+        if (providers.gradleProperty('retinaNativePath').isPresent())
+            systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
         if (rust) args '--rust'
         if (providers.gradleProperty('testDatapack').isPresent()) args providers.gradleProperty('testDatapack').get()
         if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
@@ -875,6 +879,8 @@ tasks.register('netherProfileTest', JavaExec) {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
     workingDir rootProject.projectDir
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
 }
 
 tasks.register('endReferenceTest', JavaExec) {

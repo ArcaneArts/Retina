@@ -52,8 +52,6 @@ public final class NetherProfileTest {
             var definition = new GenerationSource(Level.NETHER, source, dimension.value());
             var runtime = RetinaChunkGenerator.fromSource(definition);
             require(runtime.getMinY() == 0 && runtime.getGenDepth() == 128, "generator exposes source noise bounds");
-            require(runtime.request(42, -33, 63).minY() == 0 && runtime.request(42, -33, 63).height() == 256,
-                    "native requests retain full dimension storage, including above-roof builds");
             var description = definition.describe();
             require(description.get("ceiling").getAsBoolean() && !description.get("skylight").getAsBoolean()
                     && description.get("logical_height").getAsInt() == 128
@@ -144,29 +142,48 @@ public final class NetherProfileTest {
             var reopened = (NoiseBasedChunkGenerator) ChunkGenerator.CODEC.parse(ops, saved).getOrThrow();
             require(new GenerationSource(Level.NETHER, reopened, dimension.value()).describe().equals(description), "save/reopen preserves profile context");
             if (List.of(args).contains("--rust")) {
-                for (var exported : List.of(data, customData)) {
-                    var registered = BiomeTerrainProfile.register(exported);
-                    require(registered.json().equals(exported.json()), "native registration preserves exported profile");
+                var parameters=WorldDefinitionCompiler.parameters(customized,customType);
+                parameters.putInt("min_y",96);parameters.putInt("height",128);
+                var assembly=new WorldDefinitionAssembler(new WorldOptions(42,true,false),List.of(),"Cropped Nether fixture");
+                assembly.supported("minecraft:the_nether",parameters,customData,null);
+                try(var normal=DefinitionFixture.create(definition,data,42);
+                    var cropped=DefinitionFixture.create(assembly.build(),"minecraft:the_nether")) {
+                    checkSaved(registry,normal,data,0,256);
+                    checkSaved(registry,cropped,customData,96,128);
                 }
-                try {
-                    customRuntime.bindWorld(registry, 42,
-                            net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry),
-                            StructureProfile.Context.NONE, customType.hasSkyLight());
-                    var bound = JsonParser.parseString(customRuntime.profile().json()).getAsJsonObject();
-                    require(bound.get("dimension").getAsString().equals("minecraft:the_nether")
-                            && bound.get("ordered_decorations").getAsBoolean(),
-                            "bound customized Nether profile retains identity and ordered generation");
-                    require(customRuntime.previewCache().dimension().equals(Level.NETHER),
-                            "customized preview storage retains actual dimension");
-                } finally {
-                    customRuntime.closePreviews();
+                var document=WorldDefinitionCompiler.compile(registry,new WorldOptions(42,true,false),
+                        java.util.Map.of(LevelStem.NETHER,new LevelStem(Holder.direct(customType),customized)),
+                        StructureProfile.Context.NONE,List.of("vanilla"),"Customized Nether runtime fixture");
+                try(var file=DefinitionFixture.create(document,"minecraft:the_nether")) {
+                    var dim=file.savedDimension();dim.bindDimensionType(customType);
+                    var boundRuntime=RetinaChunkGenerator.fromDefinition(dim,registry);
+                    try {
+                        boundRuntime.bindWorld(registry,42,net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry));
+                        var bound=JsonParser.parseString(boundRuntime.profile().diagnosticJson()).getAsJsonObject();
+                        require(bound.get("dimension").getAsString().equals("minecraft:the_nether")
+                                &&bound.get("ordered_decorations").getAsBoolean(),"saved customized Nether retains identity and ordering");
+                        require(boundRuntime.previewCache().dimension().equals(Level.NETHER),"saved preview retains actual dimension");
+                        require(boundRuntime.request(999,-33,63).seed()==42,"saved seed owns runtime requests");
+                    } finally {boundRuntime.closePreviews();}
                 }
-                System.out.println("QA_EVT {\"event\":\"nether_native_profile_registration\",\"status\":\"pass\"}");
+                System.out.println("QA_EVT {\"event\":\"nether_native_file_binding\",\"status\":\"pass\"}");
             }
             Files.createDirectories(Path.of("build/nether"));
             Files.writeString(Path.of("build/nether/profile.json"), data.json());
             System.out.println("QA_EVT {\"event\":\"nether_profiles\",\"status\":\"pass\",\"context\":{\"biomes\":5,\"height_contexts\":5,\"placement_heights\":" + placements + "}}");
         }
+    }
+
+    private static void checkSaved(RegistryAccess registry,DefinitionFixture saved,TerrainProfileData exported,int minY,int height) {
+        var bound=saved.savedDimension().bind(registry);
+        require(java.util.Arrays.equals(bound.materials(),exported.materials())&&bound.biomes().equals(exported.biomes())
+                &&bound.seaLevel()==exported.seaLevel(),"file binding preserves exported palettes and sea level");
+        var request=saved.request(-33,63);
+        require(request.seed()==42&&request.minY()==minY&&request.height()==height,"native geometry and seed come from the file");
+        var model=JsonParser.parseString(saved.diagnosticProfile()).getAsJsonObject();
+        var original=JsonParser.parseString(exported.json()).getAsJsonObject();
+        for(String key:List.of("generator_depth","generation_bounds","ordered_decorations"))
+            require(model.get(key).equals(original.get(key)),"saved Nether generation field: "+key);
     }
 
     private static void checkContext(RegistryAccess registry, NoiseBasedChunkGenerator source, int minY, int height) {

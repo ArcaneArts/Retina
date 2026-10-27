@@ -57,15 +57,23 @@ public final class NativeDatapackIntegrationTest {
             var originalOps = world.createSerializationContext(JsonOps.INSTANCE);
             var originalJson = ChunkGenerator.CODEC.encodeStart(originalOps, original.generator()).getOrThrow();
             if (includes(phase, "automatic")) {
-                var automatic = (RetinaChunkGenerator) RetinaGenerators.adapt(net.minecraft.world.level.Level.OVERWORLD, original, original.generator());
-                try {
-                    automatic.bindWorld(world, 123456789L, net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
-                    require(new HashSet<>(automatic.profile().biomes()).equals(original.generator().getBiomeSource().possibleBiomes()), "automatic datapack source pool remains exact");
-                    require(ChunkGenerator.CODEC.encodeStart(originalOps, original.generator()).getOrThrow().equals(originalJson), "automatic datapack profile preserves saved source");
-                    automatic.biomeAt(0, 0);
-                    checkMca(automatic, automatic.profile(), false);
-                    System.out.println("QA_EVT {\"event\":\"automatic_datapack_generation\",\"status\":\"pass\"}");
-                } finally { automatic.closePreviews(); }
+                var adapted=(RetinaChunkGenerator)RetinaGenerators.adapt(net.minecraft.world.level.Level.OVERWORLD,original,original.generator());
+                require(adapted.selectedSource().generator()==original.generator(),"automatic adapter retains selected source");
+                var document=WorldDefinitionCompiler.compile(world,new net.minecraft.world.level.levelgen.WorldOptions(123456789L,true,false),
+                        Map.of(LevelStem.OVERWORLD,original),StructureProfile.Context.NONE,
+                        resources.listPacks().map(PackResources::packId).toList(),"Automatic datapack fixture");
+                try(var saved=DefinitionFixture.create(document,"minecraft:overworld")) {
+                    var dim=saved.savedDimension();dim.bindDimensionType(original.type().value());
+                    var automatic=RetinaChunkGenerator.fromDefinition(dim,world);
+                    try {
+                        automatic.bindWorld(world,123456789L,net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
+                        require(new HashSet<>(automatic.profile().biomes()).equals(original.generator().getBiomeSource().possibleBiomes()),"automatic saved source pool remains exact");
+                        require(ChunkGenerator.CODEC.encodeStart(originalOps,original.generator()).getOrThrow().equals(originalJson),"saved compilation preserves source");
+                        retain(saved,"automatic");
+                        automatic.biomeAt(0,0);checkMca(automatic,automatic.profile(),false);
+                        System.out.println("QA_EVT {\"event\":\"automatic_datapack_generation\",\"status\":\"pass\"}");
+                    } finally {automatic.closePreviews();}
+                }
             }
             if (phase.equals("automatic")) {
                 require(RetinaDimensions.retainSelection(Map.of(LevelStem.OVERWORLD,original),packs) == packs,"vanilla selection remains unchanged");
@@ -85,53 +93,66 @@ public final class NativeDatapackIntegrationTest {
                 var reopened = (RetinaChunkGenerator) ChunkGenerator.CODEC.parse(ops,encoded).getOrThrow();
                 require(reopened.mode().equals(mode) && reopened.getBiomeSource().possibleBiomes().size() == generator.getBiomeSource().possibleBiomes().size(), "save/reopen codec retains mode and imported source");
                 require(reopened.densityComposition(), "save/reopen retains composed density");
-                reopened.bindWorld(world,123456789L,net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
-                var profile = reopened.profile();
-                Files.writeString(Path.of("build/terralith-profile.json"),profile.json());
-                var projection=com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject();
-                require(projection.getAsJsonObject("registry_program").get("density_composition").getAsBoolean(), "saved density option reaches native profile");
-                float spacing=projection.get("biome_scale").getAsFloat();
-                require(spacing>256,"registered horizontal climate scales influence biome spacing");
-                if(args.length>1 && !bulk)require(spacing>1024,"additional datapack's climate scale changes spacing alongside Terralith");
-                System.out.println("QA_EVT {\"event\":\"registered_climate_spacing\",\"status\":\"pass\",\"context\":{\"site_scale\":"+spacing+"}}");
-                if(args.length>1 && !bulk) {
-                    require(profile.biomes().stream().anyMatch(b -> b.unwrapKey().orElseThrow().identifier().toString().equals("retina_test:painted_grove")),"additional pack's unreferenced custom biome is imported alongside Terralith");
-                    require(profile.biomes().stream().noneMatch(b -> b.unwrapKey().orElseThrow().identifier().toString().equals("retina_test:nether_grove")),"tagged Nether biomes stay out of Overworld");
-                }
-                require(profile.biomes().stream().anyMatch(b -> b.unwrapKey().orElseThrow().identifier().getNamespace().equals("terralith")), "pack biomes are imported");
-                System.out.println("QA_EVT {\"event\":\"datapack_registry_import\",\"status\":\"pass\",\"context\":{\"mode\":\""+mode+"\",\"biomes\":"+profile.biomes().size()+",\"materials\":"+profile.materials().length+"}}");
-                if (mode.equals("mca")) {
-                    if (includes(phase, "registry")) RegistryClimateIntegrationChecks.checkIndex(profile);
-                    if (includes(phase, "program")) RegistryProgramIntegrationChecks.check(profile);
-                    if (includes(phase, "decorations")) {
-                        // BulkBiomes deliberately replaces the climate source and has no dark forest.
-                        if (!bulk) RegistryDecorationIntegrationChecks.check(profile, true);
-                        if (!controls && !bulk) RegistryShoreIntegrationChecks.checkSediments(profile, true);
-                    }
-                    if (includes(phase, "shores") && !controls && !bulk)
-                        RegistryShoreIntegrationChecks.checkTerrainAlignment(profile, projection);
-                    if (includes(phase, "terrain")) {
-                        var seen = new HashSet<String>();boolean wideBiome=false;
-                        for (int z = -64; z <= 64; z += 8) for (int x = -64; x <= 64; x += 8) {
-                            var r = new TerrainRequest(123456789L,x*32,z*32,-64,384,64,48,.008F,profile.nativeId());
-                            var columns = NativeTerrain.instance().sampleColumns(r);
-                            for (int i=0;i<256;i++) {seen.add(profile.biomes().get(columns.biome(i)).unwrapKey().orElseThrow().identifier().toString());wideBiome|=columns.biome(i)>255;}
+                try(var saved=DefinitionFixture.create(WorldDefinitionCompiler.compile(world,
+                        new net.minecraft.world.level.levelgen.WorldOptions(123456789L,true,false),
+                        Map.of(LevelStem.OVERWORLD,new LevelStem(original.type(),reopened)),StructureProfile.Context.NONE,
+                        resources.listPacks().map(PackResources::packId).toList(),"Legacy codec datapack fixture"),"minecraft:overworld")) {
+                    var dim=saved.savedDimension();dim.bindDimensionType(original.type().value());
+                    var fileGenerator=RetinaChunkGenerator.fromDefinition(dim,world);
+                    try {
+                        fileGenerator.bindWorld(world,123456789L,net.minecraft.world.level.chunk.PalettedContainerFactory.create(world));
+                        retain(saved,mode);
+                        var profile = fileGenerator.profile();
+                        Files.writeString(Path.of("build/terralith-profile.json"),profile.diagnosticJson());
+                        var projection=com.google.gson.JsonParser.parseString(profile.diagnosticJson()).getAsJsonObject();
+                        require(projection.getAsJsonObject("registry_program").get("density_composition").getAsBoolean(), "saved density option reaches native profile");
+                        float spacing=projection.get("biome_scale").getAsFloat();
+                        require(spacing>256,"registered horizontal climate scales influence biome spacing");
+                        if(args.length>1 && !bulk)require(spacing>1024,"additional datapack's climate scale changes spacing alongside Terralith");
+                        System.out.println("QA_EVT {\"event\":\"registered_climate_spacing\",\"status\":\"pass\",\"context\":{\"site_scale\":"+spacing+"}}");
+                        if(args.length>1 && !bulk) {
+                            require(profile.biomes().stream().anyMatch(b -> b.unwrapKey().orElseThrow().identifier().toString().equals("retina_test:painted_grove")),"additional pack's unreferenced custom biome is imported alongside Terralith");
+                            require(profile.biomes().stream().noneMatch(b -> b.unwrapKey().orElseThrow().identifier().toString().equals("retina_test:nether_grove")),"tagged Nether biomes stay out of Overworld");
                         }
-                        require(seen.stream().anyMatch(id -> id.startsWith(bulk?"retina_bulk:":"terralith:")), "custom biomes actually selected by GPU");
-                        if(args.length>1 && !controls && !bulk)require(seen.contains("retina_test:painted_grove"),"additional pack biome actually selected on GPU: "+seen);
-                        if(bulk){require(profile.biomes().size()>255 && wideBiome,"more than 255 merged biomes reach the actual GPU columns");System.out.println("QA_EVT {\"event\":\"wide_biome_gpu_indices\",\"status\":\"pass\",\"context\":{\"biomes\":"+profile.biomes().size()+"}}");}
-                        if(controls)checkControls(profile,projection);
-                        reopened.biomeAt(0,0);
-                        require(reopened.metrics().snapshot().previewRegions() == 1, "surface query uses one full temporary MCA");
-                        checkMca(reopened,profile,!controls);
-                        System.out.println("QA_EVT {\"event\":\"datapack_gpu_mca\",\"status\":\"pass\",\"context\":{\"selected_biomes\":"+seen.size()+",\"regions\":1}}");
-                    }
+                        require(profile.biomes().stream().anyMatch(b -> b.unwrapKey().orElseThrow().identifier().getNamespace().equals("terralith")), "pack biomes are imported");
+                        System.out.println("QA_EVT {\"event\":\"datapack_registry_import\",\"status\":\"pass\",\"context\":{\"mode\":\""+mode+"\",\"biomes\":"+profile.biomes().size()+",\"materials\":"+profile.materials().length+"}}");
+                        if (mode.equals("mca")) {
+                            if (includes(phase, "registry")) RegistryClimateIntegrationChecks.checkIndex(profile);
+                            if (includes(phase, "program")) RegistryProgramIntegrationChecks.check(profile);
+                            if (includes(phase, "decorations")) {
+                                // BulkBiomes deliberately replaces the climate source and has no dark forest.
+                                if (!bulk) RegistryDecorationIntegrationChecks.check(profile, true);
+                                if (!controls && !bulk) RegistryShoreIntegrationChecks.checkSediments(profile, true);
+                            }
+                            if (includes(phase, "shores") && !controls && !bulk)
+                                RegistryShoreIntegrationChecks.checkTerrainAlignment(profile, projection);
+                            if (includes(phase, "terrain")) {
+                                var seen = new HashSet<String>();boolean wideBiome=false;
+                                for (int z = -64; z <= 64; z += 8) for (int x = -64; x <= 64; x += 8) {
+                                    var r = saved.request(x*32,z*32);
+                                    var columns = NativeTerrain.instance().sampleColumns(r);
+                                    for (int i=0;i<256;i++) {seen.add(profile.biomes().get(columns.biome(i)).unwrapKey().orElseThrow().identifier().toString());wideBiome|=columns.biome(i)>255;}
+                                }
+                                require(seen.stream().anyMatch(id -> id.startsWith(bulk?"retina_bulk:":"terralith:")), "custom biomes actually selected by GPU");
+                                if(args.length>1 && !controls && !bulk)require(seen.contains("retina_test:painted_grove"),"additional pack biome actually selected on GPU: "+seen);
+                                if(bulk){require(profile.biomes().size()>255 && wideBiome,"more than 255 merged biomes reach the actual GPU columns");System.out.println("QA_EVT {\"event\":\"wide_biome_gpu_indices\",\"status\":\"pass\",\"context\":{\"biomes\":"+profile.biomes().size()+"}}");}
+                                if(controls)checkControls(profile,projection);
+                                fileGenerator.biomeAt(0,0);
+                                require(fileGenerator.metrics().snapshot().previewRegions() == 1, "surface query uses one full temporary MCA");
+                                checkMca(fileGenerator,profile,!controls);
+                                System.out.println("QA_EVT {\"event\":\"datapack_gpu_mca\",\"status\":\"pass\",\"context\":{\"selected_biomes\":"+seen.size()+",\"regions\":1}}");
+                            }
+                        }
+                    } finally {fileGenerator.closePreviews();}
                 }
-                reopened.closePreviews();
             }
             require(RetinaDimensions.retainSelection(Map.of(LevelStem.OVERWORLD,original),packs) == packs,"vanilla selection remains unchanged");
             completePhase(phase);
         }
+    }
+    private static void retain(DefinitionFixture saved,String name) throws Exception {
+        var directory=Path.of("build/terralith-definition-"+name);Files.createDirectories(directory);
+        Files.copy(saved.file(),directory.resolve("retina.dat"),StandardCopyOption.REPLACE_EXISTING);
     }
     private static boolean includes(String phase, String selected) {
         return phase.equals("all") || phase.equals(selected);
@@ -172,40 +193,47 @@ public final class NativeDatapackIntegrationTest {
         RegistryGpuProgramIntegrationChecks.checkSurfaceInterpolation(profile);
         var original=source.deepCopy();
         for(var b:original.getAsJsonArray("biomes"))b.getAsJsonObject().add("lakes",com.google.gson.JsonParser.parseString("[0,0]"));
-        var nativeTerrain=NativeTerrain.instance();int id=nativeTerrain.registerProfile(original.toString());
+        var nativeTerrain=NativeTerrain.instance();
         var noiseChanged=original.deepCopy();int surfaceNoise=noiseChanged.getAsJsonObject("registry_program").getAsJsonArray("surface_noises").get(0).getAsInt();
         noiseChanged.getAsJsonObject("registry_program").getAsJsonArray("noises").get(surfaceNoise).getAsJsonObject().addProperty("amplitude",0);
-        int noiseId=nativeTerrain.registerProfile(noiseChanged.toString());
+
         var heightChanged=original.deepCopy();var program=heightChanged.getAsJsonObject("registry_program").getAsJsonArray("programs").get(1).getAsJsonObject();
         program.getAsJsonArray("nodes").get(program.getAsJsonArray("roots").get(0).getAsInt()).getAsJsonObject().getAsJsonArray("p").set(0,new com.google.gson.JsonPrimitive(184));
-        int heightId=nativeTerrain.registerProfile(heightChanged.toString());
+
         var climateChanged=original.deepCopy();var climate=climateChanged.getAsJsonObject("registry_program").getAsJsonArray("programs").get(0).getAsJsonObject();
         boolean edited=false;for(var n:climate.getAsJsonArray("nodes")){var node=n.getAsJsonObject();if(node.get("op").getAsInt()==0 && Math.abs(node.getAsJsonArray("p").get(0).getAsFloat()-.65f)<.00001f){node.getAsJsonArray("p").set(0,new com.google.gson.JsonPrimitive(-.65f));edited=true;}}
-        require(edited,"registered temperature arithmetic was compiled");int climateId=nativeTerrain.registerProfile(climateChanged.toString());
-        int changedMaterials=0,changedBiomes=0;var surfaces=new HashSet<String>();
-        for(int x=-8;x<8;x++) {
-            var before=nativeTerrain.sampleColumns(new TerrainRequest(123456789L,x*31,0,-64,384,64,48,.008F,id));
-            var after=nativeTerrain.sampleColumns(new TerrainRequest(123456789L,x*31,0,-64,384,64,48,.008F,noiseId));
-            var heights=nativeTerrain.sampleColumns(new TerrainRequest(123456789L,x*31,0,-64,384,64,48,.008F,heightId));
-            var biomes=nativeTerrain.sampleColumns(new TerrainRequest(123456789L,x*31,0,-64,384,64,48,.008F,climateId));
-            for(int i=0;i<256;i++) {
-                require(before.heights()[i]==121 && heights.heights()[i]==185,"registered surface functions set GPU heights");
-                String block=BuiltInRegistries.BLOCK.getKey(profile.materials()[before.materials()[i]&65535].getBlock()).toString();
-                surfaces.add(block);require(Set.of("minecraft:gold_block","minecraft:copper_block").contains(block),"registered noise material predicate selects its block on GPU");
-                if(before.materials()[i]!=after.materials()[i])changedMaterials++;
-                if(before.biome(i)!=biomes.biome(i))changedBiomes++;
+        require(edited,"registered temperature arithmetic was compiled");
+        try(var id=RegistryDefinitionFixture.create(original,123456789L);
+            var noiseId=RegistryDefinitionFixture.create(noiseChanged,123456789L);
+            var heightId=RegistryDefinitionFixture.create(heightChanged,123456789L);
+            var climateId=RegistryDefinitionFixture.create(climateChanged,123456789L)) {
+            int changedMaterials=0,changedBiomes=0;var surfaces=new HashSet<String>();
+            for(int x=-8;x<8;x++) {
+                var before=nativeTerrain.sampleColumns(id.request(x*31,0));
+                var after=nativeTerrain.sampleColumns(noiseId.request(x*31,0));
+                var heights=nativeTerrain.sampleColumns(heightId.request(x*31,0));
+                var biomes=nativeTerrain.sampleColumns(climateId.request(x*31,0));
+                for(int i=0;i<256;i++) {
+                    require(before.heights()[i]==121 && heights.heights()[i]==185,"registered surface functions set GPU heights");
+                    String block=BuiltInRegistries.BLOCK.getKey(profile.materials()[before.materials()[i]&65535].getBlock()).toString();
+                    surfaces.add(block);require(Set.of("minecraft:gold_block","minecraft:copper_block").contains(block),"registered noise material predicate selects its block on GPU");
+                    if(before.materials()[i]!=after.materials()[i])changedMaterials++;
+                    if(before.biome(i)!=biomes.biome(i))changedBiomes++;
+                }
+            }
+            require(surfaces.size()==2 && changedMaterials>100 && changedBiomes>100,"registered material noise and temperature arithmetic influence actual output");
+            var cavities=original.deepCopy();var density=cavities.getAsJsonObject("registry_program").getAsJsonArray("programs").get(2).getAsJsonObject();
+            density.add("nodes",com.google.gson.JsonParser.parseString("[{\"op\":0,\"a\":0,\"b\":0,\"c\":0,\"p\":[-1,0,0,0]}]"));density.add("roots",com.google.gson.JsonParser.parseString("[0]"));
+            int carved=0;
+            try(var caveId=RegistryDefinitionFixture.create(cavities,123456789L)) {
+                try(var a=nativeTerrain.generate(id.request(0,0));var b=nativeTerrain.generate(caveId.request(0,0))) {
+                    var before=a.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);var after=b.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
+                    for(int i=0;i<before.length;i++)if(before[i]!=0 && after[i]==0)carved++;
+                }
+                require(carved>1000,"registered final density controls GPU cavities");
+                System.out.println("QA_EVT {\"event\":\"registered_gpu_controls\",\"status\":\"pass\",\"context\":{\"material_columns\":"+changedMaterials+",\"biome_columns\":"+changedBiomes+",\"carved_blocks\":"+carved+"}}");
             }
         }
-        require(surfaces.size()==2 && changedMaterials>100 && changedBiomes>100,"registered material noise and temperature arithmetic influence actual output");
-        var cavities=original.deepCopy();var density=cavities.getAsJsonObject("registry_program").getAsJsonArray("programs").get(2).getAsJsonObject();
-        density.add("nodes",com.google.gson.JsonParser.parseString("[{\"op\":0,\"a\":0,\"b\":0,\"c\":0,\"p\":[-1,0,0,0]}]"));density.add("roots",com.google.gson.JsonParser.parseString("[0]"));
-        int caveId=nativeTerrain.registerProfile(cavities.toString());int carved=0;
-        try(var a=nativeTerrain.generate(new TerrainRequest(123456789L,0,0,-64,384,64,48,.008F,id));var b=nativeTerrain.generate(new TerrainRequest(123456789L,0,0,-64,384,64,48,.008F,caveId))) {
-            var before=a.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);var after=b.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
-            for(int i=0;i<before.length;i++)if(before[i]!=0 && after[i]==0)carved++;
-        }
-        require(carved>1000,"registered final density controls GPU cavities");
-        System.out.println("QA_EVT {\"event\":\"registered_gpu_controls\",\"status\":\"pass\",\"context\":{\"material_columns\":"+changedMaterials+",\"biome_columns\":"+changedBiomes+",\"carved_blocks\":"+carved+"}}");
     }
 
     private static void checkMca(RetinaChunkGenerator generator,BiomeTerrainProfile profile,boolean expectWideMaterials) throws Exception {

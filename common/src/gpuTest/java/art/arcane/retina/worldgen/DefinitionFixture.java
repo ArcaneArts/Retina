@@ -21,6 +21,19 @@ final class DefinitionFixture implements AutoCloseable {
         this.world=world;this.dimension=dimension;this.file=file;
     }
 
+    /** Open a whole world document only after its real file is published. */
+    static DefinitionFixture create(CompoundTag document,String dimension) throws IOException {
+        var directory=Files.createTempDirectory("retina-compiled-world-fixture-");
+        try {
+            var result=open(WorldDefinitionFile.writeNew(directory,document),dimension,2);
+            result.ownedDirectory=directory;
+            return result;
+        } catch(Throwable failure) {
+            try {delete(directory);}catch(Throwable cleanup){failure.addSuppressed(cleanup);}
+            throw failure;
+        }
+    }
+
     /** Preserve the production source's distinct native/storage/generator geometry. */
     static DefinitionFixture create(GenerationSource source,TerrainProfileData data,long seed) throws IOException {
         return create(source,data,seed,true);
