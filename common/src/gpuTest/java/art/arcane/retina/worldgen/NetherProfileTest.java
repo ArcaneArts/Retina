@@ -158,12 +158,12 @@ public final class NetherProfileTest {
                     var dim=file.savedDimension();dim.bindDimensionType(customType);
                     var boundRuntime=RetinaChunkGenerator.fromDefinition(dim,registry);
                     try {
-                        boundRuntime.bindWorld(registry,42,net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry));
+                        boundRuntime.bindWorld(net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry));
                         var bound=JsonParser.parseString(boundRuntime.profile().diagnosticJson()).getAsJsonObject();
                         require(bound.get("dimension").getAsString().equals("minecraft:the_nether")
                                 &&bound.get("ordered_decorations").getAsBoolean(),"saved customized Nether retains identity and ordering");
                         require(boundRuntime.previewCache().dimension().equals(Level.NETHER),"saved preview retains actual dimension");
-                        require(boundRuntime.request(999,-33,63).seed()==42,"saved seed owns runtime requests");
+                        require(boundRuntime.request(-33,63).seed()==42,"saved seed owns runtime requests");
                     } finally {boundRuntime.closePreviews();}
                 }
                 System.out.println("QA_EVT {\"event\":\"nether_native_file_binding\",\"status\":\"pass\"}");

@@ -6,7 +6,6 @@ import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.storage.RegionFileStorage;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
@@ -56,32 +55,32 @@ final class TemporaryRegions implements AutoCloseable {
         this.dimension=dimension;
         this.settings = settings;
         this.biome = biome;
-        this.profile = profile;
+        this.profile = java.util.Objects.requireNonNull(profile, "Temporary regions require a saved definition profile");
         this.metrics = metrics;
         this.capacity = capacity;
         this.memoryCapacity = memoryCapacity;
         if (capacity < 1 || memoryCapacity < 1) throw new IllegalArgumentException("Temporary region capacity must be positive");
         try { folder = Files.createTempDirectory("retina-preview-"); }
         catch (IOException error) { throw new UncheckedIOException(error); }
-        var ids = profile == null ? null : JsonParser.parseString(profile.json()).getAsJsonObject();
-        flatLayers = ids != null && ids.has("flat") ? ids.getAsJsonObject("flat").getAsJsonArray("base_layers").asList().stream().mapToInt(v -> v.getAsInt()).toArray() : null;
-        layeredMaterials = ids != null && ids.has("registry_program")
+        var ids = JsonParser.parseString(profile.json()).getAsJsonObject();
+        flatLayers = ids.has("flat") ? ids.getAsJsonObject("flat").getAsJsonArray("base_layers").asList().stream().mapToInt(v -> v.getAsInt()).toArray() : null;
+        layeredMaterials = ids.has("registry_program")
                 && ids.getAsJsonObject("registry_program").has("material_layers")
                 && ids.getAsJsonObject("registry_program").get("material_layers").getAsBoolean();
-        stone = ids == null ? 1 : ids.get("stone").getAsInt();
-        water = ids == null ? 0 : ids.get("water").getAsInt();
-        bedrock = ids == null ? 1 : ids.get("bedrock").getAsInt();
-        deepslate = ids == null ? 1 : ids.get("deepslate").getAsInt();
-        snow = ids == null ? 1 : ids.get("snow").getAsInt();
-        ice = ids == null ? 0 : ids.get("ice").getAsInt();
-        lava = ids == null || !ids.has("lava") ? water : ids.get("lava").getAsInt();
-        bands = ids == null || !ids.has("terrain_features") ? new int[0] : ids.getAsJsonObject("terrain_features").getAsJsonArray("bands").asList().stream().mapToInt(e -> e.getAsInt()).toArray();
-        biomeFillers = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("filler").getAsInt()).toArray();
-        biomeTops = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("top").getAsInt()).toArray();
-        biomeUnderwater = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("underwater").getAsInt()).toArray();
-        biomeBarriers = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("lake_barrier") == null ? 0 : e.getAsJsonObject().get("lake_barrier").getAsInt()).toArray();
-        biomeFlags = ids == null ? new int[0] : ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("flags").getAsInt()).toArray();
-        if (profile != null) for (int i = 0; i < profile.biomes().size(); i++) biomeIds.put(profile.biomes().get(i).unwrapKey().orElseThrow().identifier().toString(), i);
+        stone = ids.get("stone").getAsInt();
+        water = ids.get("water").getAsInt();
+        bedrock = ids.get("bedrock").getAsInt();
+        deepslate = ids.get("deepslate").getAsInt();
+        snow = ids.get("snow").getAsInt();
+        ice = ids.get("ice").getAsInt();
+        lava = !ids.has("lava") ? water : ids.get("lava").getAsInt();
+        bands = !ids.has("terrain_features") ? new int[0] : ids.getAsJsonObject("terrain_features").getAsJsonArray("bands").asList().stream().mapToInt(e -> e.getAsInt()).toArray();
+        biomeFillers = ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("filler").getAsInt()).toArray();
+        biomeTops = ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("top").getAsInt()).toArray();
+        biomeUnderwater = ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("underwater").getAsInt()).toArray();
+        biomeBarriers = ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("lake_barrier") == null ? 0 : e.getAsJsonObject().get("lake_barrier").getAsInt()).toArray();
+        biomeFlags = ids.getAsJsonArray("biomes").asList().stream().mapToInt(e -> e.getAsJsonObject().get("flags").getAsInt()).toArray();
+        for (int i = 0; i < profile.biomes().size(); i++) biomeIds.put(profile.biomes().get(i).unwrapKey().orElseThrow().identifier().toString(), i);
     }
 
     private long key(ChunkPos position) {
@@ -328,13 +327,12 @@ final class TemporaryRegions implements AutoCloseable {
         var states = new BlockState[settings.height()];
         boolean lake = (packed & (1 << 29)) != 0;
         int depth = (packed >>> 24) & 7;
-        int waterline = lake ? ground + depth : profile == null ? settings.minY() : profile.seaLevel();
-        var materials = profile == null ? new BlockState[]{Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState()} : profile.materials();
+        int waterline = lake ? ground + depth : profile.seaLevel();
+        var materials = profile.materials();
         for (int layer = 0; layer < states.length; layer++) {
             int y = settings.minY() + layer;
             int id;
-            if (profile == null) id = y < ground ? 1 : 0;
-            else if (layer < 1 + (packed >>> 30)) id = bedrock;
+            if (layer < 1 + (packed >>> 30)) id = bedrock;
             else if (y >= ground) id = y < waterline ? (lake && (packed & (1 << 28)) != 0 ? lava : !lake && (packed & (1 << 28)) != 0 && y == waterline - 1 ? ice : water) : 0;
             else if (y == ground - 1) id = surfaceMaterial(packed, columns.materials()[index], true);
             else if (!lake && (biomeFlags[packed & 65535] & 8) != 0 && bands.length > 0 && y >= profile.seaLevel() - 16) id = bands[Math.floorMod(y + (byte) ((packed >>> 16) & 255), bands.length)];

@@ -27,15 +27,15 @@ public abstract class ChunkMapMixin {
     @Inject(method = "<init>", at = @At("TAIL"))
     private void retina$attachStorage(CallbackInfo callback) {
         if (generator() instanceof RetinaChunkGenerator retina) {
-            retina.bindWorld(level.registryAccess(), level.getSeed(),level.getStructureTemplateManager(),level.getServer().getWorldGenSettings().options().generateStructures(),level.dimensionType().hasSkyLight(),level.dimension());
+            retina.bindWorld(net.minecraft.world.level.chunk.PalettedContainerFactory.create(level.registryAccess()));
             if (!retina.regionMode()) return;
-            var bounds = retina.request(level.getSeed(), 0, 0);
+            var bounds = retina.request(0, 0);
             if (bounds.minY() != level.getMinY() || bounds.height() != level.getHeight()) {
                 throw new IllegalArgumentException("Retina MCA bounds must match the dimension bounds for stored sections and heightmaps");
             }
             var worker = (IOWorker) ((ChunkMap) (Object) this).chunkScanner();
             var storage = (RegionStorageBridge) (Object) ((IOWorkerAccessor) worker).retina$storage();
-            var coordinator = new RegionCoordinator(retina, level.getSeed(), storage.retina$folder());
+            var coordinator = new RegionCoordinator(retina, storage.retina$folder());
             storage.retina$configure(coordinator);
         }
     }

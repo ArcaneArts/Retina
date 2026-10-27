@@ -29,42 +29,50 @@ class RegionAheadPublicationTest {
     @Test void publishesBeforeChunkLoadsAndPreservesConcurrentEdits(@TempDir Path directory) throws Exception {
         SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
         var registry = new MappedRegistry<Biome>(Registries.BIOME, Lifecycle.stable());
-        var biome = Registry.registerForHolder(registry, Biomes.PLAINS, new Biome.BiomeBuilder()
+        Registry.registerForHolder(registry, Biomes.PLAINS, new Biome.BiomeBuilder()
                 .temperature(.8f).downfall(.4f).generationSettings(BiomeGenerationSettings.EMPTY)
                 .mobSpawnSettings(MobSpawnSettings.EMPTY)
                 .specialEffects(new BiomeSpecialEffects.Builder().waterColor(0x3f76e4).build()).build());
         registry.freeze();
-        var generator = new RetinaChunkGenerator(new FixedBiomeSource(biome), 0, 16, 6, 4, .008f, "mca");
-        var cache = new TemporaryRegions(generator.request(42, 0, 0), "minecraft:plains", null,
-                generator.metrics(), 4, 1);
-        var field = RetinaChunkGenerator.class.getDeclaredField("previews");
-        field.setAccessible(true); field.set(generator, cache);
-        var info = new RegionStorageInfo("retina-ahead-test", Level.OVERWORLD, "chunk");
-        try (var worker = new IOWorker(info, directory, false) {}) {
-            var bridge = (RegionStorageBridge)(Object)((IOWorkerAccessor)worker).retina$storage();
-            bridge.retina$configure(new RegionCoordinator(generator, 42, directory));
-            var io = (RegionIoBridge)worker;
-            assertTrue(io.retina$regionMode());
-            var first = new ChunkPos(-32, 0);
-            CompletableFuture.allOf(io.retina$generateAhead(first), io.retina$generateAhead(new ChunkPos(-31, 0)))
-                    .get(15, TimeUnit.SECONDS);
-            var path = directory.resolve("r.-1.0.mca");
-            assertTrue(Files.isRegularFile(path), "MCA exists before Minecraft requests a chunk load");
-            var header = ByteBuffer.wrap(Files.readAllBytes(path), 0, 4096);
-            for (int i = 0; i < 1024; i++) assertNotEquals(0, header.getInt(), "every chunk record exists");
-            assertEquals(1, generator.metrics().snapshot().previewRegions(), "duplicate foreground/ahead work coalesces");
-            assertEquals(cache.read(first), worker.loadAsync(first).get(2, TimeUnit.SECONDS).orElseThrow());
+        var identities = new net.minecraft.core.RegistryAccess.ImmutableRegistryAccess(java.util.List.of(registry)).freeze();
+        var model = com.google.gson.JsonParser.parseString("""
+                {"terrain_kind":"procedural","sea_level":0,"materials":["minecraft:air","minecraft:stone"],
+                 "biomes":[{"id":"minecraft:plains"}]}
+                """).getAsJsonObject();
+        try (var definition = DefinitionFixture.create("minecraft:overworld",model,
+                new TerrainRequest(42,0,0,0,16,6,4,.008f,0),0,16,true,false)) {
+            var generator = RetinaChunkGenerator.fromDefinition(definition.savedDimension(),identities);
+            var cache = new TemporaryRegions(generator.request(0, 0), "minecraft:plains", generator.profile(),
+                    generator.metrics(), 4, 1);
+            var field = RetinaChunkGenerator.class.getDeclaredField("previews");
+            field.setAccessible(true); field.set(generator, cache);
+            var info = new RegionStorageInfo("retina-ahead-test", Level.OVERWORLD, "chunk");
+            try (var worker = new IOWorker(info, directory, false) {}) {
+                var bridge = (RegionStorageBridge)(Object)((IOWorkerAccessor)worker).retina$storage();
+                bridge.retina$configure(new RegionCoordinator(generator, directory));
+                var io = (RegionIoBridge)worker;
+                assertTrue(io.retina$regionMode());
+                var first = new ChunkPos(-32, 0);
+                CompletableFuture.allOf(io.retina$generateAhead(first), io.retina$generateAhead(new ChunkPos(-31, 0)))
+                        .get(15, TimeUnit.SECONDS);
+                var path = directory.resolve("r.-1.0.mca");
+                assertTrue(Files.isRegularFile(path), "MCA exists before Minecraft requests a chunk load");
+                var header = ByteBuffer.wrap(Files.readAllBytes(path), 0, 4096);
+                for (int i = 0; i < 1024; i++) assertNotEquals(0, header.getInt(), "every chunk record exists");
+                assertEquals(1, generator.metrics().snapshot().previewRegions(), "duplicate foreground/ahead work coalesces");
+                assertEquals(cache.read(first), worker.loadAsync(first).get(2, TimeUnit.SECONDS).orElseThrow());
 
-            var second = new ChunkPos(32, 0);
-            try (var lease = cache.prepare(second)) {
-                var edit = new CompoundTag(); edit.putString("retina_test", "preserved pending edit");
-                var stored = worker.store(second, edit);
-                io.retina$generateAhead(second).get(10, TimeUnit.SECONDS);
-                stored.get(2, TimeUnit.SECONDS);
-                assertEquals("preserved pending edit", worker.loadAsync(second).get(2, TimeUnit.SECONDS)
-                        .orElseThrow().getStringOr("retina_test", ""));
-                assertTrue(worker.loadAsync(new ChunkPos(33, 0)).get(2, TimeUnit.SECONDS).isPresent());
-            }
-        } finally { generator.closePreviews(); }
+                var second = new ChunkPos(32, 0);
+                try (var lease = cache.prepare(second)) {
+                    var edit = new CompoundTag(); edit.putString("retina_test", "preserved pending edit");
+                    var stored = worker.store(second, edit);
+                    io.retina$generateAhead(second).get(10, TimeUnit.SECONDS);
+                    stored.get(2, TimeUnit.SECONDS);
+                    assertEquals("preserved pending edit", worker.loadAsync(second).get(2, TimeUnit.SECONDS)
+                            .orElseThrow().getStringOr("retina_test", ""));
+                    assertTrue(worker.loadAsync(new ChunkPos(33, 0)).get(2, TimeUnit.SECONDS).isPresent());
+                }
+            } finally { generator.closePreviews(); }
+        }
     }
 }

@@ -158,11 +158,14 @@ public final class WorldDefinitionCompileTest {
                 require(entry.getStringOr("unsupported_reason", "").equals(unsupported), "unsupported dimension explicit");
             } else {
                 if (stem.generator() instanceof RetinaChunkGenerator retina) {
-                    var originalRequest = retina.request(seed, 0, 0);
+                    var originalParameters = new CompoundTag();
+                    retina.definitionParameters(originalParameters);
+                    try { retina.request(0, 0); throw new AssertionError("Compiler blueprint accepted generation"); }
+                    catch (IllegalStateException expected) { require(expected.getMessage().contains("retina.dat"), "missing saved definition error"); }
                     var savedParameters = entry.getCompoundOrEmpty("parameters");
-                    require(savedParameters.getIntOr("min_y", 0) == originalRequest.minY()
-                            && savedParameters.getIntOr("height", 0) == originalRequest.height(),
-                            "saved legacy generation bounds match its actual native requests: " + directory.getFileName());
+                    require(savedParameters.getIntOr("min_y", 0) == originalParameters.getIntOr("min_y", 0)
+                            && savedParameters.getIntOr("height", 0) == originalParameters.getIntOr("height", 0),
+                            "saved legacy generation bounds match its compiler input: " + directory.getFileName());
                 }
                 var selected = stem.generator() instanceof RetinaChunkGenerator ? null : new GenerationSource(level, stem.generator(), stem.type().value());
                 var effectiveTemplates = new StructureProfile.Context(templates.templates(), structures, templates.allowedSets());

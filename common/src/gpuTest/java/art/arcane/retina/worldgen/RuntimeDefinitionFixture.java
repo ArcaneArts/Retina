@@ -42,7 +42,7 @@ final class RuntimeDefinitionFixture implements AutoCloseable {
         try {
             var saved=definition.savedDimension();saved.bindDimensionType(type);
             generator=RetinaChunkGenerator.fromDefinition(saved,registry);
-            generator.bindWorld(registry,definition.request(0,0).seed(),factory);
+            generator.bindWorld(factory);
             return new RuntimeDefinitionFixture(definition,generator);
         } catch(Throwable failure) {
             if(generator!=null)try {generator.closePreviews();}catch(Throwable cleanup){failure.addSuppressed(cleanup);}

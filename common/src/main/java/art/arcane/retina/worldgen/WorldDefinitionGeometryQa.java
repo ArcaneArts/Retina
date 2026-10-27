@@ -15,7 +15,7 @@ import static java.lang.foreign.ValueLayout.JAVA_SHORT;
 final class WorldDefinitionGeometryQa {
     static NativeTerrain.RegionReport capture(ServerLevel level,RetinaChunkGenerator generator,ChunkPos position,Path destination) {
         var chunk=level.getChunk(position.x(),position.z());
-        var request=generator.request(0,position.x(),position.z());
+        var request=generator.request(position.x(),position.z());
         var palette=generator.profile().materials();
         try (var nativeChunk=NativeTerrain.instance().generate(request)) {
             var point=new BlockPos.MutableBlockPos();

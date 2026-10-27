@@ -903,3 +903,10 @@ shutdown checks finish. Search tests use the biome source reconstructed from the
 saved palette; benchmark rows include both diagnostic-profile and definition
 hashes. Native failure cleanup is exercised with an unknown native handle while
 the remaining request parameters come from the saved definition.
+
+
+### Runtime initialization requires the saved definition
+
+The mod bridge no longer exposes JSON profile registration. `RetinaChunkGenerator.bindWorld` accepts only the platform container factory; requests accept only chunk coordinates. The loaded dimension owns seed, bounds, palettes, structure settings and native handles. Legacy generator codecs and selected-generator adapters remain compiler inputs for automatic first-start creation. Calling generation on one before replacing it with the file-backed runtime fails with a `retina.dat` initialization error.
+
+Runtime terrain and biome generation, base columns, structure-state construction and temporary regions have no profile-zero or air/stone fallback. Structure searches honor the saved structure flag. Late decoration after world unload still returns without scheduling native work. Minecraft's inherited structure origin is constant chunk zero; it does not read current noise settings or registries.

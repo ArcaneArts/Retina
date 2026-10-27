@@ -34,7 +34,6 @@ import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
 
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,9 +46,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Stream;
-
-import static java.lang.foreign.ValueLayout.JAVA_SHORT;
 
 /** Minecraft owns chunk lifecycle; Rust and the GPU own terrain decisions. */
 public final class RetinaChunkGenerator extends ChunkGenerator {
@@ -205,62 +201,28 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                 type.minY(), type.height(), baseHeight, amplitude, frequency, mode, imported, densityComposition);
     }
 
-    public void bindWorld(RegistryAccess registry, long seed) {
-        bindWorld(registry, seed, PalettedContainerFactory.create(registry));
-    }
-
-    public void bindWorld(RegistryAccess registry,long seed,net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,boolean structures) {
-        bindWorld(registry,seed,PalettedContainerFactory.create(registry),StructureProfile.Context.of(templates,structures));
-    }
-    public void bindWorld(RegistryAccess registry,long seed,net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,boolean structures,boolean skyLight) {
-        bindWorld(registry,seed,PalettedContainerFactory.create(registry),StructureProfile.Context.of(templates,structures),skyLight);
-    }
-
-    public void bindWorld(RegistryAccess registry,long seed,net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,boolean structures,boolean skyLight,net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
-        worldDimension=dimension;
-        bindWorld(registry,seed,PalettedContainerFactory.create(registry),StructureProfile.Context.of(templates,structures),skyLight);
-    }
-
-    void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory) {
-        bindWorld(registry,seed,factory,StructureProfile.Context.NONE);
-    }
-    void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory,StructureProfile.Context structures) {
-        bindWorld(registry,seed,factory,structures,true);
-    }
-    void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory,StructureProfile.Context structures,boolean skyLight) {
+    /** Attach runtime storage after the world-level coordinator has loaded retina.dat. */
+    public void bindWorld(PalettedContainerFactory factory) {
+        var saved = generationDefinition();
         closePreviews();
         closed = false;
         heightCache.clear();
         biomeCache.clear();
         containerFactory = factory;
-        worldSeed = savedDefinition == null ? seed : savedDefinition.seed();
-        if (savedDefinition != null) {
-            queries = new TerrainQueries(request(worldSeed,0,0), profile);
-            var biomes = (RetinaBiomeSource) getBiomeSource();
-            var query = queries;
-            biomes.bind((x,y,z) -> biomeAt(x*4,y*4,z*4),(x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst());
-            biomes.bindQueries(query::biomes);
-        } else if (getBiomeSource() instanceof RetinaBiomeSource biomes) {
-            var noiseSettings = selectedSource != null && selectedSource.flat() ? null : settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.OVERWORLD)).value();
-            var data = selectedSource != null && selectedSource.flat()
-                    ? FlatTerrainProfile.export(registry, selectedSource, seed, structures, skyLight)
-                    : selectedSource != null && selectedSource.endTerrain()
-                    ? EndTerrainProfile.export(registry, selectedSource, seed, structures)
-                    : TerrainProfileData.export(registry,biomes,minY,height,seed,noiseSettings,structures,densityComposition,skyLight,selectedSource != null && selectedSource.enclosedTerrain());
-            var json = com.google.gson.JsonParser.parseString(data.json()).getAsJsonObject();
-            json.addProperty("dimension",worldDimension.identifier().toString());
-            if (selectedSource != null) json.add("generation", selectedSource.describe());
-            data = new TerrainProfileData(data.seaLevel(), data.materials(), data.biomes(), json.toString());
-            profile = BiomeTerrainProfile.register(data);
-            queries = new TerrainQueries(request(seed,0,0),profile);
-            var query = queries;
-            biomes.bind((x,y,z) -> biomeAt(x*4,y*4,z*4),(x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst());
-            biomes.bindQueries(query::biomes);
-        }
-        savedStructureStarts=profile==null?SavedStructureStarts.EMPTY:SavedStructureStarts.fromMetadata(
-                com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject());
-        metrics.startNativeTimings(NativeTerrain.instance().timings(profile == null ? 0 : profile.nativeId()));
-        if (regionMode()) previews = new TemporaryRegions(request(seed, 0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS, Math.min(TemporaryRegions.MAX_REGIONS,16), worldDimension);
+        worldSeed = saved.seed();
+        queries = new TerrainQueries(request(0,0), profile);
+        var biomes = (RetinaBiomeSource) getBiomeSource();
+        var query = queries;
+        biomes.bind((x,y,z) -> biomeAt(x*4,y*4,z*4),(x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst());
+        biomes.bindQueries(query::biomes);
+        metrics.startNativeTimings(NativeTerrain.instance().timings(profile.nativeId()));
+        if (regionMode()) previews = new TemporaryRegions(request(0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS, Math.min(TemporaryRegions.MAX_REGIONS,16), worldDimension);
+    }
+
+    private WorldDefinitionContext.Dimension generationDefinition() {
+        if (savedDefinition == null) throw new IllegalStateException(
+                "Retina generation requires a dimension loaded from <world-root>/retina.dat; this generator is only a definition compiler input");
+        return savedDefinition;
     }
 
     public TerrainQueries queries() { return queries; }
@@ -297,7 +259,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public BiomeTerrainProfile profile() { return profile; }
 
     public Holder<Biome> biomeAt(int x, int z) {
-        var columns = columns(worldSeed, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
+        var columns = columns(Math.floorDiv(x, 16), Math.floorDiv(z, 16));
         return profile.biomes().get(columns.biome(Math.floorMod(z, 16) * 16 + Math.floorMod(x, 16)));
     }
 
@@ -306,29 +268,29 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     });
 
     public Holder<Biome> biomeAt(int x, int y, int z) {
-        var data = biomeSamples(worldSeed, Math.floorDiv(x, 16), Math.floorDiv(z, 16));
+        var data = biomeSamples(Math.floorDiv(x, 16), Math.floorDiv(z, 16));
         int layer = Math.clamp(Math.floorDiv(y - minY, 4), 0, height / 4 - 1);
         int index = layer * 16 + Math.floorMod(Math.floorDiv(z, 4), 4) * 4 + Math.floorMod(Math.floorDiv(x, 4), 4);
         return profile.biomes().get(Short.toUnsignedInt(data[index]));
     }
 
-    private short[] biomeSamples(long seed, int x, int z) {
-        var key = new HeightKey(seed, x, z);
+    private short[] biomeSamples(int x, int z) {
+        var key = new HeightKey(worldSeed, x, z);
         var data = biomeCache.get(key);
         if (data == null) {
             var cache = previews;
-            data = cache == null ? NativeTerrain.instance().sampleBiomes(request(seed, x, z)) : cache.biomes(new ChunkPos(x, z));
+            data = cache == null ? NativeTerrain.instance().sampleBiomes(request(x, z)) : cache.biomes(new ChunkPos(x, z));
             biomeCache.put(key, data);
         }
         return data;
     }
 
-    private NativeTerrain.Columns columns(long seed, int chunkX, int chunkZ) {
-        var key = new HeightKey(seed, chunkX, chunkZ);
+    private NativeTerrain.Columns columns(int chunkX, int chunkZ) {
+        var key = new HeightKey(worldSeed, chunkX, chunkZ);
         var columns = heightCache.get(key);
         if (columns == null) {
             var cache = previews;
-            columns = cache == null ? NativeTerrain.instance().sampleColumns(request(seed, chunkX, chunkZ))
+            columns = cache == null ? NativeTerrain.instance().sampleColumns(request(chunkX, chunkZ))
                     : cache.columns(new ChunkPos(chunkX, chunkZ));
             heightCache.put(key, columns);
         }
@@ -337,15 +299,10 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
 
     @Override
     public CompletableFuture<ChunkAccess> createBiomes(RandomState random, Blender blender, StructureManager structures, ChunkAccess chunk) {
-        if (profile == null) {
-            if (!regionMode()) return super.createBiomes(random, blender, structures, chunk);
-            var fixed = getBiomeSource().possibleBiomes().iterator().next();
-            chunk.fillBiomesFromNoise((x, y, z) -> fixed);
-            return CompletableFuture.completedFuture(chunk);
-        }
+        generationDefinition();
         java.util.function.Supplier<ChunkAccess> fill = () -> {
             var position = chunk.getPos();
-            var samples = biomeSamples(seed(random), position.x(), position.z());
+            var samples = biomeSamples(position.x(), position.z());
             chunk.fillBiomesFromNoise((x, y, z) -> profile.biomes().get(Short.toUnsignedInt(samples[
                     Math.clamp(y - Math.floorDiv(minY, 4), 0, height / 4 - 1) * 16 + Math.floorMod(z, 4) * 4 + Math.floorMod(x, 4)])));
             return chunk;
@@ -381,8 +338,9 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public CompletableFuture<ChunkAccess> buildTerrain(ChunkAccess chunk, Blender blender,
             RandomState randomState, StructureManager structures, BiomeManager biomes,
             WorldGenRegion carverRegion, Set<Holder<Biome>> possibleBiomes) {
+        var savedDefinition = generationDefinition();
         var cache = previews;
-        if (savedDefinition != null && !regionMode()) {
+        if (!regionMode()) {
             long requestedAt=System.nanoTime();
             metrics.begin();
             return CompletableFuture.supplyAsync(() -> {
@@ -419,61 +377,11 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                 return chunk;
             });
         }
-        long requestedAt = System.nanoTime();
-        var position = chunk.getPos();
-        var request = request(seed(randomState), position.x(), position.z());
-        metrics.begin();
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                long nativeStart = System.nanoTime();
-                try (var data = NativeTerrain.instance().generate(request)) {
-                    long nativeFinished = System.nanoTime();
-                    heightCache.put(new HeightKey(request.seed(), request.chunkX(), request.chunkZ()), data.columns());
-                    convert(chunk, request, data);
-                    long finished = System.nanoTime();
-                    metrics.completed(finished - requestedAt, nativeFinished - nativeStart, finished - nativeFinished);
-                    if (Boolean.getBoolean("retina.qa") && firstChunk.compareAndSet(false, true)) {
-                        Retina.LOGGER.info("QA_EVT {\"event\":\"minecraft_gpu_chunk\",\"status\":\"pass\",\"context\":{\"x\":{},\"z\":{},\"ms\":{}}}",
-                                position.x(), position.z(), (finished - requestedAt) / 1_000_000.0);
-                    }
-                }
-                return chunk;
-            } catch (Throwable error) {
-                metrics.failed();
-                throw error;
-            }
-        }, WORKERS);
+        throw new java.util.concurrent.CancellationException("Retina world closed");
     }
 
-    private void convert(ChunkAccess chunk, TerrainRequest request, NativeTerrain.ChunkData data) {
-        var materials = profile == null ? new BlockState[]{Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState()} : profile.materials();
-        var sections = chunk.getSections();
-        for (int sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
-            var section = sections[sectionIndex];
-            int sectionMinY = chunk.getMinY() + sectionIndex * 16;
-            section.acquire();
-            try {
-                for (int y = 0; y < 16; y++) {
-                    int nativeY = sectionMinY + y - request.minY();
-                    if (nativeY < 0 || nativeY >= request.height()) continue;
-                    long offset = nativeY * 256L;
-                    for (int z = 0; z < 16; z++) {
-                        for (int x = 0; x < 16; x++) {
-                            short material = data.blocks().get(JAVA_SHORT, (offset + z * 16L + x) * Short.BYTES);
-                            section.setBlockState(x, y, z, materials[Short.toUnsignedInt(material)], false);
-                        }
-                    }
-                }
-            } finally {
-                section.release();
-            }
-        }
-        Heightmap.primeHeightmaps(chunk, EnumSet.of(Heightmap.Types.OCEAN_FLOOR_WG, Heightmap.Types.WORLD_SURFACE_WG));
-    }
-
-    public TerrainRequest request(long seed, int chunkX, int chunkZ) {
-        if (savedDefinition != null) return savedDefinition.request(chunkX, chunkZ);
-        return new TerrainRequest(seed, chunkX, chunkZ, minY, height, baseHeight, amplitude, frequency, profile == null ? 0 : profile.nativeId());
+    public TerrainRequest request(int chunkX, int chunkZ) {
+        return generationDefinition().request(chunkX, chunkZ);
     }
 
     @Override
@@ -491,9 +399,9 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         int chunkZ = Math.floorDiv(z, 16);
         var cache = previews;
         int index = Math.floorMod(z, 16) * 16 + Math.floorMod(x, 16);
-        BlockState[] preview = cache == null ? null : cache.baseColumn(new ChunkPos(chunkX, chunkZ), columns(seed(state), chunkX, chunkZ), index);
-        var data = preview == null ? NativeTerrain.instance().column(request(seed(state), chunkX, chunkZ), index) : null;
-        var palette = profile == null ? new BlockState[]{Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState()} : profile.materials();
+        BlockState[] preview = cache == null ? null : cache.baseColumn(new ChunkPos(chunkX, chunkZ), columns(chunkX, chunkZ), index);
+        var data = preview == null ? NativeTerrain.instance().column(request(chunkX, chunkZ), index) : null;
+        var palette = profile.materials();
         var states = new BlockState[bounds.getHeight()];
         for (int i = 0; i < states.length; i++) {
             int nativeY = bounds.getMinY() + i - minY;
@@ -502,35 +410,23 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         return new NoiseColumn(bounds.getMinY(), states);
     }
 
-    @SuppressWarnings("deprecation")
-    private static long seed(RandomState state) {
-        return state.seed();
-    }
-
     @Override
     public ChunkGeneratorStructureState createState(HolderLookup<StructureSet> structures, RandomState state, long seed) {
-        if (savedDefinition != null) return savedStructureSets.createState(state, savedDefinition.seed(), getOrigin(state), getBiomeSource());
-        // Only advertise layouts the selected Retina backend can generate. In particular, vanilla stronghold rings
-        // would launch thousands of GPU biome searches during ServerLevel construction.
-        var candidates = selectedSource != null && selectedSource.flat()
-                ? ((net.minecraft.world.level.levelgen.FlatLevelSource) selectedSource.generator()).settings().structureOverrides()
-                    .map(net.minecraft.core.HolderSet::stream).orElseGet(() -> structures.listElements().map(h -> (Holder<StructureSet>) h))
-                : structures.listElements().map(h -> (Holder<StructureSet>) h);
-        var supported=candidates.map(h->StructureProfile.supportedSet(h,selectedSource!=null && selectedSource.endTerrain())).flatMap(Optional::stream);
-        return ChunkGeneratorStructureState.createForFlat(state, seed, getOrigin(state), getBiomeSource(), supported);
+        return savedStructureSets.createState(state, generationDefinition().seed(), getOrigin(state), getBiomeSource());
     }
 
     @Override
     public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
-        if (profile == null || closed) return;
+        if (closed) return;
+        generationDefinition();
         var cache = previews;
         // DH may reach this stage after world unload while its earlier terrain
         // request finishes. Closed previews have no remaining decoration work.
         if (regionMode() && cache == null) return;
-        var data = regionMode() ? cache.readIfOpen(chunk.getPos()) : NativeTerrain.instance().structureData(request(worldSeed, chunk.getPos().x(), chunk.getPos().z()));
+        var data = regionMode() ? cache.readIfOpen(chunk.getPos()) : NativeTerrain.instance().structureData(request(chunk.getPos().x(), chunk.getPos().z()));
         if (data == null) return;
         installDecorationData(chunk,data,net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext.fromLevel(level.getLevel()),level.registryAccess());
-        if (savedDefinition != null && !regionMode()) {
+        if (!regionMode()) {
             var maps=savedChunkHeights.remove(chunk.getPos());
             if (maps==null) {
                 var tag=savedDefinition.chunk(chunk.getPos().x(),chunk.getPos().z());
@@ -579,15 +475,16 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted,
             BlockPos origin, int radius, boolean createReference) {
         // Explorer maps need Minecraft's reference mutation and retain its lifecycle.
-        if (createReference || queries == null) return super.findNearestMapStructure(level,wanted,origin,radius,createReference);
+        generationDefinition();
+        if (queries == null) return null;
+        if (createReference) return super.findNearestMapStructure(level,wanted,origin,radius,true);
         return prepareStructureSearch(level,wanted,origin,radius).get();
     }
 
     public java.util.function.Supplier<com.mojang.datafixers.util.Pair<BlockPos,Holder<net.minecraft.world.level.levelgen.structure.Structure>>> prepareStructureSearch(
             net.minecraft.server.level.ServerLevel level, net.minecraft.core.HolderSet<net.minecraft.world.level.levelgen.structure.Structure> wanted, BlockPos origin, int radius) {
         var query=queries;
-        if (query==null || net.minecraft.SharedConstants.DEBUG_DISABLE_FEATURES || !(savedDefinition == null
-                ? level.getServer().getWorldGenSettings().options().generateStructures() : savedDefinition.structures())) return () -> null;
+        if (query==null || !generationDefinition().structures()) return () -> null;
         var search=query.prepareStructures(level.registryAccess(),wanted,origin,radius);
         var scanner=level.getChunkSource().chunkMap.chunkScanner();
         var fixContext=net.minecraft.server.level.ChunkMap.getChunkDataFixContextTag(level.dimension(),getTypeNameForDataFixer());
@@ -598,8 +495,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state, StructureManager structures,
                                  ChunkAccess chunk, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager templates,
                                  net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension) {
-        if(profile==null)return;
-        var data=NativeTerrain.instance().structureStarts(request(worldSeed,chunk.getPos().x(),chunk.getPos().z()));
+        generationDefinition();
+        var data=NativeTerrain.instance().structureStarts(request(chunk.getPos().x(),chunk.getPos().z()));
         var context=new net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext(null,registry,templates);
         installStructures(chunk,data,context,registry);
     }

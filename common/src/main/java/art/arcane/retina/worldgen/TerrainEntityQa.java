@@ -66,7 +66,7 @@ final class TerrainEntityQa {
                 expected = new ListTag();
                 for (var at : positions) {
                     var data = generator.regionMode() ? generator.previewCache().read(at)
-                            : NativeTerrain.instance().structureData(generator.request(level.getSeed(), at.x(), at.z()));
+                            : NativeTerrain.instance().structureData(generator.request(at.x(), at.z()));
                     for (var value : data.getListOrEmpty("entities")) expected.add(value.copy());
                 }
                 var fixture = new CompoundTag();

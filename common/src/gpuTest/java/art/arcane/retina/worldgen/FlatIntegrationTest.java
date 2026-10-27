@@ -36,14 +36,14 @@ final class FlatIntegrationTest {
         var exported=WorldDefinitionCompiler.export(registry,source,42,StructureProfile.Context.NONE);
         try(var definition=DefinitionFixture.create(source,exported,42)) {
             var generator = RetinaChunkGenerator.fromDefinition(definition.savedDimension(),registry);
-            generator.bindWorld(registry, 42);
+            generator.bindWorld(net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry));
             var profile = generator.profile();
             var factory = PalettedContainerFactory.create(registry);
             var bounds = LevelHeightAccessor.create(0, 64);
             var random = RandomState.create(registry.lookupOrThrow(Registries.NOISE), 42,
                     registry.lookupOrThrow(Registries.NOISE_SETTINGS).getValueOrThrow(NoiseGeneratorSettings.OVERWORLD));
             var position = new ChunkPos(-32, 0);
-            var request = generator.request(42, position.x(), position.z());
+            var request = generator.request(position.x(), position.z());
             var save = Files.createTempDirectory("retina-flat-integration-");
             try (var cache = new TemporaryRegions(request, "minecraft:plains", profile, new GenerationMetrics(), 2, 1)) {
                 var tag = cache.read(position);
@@ -136,9 +136,9 @@ final class FlatIntegrationTest {
         try(var definition=DefinitionFixture.create(adapted.selectedSource(),singleData,42)) {
             var single = RetinaChunkGenerator.fromDefinition(definition.savedDimension(),registry);
             try {
-                single.bindWorld(registry, 42);
+                single.bindWorld(net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry));
                 require(single.profile().biomes().size() == 1, "single-biome native profile stays single");
-                for (short biome : NativeTerrain.instance().sampleBiomes(single.request(42, -31, 42)))
+                for (short biome : NativeTerrain.instance().sampleBiomes(single.request(-31, 42)))
                     require(biome == 0, "single-biome native quart samples contain no extra cave biomes");
             } finally { single.closePreviews(); }
         }
@@ -149,12 +149,12 @@ final class FlatIntegrationTest {
         try(var definition=DefinitionFixture.create(boundedSource,boundedData,42)) {
             var bounded = RetinaChunkGenerator.fromDefinition(definition.savedDimension(),registry);
             try {
-                bounded.bindWorld(registry, 42);
-                require(bounded.request(42, 0, 0).minY() == 0 && bounded.request(42, 0, 0).height() == 32 && bounded.getSeaLevel() == 63,
+                bounded.bindWorld(net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry));
+                require(bounded.request(0, 0).minY() == 0 && bounded.request(0, 0).height() == 32 && bounded.getSeaLevel() == 63,
                         "custom noise dimension retains storage bounds and source sea level outside them");
                 require(bounded.getMinY() == definition.request(0,0).minY() && bounded.getGenDepth() == singleStem.generator().getGenDepth(),
                         "saved native minimum and source generator depth stay distinct");
-                require(NativeTerrain.instance().column(bounded.request(42, 0, 0), 0).length == 32,
+                require(NativeTerrain.instance().column(bounded.request(0, 0), 0).length == 32,
                         "actual bounded noise generation succeeds");
             } finally { bounded.closePreviews(); }
         }
