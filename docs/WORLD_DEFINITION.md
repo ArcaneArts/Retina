@@ -859,3 +859,16 @@ seagrass upper half while preserving its replacement single seagrass. The
 broader biome test still checks plant partners across generated chunks and the
 complete decoded region. `--args=--contracts-only` selects program contracts in
 `biomeTest`, or climate, water and sediment contracts in `shoreTest`.
+
+`geologyTest`, `featureTest` and `landscapeTest` also use saved definitions for
+ore, cave, ravine, lake, badlands and climate variants. Explicit cave roof,
+frequency and amplitude cases have separate definitions. Landscape comparisons
+recompile seed-derived data for each world seed before publishing its file.
+Lake previews bind their runtime palette from the loaded definition.
+
+`decorationCountTest` and `providerNoiseTest` first publish a retained source
+snapshot under `build/decoration-count-*` or `build/provider-noise-*`, then read
+that actual file for their synthetic sampling models. Their concurrent seed
+independence checks create distinct saved worlds rather than changing a request
+seed after loading. Provider-local noise seeds remain part of the saved data.
+All five tasks accept `-PretinaNativePath=/absolute/path/to/native/library`.

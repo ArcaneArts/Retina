@@ -22,6 +22,18 @@ import java.util.*;
 /** Benchmark profiles use the actual merged dimension, features and template resources. */
 public final class NativeProfileExport {
     public static void main(String[] args) throws Exception {
+        export(args,Boolean.getBoolean("retina.benchmark.definition"));
+    }
+
+    /** Publish a fresh retained test input; callers reopen its bytes for all sampling. */
+    static Path definition(String prefix,Path pack) throws Exception {
+        var build=Path.of("build");Files.createDirectories(build);
+        var directory=Files.createTempDirectory(build,prefix);
+        export(pack==null?new String[]{directory.toString()}:new String[]{directory.toString(),pack.toString()},true);
+        return directory.resolve("retina.dat");
+    }
+
+    private static void export(String[] args,boolean binaryDefinition) throws Exception {
         SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
         var stack = new ArrayList<PackResources>();
         stack.add(ServerPacksSource.createVanillaPackSource().fullResources());
@@ -72,7 +84,7 @@ public final class NativeProfileExport {
             if (data.getAsJsonObject("structures").getAsJsonArray("definitions").isEmpty()) throw new AssertionError("benchmark must include structures");
             if (data.getAsJsonArray("decorations").isEmpty()) throw new AssertionError("benchmark must include decorations");
             var output = Path.of(args[0]); Files.createDirectories(output.toAbsolutePath().getParent());
-            if(Boolean.getBoolean("retina.benchmark.definition")) {
+            if(binaryDefinition) {
                 String halo=System.getProperty("retina.benchmark.materialHalo");
                 if(halo!=null) {
                     if(!halo.equals("true") && !halo.equals("false"))throw new IllegalArgumentException("benchmarkMaterialHalo must be true or false");
