@@ -157,6 +157,6 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home \
 
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/registered-columns-vanilla.json --out build/block-feature-measurement \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld --out build/block-feature-measurement \
   --count 20 --warmups 2 --program-execution specialized
 ```

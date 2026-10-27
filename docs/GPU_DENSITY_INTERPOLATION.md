@@ -52,12 +52,12 @@ so these measurements do not establish a consistent end-to-end speedup. Terrain
 intentionally differs between versions, and background CPU load was uncontrolled.
 A run overlapping the package build was excluded.
 
-Reproduce with a freshly exported `build/structure-profile.json`:
+Reproduce with the saved `retina.dat` from the intended world:
 
 ```sh
 python3 scripts/native-region-benchmark.py \
   --library build/native-target/release/libretina_worldgen.dylib \
-  --profile build/structure-profile.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out build/density-benchmark-new-run --count 6 --warmups 1
 ```
 

@@ -604,3 +604,35 @@ The checker loads each file unchanged and binds the selected interpreter/special
 dispatch preference, including a second independent engine for cold chunk comparisons.
 It takes geometry and all requests from the files, including out-of-range probes.
 These are benchmark fixtures, not a way to change the seed or rules of an existing world.
+
+### Python region and material campaigns
+
+`scripts/native-region-benchmark.py --library LIB --definition retina.dat --dimension KEY --out NEW_DIRECTORY`
+uses the same native file loader and saved requests through `scripts/saved_definition.py`.
+The adapter transports FFI handles and metadata; it does not decode NBT or compile
+another profile. It closes handles after concurrent callers drain, including on failure.
+The region harness keeps its existing timing counters, decoded chunk comparisons,
+readiness selection, output codec options and disposable output ownership.
+
+The A/B campaign, End campaign and Nether performance suite pass definitions through
+the same runner. End campaigns default to `--readiness driver-warm`; choose
+`shader-ready` explicitly when measuring a registered shader workload. No profile
+filename or metadata guess prevents a workload from running. The Nether suite's
+version 2 manifest names a separate snapshot and dimension for each case.
+
+`scripts/native-material-continuation-check.py --baseline LIB --candidate LIB --definition retina.dat --dimension KEY --out REPORT`
+uses interpreter bindings to that same file in both libraries. Its height, seed and
+other generation parameters come from saved requests. Use separate snapshots to
+compare geometry; the script no longer has a runtime height or seed override.
+Libraries used as references must expose the saved-definition API. Historical
+JSON-era libraries and measurements remain useful archived evidence, but cannot
+be passed to this current interface. Reports identify the definition path/hash,
+saved seed, native/storage geometry, dimension, DataVersion and load/bind duration.
+The main region report uses schema version 2 for this definition identity and
+`startup.load_and_bind_ms`, replacing JSON profile identity/registration timing.
+
+Run the Python bridge integration with `RETINA_NATIVE_LIBRARY=LIB` and
+`RETINA_DEFINITION_FIXTURES=build/world-definition-fixtures` using
+`python3 -m unittest discover -s scripts -p 'test_*.py'`. These tests execute the
+actual Rust decoder/binding and use the GPU; missing optional LZ4 Python packages
+are reported as a skipped decoder test. Rust's headless decoder checks LZ4 too.

@@ -58,13 +58,13 @@ Supplying a baseline library selects four ABBA trials by default. Each process
 records startup separately and includes full native generation, lighting, NBT,
 compression, publication and generator cleanup in the existing measured scope.
 
-Example, after an actual supported profile has been exported:
+Example, after an actual supported world definition has been compiled:
 
 ```sh
 python3 scripts/end-region-benchmark.py \
   --library /absolute/path/libretina_worldgen.dylib \
   --library-revision BUILD_COMMIT \
-  --profile /absolute/path/profile.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:the_end \
   --category outer-islands --origin-x 4 --origin-z 4 \
   --out /absolute/path/new-campaign
 ```

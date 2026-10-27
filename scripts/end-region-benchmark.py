@@ -38,11 +38,12 @@ def main() -> None:
     parser.add_argument("--library-revision")
     parser.add_argument("--baseline-library", type=Path)
     parser.add_argument("--baseline-revision")
-    parser.add_argument("--profile", type=Path, required=True)
+    parser.add_argument("--definition", type=Path, required=True)
+    parser.add_argument("--dimension", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--category", required=True, choices=("void", "outer-islands", "dense-or-structures",
                                                               "overworld-control", "nether-control"))
-    parser.add_argument("--seed", type=int, default=123456789)
+    parser.add_argument("--readiness", choices=("driver-warm", "shader-ready"), default="driver-warm")
     parser.add_argument("--origin-x", type=int, default=-1)
     parser.add_argument("--origin-z", type=int, default=-1)
     parser.add_argument("--grid-width", type=int, default=2)
@@ -57,10 +58,6 @@ def main() -> None:
         parser.error("regions, trials, grid width and workers must be positive; warmups cannot be negative")
     args.out.mkdir(parents=True, exist_ok=False)
     runner = Path(__file__).with_name("native-region-benchmark.py")
-    # Native End/flat terrain has no registry shader to specialize. Warm actual
-    # generation without requiring a nonexistent GPU-program readiness state.
-    profile = json.loads(args.profile.read_text())
-    readiness = "shader-ready" if profile.get("registry_program") is not None else "driver-warm"
     environment = {**os.environ, "RETINA_REGION_THREADS": str(args.workers), "RAYON_NUM_THREADS": str(args.workers)}
     order = (["baseline", "candidate", "candidate", "baseline"] * ((trials + 3) // 4))[:trials] \
         if args.baseline_library else ["candidate"] * trials
@@ -72,12 +69,13 @@ def main() -> None:
         library = args.baseline_library if variant == "baseline" else args.library
         revision = args.baseline_revision if variant == "baseline" else args.library_revision
         command = [sys.executable, str(runner), "--library", str(library.resolve()),
-                   "--profile", str(args.profile.resolve()), "--out", str(destination.resolve()),
+                   "--definition", str(args.definition.resolve()), "--dimension", args.dimension,
+                   "--out", str(destination.resolve()),
                    "--count", str(args.regions), "--warmups", str(args.warmups),
-                   "--parallel", str(args.callers), "--seed", str(args.seed),
+                   "--parallel", str(args.callers),
                    "--origin-x", str(args.origin_x), "--origin-z", str(args.origin_z),
                    "--grid-width", str(args.grid_width), "--scope", "lit-mca", "--lighting", "enabled",
-                   "--readiness", readiness]
+                   "--readiness", args.readiness]
         if revision:
             command.extend(["--library-revision", revision])
         if first_reference is not None:
