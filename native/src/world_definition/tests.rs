@@ -364,3 +364,140 @@ fn read_uses_the_published_file_and_preserves_it_after_errors() {
     assert_eq!(std::fs::read(&path).unwrap(), truncated);
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+#[ignore = "Generate Java fixtures with worldDefinitionCompileTest, then set RETINA_WORLD_DEFINITION_FIXTURES"]
+fn java_compiled_definitions_preserve_complete_profiles() {
+    let root = std::path::PathBuf::from(
+        std::env::var("RETINA_WORLD_DEFINITION_FIXTURES")
+            .expect("RETINA_WORLD_DEFINITION_FIXTURES must name the Java fixture directory"),
+    );
+    for case in ["vanilla", "flat", "datapack"] {
+        let directory = root.join(case);
+        let start = std::time::Instant::now();
+        let world = WorldDefinition::read(directory.join("retina.dat")).unwrap();
+        let load_nanos = start.elapsed().as_nanos();
+        let mut supported = 0;
+        for (id, dimension) in world.dimensions() {
+            if dimension.unsupported_reason().is_some() {
+                continue;
+            }
+            let baseline_path =
+                directory.join(format!("expected-{}.json", id.replace([':', '/'], "_")));
+            let bytes = std::fs::read(baseline_path).unwrap();
+            let baseline = WorldProfile::parse(&bytes).unwrap();
+            let actual = dimension.profile().unwrap();
+            assert_eq!(
+                actual.gpu_bytes(),
+                baseline.gpu_bytes(),
+                "{case}/{id}: GPU tables"
+            );
+            assert_eq!(
+                actual.climate_gpu_bytes(),
+                baseline.climate_gpu_bytes(),
+                "{case}/{id}: climate"
+            );
+            assert_eq!(
+                actual.material_nbt, baseline.material_nbt,
+                "{case}/{id}: material NBT"
+            );
+            let mut expected = exact_json(&bytes);
+            expected.as_object_mut().unwrap().remove("materials");
+            expected.as_object_mut().unwrap().remove("mca_compression");
+            let raw = world.source().dimensions[id].profile.clone().unwrap();
+            let actual_data = value::decode(raw).unwrap();
+            assert!(
+                actual_data == expected,
+                "{case}/{id}: complete structural data differs at {}",
+                first_difference(&actual_data, &expected, "profile").unwrap()
+            );
+            if let (Some(actual), Some(baseline)) = (&actual.flat, &baseline.flat) {
+                let request = world.request(id, 1, -33, 32).unwrap();
+                let mut from_file = vec![0; request.block_count()];
+                let mut from_registry = vec![0; request.block_count()];
+                actual.assemble(&mut from_file);
+                baseline.assemble(&mut from_registry);
+                assert_eq!(from_file, from_registry, "{case}/{id}: flat terrain");
+            }
+            supported += 1;
+        }
+        assert!(
+            supported >= 2,
+            "each fixture must exercise multiple supported dimensions"
+        );
+        if case == "datapack" {
+            assert!(
+                world
+                    .source()
+                    .shared_types
+                    .biomes
+                    .iter()
+                    .any(|id| id == "definition_test:empty")
+            );
+            assert_eq!(world.seed(), 9007199254740993);
+        }
+        let receipt = json!({"supported_dimensions":supported,"load_nanos":load_nanos,
+            "gpu_table_parity":true,"complete_data_parity":true,"gpu_initialized":false});
+        std::fs::write(directory.join("rust-validation.json"), receipt.to_string()).unwrap();
+        println!("world definition {case}: {receipt}");
+    }
+    let mut bytes = Vec::new();
+    std::io::Read::read_to_end(
+        &mut flate2::read::GzDecoder::new(
+            std::fs::File::open(root.join("codec/retina.dat")).unwrap(),
+        ),
+        &mut bytes,
+    )
+    .unwrap();
+    let mut root_tag: std::collections::HashMap<String, Nbt> = fastnbt::from_bytes(&bytes).unwrap();
+    let actual = value::decode(root_tag.remove("values").unwrap()).unwrap();
+    let expected = exact_json(&std::fs::read(root.join("codec/expected.json")).unwrap());
+    assert_eq!(actual, expected, "Java primitive and mixed-list fidelity");
+    assert_eq!(
+        actual["floating"][0].as_f64().unwrap().to_bits(),
+        (-0.0_f64).to_bits()
+    );
+}
+
+// The legacy parser is still tested above for GPU/material parity. For an
+// independent exact-data comparison, preserve number lexemes and use Rust's
+// correctly-rounded f64 parser. serde_json's default fast decimal conversion
+// can differ by one ULP from the Java values preserved in the binary file.
+fn exact_json(bytes: &[u8]) -> Value {
+    fn decode(raw: &serde_json::value::RawValue) -> Value {
+        let text = raw.get().trim();
+        match text.as_bytes()[0] {
+            b'{' => {
+                let fields: BTreeMap<String, &serde_json::value::RawValue> =
+                    serde_json::from_str(text).unwrap();
+                Value::Object(fields.into_iter().map(|(k, v)| (k, decode(v))).collect())
+            }
+            b'[' => {
+                let values: Vec<&serde_json::value::RawValue> = serde_json::from_str(text).unwrap();
+                Value::Array(values.into_iter().map(decode).collect())
+            }
+            b'-' | b'0'..=b'9' if text.contains(['.', 'e', 'E']) => {
+                Value::Number(serde_json::Number::from_f64(text.parse().unwrap()).unwrap())
+            }
+            _ => serde_json::from_str(text).unwrap(),
+        }
+    }
+    decode(serde_json::from_slice(bytes).unwrap())
+}
+
+fn first_difference(actual: &Value, expected: &Value, path: &str) -> Option<String> {
+    if actual == expected {
+        return None;
+    }
+    match (actual, expected) {
+        (Value::Object(a), Value::Object(b)) if a.keys().eq(b.keys()) => a
+            .iter()
+            .find_map(|(key, a)| first_difference(a, &b[key], &format!("{path}.{key}"))),
+        (Value::Array(a), Value::Array(b)) if a.len() == b.len() => a
+            .iter()
+            .zip(b)
+            .enumerate()
+            .find_map(|(i, (a, b))| first_difference(a, b, &format!("{path}[{i}]"))),
+        _ => Some(path.into()),
+    }
+}

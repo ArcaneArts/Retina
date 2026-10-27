@@ -5,10 +5,10 @@ input. One file contains shared types and every dimension's definition. The
 Rust `world_definition` module reads it without initializing Minecraft, loading
 datapacks, or creating a GPU device.
 
-Implementation is being delivered in separate cycles. This first cycle adds
-the format and reader. Automatic Java compilation, mod startup integration,
-and the standalone runner follow; ordinary worlds still use the existing
-profile registration path until that integration is merged.
+Implementation is being delivered in separate cycles. The format, reader,
+Java compiler and atomic file writer are implemented. Automatic startup
+integration and the standalone runner follow; ordinary worlds still use the
+existing profile registration path until that integration is merged.
 
 ## Version 1 wire format
 
@@ -124,3 +124,63 @@ The remaining delivery cycles must prove that normal mod creation writes the
 file and immediately reopens it through Rust; reopening skips compilation;
 all generation inputs come from the saved definition; and a fresh Rust
 process reproduces generated regions with only `retina.dat` available.
+Startup integration must also bootstrap legacy saves whose serialized generator
+is already a `RetinaChunkGenerator`, preserving its original parameters and
+settings. The compiler currently follows the raw adapter's support predicate;
+that legacy case needs its own compilation path before automatic startup is
+enabled. Existing mod generation is still unchanged at this stage.
+
+## Java compilation and cross-language verification
+
+`WorldDefinitionCompiler.compile(server)` gathers effective loaded dimension
+stems, the world's options, structure-template resources, and the loaded pack
+order. It exports supported dimensions and records the existing adapter's
+reason for unsupported dimensions. Material and biome dictionaries are shared
+across all profiles. This compilation does not initialize the native library
+or a GPU. The seed and seed-derived data are captured together.
+
+`WorldDefinitionFile.writeNew` writes a temporary file in the world directory,
+finishes high-compression gzip, flushes the file, and atomically moves it to
+`retina.dat`. The caller must own world initialization and serialize creation.
+Opening a present destination raises `FileAlreadyExistsException`, preserving
+even a damaged file. Failed writes remove their temporary file. The writer
+uses Minecraft's strict NBT entry point; the usual `NbtIo.write` helper can
+silently replace overlong strings with empty values and is unsuitable here.
+The structural encoder also bypasses `DoubleTag.valueOf`'s zero cache to
+preserve negative zero. Published loader JARs include an Implementation-Version
+manifest attribute for exporter provenance; classes run directly in development
+are identified as a development build.
+
+Generate real registry-backed fixtures without building a native library:
+
+```sh
+./gradlew :common:worldDefinitionCompileTest -x :buildNative -x :packageNative
+```
+
+This writes `build/world-definition-fixtures/{vanilla,flat,datapack}/retina.dat`
+and legacy JSON baselines used only for migration comparison. The datapack
+case loads an actual additional biome resource and selects it as the fixed
+Overworld biome, with no decoration features. Every case includes all three
+loaded dimensions and follows the adapter's current support boundaries.
+Additional tests cover signed long extremes, mixed values, Unicode, a failed
+strict write, Java NBT round-tripping, and refusing to overwrite a present file.
+
+From `native/`, independently read those Java-produced files in Rust:
+
+```sh
+RETINA_WORLD_DEFINITION_FIXTURES="$PWD/../build/world-definition-fixtures" \
+  cargo test --lib java_compiled_definitions_preserve_complete_profiles -- --ignored --nocapture
+```
+
+This explicit fixture test fails if its inputs are absent. It compares the
+complete structural profile, GPU tables, climate tables and material NBT
+against the legacy exports, and compares flat terrain buffers. Each fixture
+receives `compilation.json` and `rust-validation.json` receipts with compressed
+size, compilation/load timing, and the scope of verification. Neither test
+claims mod startup integration or headless region-generation parity.
+
+The exact structural comparison parses baseline decimal number lexemes with
+Rust's correctly rounded `f64` conversion. The legacy JSON parser's default
+fast conversion can round some decimals one ULP differently from Java. The
+file preserves Java's binary doubles exactly; GPU/material comparisons still
+use the unchanged legacy runtime parser as their independent baseline.

@@ -44,6 +44,7 @@ fastnbt = "2.6.3"
 
 [dev-dependencies]
 libc = "0.2"
+serde_json = { version = "1", features = ["raw_value"] }
 
 [profile.release]
 lto = "thin"

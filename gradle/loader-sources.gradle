@@ -8,6 +8,7 @@ processResources {
 }
 base { archivesName = "retina-${project.name}-${minecraft_version}" }
 tasks.named('jar') {
+    manifest { attributes('Implementation-Version': project.version) }
     from rootProject.tasks.named('packageCrossNatives')
     from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
 }

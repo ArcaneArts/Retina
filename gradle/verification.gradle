@@ -396,6 +396,19 @@ tasks.register('registryTest', JavaExec) {
 }
 check.dependsOn 'registryTest'
 
+tasks.register('worldDefinitionCompileTest', JavaExec) {
+    group = 'verification'
+    description = 'Compile complete vanilla, flat and datapack world definitions to structural NBT without a GPU.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.WorldDefinitionCompileTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '1g'
+    args rootProject.layout.buildDirectory.dir('world-definition-fixtures').get().asFile.absolutePath
+}
+check.dependsOn 'worldDefinitionCompileTest'
+
 tasks.register('geologyTest', JavaExec) {
     group = 'verification'
     description = 'Validate registry-derived parallel ores, GPU cave masks and exposure rules.'
