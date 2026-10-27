@@ -80,6 +80,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     private final boolean densityComposition;
     private final GenerationSource selectedSource;
     private WorldDefinitionContext.Dimension savedDefinition;
+    private volatile SavedStructureStarts savedStructureStarts=SavedStructureStarts.EMPTY;
     private SavedStructureSets savedStructureSets;
     private net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> worldDimension;
     private volatile TemporaryRegions previews;
@@ -154,6 +155,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                 net.minecraft.resources.Identifier.parse(saved.key()));
         result.worldSeed = saved.seed();
         result.profile = saved.bind(registry);
+        result.savedStructureStarts = SavedStructureStarts.fromMetadata(
+                com.google.gson.JsonParser.parseString(result.profile.json()).getAsJsonObject());
         result.savedStructureSets = new SavedStructureSets(registry,
                 com.google.gson.JsonParser.parseString(result.profile.json()).getAsJsonObject());
         return result;
@@ -234,11 +237,21 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             biomes.bind((x,y,z) -> biomeAt(x*4,y*4,z*4),(x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst());
             biomes.bindQueries(query::biomes);
         }
+        savedStructureStarts=profile==null?SavedStructureStarts.EMPTY:SavedStructureStarts.fromMetadata(
+                com.google.gson.JsonParser.parseString(profile.json()).getAsJsonObject());
         metrics.startNativeTimings(NativeTerrain.instance().timings(profile == null ? 0 : profile.nativeId()));
         if (regionMode()) previews = new TemporaryRegions(request(seed, 0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS, Math.min(TemporaryRegions.MAX_REGIONS,16), worldDimension);
     }
 
     public TerrainQueries queries() { return queries; }
+
+    public boolean hasFrozenStructurePieces(){return savedStructureStarts.hasFrozenPieces();}
+
+    public java.util.Map<net.minecraft.world.level.levelgen.structure.Structure,net.minecraft.world.level.levelgen.structure.StructureStart> readSavedStructureStarts(
+            net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext context,
+            net.minecraft.nbt.CompoundTag structures,long seed) {
+        return savedStructureStarts.read(context,structures,seed);
+    }
 
     public void closePreviews() {
         var query = queries;
@@ -492,7 +505,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         var starts = new java.util.HashMap<net.minecraft.world.level.levelgen.structure.Structure, net.minecraft.world.level.levelgen.structure.StructureStart>();
         var startTags = nativeStructures.getCompoundOrEmpty("starts");
         for (String key : startTags.keySet()) {
-            var start = net.minecraft.world.level.levelgen.structure.StructureStart.loadStaticStart(context, startTags.getCompoundOrEmpty(key), worldSeed);
+            var start = savedStructureStarts.load(context, startTags.getCompoundOrEmpty(key), worldSeed);
             if (start != null && start.isValid()) {
                 starts.put(start.getStructure(), start);
             }

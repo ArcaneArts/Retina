@@ -73,6 +73,12 @@ dependencies {
     testImplementation "net.fabricmc:fabric-loader-junit:${loader_version}"
 }
 test { useJUnitPlatform() }
+sourceSets.test.compileClasspath += sourceSets.gpuTest.output
+sourceSets.test.runtimeClasspath += sourceSets.gpuTest.output
+test {
+    dependsOn tasks.named('gpuTestClasses')
+    systemProperty 'retina.end.cityFixture', rootProject.file('native/tests/fixtures/end-city-plans-26.3.json').absolutePath
+}
 // Optional integration fixtures use an actual installed Chunky jar; it is never packaged with Retina.
 if (providers.gradleProperty('retinaChunkyJar').isPresent()) {
     dependencies { testRuntimeOnly files(providers.gradleProperty('retinaChunkyJar').get()) }
