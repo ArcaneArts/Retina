@@ -1,3 +1,9 @@
 # Leave CPU capacity available for other applications during native builds.
 [build]
 jobs = 2
+
+# Rust's Mach-O stripping can leave the LINKEDIT string table four-byte
+# aligned; current dyld requires pointer alignment (rust-lang/rust#157750).
+# Preserve the native linker's layout instead of rewriting it after linking.
+[target.'cfg(target_os = "macos")']
+rustflags = ["-C", "strip=none"]
