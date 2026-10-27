@@ -592,7 +592,11 @@ fn terrain_reference<'a>(
 }
 impl View<'_, '_> {
     fn terrain(&self, x: i32, z: i32) -> Result<Cow<'_, Arc<Field<'static>>>, String> {
-        let reference = terrain_reference(&self.base, x, z, |cx, cz| self.planner.terrain(cx, cz))?;
+        let reference = if self.planner.profile.end.is_some() {
+            if crate::terrain_job::covers(&self.base,x.div_euclid(16),z.div_euclid(16),1) {
+                Cow::Borrowed(&self.base)
+            } else {Cow::Owned(self.planner.terrain(x.div_euclid(16),z.div_euclid(16))?)}
+        } else {terrain_reference(&self.base, x, z, |cx, cz| self.planner.terrain(cx, cz))?};
         self.columns.count(if matches!(reference, Cow::Borrowed(_)) { 3 } else { 4 });
         Ok(reference)
     }
@@ -626,6 +630,9 @@ impl PriorWorld for View<'_, '_> {
         self.planner.roots[self.before].deferred_ore
     }
     fn column(&self, x: i32, z: i32) -> Option<Column> {
+        if self.planner.profile.end.is_some() {
+            if let Some(column)=self.base.column(x,z) {return Some(column);}
+        }
         match self.terrain(x, z) {
             Ok(field) => field.column(x, z),
             Err(error) => {
@@ -635,6 +642,12 @@ impl PriorWorld for View<'_, '_> {
         }
     }
     fn biome(&self, at: [i32; 3]) -> Option<usize> {
+        // The End's source columns include a biome guard outside material
+        // coverage. Read its actual cached values without generating a tile;
+        // material queries keep their separate complete-coverage requirement.
+        if self.planner.profile.end.is_some() && self.base.column(at[0],at[2]).is_some() {
+            return self.base.biome(self.planner.profile,at);
+        }
         match self.terrain(at[0], at[2]) {
             Ok(field) => field.biome(self.planner.profile, at),
             Err(error) => {
@@ -852,6 +865,13 @@ impl Planner<'_> {
                 }
                 if let Some(definition) = self.roots[root].definition {
                     return self.structure(root, definition, x, z);
+                }
+                if self.profile.end.is_some() && !self.roots[root].ids.is_empty()
+                    && self.roots[root].ids.iter().all(|&id|matches!(
+                        &self.profile.decorations[id as usize].feature,
+                        Kind::EndSpikes{end_spikes} if !end_spikes.affects_anchor(x,z))) {
+                    self.metrics.performance.add(Perf::end_empty_spike_anchors,1);
+                    return Ok(Output{writes:Vec::new(),columns:output_columns::Columns::default(),metadata:None});
                 }
                 let base = self.terrain(x, z)?;
                 let available = memo(&self.anchor_ids, (x, z), &self.metrics.performance,

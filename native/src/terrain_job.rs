@@ -46,6 +46,8 @@ pub(crate) struct TerrainJob<'a> {
     engine: &'a TerrainEngine,
     request: ChunkRequest,
     initial: Option<&'a Field<'a>>,
+    end: bool,
+    end_initial: OnceLock<Option<Arc<Tile>>>,
     nearby: NearbyTiles,
     cached: Map<(i32, i32), Arc<CaveMask>>,
     tiles: Mutex<Map<(i32, i32), Cell>>,
@@ -81,6 +83,7 @@ impl<'a> TerrainJob<'a> {
         metrics.performance.add(Perf::terrain_job_cached_tiles_retained, cached.len() as u64);
         Self {
             engine, request, initial, nearby, cached,
+            end:profile.end.is_some(),end_initial:OnceLock::new(),
             tiles: Mutex::new(Map::default()), metrics,
             #[cfg(test)]
             demand: demand_probe::Trace::new(request),
@@ -88,16 +91,39 @@ impl<'a> TerrainJob<'a> {
     }
     pub(crate) fn len(&self) -> usize {
         self.nearby.len() + self.tiles.lock().unwrap_or_else(|e| e.into_inner()).len()
+            +usize::from(self.end_initial.get().is_some_and(|v|v.is_some()))
     }
     pub(crate) fn field(&self, x: i32, z: i32) -> Result<Arc<Field<'static>>, String> {
         #[cfg(test)]
         self.demand.query(x, z, 0);
+        if let Some(initial)=self.initial_end(x,z) {return Ok(initial.field.clone());}
         Ok(self.tile(x, z)?.field.clone())
     }
     pub(crate) fn mask(&self, x: i32, z: i32) -> Result<Option<Arc<CaveMask>>, String> {
         #[cfg(test)]
         self.demand.query(x, z, 1);
+        if let Some(initial)=self.initial_end(x,z) {return Ok(initial.mask.clone());}
         Ok(self.tile(x, z)?.mask.clone())
+    }
+    fn initial_end(&self,x:i32,z:i32)->Option<&Arc<Tile>> {
+        if !self.end {return None;}
+        let initial=self.end_initial.get_or_init(|| {
+            let mask=self.initial?.substrate.as_ref()?;
+            let started=self.metrics.performance.start();
+            let field=initial_material_field(mask)?;
+            self.metrics.performance.elapsed(Perf::terrain_initial_crop_nanos,started);
+            self.metrics.performance.add(Perf::terrain_initial_crop_bytes,
+                (field.columns.len()*std::mem::size_of::<crate::Column>()) as u64);
+            Some(Arc::new(Tile{field:Arc::new(field),mask:Some(mask.clone())}))
+        }).as_ref()?;
+        // The queried chunk needs complete material coverage. The retained
+        // mask has one additional column/biome ring outside this interior,
+        // including all 3x3 anchor-biome reads. Material reads outside the
+        // interior go through field() again and generate their normal tile.
+        if !covers(&initial.field,x,z,1) {return None;}
+        self.metrics.performance.add(Perf::terrain_job_requests,1);
+        self.metrics.performance.add(Perf::terrain_initial_field_reads,1);
+        Some(initial)
     }
     fn tile(&self, x: i32, z: i32) -> Result<Arc<Tile>, String> {
         let x = x.div_euclid(16) * 16;
@@ -196,13 +222,31 @@ impl<'a> TerrainJob<'a> {
         result
     }
 }
-fn covers(field: &Field<'_>, x: i32, z: i32, side: usize) -> bool {
+pub(crate) fn covers(field: &Field<'_>, x: i32, z: i32, side: usize) -> bool {
     let dx = i64::from(x) - i64::from(field.origin_x);
     let dz = i64::from(z) - i64::from(field.origin_z);
     dx >= 0
         && dz >= 0
         && dx + side as i64 <= field.side as i64
         && dz + side as i64 <= field.side as i64
+}
+
+/// Crop the complete material-backed interior, retaining the source mask.
+/// No ungenerated column or material placeholder is introduced at its edges.
+pub(crate) fn initial_material_field(mask:&Arc<CaveMask>)->Option<Field<'static>> {
+    let halo=mask.columns.as_ref()?;let side=halo.side.checked_sub(2)?;
+    if side==0 {return None;}
+    let origin_x=halo.origin_x.checked_add(1)?;let origin_z=halo.origin_z.checked_add(1)?;
+    let far_x=i32::try_from(i64::from(origin_x)+side as i64).ok()?.checked_mul(16)?.checked_sub(1)?;
+    let far_z=i32::try_from(i64::from(origin_z)+side as i64).ok()?.checked_mul(16)?.checked_sub(1)?;
+    mask.material_run_range(origin_x.checked_mul(16)?,origin_z.checked_mul(16)?)?;
+    mask.material_run_range(far_x,far_z)?;
+    let mut columns=Vec::with_capacity(side*side*crate::COLUMNS);
+    for row in 1..halo.side-1 {
+        let start=(row*halo.side+1)*crate::COLUMNS;
+        columns.extend_from_slice(halo.columns.get(start..start+side*crate::COLUMNS)?);
+    }
+    Some(Field{origin_x,origin_z,side,columns,substrate:Some(mask.clone()),prior:None})
 }
 #[cfg(test)]
 mod tests {

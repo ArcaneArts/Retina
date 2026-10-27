@@ -5,6 +5,7 @@ use super::*;
 #[derive(Default)]
 pub(crate) struct Statistics {
     pub bounds_nanos: u64,
+    pub exact_nanos: u64,
     pub temporary_bytes: u64,
     pub partial_probes: u64,
     pub exact_corners: u64,
@@ -71,7 +72,7 @@ impl SparseTile {
         tile.occupancy = (0..(rows - 1) * (columns - 1))
             .map(|i| {
                 let at = i / (columns - 1) * columns + i % (columns - 1);
-                std::array::from_fn(|cy| {
+                CellColumn::from_cells(std::array::from_fn(|cy| {
                     let mut low = f32::INFINITY;
                     let mut high = f32::NEG_INFINITY;
                     for corner in [at, at + 1, at + columns, at + columns + 1] {
@@ -85,23 +86,25 @@ impl SparseTile {
                         }
                     }
                     classify_range(low, high)
-                })
+                }))
             })
             .collect();
         // A complete uncertain cell requires all corners, including those
         // whose own sign was already known. Their magnitudes still matter.
         for (i, cells) in tile.occupancy.iter().enumerate() {
             let at = i / (columns - 1) * columns + i % (columns - 1);
-            for (cy, cell) in cells.iter().enumerate() {
-                if *cell == Occupancy::Uncertain {
-                    for corner in [at, at + 1, at + columns, at + columns + 1] {
-                        needed[corner] |= 3u64 << cy;
-                    }
+            let mut uncertain = cells.uncertain;
+            while uncertain != 0 {
+                let cy = uncertain.trailing_zeros() as usize;
+                uncertain &= uncertain - 1;
+                for corner in [at, at + 1, at + columns, at + columns + 1] {
+                    needed[corner] |= 3u64 << cy;
                 }
             }
         }
         tile.mask_nanos = mask_start.map_or(0, |t| t.elapsed().as_nanos() as u64);
         drop(bounds);
+        let exact_start = crate::performance::enabled().then(std::time::Instant::now);
         tile.corners.resize(count, [0.0; 33]);
         for (index, &flags) in needed.iter().enumerate() {
             let bx = (i64::from(tile.corner_origin[0]) + (index % columns) as i64 * 8) as i32;
@@ -117,17 +120,22 @@ impl SparseTile {
             stats.exact_corners += (flags & !3).count_ones() as u64;
         }
         stats.skipped_corners = count as u64 * 31 - stats.exact_corners;
+        stats.exact_nanos = exact_start.map_or(0, |t| t.elapsed().as_nanos() as u64);
         let refine_start = crate::performance::enabled().then(std::time::Instant::now);
         for (i, cells) in tile.occupancy.iter_mut().enumerate() {
             let at = i / (columns - 1) * columns + i % (columns - 1);
-            for (cy, cell) in cells.iter_mut().enumerate() {
-                if *cell == Occupancy::Uncertain {
-                    debug_assert!(
-                        [at, at + 1, at + columns, at + columns + 1]
-                            .iter()
-                            .all(|&c| needed[c] & (3u64 << cy) == 3u64 << cy)
-                    );
-                    *cell = classify([
+            let mut uncertain = cells.uncertain;
+            while uncertain != 0 {
+                let cy = uncertain.trailing_zeros() as usize;
+                uncertain &= uncertain - 1;
+                debug_assert!(
+                    [at, at + 1, at + columns, at + columns + 1]
+                        .iter()
+                        .all(|&c| needed[c] & (3u64 << cy) == 3u64 << cy)
+                );
+                cells.set(
+                    cy,
+                    classify([
                         tile.corners[at][cy],
                         tile.corners[at + 1][cy],
                         tile.corners[at + columns][cy],
@@ -136,8 +144,8 @@ impl SparseTile {
                         tile.corners[at + 1][cy + 1],
                         tile.corners[at + columns][cy + 1],
                         tile.corners[at + columns + 1][cy + 1],
-                    ]);
-                }
+                    ]),
+                );
             }
         }
         tile.mask_nanos += refine_start.map_or(0, |t| t.elapsed().as_nanos() as u64);
