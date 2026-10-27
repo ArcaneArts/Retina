@@ -310,7 +310,7 @@ fn independently_computed_neighbor_boundary_versions_match_completed_interiors()
     for name in ["nether", "custom", "direct-stem"] {
         let bytes = std::fs::read(directory.join(format!("{name}.json"))).unwrap();
         let data: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-        let id = engine.register_profile(&bytes).unwrap();
+        let id = engine.register_reference_profile(&bytes).unwrap();
         let profile = engine.profile(id).unwrap().unwrap();
         assert!(profile.decoration_source_order);
         for seed in [123456789, 42] {
@@ -394,7 +394,7 @@ fn failed_region_publication_does_not_publish_completed_versions() {
         std::path::PathBuf::from(std::env::var("RETINA_TERRAIN_REUSE_PROFILES").unwrap());
     let bytes = std::fs::read(directory.join("nether.json")).unwrap();
     let engine = TerrainEngine::new().unwrap();
-    let id = engine.register_profile(&bytes).unwrap();
+    let id = engine.register_reference_profile(&bytes).unwrap();
     let request = ChunkRequest {
         seed: 123456789,
         chunk_x: 0,

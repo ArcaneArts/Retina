@@ -200,7 +200,7 @@ fn paired_exterior_exports_from_natural_planners() {
         let bytes = fs::read(profiles.join(file)).unwrap();
         let data: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         let engine = crate::TerrainEngine::new().unwrap();
-        let id = engine.register_profile(&bytes).unwrap();
+        let id = engine.register_reference_profile(&bytes).unwrap();
         let bounds = &data["generation_bounds"];
         let request = crate::ChunkRequest {
             seed,

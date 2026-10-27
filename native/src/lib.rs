@@ -54,7 +54,7 @@ const MAX_BATCH: usize = 1024;
 const MAX_TILES: usize = 38 * 38;
 const BATCH_WAIT: Duration = Duration::from_micros(250);
 
-/// C ABI layout. reserved is the resident world-profile handle (0 = legacy stone).
+/// C ABI layout. reserved is a nonzero resident world-definition profile handle.
 /// Keep field offsets in sync with NativeTerrain.java.
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -662,7 +662,9 @@ impl TerrainEngine {
         }
     }
 
-    pub fn register_profile(&self, bytes: &[u8]) -> Result<u32, String> {
+    /// Legacy migration oracle; never compiled into the native library or standalone runner.
+    #[cfg(test)]
+    pub(crate) fn register_reference_profile(&self, bytes: &[u8]) -> Result<u32, String> {
         let profile = Arc::new(WorldProfile::parse(bytes)?);
         self.profiles.write().map_err(|_| "profile lock poisoned")?.legacy(profile)
     }
@@ -1796,27 +1798,6 @@ fn boundary(action: impl FnOnce() -> Result<(), String>) -> i32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn retina_initialize() -> i32 {
     boundary(|| shared_engine().map(|_| ()))
-}
-
-/// # Safety
-/// json contains length readable bytes; id points to a writable u32.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn retina_register_profile(
-    json: *const u8,
-    length: u64,
-    id: *mut u32,
-) -> i32 {
-    boundary(|| {
-        if json.is_null() || id.is_null() {
-            return Err("null profile buffer".into());
-        }
-        let profile = shared_engine()?
-            .register_profile(unsafe { std::slice::from_raw_parts(json, length as usize) })?;
-        unsafe {
-            *id = profile;
-        }
-        Ok(())
-    })
 }
 
 /// # Safety

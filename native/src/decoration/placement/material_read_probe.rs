@@ -296,7 +296,7 @@ fn exact_material_read_inventory() {
         let bytes = fs::read(profiles.join(file)).unwrap();
         let profile: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         let engine = TerrainEngine::new().unwrap();
-        let id = engine.register_profile(&bytes).unwrap();
+        let id = engine.register_reference_profile(&bytes).unwrap();
         let bounds = &profile["generation_bounds"];
         let request = ChunkRequest {
             seed, chunk_x: 0, chunk_z: 0,

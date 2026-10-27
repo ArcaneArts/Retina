@@ -934,3 +934,14 @@ All three real-GPU tests pass: 256 parallel complete primitive chunks, physical 
 
 
 The Python interpreter-reuse proof now consumes saved definition variants through the world-definition FFI. It does not upload JSON or reconstruct seed/bounds. A test-only Java exporter changes registry programs while preserving the rest of the input NBT. Vanilla and Terralith comparisons against the retained library pass 1,966,080 block IDs and 5,120 complete column records, with non-vacuous climate/material controls and exact return to the original handle. Root checks pass; commands and evidence are documented in `GPU_INTERPRETER_PIPELINE_REUSE.md`.
+
+
+### Production registration has been retired
+
+The release native library and standalone runner no longer expose JSON registration or accept profile zero as a generation handle. Binding a loaded `retina.dat` is the production route. The shared procedural shader still uses internal slot zero after a valid saved handle is checked. Legacy JSON registration is named `register_reference_profile`, private to the crate and compiled only under `cfg(test)` for explicit migration/shader oracles.
+
+The benchmark export helper defaults to binary world definitions. Existing legacy JSON fixture tasks set `retina.qa.legacyProfile` explicitly; complete-region benchmark export now publishes `backend-benchmark/definition/retina.dat`. These QA fixtures do not provide a production registration alternative.
+
+The release image passes all 351 native unit tests, all conditional target/example compilation, the production-linked GPU integration suite (including rejected profile-zero dispatch), the root build/checks, saved-input rejection, previews, and twenty combined End reference chunks. Fresh release-CLI processes reproduce all 2,048 decoded chunks in a copied-file Overworld/Nether mod capture and pass cancellation. Both host mod JARs embed the exact tested native image. Each JAR independently loads that resource and generates all three dimensions on a JDK-only classpath without Minecraft classes or a native-path override. Evidence and packaged artifacts are retained under `~/.cache/retina/world-definition-native-retirement-20261027`.
+
+The headless process test harness accepts `RETINA_HEADLESS_EXECUTABLE` to verify a specific release artifact; its default remains Cargo's test executable.

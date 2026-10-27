@@ -274,7 +274,7 @@ fn gpu_vine_registered_planner() {
     source["program_execution"] = "interpreter".into();
     let engine = crate::TerrainEngine::new().unwrap();
     let id = engine
-        .register_profile(&serde_json::to_vec(&source).unwrap())
+        .register_reference_profile(&serde_json::to_vec(&source).unwrap())
         .unwrap();
     let profile = engine.profile(id).unwrap().unwrap();
     let r = ChunkRequest {

@@ -254,7 +254,7 @@ fn exact_live_column_reuse_inventory() {
             // Fresh engine and five warmups per level: no preceding mode's
             // completed-region cache can become this mode's starting state.
             let engine = TerrainEngine::new().unwrap();
-            let id = engine.register_profile(&bytes).unwrap();
+            let id = engine.register_reference_profile(&bytes).unwrap();
             let bounds = &profile["generation_bounds"];
             let request = ChunkRequest {
                 seed,

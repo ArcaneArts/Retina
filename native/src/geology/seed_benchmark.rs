@@ -9,7 +9,7 @@ fn seeded_ore_planning_comparison() {
     let path = std::env::var("RETINA_ORE_PROFILE").unwrap();
     let engine = TerrainEngine::new().unwrap();
     let reserved = engine
-        .register_profile(&std::fs::read(&path).unwrap())
+        .register_reference_profile(&std::fs::read(&path).unwrap())
         .unwrap();
     let profile = engine.profile(reserved).unwrap().unwrap();
     let workers = rayon::ThreadPoolBuilder::new()

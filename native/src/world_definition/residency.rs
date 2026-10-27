@@ -1,6 +1,6 @@
 //! Saved profiles are owned by their world and active jobs, not the process.
 //! Slots never change meaning or reuse IDs, so old cache entries cannot alias
-//! the next opened world. Legacy registrations retain their existing ownership.
+//! the next opened world. Legacy registration exists only in unit-test migration oracles.
 use crate::{ChunkRequest, profile::WorldProfile, region::codec::Compression};
 use std::sync::{Arc, Weak};
 
@@ -54,6 +54,7 @@ impl GenerationInputs {
 }
 
 enum Owner {
+    #[cfg(test)]
     Legacy(Arc<WorldProfile>),
     World(Weak<WorldProfile>),
 }
@@ -61,6 +62,7 @@ enum Owner {
 impl Entry {
     fn profile(&self) -> Result<Arc<WorldProfile>, String> {
         match &self.owner {
+            #[cfg(test)]
             Owner::Legacy(profile) => Ok(profile.clone()),
             Owner::World(profile) => profile
                 .upgrade()
@@ -75,6 +77,7 @@ impl Profiles {
         self.entries.len()
     }
 
+    #[cfg(test)]
     pub fn legacy(&mut self, profile: Arc<WorldProfile>) -> Result<u32, String> {
         if let Some(index) = self.entries.iter().position(|entry| {
             matches!(&entry.owner,
@@ -126,6 +129,7 @@ impl Profiles {
     }
 
     pub fn validate_request(&self, request: &ChunkRequest) -> Result<(), String> {
+        #[cfg(test)]
         if request.reserved == 0 { return Ok(()); }
         let entry = self.entry(request.reserved)?;
         entry.profile()?;
@@ -134,6 +138,7 @@ impl Profiles {
     }
 
     pub fn get(&self, id: u32) -> Result<Option<Arc<WorldProfile>>, String> {
+        #[cfg(test)]
         if id == 0 {
             return Ok(None);
         }
@@ -141,6 +146,7 @@ impl Profiles {
     }
 
     pub fn compression(&self, id: u32) -> Result<Compression, String> {
+        #[cfg(test)]
         if id == 0 {
             return Ok(Compression::default());
         }
@@ -150,6 +156,7 @@ impl Profiles {
     }
 
     pub fn data_version(&self, id: u32) -> Result<Option<i32>, String> {
+        #[cfg(test)]
         if id == 0 {
             return Ok(None);
         }
@@ -159,6 +166,7 @@ impl Profiles {
     }
 
     pub fn storage_bounds(&self, id: u32) -> Result<Option<super::wire::Bounds>, String> {
+        #[cfg(test)]
         if id == 0 {
             return Ok(None);
         }
