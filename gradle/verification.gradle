@@ -1007,3 +1007,19 @@ tasks.register('endCityPlacementTest', JavaExec) {
     args rootProject.layout.buildDirectory.dir('end/city-placement').get().asFile.absolutePath,
         rootProject.file('native/tests/fixtures/end-city-plans-26.3.json').absolutePath
 }
+
+tasks.register('endCombinedGenerationTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare shared source city chunks and complete End feature composition.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndCombinedGenerationTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '768m'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    else dependsOn ':packageNative'
+    args rootProject.layout.buildDirectory.dir('end/combined-generation').get().asFile.absolutePath,
+        rootProject.file('native/tests/fixtures/end-city-plans-26.3.json').absolutePath
+}

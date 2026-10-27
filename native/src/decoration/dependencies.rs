@@ -221,6 +221,7 @@ impl Bounds {
     }
 }
 struct Root {
+    city_shapes: bool,
     definition: Option<usize>,
     ids: Vec<u32>,
     bounds: Bounds,
@@ -846,6 +847,9 @@ impl Planner<'_> {
                 { observation = self.output_trace.begin(root, x, z); }
                 self.metrics.performance.add(Perf::anchor_builds, 1);
                 #[cfg(test)] let _anchor_cpu = { dependency_work::count(Work::AnchorBuild, Some(root)); worker_phase_probe::AnchorCpu::start_at(root, x, z) };
+                if self.roots[root].city_shapes {
+                    return self.city_shapes(root, x, z);
+                }
                 if let Some(definition) = self.roots[root].definition {
                     return self.structure(root, definition, x, z);
                 }
@@ -1013,6 +1017,39 @@ impl Planner<'_> {
             }
         }
         self.anchor(root, ax, az).map(Some)
+    }
+    fn city_shapes(&self, root: usize, x: i32, z: i32) -> Result<Output, String> {
+        self.check()?;
+        let kit = self.profile.structures.end_cities.as_ref().unwrap();
+        let mut writes = Vec::new();
+        for dz in 0..16 {
+            for dx in 0..16 {
+                let bx = x * 16 + dx;
+                let bz = z * 16 + dz;
+                let column = self.column(root, bx, bz)?;
+                let mut top = self.request.height as usize;
+                for &run in column.runs.slice() {
+                    let bottom = (run >> 16) as usize;
+                    let material = run as u16;
+                    if kit.stairs.contains_key(&material) {
+                        let neighbors = [(0, -1), (0, 1), (-1, 0), (1, 0)]
+                            .into_iter().map(|(nx, nz)| self.column(root, bx + nx, bz + nz))
+                            .collect::<Result<Vec<_>, _>>()?;
+                        for y in bottom..top {
+                            let updated = kit.stair_shape(material, |direction| neighbors.get(direction - 2).map(|c| c.material(y))).unwrap();
+                            if updated != material {
+                                writes.push(WorldBlock { root_order: root as u32, x: bx, y: self.request.min_y + y as i32,
+                                    z: bz, material: updated, role: FEATURE, upper: 0, tick: 0 });
+                            }
+                        }
+                    }
+                    top = bottom;
+                }
+            }
+        }
+        let (columns, _) = output_columns::Columns::from_writes(&writes, None, self.request.min_y, self.request.height as usize, &self.metrics.performance);
+        self.check()?;
+        Ok(Output { writes, columns, metadata: None })
     }
     fn structure(&self, root: usize, definition: usize, x: i32, z: i32) -> Result<Output, String> {
         let request = ChunkRequest {
@@ -1524,8 +1561,9 @@ pub(crate) fn generate(
         }
         let bounds = Bounds::recipe(recipe)?;
         let root = groups
-            .entry((recipe.generation_step, 1, recipe.root_order))
+            .entry((recipe.generation_step, 2, recipe.root_order))
             .or_insert(Root {
+                city_shapes: false,
                 definition: None,
                 ids: Vec::new(),
                 bounds,
@@ -1549,6 +1587,7 @@ pub(crate) fn generate(
         groups.insert(
             (crate::structures::step(definition)?, 0, id as u32),
             Root {
+                city_shapes: false,
                 ids: Vec::new(),
                 definition: Some(id),
                 deferred_ore: None,
@@ -1560,6 +1599,20 @@ pub(crate) fn generate(
                 },
             },
         );
+    }
+    if profile.end.is_some() {
+        // Template edge updates reach the neighboring chunk. Read the complete
+        // city prefix before reconciling stairs, and publish the result before
+        // subsequent features read it. Shapes do not change facing or half, so
+        // no reconciliation output depends on another reconciliation output.
+        if let Some(step) = groups.values().filter_map(|root| root.definition)
+            .map(|id| &profile.structures.definitions[id]).filter(|d| d.kind == "end_city")
+            .map(crate::structures::step).collect::<Result<Vec<_>, _>>()?.into_iter().max() {
+            groups.insert((step, 1, 0), Root {
+                city_shapes: true, definition: None, ids: Vec::new(), deferred_ore: None,
+                uniform_blob: None, footprint: false, bounds: Bounds { x: [0, 15], z: [0, 15] },
+            });
+        }
     }
     for root in groups.values_mut() {
         root.deferred_ore = deferred_ore_pair(profile, &root.ids);
