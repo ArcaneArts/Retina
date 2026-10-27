@@ -9,7 +9,7 @@ import java.lang.foreign.ValueLayout;
 
 /** A depth-only climate source distinguishes the full biome lookup from a flattened surface lookup. */
 final class NetherVerticalBiomeTest {
-    static void check(RegistryAccess registry, TerrainProfileData exported) {
+    static void check(RegistryAccess registry, TerrainProfileData exported) throws Exception {
         var data = JsonParser.parseString(exported.json()).getAsJsonObject();
         for (var biome : data.getAsJsonArray("biomes")) biome.getAsJsonObject().add("carvers", new JsonArray());
         var targets = JsonParser.parseString("""
@@ -34,18 +34,23 @@ final class NetherVerticalBiomeTest {
             var material = compiler.new Program(); material.roots.add(material.constant((i == 0 ? lower : upper) + 1));
             programs.set(3 + i, material.finish());
         }
-        for (String execution : new String[]{"specialized", "interpreter"}) {
-            data.addProperty("program_execution", execution);
-            int profile = NativeTerrain.instance().registerProfile(data.toString());
-            var request = new TerrainRequest(84723612, -1, 32, 0, 256, 64, 48, .008f, profile);
-            short[] biomes = NativeTerrain.instance().sampleBiomes(request);
-            for (int y = 0; y < 256; y += 4) for (int c = 0; c < 16; c++)
-                require(biomes[y / 4 * 16 + c] == (y <= 64 ? 0 : 1), execution + " biome depth retained at " + y);
-            try (var chunk = NativeTerrain.instance().generate(request)) {
-                short[] blocks = chunk.blocks().toArray(ValueLayout.JAVA_SHORT);
-                for (int y = 0; y < 128; y++) for (int c = 0; c < 256; c++)
-                    require(Short.toUnsignedInt(blocks[y * 256 + c]) == (y < 68 ? lower : upper), execution + " full-height material biome at " + y);
+        try(var snapshot=DefinitionFixture.snapshot("minecraft:the_nether",data,
+                new TerrainRequest(84723612,0,0,0,256,64,48,.008f,0),0,256,false,true)) {
+            byte[] before=java.nio.file.Files.readAllBytes(snapshot.file());
+            for (var execution : new NativeWorldDefinition.ProgramExecution[]{NativeWorldDefinition.ProgramExecution.SPECIALIZED, NativeWorldDefinition.ProgramExecution.INTERPRETER}) {
+                try(var definition=snapshot.open(execution)) {
+                    var request = definition.request(-1,32);
+                    short[] biomes = NativeTerrain.instance().sampleBiomes(request);
+                    for (int y = 0; y < 256; y += 4) for (int c = 0; c < 16; c++)
+                        require(biomes[y / 4 * 16 + c] == (y <= 64 ? 0 : 1), execution + " biome depth retained at " + y);
+                    try (var chunk = NativeTerrain.instance().generate(request)) {
+                        short[] blocks = chunk.blocks().toArray(ValueLayout.JAVA_SHORT);
+                        for (int y = 0; y < 128; y++) for (int c = 0; c < 256; c++)
+                            require(Short.toUnsignedInt(blocks[y * 256 + c]) == (y < 68 ? lower : upper), execution + " full-height material biome at " + y);
+                    }
+                }
             }
+            require(java.util.Arrays.equals(before,java.nio.file.Files.readAllBytes(snapshot.file())),"execution bindings preserve the saved definition");
         }
         System.out.println("QA_EVT {\"event\":\"nether_vertical_biomes\",\"status\":\"pass\"}");
     }

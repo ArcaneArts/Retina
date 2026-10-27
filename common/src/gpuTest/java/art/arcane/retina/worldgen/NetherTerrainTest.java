@@ -120,7 +120,11 @@ public final class NetherTerrainTest {
     }
 
     static TerrainProfileData export(RegistryAccess registry, BiomeSource biomes, NoiseGeneratorSettings settings, int minY, int height) {
-        var data = TerrainProfileData.export(registry, RetinaBiomeSource.fromSelected(biomes), minY, height, SEED, settings,
+        return export(registry,biomes,settings,minY,height,SEED);
+    }
+
+    static TerrainProfileData export(RegistryAccess registry, BiomeSource biomes, NoiseGeneratorSettings settings, int minY, int height,long seed) {
+        var data = TerrainProfileData.export(registry, RetinaBiomeSource.fromSelected(biomes), minY, height, seed, settings,
                 StructureProfile.Context.NONE, true, false, true);
         var json = JsonParser.parseString(data.json()).getAsJsonObject();
         // Terrain-only fixture: decoration/structures are implemented in later goal cycles.
