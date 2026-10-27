@@ -136,7 +136,7 @@ measurements do not establish a clean cold-start or discrete-GPU performance res
 cargo build --manifest-path native/Cargo.toml --release --locked \
   --target-dir build/native-target --example decoration_plan_benchmark
 build/native-target/release/examples/decoration_plan_benchmark \
-  build/goal-baseline/vanilla.json 123456789 0 0 3 4 2
+  build/benchmark-definition/overworld/retina.dat minecraft:overworld 0 0 3 4 2
 
 cargo build --manifest-path native/Cargo.toml --release --locked \
   --target-dir build/native-target --features ore-raster-benchmark \

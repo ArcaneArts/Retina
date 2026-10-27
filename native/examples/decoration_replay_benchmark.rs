@@ -1,8 +1,16 @@
-//! <profile.json> [side=4] [pairs=5] [seed=123456789] [chunk_x=0] [chunk_z=0]
+//! <retina.dat> <dimension> [side=4] [pairs=5] [chunk_x=0] [chunk_z=0]
 //! Bounded planner A/B on one retained GPU field. Use a 30-second process-group
 //! deadline, reduced priority, and RETINA_INTERPRETER_PRELOAD=0. No region writes.
-use retina_worldgen::{ChunkRequest, TerrainEngine, decoration::Placement};
-use std::time::Instant;
+use retina_worldgen::{
+    TerrainEngine,
+    decoration::Placement,
+    region::codec::Compression,
+    world_definition::{
+        WorldDefinition,
+        runtime::{ProgramExecution, WorldSession},
+    },
+};
+use std::{sync::Arc, time::Instant};
 
 fn signature(plan: &[Vec<Placement>]) -> u64 {
     let mut hash = 0xcbf29ce484222325u64;
@@ -23,35 +31,30 @@ fn signature(plan: &[Vec<Placement>]) -> u64 {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let path = args.next().ok_or("profile path required")?;
+    let source = Arc::new(WorldDefinition::read(
+        args.next().ok_or("definition path required")?,
+    )?);
+    let key = args.next().ok_or("dimension required")?;
     let side: usize = args.next().map(|a| a.parse()).transpose()?.unwrap_or(4);
     let pairs: usize = args.next().map(|a| a.parse()).transpose()?.unwrap_or(5);
-    let seed = args
-        .next()
-        .map(|a| a.parse())
-        .transpose()?
-        .unwrap_or(123456789);
     let chunk_x = args.next().map(|a| a.parse()).transpose()?.unwrap_or(0);
     let chunk_z = args.next().map(|a| a.parse()).transpose()?.unwrap_or(0);
+    if args.next().is_some() {
+        return Err("unexpected argument; seed comes from retina.dat".into());
+    }
     if !(1..=16).contains(&side) || !(1..=9).contains(&pairs) {
         return Err("side must be 1..16; pairs 1..9".into());
     }
-    let mut source: serde_json::Value = serde_json::from_slice(&std::fs::read(path)?)?;
-    source["program_execution"] = "interpreter".into();
-    let engine = TerrainEngine::new()?;
-    let id = engine.register_profile(&serde_json::to_vec(&source)?)?;
-    let profile = engine.profile(id)?.ok_or("missing profile")?;
-    let request = ChunkRequest {
-        seed,
-        chunk_x,
-        chunk_z,
-        min_y: -64,
-        height: 384,
-        base_height: 64.,
-        amplitude: 48.,
-        frequency: 0.008,
-        reserved: id,
-    };
+    let engine = Arc::new(TerrainEngine::new()?);
+    let world = WorldSession::bind_with_execution(
+        engine.clone(),
+        source.clone(),
+        Compression::Zlib,
+        Some(ProgramExecution::Interpreter),
+    )?;
+    let dimension = world.dimension(&key)?;
+    let request = dimension.request(chunk_x, chunk_z)?;
+    let profile = engine.profile(request.reserved)?.ok_or("missing profile")?;
     let (field, mask) = engine.terrain_field(request, side as u32)?;
     let workers = rayon::ThreadPoolBuilder::new().num_threads(2).build()?;
     let mut samples = [Vec::new(), Vec::new()];
@@ -97,7 +100,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|v| v.iter().copied().reduce(f64::max).unwrap());
     println!(
         "{}",
-        serde_json::json!({"backend":engine.backend(),"seed":seed,"chunk_x":chunk_x,"chunk_z":chunk_z,
+        serde_json::json!({"backend":engine.backend(),"dimension":key,"seed":source.seed(),"chunk_x":chunk_x,"chunk_z":chunk_z,
         "side":side,"workers":2,"warmup_pairs":1,"pairs":pairs,"full_replay_ms":samples[0],"resumed_ms":samples[1],
         "median_ms":{"full_replay":median[0],"resumed":median[1]},"max_ms":{"full_replay":max[0],"resumed":max[1]},
         "placements":detailed.iter().map(Vec::len).sum::<usize>(),"ordered_signature":format!("{:016x}",signature(&detailed)),

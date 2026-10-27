@@ -132,7 +132,7 @@ is present only in the combined patch. The earliest height-caching variant is
 retained as measurement evidence; the repeatable combined patch is the revised
 version without that cache.
 
-Use `decoration_plan_benchmark PROFILE 123456789 X Z 5 32 2` with
+Use `decoration_plan_benchmark DEFINITION DIMENSION X Z 5 32 2` with
 `RETINA_INTERPRETER_PRELOAD=0` and `RETINA_PLAN_OUTPUT` for complete vector export.
 Use `scripts/native-region-benchmark.py --count 12 --warmups 1 --parallel 2
 --readiness shader-ready --specialization-timeout 15`, pinned matching libraries,

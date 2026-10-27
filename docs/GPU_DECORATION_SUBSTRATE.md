@@ -87,12 +87,22 @@ milestone before that repair.
 JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home \
   ./gradlew build gpuTest blockFeatureTest decorationCountTest previewTest regionTest \
   -PtestPack=run/datapacks/Terralith.zip --no-parallel --max-workers=1
+./gradlew :common:exportBenchmarkDefinition \
+  -PbenchmarkDefinitionRoot=build/benchmark-definition/halo -PbenchmarkMaterialHalo=true
+./gradlew :common:exportBenchmarkDefinition \
+  -PbenchmarkDefinitionRoot=build/benchmark-definition/baseline -PbenchmarkMaterialHalo=false
+./gradlew :common:exportBenchmarkDefinition -PbenchmarkPack=run/datapacks/Terralith.zip \
+  -PbenchmarkDefinitionRoot=build/benchmark-definition/terralith-halo -PbenchmarkMaterialHalo=true
+./gradlew :common:exportBenchmarkDefinition -PbenchmarkPack=run/datapacks/Terralith.zip \
+  -PbenchmarkDefinitionRoot=build/benchmark-definition/terralith-baseline -PbenchmarkMaterialHalo=false
 cargo run --release --locked --manifest-path native/Cargo.toml \
   --target-dir build/native-target --example material_substrate_check -- \
-  build/registered-columns-vanilla.json specialized 32
+  build/benchmark-definition/halo/retina.dat \
+  build/benchmark-definition/baseline/retina.dat minecraft:overworld specialized 32
 cargo run --release --locked --manifest-path native/Cargo.toml \
   --target-dir build/native-target --example material_substrate_check -- \
-  build/registered-columns-terralith.json interpreter 2
+  build/benchmark-definition/terralith-halo/retina.dat \
+  build/benchmark-definition/terralith-baseline/retina.dat minecraft:overworld interpreter 2
 ```
 
 ## Measurements

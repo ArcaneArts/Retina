@@ -653,6 +653,8 @@ tasks.register('shoreTest', JavaExec) {
         javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
         systemProperty 'retina.benchmark.definition', 'true'
         systemProperty 'retina.benchmark.seed', providers.gradleProperty('benchmarkSeed').getOrElse('123456789')
+        if (providers.gradleProperty('benchmarkMaterialHalo').isPresent())
+            systemProperty 'retina.benchmark.materialHalo', providers.gradleProperty('benchmarkMaterialHalo').get()
         if (nether) systemProperty 'retina.benchmark.nether', 'true'
         args providers.gradleProperty('benchmarkDefinitionRoot').getOrElse(nether
                 ? 'build/benchmark-definition/nether' : 'build/benchmark-definition/overworld')

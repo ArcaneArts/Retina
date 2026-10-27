@@ -73,13 +73,18 @@ public final class NativeProfileExport {
             if (data.getAsJsonArray("decorations").isEmpty()) throw new AssertionError("benchmark must include decorations");
             var output = Path.of(args[0]); Files.createDirectories(output.toAbsolutePath().getParent());
             if(Boolean.getBoolean("retina.benchmark.definition")) {
+                String halo=System.getProperty("retina.benchmark.materialHalo");
+                if(halo!=null) {
+                    if(!halo.equals("true") && !halo.equals("false"))throw new IllegalArgumentException("benchmarkMaterialHalo must be true or false");
+                    data.getAsJsonObject("registry_program").addProperty("material_halo",Boolean.parseBoolean(halo));
+                }
                 boolean nether=Boolean.getBoolean("retina.benchmark.nether");
                 var parameters=WorldDefinitionCompiler.parameters(benchmarkStem.generator(),benchmarkStem.type().value());
                 parameters.putInt("min_y",nether?0:-64);parameters.putInt("height",nether?256:384);
                 parameters.putInt("generator_depth",data.get("generator_depth").getAsInt());
                 var assembly=new WorldDefinitionAssembler(new net.minecraft.world.level.levelgen.WorldOptions(seed,true,false),
                         resources.listPacks().map(PackResources::packId).toList(),"Retina benchmark fixture");
-                assembly.supported((nether?Level.NETHER:Level.OVERWORLD).identifier().toString(),parameters,profile,null);
+                assembly.supported((nether?Level.NETHER:Level.OVERWORLD).identifier().toString(),parameters,data,null);
                 var file=WorldDefinitionFile.writeNew(output,assembly.build());
                 System.out.println("Benchmark definition: "+file+", seed="+seed+", bytes="+Files.size(file));
                 return;

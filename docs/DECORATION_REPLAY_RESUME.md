@@ -91,11 +91,12 @@ and retained-library checks. No changes were made to region publication, player
 edit handling, compression, lighting, cache formats or the Java bridge.
 
 Build the optional example with `--features decoration-replay-benchmark --example
-decoration_replay_benchmark`. Arguments are `<profile.json> [side=4] [pairs=5]
-[seed=123456789] [chunk_x=0] [chunk_z=0]`. Run it at reduced priority with two
-workers, `RETINA_INTERPRETER_PRELOAD=0`, and a 30-second process-group deadline.
-The example forces interpreter terrain so it does not start background shader
-specialization. Builds used two jobs/codegen units and 60-second deadlines,
+decoration_replay_benchmark`. Arguments are `<retina.dat> <dimension> [side=4] [pairs=5]
+[chunk_x=0] [chunk_z=0]`. The saved definition supplies the exact seed and
+geometry. Run it at reduced priority with two workers, `RETINA_INTERPRETER_PRELOAD=0`, and a 30-second process-group deadline.
+The example binds interpreter execution without changing the saved generation
+definition, so it does not start background shader specialization. Builds used
+two jobs/codegen units and 60-second deadlines,
 separately from runtime tests. Minecraft was not launched.
 
 Compatible GPU query submission batching is covered in

@@ -101,7 +101,7 @@ evidence of the dense parallel speedup.
 To reproduce the small planner diagnostic, build
 `decoration_plan_benchmark` with `cargo build --manifest-path native/Cargo.toml
 --release --locked --example decoration_plan_benchmark -j 2`, then pass
-`<profile.json> 123456789 0 0 3 4 2`. Set `RETINA_INTERPRETER_PRELOAD=0` and
+`<retina.dat> <dimension> 0 0 3 4 2`. Set `RETINA_INTERPRETER_PRELOAD=0` and
 `RAYON_NUM_THREADS=2`. The CPU-only comparison is the ignored library test
 `decoration::distribution::tests::distribution_replay_benchmark` with
 `--ignored --nocapture --test-threads=1` in a release build. Run either under a
