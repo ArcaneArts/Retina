@@ -284,6 +284,14 @@ separate from GPU initialization. The Java bridge owns a native handle,
 provides saved requests, and closes idempotently. Platform palette resolution
 and server/world lifecycle integration use this bridge directly.
 
+These classes and `TerrainRequest` live in the dependency-free `:core` module,
+under `art.arcane.retina.core`. Minecraft compilation and registry binding stay
+in `:common`. Both loader JARs embed the compiled core classes; they do not need
+a separately installed core JAR. The bridge checks execute against the actual
+core JAR on a JDK-only classpath, including the repeated host-thread test.
+This is the runtime foundation for the Bukkit adapter and reusable vanilla
+catalog work; a Bukkit distribution is not available from this cycle alone.
+
 Rust dimension leases retain their session and definition while work runs.
 The profile registry holds weak references for saved profiles; active jobs
 hold strong references. Heavy parsed profile data is released after the last

@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.TerrainRequest;
+
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.state.BlockState;
 import java.io.*;

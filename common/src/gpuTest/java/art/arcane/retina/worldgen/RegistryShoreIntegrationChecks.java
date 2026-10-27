@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.TerrainRequest;
+
 import com.google.gson.*;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.Holder;

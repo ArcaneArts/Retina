@@ -1,0 +1,8 @@
+plugins { id 'java-library' }
+apply from: rootProject.file('gradle/java-toolchain.gradle')
+
+// No Minecraft, loader, Bukkit, or parser dependencies belong in this runtime.
+base { archivesName = 'retina-core' }
+tasks.named('jar') {
+    manifest { attributes('Implementation-Version': project.version) }
+}

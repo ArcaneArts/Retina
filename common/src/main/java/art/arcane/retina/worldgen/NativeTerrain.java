@@ -1,5 +1,8 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeLibrary;
+import art.arcane.retina.core.TerrainRequest;
+
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;

@@ -489,12 +489,10 @@ tasks.register('worldDefinitionBindingTest', JavaExec) {
 }
 
 def worldDefinitionBridgeClasses = tasks.register('worldDefinitionBridgeClasses', JavaCompile) {
-    source file('src/main/java/art/arcane/retina/worldgen/NativeLibrary.java'),
-            file('src/main/java/art/arcane/retina/worldgen/NativeWorldDefinition.java'),
-            file('src/main/java/art/arcane/retina/worldgen/TerrainRequest.java'),
-            file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionBridgeTest.java'),
+    dependsOn ':core:jar'
+    source file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionBridgeTest.java'),
             file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionThreadTest.java')
-    classpath = files()
+    classpath = files(project(':core').tasks.named('jar').flatMap { it.archiveFile })
     destinationDirectory = layout.buildDirectory.dir('world-definition-bridge/classes')
     javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
     options.release = 25
@@ -511,7 +509,8 @@ def worldDefinitionBridgeClasses = tasks.register('worldDefinitionBridgeClasses'
         def fixtures = providers.gradleProperty('retinaDefinitionFixtures')
                 .orElse(rootProject.layout.buildDirectory.dir('world-definition-fixtures').map { it.asFile.absolutePath })
         if (!providers.gradleProperty('retinaDefinitionFixtures').isPresent()) dependsOn 'worldDefinitionCompileTest'
-        classpath = files(worldDefinitionBridgeClasses.flatMap { it.destinationDirectory })
+        classpath = files(worldDefinitionBridgeClasses.flatMap { it.destinationDirectory },
+                project(':core').tasks.named('jar').flatMap { it.archiveFile })
         mainClass = 'art.arcane.retina.worldgen.NativeWorldDefinitionBridgeTest'
         javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
         jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
@@ -1185,7 +1184,8 @@ tasks.register('worldDefinitionThreadTest', JavaExec) {
     group = 'verification'
     description = 'Open saved definitions after the first host thread exits, without Minecraft or GPU.'
     dependsOn worldDefinitionBridgeClasses
-    classpath = files(worldDefinitionBridgeClasses.flatMap { it.destinationDirectory })
+    classpath = files(worldDefinitionBridgeClasses.flatMap { it.destinationDirectory },
+            project(':core').tasks.named('jar').flatMap { it.archiveFile })
     mainClass = 'art.arcane.retina.worldgen.NativeWorldDefinitionThreadTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'

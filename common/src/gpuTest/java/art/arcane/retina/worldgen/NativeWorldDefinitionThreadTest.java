@@ -1,5 +1,8 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeLibrary;
+import art.arcane.retina.core.NativeWorldDefinition;
+
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 

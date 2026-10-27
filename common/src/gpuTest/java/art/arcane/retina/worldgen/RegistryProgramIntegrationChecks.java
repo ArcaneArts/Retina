@@ -1,5 +1,8 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeWorldDefinition;
+import art.arcane.retina.core.TerrainRequest;
+
 import com.google.gson.JsonParser;
 import java.nio.file.Path;
 import java.util.Arrays;

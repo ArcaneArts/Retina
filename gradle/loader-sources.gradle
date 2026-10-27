@@ -1,4 +1,6 @@
 // Each loader compiles the same sources against its actual Minecraft runtime.
+evaluationDependsOn(':core')
+dependencies { implementation project(':core') }
 sourceSets.main {
     java.srcDir rootProject.file('common/src/main/java')
     resources.srcDir rootProject.file('common/src/main/resources')
@@ -8,11 +10,15 @@ processResources {
 }
 base { archivesName = "retina-${project.name}-${minecraft_version}" }
 tasks.named('jar') {
+    // Flatten the neutral runtime into the loader artifact: no split-package
+    // module or second native-library owner is introduced at installation.
+    from project(':core').sourceSets.main.output
     manifest { attributes('Implementation-Version': project.version) }
     from rootProject.tasks.named('packageCrossNatives')
     from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
 }
 tasks.named('sourcesJar') {
+    from project(':core').sourceSets.main.allSource
     exclude 'natives/**'
     from(rootProject.file('native')) {
         include 'Cargo.toml', 'Cargo.lock', 'src/**'

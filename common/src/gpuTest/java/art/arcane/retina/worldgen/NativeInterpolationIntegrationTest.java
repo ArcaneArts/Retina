@@ -1,5 +1,8 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeWorldDefinition;
+import art.arcane.retina.core.TerrainRequest;
+
 import com.google.gson.*;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.SharedConstants;

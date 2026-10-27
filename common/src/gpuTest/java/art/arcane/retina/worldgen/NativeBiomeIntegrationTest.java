@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.TerrainRequest;
+
 import com.mojang.serialization.Codec;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.Holder;

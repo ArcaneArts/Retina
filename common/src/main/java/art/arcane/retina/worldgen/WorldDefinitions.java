@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeWorldDefinition;
+
 import art.arcane.retina.Retina;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;

@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeWorldDefinition;
+
 import com.google.gson.*;
 import net.minecraft.core.registries.*;
 import net.minecraft.nbt.*;

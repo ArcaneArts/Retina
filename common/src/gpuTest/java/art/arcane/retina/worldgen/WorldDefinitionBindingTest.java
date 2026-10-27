@@ -1,5 +1,8 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.core.NativeWorldDefinition;
+import art.arcane.retina.core.TerrainRequest;
+
 import net.minecraft.SharedConstants;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.*;
