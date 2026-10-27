@@ -872,3 +872,13 @@ that actual file for their synthetic sampling models. Their concurrent seed
 independence checks create distinct saved worlds rather than changing a request
 seed after loading. Provider-local noise seeds remain part of the saved data.
 All five tasks accept `-PretinaNativePath=/absolute/path/to/native/library`.
+
+`blockFeatureTest` starts from a retained exported `retina.dat` and publishes
+file-backed controlled terrains for its Minecraft reference comparisons. Each
+fixture owns its native world and closes it after use, including when a later
+fixture fails to construct. Partial native heights retain the shared aligned
+storage volume; feature RNG seeds remain independent sampler inputs.
+
+Region checks use the saved request factory and DataVersion, including neighbor
+queries around canopy boundaries. The task accepts
+`-PretinaNativePath=/absolute/path/to/native/library`.
