@@ -90,6 +90,10 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     private long worldSeed;
     private final GenerationMetrics metrics = new GenerationMetrics();
     private final AtomicBoolean firstChunk = new AtomicBoolean();
+    private volatile boolean closed;
+    private final Map<ChunkPos,Map<Heightmap.Types,long[]>> savedChunkHeights = Collections.synchronizedMap(new LinkedHashMap<>(128,.75F,true) {
+        @Override protected boolean removeEldestEntry(Map.Entry<ChunkPos,Map<Heightmap.Types,long[]>> entry) { return size()>1024; }
+    });
     private final Map<HeightKey, NativeTerrain.Columns> heightCache = Collections.synchronizedMap(new LinkedHashMap<>(128, 0.75F, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<HeightKey, NativeTerrain.Columns> eldest) {
@@ -149,7 +153,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         var p = saved.parameters();
         var result = new RetinaChunkGenerator(new RetinaBiomeSource(saved.biomes(registry), 128F, .55F),
                 p.get("min_y").getAsInt(), p.get("height").getAsInt(), p.get("base_height").getAsFloat(),
-                p.get("amplitude").getAsFloat(), p.get("frequency").getAsFloat(), "mca");
+                p.get("amplitude").getAsFloat(), p.get("frequency").getAsFloat(), saved.matchesStorageBounds() ? "mca" : "chunk");
         result.savedDefinition = saved;
         result.worldDimension = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
                 net.minecraft.resources.Identifier.parse(saved.key()));
@@ -164,6 +168,18 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
 
     /** One-time snapshot of a legacy serialized Retina generator, before runtime replacement. */
     TerrainProfileData exportDefinition(HolderLookup.Provider registry, long seed, StructureProfile.Context structures, boolean skyLight) {
+        if (getBiomeSource() instanceof FixedBiomeSource fixed) {
+            var biome = fixed.possibleBiomes().iterator().next();
+            var json = new com.google.gson.JsonObject();
+            json.addProperty("terrain_kind", "procedural");
+            json.addProperty("sea_level", minY);
+            var biomes = new com.google.gson.JsonArray();
+            var description = new com.google.gson.JsonObject();
+            description.addProperty("id", biome.unwrapKey().orElseThrow().identifier().toString());
+            biomes.add(description); json.add("biomes", biomes);
+            return new TerrainProfileData(minY, new BlockState[]{Blocks.AIR.defaultBlockState(), Blocks.STONE.defaultBlockState()},
+                    List.of(biome), json.toString());
+        }
         if (!(getBiomeSource() instanceof RetinaBiomeSource biomes))
             throw new IllegalArgumentException("Legacy fixed Retina terrain cannot be compiled as a registry profile");
         var noise = settings.orElseGet(() -> registry.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE_SETTINGS)
@@ -172,6 +188,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     }
 
     void definitionParameters(net.minecraft.nbt.CompoundTag parameters) {
+        parameters.putInt("min_y", minY);
+        parameters.putInt("height", height);
         parameters.putFloat("base_height", baseHeight);
         parameters.putFloat("amplitude", amplitude);
         parameters.putFloat("frequency", frequency);
@@ -210,6 +228,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     }
     void bindWorld(HolderLookup.Provider registry, long seed, PalettedContainerFactory factory,StructureProfile.Context structures,boolean skyLight) {
         closePreviews();
+        closed = false;
         heightCache.clear();
         biomeCache.clear();
         containerFactory = factory;
@@ -254,6 +273,8 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     }
 
     public void closePreviews() {
+        closed = true;
+        savedChunkHeights.clear();
         var query = queries;
         if (query != null) query.close();
         var cache = previews;
@@ -360,6 +381,28 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
             RandomState randomState, StructureManager structures, BiomeManager biomes,
             WorldGenRegion carverRegion, Set<Holder<Biome>> possibleBiomes) {
         var cache = previews;
+        if (savedDefinition != null && !regionMode()) {
+            long requestedAt=System.nanoTime();
+            metrics.begin();
+            return CompletableFuture.supplyAsync(() -> {
+                try {
+                    if (closed) throw new java.util.concurrent.CancellationException("Retina world closed");
+                    long nativeStart=System.nanoTime();
+                    var tag=savedDefinition.chunk(chunk.getPos().x(),chunk.getPos().z());
+                    long nativeFinished=System.nanoTime();
+                    if (closed) throw new java.util.concurrent.CancellationException("Retina world closed");
+                    var saved=SerializableChunkData.parse(chunk,containerFactory,tag);
+                    if (saved==null) throw new IllegalStateException("Native saved chunk has no status: "+chunk.getPos());
+                    for (var section:saved.sectionData()) if (section.chunkSection()!=null)
+                        chunk.getSections()[chunk.getSectionIndexFromSectionY(section.y())]=section.chunkSection();
+                    saved.heightmaps().forEach(chunk::setHeightmap);
+                    savedChunkHeights.put(chunk.getPos(),saved.heightmaps());
+                    long finished=System.nanoTime();
+                    metrics.completed(finished-requestedAt,nativeFinished-nativeStart,finished-nativeFinished);
+                    return chunk;
+                } catch (Throwable error) { metrics.failed(); throw error; }
+            },WORKERS);
+        }
         if (regionMode() && cache != null) {
             long started = System.nanoTime();
             return CompletableFuture.completedFuture(cache.read(chunk.getPos())).thenApply(tag -> {
@@ -478,7 +521,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
 
     @Override
     public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) {
-        if (profile == null) return;
+        if (profile == null || closed) return;
         var cache = previews;
         // DH may reach this stage after world unload while its earlier terrain
         // request finishes. Closed previews have no remaining decoration work.
@@ -486,6 +529,14 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         var data = regionMode() ? cache.readIfOpen(chunk.getPos()) : NativeTerrain.instance().structureData(request(worldSeed, chunk.getPos().x(), chunk.getPos().z()));
         if (data == null) return;
         installDecorationData(chunk,data,net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext.fromLevel(level.getLevel()),level.registryAccess());
+        if (savedDefinition != null && !regionMode()) {
+            var maps=savedChunkHeights.remove(chunk.getPos());
+            if (maps==null) {
+                var tag=savedDefinition.chunk(chunk.getPos().x(),chunk.getPos().z());
+                maps=SerializableChunkData.parse(chunk,containerFactory,tag).heightmaps();
+            }
+            maps.forEach(chunk::setHeightmap);
+        }
     }
 
     void installDecorationData(ChunkAccess chunk, net.minecraft.nbt.CompoundTag data,

@@ -1,10 +1,10 @@
-//! Version 1 on-disk schema. All integers are signed NBT numbers; world seeds
+//! Version 2 on-disk schema, with legacy version 1 storage defaults. All integers are signed NBT numbers; world seeds
 //! retain their complete two's-complement 64-bit representation.
 use fastnbt::{IntArray, Value};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-pub const FORMAT_VERSION: i32 = 1;
+pub const FORMAT_VERSION: i32 = 2;
 pub const GENERATION_VERSION: i32 = 1;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -60,6 +60,9 @@ pub struct Parameters {
     pub generator: String,
     pub min_y: i32,
     pub height: i32,
+    /// Dimension storage may extend beyond a legacy generator's native range.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub storage: Option<Bounds>,
     pub generator_depth: i32,
     pub sea_level: i32,
     pub spawn_height: i32,
@@ -71,4 +74,19 @@ pub struct Parameters {
     pub base_height: f32,
     pub amplitude: f32,
     pub frequency: f32,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct Bounds {
+    pub min_y: i32,
+    pub height: i32,
+}
+
+impl Parameters {
+    pub fn storage_bounds(&self) -> Bounds {
+        self.storage.unwrap_or(Bounds {
+            min_y: self.min_y,
+            height: self.height,
+        })
+    }
 }

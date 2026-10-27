@@ -12,7 +12,7 @@ server generation opens the saved definition. The standalone runner uses the
 same loader and generation session. Final legacy tooling migration and the
 broader frozen-dependency/feature audit remain subsequent cycles.
 
-## Version 1 wire format
+## Wire format and storage geometry
 
 The file is a single gzip member containing a Java-edition named-root NBT
 compound. Writers use high compression. The root's name is not significant.
@@ -20,7 +20,7 @@ Field names are case-sensitive and use snake_case. NBT numbers are big-endian.
 
 | Root field | NBT type | Meaning |
 | --- | --- | --- |
-| `format_version` | Int | `1` |
+| `format_version` | Int | `2` for new files; reader also supports version `1` |
 | `generation_version` | Int | `1`; generation semantics implemented by the engine |
 | `minecraft_version` | String | Source Minecraft version |
 | `data_version` | Int | Output chunk DataVersion |
@@ -55,12 +55,29 @@ A dimension must contain exactly one of `profile` and a nonempty
 `unsupported_reason`. An unsupported dimension does not disable other
 dimensions. No profile is synthesized for it.
 
-`parameters` contains String `generator`; Int `min_y`, `height`,
+`parameters` contains String `generator`; native generation Int `min_y`, `height`,
 `generator_depth`, `sea_level`, `spawn_height`, `logical_height`; boolean Byte
 `skylight`, `ceiling`; Double `coordinate_scale`; and Float `base_height`,
 `amplitude`, `frequency`. The last three preserve existing procedural request
 parameters during migration. Requests take their seed and settings from the
 loaded definition and add coordinates plus a registered native profile handle.
+
+Format 2 also requires `parameters.storage`, a Compound with Int `min_y` and
+`height` for dimension storage. Legacy chunk-mode generators can evaluate a
+smaller or offset range inside that storage. Their private generation bounds
+must survive compilation; substituting the dimension range changes terrain.
+Format 1 files retain their original meaning, with storage defaulting to their
+saved native range. The semantics version remains 1; the new format makes the
+additional required geometry visible to older readers as an unsupported format.
+
+`generator_depth` is independent of both ranges. For example, an End definition
+can retain generator_depth 128 and native/storage height 256, leaving room for
+features above the density terrain. The adapter does not substitute depth for
+native request height. When ranges differ it uses chunk delivery. Both chunk
+and region delivery fit final native blocks into storage with air padding or
+clipping and encode storage-shaped sections, 3D biomes and heightmaps. Lighting
+uses the same final storage-shaped block volume. Generation itself still uses
+the saved native range and seed.
 
 ## Structural profile encoding
 
@@ -107,6 +124,25 @@ references before initialization. A SHA-256 fingerprint of the uncompressed
 file plus the dimension key identifies the resident profile; it is stable
 when reopening the same artifact and includes its seed and shared palettes.
 
+## Fixed-biome procedural definitions
+
+The original fixed-biome Retina generator uses the built-in air/stone simplex
+kernel. Its saved profile contains `terrain_kind: "procedural"`, `sea_level`,
+and one `biomes` entry containing the fixed biome identifier. Its local material
+palette must resolve to air followed by stone. The world seed and procedural
+base height, amplitude, frequency and geometry remain in the ordinary saved
+world/dimension fields. Generation semantics version 1 identifies the existing
+kernel's rules, so no loaded registry programs or biome generation settings are
+needed for this terrain kind. Extra generation fields fail decoding instead of
+being silently ignored.
+
+The loaded world still owns a native profile handle and palettes. Internally the
+GPU uses its shared procedural program; the world handle continues to distinguish
+cache/lifecycle ownership and output DataVersion/compression. This preserves the
+original generator's terrain and metadata rather than converting it to registry
+noise terrain. Java reconstructs the saved fixed biome and air/stone palette
+through the same saved-definition adapter as other supported dimensions.
+
 ## Reader verification
 
 Run from `native/`:
@@ -122,15 +158,15 @@ also cover shared palettes, explicit unsupported dimensions, actual decode
 and reference errors, truncated files, and preserving the source after a
 failed read. They do not initialize a GPU or claim mod/headless integration.
 
-The remaining delivery cycles must prove a fresh Rust process reproduces
-regions with only `retina.dat` available, finish the hidden-dependency audit,
-and retire the legacy JSON tooling path. The startup cycle adds an explicit
+Fresh-process tests reproduce mod-captured regions from only `retina.dat`,
+including legacy format 1 files and format 2 cropped native ranges. Remaining
+cycles finish the hidden-dependency audit and retire the legacy JSON tooling path. The startup cycle adds an explicit
 compilation path for serialized Retina biome-source generators, including their
 procedural parameters and density-composition setting. Legacy fixed-biome
-procedural Retina generators are explicitly recorded as unsupported and retain
-their existing runtime path during migration; snapshotting that path remains
-required before final JSON-path removal. Ordinary fixed biome noise generators
-are supported through saved profiles.
+procedural Retina generators also compile to an explicit saved terrain kind.
+Ordinary fixed biome noise generators retain their registry-profile terrain.
+Previously saved unsupported records remain unsupported: replacing a definition
+is an explicit generation change, never an automatic startup rewrite.
 
 ## Java compilation and cross-language verification
 
@@ -159,7 +195,7 @@ Generate real registry-backed fixtures without building a native library:
 ./gradlew :common:worldDefinitionCompileTest -x :buildNative -x :packageNative
 ```
 
-This writes `build/world-definition-fixtures/{vanilla,flat,datapack,legacy}/retina.dat`
+This writes `build/world-definition-fixtures/{vanilla,flat,datapack,legacy,procedural,cropped,cropped_registry}/retina.dat`
 and legacy JSON baselines used only for migration comparison. The datapack
 case loads an actual additional biome resource and selects it as the fixed
 Overworld biome, with no decoration features. Every case includes all three
@@ -207,6 +243,8 @@ The C ABI exposes:
   from the saved seed/settings plus supplied chunk coordinates.
 - `retina_world_definition_profile_json`: explicit diagnostic output of the
   complete decoded profile, with its material palette resolved.
+- `retina_world_dimension_chunk`: generate storage-shaped uncompressed chunk NBT
+  from a world/dimension lease and coordinates, using the same encoder as regions.
 - `retina_close_world_definition`: release the host's world ownership after
   it has stopped admitting work and drained generation.
 
@@ -336,7 +374,7 @@ The resulting files measured 2,387,049 bytes (Fabric) and 2,387,017 bytes
 (NeoForge). Create/write/reopen took 7.029 s and 5.906 s respectively; later
 native file opens took 1.274 s and 1.227 s. These are local development-build
 observations, not a release performance guarantee. Rust independently verified
-complete data/GPU/material parity for all four compiler fixtures, including the
+complete data/GPU/material parity for the registry and legacy compiler fixtures, including the
 legacy generator with nondefault procedural parameters. The binding test and
 existing preset registry integration test also passed.
 
@@ -431,3 +469,11 @@ unit/process tests and the existing native unit suite also passed. These checks
 establish Retina-to-Retina equality on this backend, not new vanilla parity or
 cross-GPU determinism. The remaining goal still includes targeted rare-feature
 coverage, frozen runtime-template binding and legacy JSON tooling migration.
+
+Cropped chunk delivery installs native section data and saved heightmaps directly;
+its feature stage restores those saved heightmaps after ordinary Minecraft
+initialization. It does not rebuild authoritative heightmap masks from current
+registry rules. A bounded cache retains pending maps; a miss regenerates the
+same saved chunk through Rust. Closing a generator stops further chunk admission.
+The JDK-only bridge transfers binary NBT without requiring Minecraft classes;
+only the platform adapter decodes that output for installation.

@@ -14,8 +14,8 @@ public final class NativeWorldDefinitionBridgeTest {
         var directory = Files.createTempDirectory("retina-definition-bridge-");
         var missing = directory.resolve("missing.dat");
         require(NativeWorldDefinition.tryOpen(missing) == null,"actual absence is reported separately");
-        String[] cases = {"vanilla","flat","datapack"};
-        long[] seeds = {Long.MIN_VALUE+17,Long.MAX_VALUE-11,9007199254740993L};
+        String[] cases = {"vanilla","flat","datapack","procedural"};
+        long[] seeds = {Long.MIN_VALUE+17,Long.MAX_VALUE-11,9007199254740993L,Long.MIN_VALUE+19};
         for (int i=0;i<cases.length;i++) {
             try (var world = NativeWorldDefinition.open(fixtures.resolve(cases[i]).resolve("retina.dat"))) {
                 require(world.metadata().contains("\"seed\":"+seeds[i]),"signed seed fidelity: "+cases[i]);
@@ -26,6 +26,16 @@ public final class NativeWorldDefinitionBridgeTest {
                 expectFailure(() -> world.request("minecraft:overworld",0,0),"has not been bound");
                 expectFailure(() -> world.bindDimension("definition_test:missing",2),"has no dimension");
                 expectFailure(() -> world.bindDimension("minecraft:overworld",123),"unsupported MCA compression");
+                if (cases[i].equals("procedural")) {
+                    require(world.metadata().contains("\"terrain_kind\":\"procedural\""),"explicit procedural definition");
+                    if (bind) {
+                        int id = world.bindDimension("minecraft:overworld",2);
+                        var request = world.request("minecraft:overworld",-33,32);
+                        require(request.seed() == Long.MIN_VALUE+19 && request.profile() == id
+                                && request.baseHeight() == 37.5F && request.amplitude() == 19.25F
+                                && request.frequency() == .0041F,"procedural request from file without Minecraft");
+                    }
+                }
             }
         }
         var copied = directory.resolve("retina.dat");
@@ -51,7 +61,7 @@ public final class NativeWorldDefinitionBridgeTest {
         expectFailure(() -> NativeWorldDefinition.tryOpen(copied),"gzip");
         require(Files.readString(copied).equals("damaged"),"failed open preserves file");
         Files.delete(copied); Files.delete(directory);
-        System.out.println("QA_EVT {\"event\":\"jdk_only_world_definition_bridge\",\"status\":\"pass\",\"cases\":3,\"bound\":"+bind+",\"minecraft_classes\":false}");
+        System.out.println("QA_EVT {\"event\":\"jdk_only_world_definition_bridge\",\"status\":\"pass\",\"cases\":4,\"bound\":"+bind+",\"minecraft_classes\":false}");
     }
 
     private static void expectFailure(Runnable action,String message) {

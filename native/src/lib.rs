@@ -665,12 +665,14 @@ impl TerrainEngine {
         profile: &Arc<WorldProfile>,
         compression: region::codec::Compression,
         data_version: i32,
+        storage: world_definition::wire::Bounds,
     ) -> Result<u32, String> {
-        self.profiles.write().map_err(|_| "profile lock poisoned")?.world(profile, compression, data_version)
+        self.profiles.write().map_err(|_| "profile lock poisoned")?.world(profile, compression, data_version, storage)
     }
 
     pub fn profile(&self, id: u32) -> Result<Option<Arc<WorldProfile>>, String> {
-        self.profiles.read().map_err(|_| "profile lock poisoned")?.get(id)
+        Ok(self.profiles.read().map_err(|_| "profile lock poisoned")?.get(id)?
+            .filter(|profile| profile.terrain_kind != profile::TerrainKind::Procedural))
     }
 
     pub(crate) fn profile_compression(&self, id: u32) -> Result<region::codec::Compression, String> {
@@ -679,6 +681,10 @@ impl TerrainEngine {
 
     pub(crate) fn profile_data_version(&self, id: u32) -> Result<Option<i32>, String> {
         self.profiles.read().map_err(|_| "profile lock poisoned")?.data_version(id)
+    }
+
+    pub(crate) fn profile_storage_bounds(&self,id:u32) -> Result<Option<world_definition::wire::Bounds>,String> {
+        self.profiles.read().map_err(|_| "profile lock poisoned")?.storage_bounds(id)
     }
 
     pub fn sample_heights(&self, request: ChunkRequest) -> Result<[i32; COLUMNS], String> {

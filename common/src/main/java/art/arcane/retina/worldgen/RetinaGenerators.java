@@ -18,6 +18,9 @@ public final class RetinaGenerators {
                                        LevelStem stem, ChunkGenerator generator) {
         var saved = WorldDefinitions.get(server).dimension(dimension);
         if (saved.unsupportedReason() != null) {
+            if (generator instanceof RetinaChunkGenerator) throw new IllegalArgumentException(
+                    "retina.dat cannot execute saved Retina dimension " + dimension.identifier() + ": "
+                            + saved.unsupportedReason() + "; explicitly replace the generation definition to compile its current settings");
             Retina.LOGGER.info("Retina leaving dimension {} on {}: {}", dimension.identifier(),
                     generator.getClass().getName(), saved.unsupportedReason());
             return generator;
@@ -41,8 +44,7 @@ public final class RetinaGenerators {
     }
 
     static String unsupportedReason(ResourceKey<Level> dimension, ChunkGenerator generator) {
-        if (generator instanceof RetinaChunkGenerator)
-            return generator.getBiomeSource() instanceof RetinaBiomeSource ? null : "legacy fixed Retina terrain has no registry-profile adapter";
+        if (generator instanceof RetinaChunkGenerator) return null;
         if (!dimension.equals(Level.OVERWORLD) && !dimension.equals(Level.NETHER)) return "dimension adapter is not implemented; End support is deferred";
         if (generator.getClass() == net.minecraft.world.level.levelgen.FlatLevelSource.class) return null;
         // Subclasses can implement arbitrary generation behavior. Adapting their fields alone would lose it.

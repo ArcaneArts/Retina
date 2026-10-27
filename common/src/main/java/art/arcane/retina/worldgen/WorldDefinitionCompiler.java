@@ -16,7 +16,7 @@ import java.util.*;
 
 /** One-time compilation only. No native library or GPU is initialized here. */
 public final class WorldDefinitionCompiler {
-    public static final int FORMAT_VERSION = 1;
+    public static final int FORMAT_VERSION = 2;
     public static final int GENERATION_VERSION = 1;
 
     private WorldDefinitionCompiler() { }
@@ -69,6 +69,9 @@ public final class WorldDefinitionCompiler {
             parameters.putString("generator", generator.getClass().getName());
             parameters.putInt("min_y", type.minY());
             parameters.putInt("height", type.height());
+            var storage = new CompoundTag();
+            storage.putInt("min_y", type.minY()); storage.putInt("height", type.height());
+            parameters.put("storage", storage);
             parameters.putInt("generator_depth", generator.getGenDepth());
             parameters.putInt("sea_level", generator.getSeaLevel());
             parameters.putInt("spawn_height", generator.getSpawnHeight(LevelHeightAccessor.create(type.minY(), type.height())));

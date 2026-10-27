@@ -30,7 +30,7 @@ public final class AutomaticGenerationQa {
             require(nether.getChunkSource().getGenerator() instanceof RetinaChunkGenerator, "Nether runtime activation");
             var adapted = (RetinaChunkGenerator) nether.getChunkSource().getGenerator();
             require(adapted.selectedSource() == null && adapted.savedDefinition() != null, "Nether uses saved definition");
-            require(adapted.dimension().equals(Level.NETHER) && adapted.previewCache().dimension().equals(Level.NETHER),
+            require(adapted.dimension().equals(Level.NETHER) && (adapted.previewCache()==null || adapted.previewCache().dimension().equals(Level.NETHER)),
                     "Nether request/storage identity");
             require(adapted.profile().nativeId() != runtime.profile().nativeId(), "independent native dimension profiles");
         }
@@ -50,11 +50,14 @@ public final class AutomaticGenerationQa {
                 if (target == null) continue;
                 var generator = (RetinaChunkGenerator) target.getChunkSource().getGenerator();
                 var position = new net.minecraft.world.level.ChunkPos(-64, 32);
-                generator.previewCache().read(position);
                 var directory = java.nio.file.Path.of(capture).resolve(key.equals(Level.OVERWORLD) ? "region" : "DIM-1/region");
                 try { java.nio.file.Files.createDirectories(directory); }
                 catch (java.io.IOException error) { throw new java.io.UncheckedIOException(error); }
-                var report = generator.publishPreview(position, directory.resolve("r.-2.1.mca"));
+                NativeTerrain.RegionReport report;
+                if (generator.regionMode()) {
+                    generator.previewCache().read(position);
+                    report=generator.publishPreview(position,directory.resolve("r.-2.1.mca"));
+                } else report=WorldDefinitionGeometryQa.capture(target,generator,position,directory.resolve("r.-2.1.mca"));
                 require(report != null, "captured native preview");
                 Retina.LOGGER.info("QA_EVT {\"event\":\"world_definition_mod_region_capture\",\"dimension\":\"{}\",\"region_x\":-2,\"region_z\":1}", key.identifier());
             }

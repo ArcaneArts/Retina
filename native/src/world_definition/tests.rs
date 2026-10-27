@@ -29,6 +29,7 @@ pub(super) fn document() -> Document {
             Dimension {
                 parameters: Parameters {
                     generator: "flat".into(),
+                    storage: Some(Bounds { min_y:-64,height:384 }),
                     min_y: -64,
                     height: 384,
                     generator_depth: 384,
@@ -380,7 +381,7 @@ fn world_profiles_retire_after_the_last_owner_and_active_job_release_them() {
     let lifetime = Arc::downgrade(&profile);
     let mut profiles = Profiles::default();
     let id = profiles
-        .world(&profile, Compression::Lz4, world.data_version())
+        .world(&profile, Compression::Lz4, world.data_version(), world.dimension("minecraft:overworld").unwrap().parameters().storage_bounds())
         .unwrap();
     assert_eq!(profiles.compression(id).unwrap(), Compression::Lz4);
     assert_eq!(
@@ -412,6 +413,7 @@ fn world_profiles_retire_after_the_last_owner_and_active_job_release_them() {
                 .unwrap(),
             Compression::Zlib,
             replacement.data_version(),
+            replacement.dimension("minecraft:overworld").unwrap().parameters().storage_bounds(),
         )
         .unwrap();
     assert_ne!(
@@ -428,7 +430,7 @@ fn java_compiled_definitions_preserve_complete_profiles() {
         std::env::var("RETINA_WORLD_DEFINITION_FIXTURES")
             .expect("RETINA_WORLD_DEFINITION_FIXTURES must name the Java fixture directory"),
     );
-    for case in ["vanilla", "flat", "datapack", "legacy"] {
+    for case in ["vanilla", "flat", "datapack", "legacy", "procedural", "cropped", "cropped_registry"] {
         let directory = root.join(case);
         let start = std::time::Instant::now();
         let world = WorldDefinition::read(directory.join("retina.dat")).unwrap();
@@ -441,8 +443,16 @@ fn java_compiled_definitions_preserve_complete_profiles() {
             let baseline_path =
                 directory.join(format!("expected-{}.json", id.replace([':', '/'], "_")));
             let bytes = std::fs::read(baseline_path).unwrap();
-            let baseline = WorldProfile::parse(&bytes).unwrap();
             let actual = dimension.profile().unwrap();
+            if actual.terrain_kind == crate::profile::TerrainKind::Procedural {
+                let raw = world.source().dimensions[id].profile.clone().unwrap();
+                assert_eq!(value::decode(raw).unwrap(), exact_json(&bytes));
+                assert_eq!(actual.biomes.len(), 1);
+                assert_eq!(actual.materials.len(), 2);
+                supported += 1;
+                continue;
+            }
+            let baseline = WorldProfile::parse(&bytes).unwrap();
             assert_eq!(
                 actual.gpu_bytes(),
                 baseline.gpu_bytes(),
@@ -492,8 +502,9 @@ fn java_compiled_definitions_preserve_complete_profiles() {
             );
             assert_eq!(world.seed(), 9007199254740993);
         }
+        let gpu_table_parity = (!matches!(case,"procedural"|"cropped")).then_some(true);
         let receipt = json!({"supported_dimensions":supported,"load_nanos":load_nanos,
-            "gpu_table_parity":true,"complete_data_parity":true,"gpu_initialized":false});
+            "gpu_table_parity":gpu_table_parity,"complete_data_parity":true,"gpu_initialized":false});
         std::fs::write(directory.join("rust-validation.json"), receipt.to_string()).unwrap();
         println!("world definition {case}: {receipt}");
     }
