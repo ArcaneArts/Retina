@@ -311,7 +311,8 @@ fn generate_region_inner(
             .collect()
     } else {
         let profile = engine.profile(request.reserved)?;
-        let compression = profile.as_deref().map(|p| p.mca_compression).unwrap_or_default();
+        let data_version = engine.profile_data_version(request.reserved)?.unwrap_or(data_version);
+        let compression = engine.profile_compression(request.reserved)?;
         let origin = ChunkRequest {
             chunk_x: region_x * 32,
             chunk_z: region_z * 32,

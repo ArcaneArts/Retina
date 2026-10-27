@@ -17,7 +17,7 @@ fn profile(biome: &str) -> Value {
     })
 }
 
-fn document() -> Document {
+pub(super) fn document() -> Document {
     let dimensions = [
         ("minecraft:overworld", "minecraft:plains", 1, 0),
         ("minecraft:the_nether", "minecraft:nether_wastes", 2, 1),
@@ -77,7 +77,7 @@ fn document() -> Document {
     }
 }
 
-fn gzip(document: &Document) -> Vec<u8> {
+pub(super) fn gzip(document: &Document) -> Vec<u8> {
     let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
     encoder
         .write_all(&fastnbt::to_bytes(document).unwrap())
@@ -363,6 +363,62 @@ fn read_uses_the_published_file_and_preserves_it_after_errors() {
     assert!(WorldDefinition::read(&path).err().unwrap().contains("gzip"));
     assert_eq!(std::fs::read(&path).unwrap(), truncated);
     std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn world_profiles_retire_after_the_last_owner_and_active_job_release_them() {
+    use super::residency::Profiles;
+    use crate::region::codec::Compression;
+    use std::sync::Arc;
+    let world = load(&document());
+    let profile = world
+        .dimension("minecraft:overworld")
+        .unwrap()
+        .profile()
+        .unwrap()
+        .clone();
+    let lifetime = Arc::downgrade(&profile);
+    let mut profiles = Profiles::default();
+    let id = profiles
+        .world(&profile, Compression::Lz4, world.data_version())
+        .unwrap();
+    assert_eq!(profiles.compression(id).unwrap(), Compression::Lz4);
+    assert_eq!(
+        profiles.data_version(id).unwrap(),
+        Some(world.data_version())
+    );
+    assert_eq!(
+        profile.mca_compression,
+        Compression::Zlib,
+        "execution settings do not mutate the saved profile"
+    );
+    let active_job = profiles.get(id).unwrap().unwrap();
+    drop(profile);
+    drop(world);
+    assert!(
+        profiles.get(id).unwrap().is_some(),
+        "an active job retains its data"
+    );
+    drop(active_job);
+    assert!(lifetime.upgrade().is_none());
+    assert!(profiles.get(id).err().unwrap().contains("closed"));
+    let replacement = load(&document());
+    let next = profiles
+        .world(
+            replacement
+                .dimension("minecraft:overworld")
+                .unwrap()
+                .profile()
+                .unwrap(),
+            Compression::Zlib,
+            replacement.data_version(),
+        )
+        .unwrap();
+    assert_ne!(
+        id, next,
+        "retired IDs cannot alias cached data for a reopened world"
+    );
+    assert!(profiles.get(id).is_err());
 }
 
 #[test]

@@ -2,6 +2,10 @@
 //!
 //! This module loads data only: it never creates a GPU device, reads datapacks,
 //! or calls Minecraft. Both host adapters and the headless runner use it.
+mod adapter;
+mod ffi;
+pub(crate) mod residency;
+pub mod runtime;
 mod value;
 pub mod wire;
 
@@ -27,6 +31,20 @@ impl WorldDefinition {
         let path = path.as_ref();
         let file = File::open(path).map_err(|e| format!("{}: {e}", path.display()))?;
         Self::from_gzip(file).map_err(|e| format!("{}: {e}", path.display()))
+    }
+
+    /// Absence is the only condition that permits first-time compilation.
+    /// Permission failures and malformed existing files remain actual errors.
+    pub fn read_if_present(path: impl AsRef<Path>) -> Result<Option<Self>, String> {
+        let path = path.as_ref();
+        let file = match File::open(path) {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(error) => return Err(format!("{}: {error}", path.display())),
+        };
+        Self::from_gzip(file)
+            .map(Some)
+            .map_err(|error| format!("{}: {error}", path.display()))
     }
 
     pub fn from_gzip(reader: impl Read) -> Result<Self, String> {
