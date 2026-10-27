@@ -48,101 +48,106 @@ public final class NativeLocateIntegrationTest {
                         default -> throw new AssertionError("search accessed world: "+method.getName());
                     });
             for (boolean composition : new boolean[]{false,true}) {
-                var source=RetinaBiomeSource.fromRegistry(original,128,.55f);
-                var generator=new RetinaChunkGenerator(source,-64,384,64,48,.008f,"mca",Optional.of(settings),composition);
-                generator.bindWorld(registry,SEED,PalettedContainerFactory.create(registry),StructureProfile.Context.of(resources));
-                try {
-                    var query=generator.queries(); var terrain=NativeTerrain.instance(); var request=generator.request(SEED,0,0);
-                    var before=terrain.timings(request.profile());
-                    var points=new ArrayList<BlockPos>();
-                    for (int[] chunk : new int[][]{{-1,-1},{31,-32},{10000,-10000}})
-                        for (int i=0;i<16;i++) points.add(new BlockPos(chunk[0]*16+i,new int[]{-100,-64,-28,8,68,400}[i%6],chunk[1]*16+15-i));
-                    long start=System.nanoTime(); var actual=query.biomes(points); long cold=System.nanoTime()-start;
-                    int[] input=new int[points.size()*3];
-                    for (int i=0;i<points.size();i++) { var p=points.get(i); input[i*3]=p.getX();input[i*3+1]=p.getY();input[i*3+2]=p.getZ(); }
-                    int[] heights=terrain.queryPoints(request,input,true);
-                    require(terrain.timings(request.profile()).chunks()==before.chunks(),"point queries assemble no chunks");
-                    require(generator.metrics().snapshot().previewRegions()==0,"point queries create no temporary MCA");
-                    var fields=new HashMap<Long,short[]>();
-                    var columns=new HashMap<Long,NativeTerrain.Columns>();
-                    for (int i=0;i<points.size();i++) {
-                        var p=points.get(i); int x=Math.floorDiv(p.getX(),16),z=Math.floorDiv(p.getZ(),16);
-                        var field=fields.computeIfAbsent(ChunkPos.pack(x,z),key -> terrain.sampleBiomes(generator.request(SEED,x,z)));
-                        int y=Math.floorDiv(Math.clamp(p.getY(),-64,319)+64,4);
-                        int index=(y*4+Math.floorMod(p.getZ(),16)/4)*4+Math.floorMod(p.getX(),16)/4;
-                        require(actual.get(i).equals(generator.profile().biomes().get(Short.toUnsignedInt(field[index]))),"quart parity at "+p+" composition="+composition);
-                        var column=columns.computeIfAbsent(ChunkPos.pack(x,z),key -> terrain.sampleColumns(generator.request(SEED,x,z)));
-                        require(heights[i]==column.heights()[Math.floorMod(p.getZ(),16)*16+Math.floorMod(p.getX(),16)],"exact point height at "+p);
-                    }
-                    long jobs=terrain.timings(request.profile()).gpuJobs(); start=System.nanoTime();
-                    require(query.biomes(points).equals(actual),"warm point repeat"); long warm=System.nanoTime()-start;
-                    require(terrain.timings(request.profile()).gpuJobs()==jobs,"point cache avoids dispatch");
-                    var reference=new BiomeSource() {
-                        @Override protected MapCodec<? extends BiomeSource> codec() { return null; }
-                        @Override protected Stream<Holder<Biome>> collectPossibleBiomes() { return source.possibleBiomes().stream(); }
-                        @Override public BiomeResolver createResolver(Climate.Sampler sampler) {
-                            return (x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst();
-                        }
-                    };
-                    var querySizes = new ArrayList<Integer>();
-                    source.bindQueries(batch -> { querySizes.add(batch.size()); return query.biomes(batch); });
+                var selectedBiomes=RetinaBiomeSource.fromRegistry(original,128,.55f);
+                var selected=new RetinaChunkGenerator(selectedBiomes,-64,384,64,48,.008f,"mca",Optional.of(settings),composition);
+                var type=registry.lookupOrThrow(Registries.DIMENSION_TYPE).getValueOrThrow(net.minecraft.world.level.dimension.BuiltinDimensionTypes.OVERWORLD);
+                try(var fixture=RuntimeDefinitionFixture.legacy(registry,selected,type,net.minecraft.world.level.Level.OVERWORLD,
+                        SEED,StructureProfile.Context.of(resources),PalettedContainerFactory.create(registry))) {
+                    var generator=fixture.generator();
+                    var source=(RetinaBiomeSource)generator.getBiomeSource();
                     try {
-                        int acceptedPoints = 0;
-                        for (var origin : List.of(new BlockPos(-17,63,-33), new BlockPos(0,-63,0),
-                                new BlockPos(160001,318,-160001), new BlockPos(0,-100,0),
-                                new BlockPos(160001,400,-160001))) {
-                            querySizes.clear();
-                            var found = source.findClosestQuery(origin,1,1,1,b -> true,-64,319);
-                            var expected = reference.findClosestBiome3d(origin,1,1,1,b -> true,random,level);
-                            require(Objects.equals(found,expected),"unrestricted search preserves vanilla first point at "+origin);
-                            require(querySizes.equals(expected == null ? List.of() : List.of(1)),
-                                    "unrestricted search queries only its first valid point: "+querySizes);
-                            acceptedPoints += querySizes.stream().mapToInt(Integer::intValue).sum();
+                        var query=generator.queries(); var terrain=NativeTerrain.instance(); var request=generator.request(SEED,0,0);
+                        var before=terrain.timings(request.profile());
+                        var points=new ArrayList<BlockPos>();
+                        for (int[] chunk : new int[][]{{-1,-1},{31,-32},{10000,-10000}})
+                            for (int i=0;i<16;i++) points.add(new BlockPos(chunk[0]*16+i,new int[]{-100,-64,-28,8,68,400}[i%6],chunk[1]*16+15-i));
+                        long start=System.nanoTime(); var actual=query.biomes(points); long cold=System.nanoTime()-start;
+                        int[] input=new int[points.size()*3];
+                        for (int i=0;i<points.size();i++) { var p=points.get(i); input[i*3]=p.getX();input[i*3+1]=p.getY();input[i*3+2]=p.getZ(); }
+                        int[] heights=terrain.queryPoints(request,input,true);
+                        require(terrain.timings(request.profile()).chunks()==before.chunks(),"point queries assemble no chunks");
+                        require(generator.metrics().snapshot().previewRegions()==0,"point queries create no temporary MCA");
+                        var fields=new HashMap<Long,short[]>();
+                        var columns=new HashMap<Long,NativeTerrain.Columns>();
+                        for (int i=0;i<points.size();i++) {
+                            var p=points.get(i); int x=Math.floorDiv(p.getX(),16),z=Math.floorDiv(p.getZ(),16);
+                            var field=fields.computeIfAbsent(ChunkPos.pack(x,z),key -> terrain.sampleBiomes(generator.request(SEED,x,z)));
+                            int y=Math.floorDiv(Math.clamp(p.getY(),-64,319)+64,4);
+                            int index=(y*4+Math.floorMod(p.getZ(),16)/4)*4+Math.floorMod(p.getX(),16)/4;
+                            require(actual.get(i).equals(generator.profile().biomes().get(Short.toUnsignedInt(field[index]))),"quart parity at "+p+" composition="+composition);
+                            var column=columns.computeIfAbsent(ChunkPos.pack(x,z),key -> terrain.sampleColumns(generator.request(SEED,x,z)));
+                            require(heights[i]==column.heights()[Math.floorMod(p.getZ(),16)*16+Math.floorMod(p.getX(),16)],"exact point height at "+p);
                         }
-                        // Mth.outFromOrigin clamps out-of-height origins to the
-                        // search bounds; these are valid searches, not empty ones.
-                        require(acceptedPoints == 5,"five first-point searches, including two clamped origins; actual points=" + acceptedPoints);
-                        System.out.println("QA_EVT {\"event\":\"unrestricted_biome_query_work\",\"status\":\"pass\",\"context\":{\"composition\":"+composition+",\"valid_searches\":5,\"queried_points\":"+acceptedPoints+",\"clamped_searches\":2}}");
-                    } finally { source.bindQueries(query::biomes); }
-                    for (var target : actual.stream().distinct().limit(3).toList()) {
-                        var origin=new BlockPos(-17,63,-33);
-                        querySizes.clear();
+                        long jobs=terrain.timings(request.profile()).gpuJobs(); start=System.nanoTime();
+                        require(query.biomes(points).equals(actual),"warm point repeat"); long warm=System.nanoTime()-start;
+                        require(terrain.timings(request.profile()).gpuJobs()==jobs,"point cache avoids dispatch");
+                        var reference=new BiomeSource() {
+                            @Override protected MapCodec<? extends BiomeSource> codec() { return null; }
+                            @Override protected Stream<Holder<Biome>> collectPossibleBiomes() { return source.possibleBiomes().stream(); }
+                            @Override public BiomeResolver createResolver(Climate.Sampler sampler) {
+                                return (x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst();
+                            }
+                        };
+                        var querySizes = new ArrayList<Integer>();
                         source.bindQueries(batch -> { querySizes.add(batch.size()); return query.biomes(batch); });
-                        com.mojang.datafixers.util.Pair<BlockPos,Holder<Biome>> found;
-                        try { found=source.findClosestQuery(origin,96,32,64,target::equals,-64,319); }
-                        finally { source.bindQueries(query::biomes); }
-                        var expected=reference.findClosestBiome3d(origin,96,32,64,target::equals,random,level);
-                        require(Objects.equals(found,expected),"vanilla search order and coordinates for "+target);
-                        require(querySizes.getFirst()==64,"restricted searches retain full first batch");
-                    }
-                    jobs=terrain.timings(request.profile()).gpuJobs();
-                    require(source.findClosestQuery(BlockPos.ZERO,6400,32,64,b -> false,-64,319)==null,"empty target");
-                    require(terrain.timings(request.profile()).gpuJobs()==jobs,"empty target avoids dispatch");
-                    var village=registry.lookupOrThrow(Registries.STRUCTURE).getOrThrow(ResourceKey.create(Registries.STRUCTURE,Identifier.parse("minecraft:village_plains")));
-                    var search=query.prepareStructures(registry,HolderSet.direct(village),new BlockPos(-17,64,-33),0);
-                    require(!search.sets().isEmpty(),"registered village placement");
-                    var saved=new TerrainQueries.SavedStarts(true,Map.of("minecraft:village_plains",4));
-                    var hit=query.structures(search,p -> saved);
-                    var set=search.sets().getFirst();
-                    var candidate=set.placement().getPotentialStructureChunk(SEED,-2,-3);
-                    require(hit.getFirst().equals(set.placement().getLocatePos(candidate)) && hit.getSecond().equals(village),"saved start wins with references intact");
-                    require(query.structures(search,p -> new TerrainQueries.SavedStarts(true,Map.of()))==null,"saved empty starts suppress prediction");
-                    require(terrain.timings(request.profile()).gpuJobs()==jobs,"saved metadata needs no GPU work");
-                    savedScan(candidate);
-                    try { query.structures(search,p -> { throw new IllegalStateException("read failed"); }); throw new AssertionError("disk error swallowed"); }
-                    catch (IllegalStateException expected) { require(expected.getMessage().equals("read failed"),"disk errors propagate"); }
-                    var stronghold=registry.lookupOrThrow(Registries.STRUCTURE).getOrThrow(ResourceKey.create(Registries.STRUCTURE,Identifier.parse("minecraft:stronghold")));
-                    require(query.prepareStructures(registry,HolderSet.direct(stronghold),BlockPos.ZERO,100).sets().isEmpty(),"unsupported placements excluded");
-                    require(generator.metrics().snapshot().previewRegions()==0 && terrain.timings(request.profile()).chunks()==before.chunks(),"locate assembles zero regions/chunks");
-                    query.close();
-                    try { query.biomes(points); throw new AssertionError("closed world searched"); } catch (java.util.concurrent.CancellationException expected) { }
-                    System.out.println("QA_EVT {\"event\":\"locate_query_parity\",\"status\":\"pass\",\"context\":{\"composition\":"+composition+",\"datapack\":"+(args.length>0)+",\"points\":"+points.size()+",\"cold_ms\":"+cold/1e6+",\"warm_ms\":"+warm/1e6+",\"regions\":0}}");
-                } finally { generator.closePreviews(); }
+                        try {
+                            int acceptedPoints = 0;
+                            for (var origin : List.of(new BlockPos(-17,63,-33), new BlockPos(0,-63,0),
+                                    new BlockPos(160001,318,-160001), new BlockPos(0,-100,0),
+                                    new BlockPos(160001,400,-160001))) {
+                                querySizes.clear();
+                                var found = source.findClosestQuery(origin,1,1,1,b -> true,-64,319);
+                                var expected = reference.findClosestBiome3d(origin,1,1,1,b -> true,random,level);
+                                require(Objects.equals(found,expected),"unrestricted search preserves vanilla first point at "+origin);
+                                require(querySizes.equals(expected == null ? List.of() : List.of(1)),
+                                        "unrestricted search queries only its first valid point: "+querySizes);
+                                acceptedPoints += querySizes.stream().mapToInt(Integer::intValue).sum();
+                            }
+                            // Mth.outFromOrigin clamps out-of-height origins to the
+                            // search bounds; these are valid searches, not empty ones.
+                            require(acceptedPoints == 5,"five first-point searches, including two clamped origins; actual points=" + acceptedPoints);
+                            System.out.println("QA_EVT {\"event\":\"unrestricted_biome_query_work\",\"status\":\"pass\",\"context\":{\"composition\":"+composition+",\"valid_searches\":5,\"queried_points\":"+acceptedPoints+",\"clamped_searches\":2}}");
+                        } finally { source.bindQueries(query::biomes); }
+                        for (var target : actual.stream().distinct().limit(3).toList()) {
+                            var origin=new BlockPos(-17,63,-33);
+                            querySizes.clear();
+                            source.bindQueries(batch -> { querySizes.add(batch.size()); return query.biomes(batch); });
+                            com.mojang.datafixers.util.Pair<BlockPos,Holder<Biome>> found;
+                            try { found=source.findClosestQuery(origin,96,32,64,target::equals,-64,319); }
+                            finally { source.bindQueries(query::biomes); }
+                            var expected=reference.findClosestBiome3d(origin,96,32,64,target::equals,random,level);
+                            require(Objects.equals(found,expected),"vanilla search order and coordinates for "+target);
+                            require(querySizes.getFirst()==64,"restricted searches retain full first batch");
+                        }
+                        jobs=terrain.timings(request.profile()).gpuJobs();
+                        require(source.findClosestQuery(BlockPos.ZERO,6400,32,64,b -> false,-64,319)==null,"empty target");
+                        require(terrain.timings(request.profile()).gpuJobs()==jobs,"empty target avoids dispatch");
+                        var village=registry.lookupOrThrow(Registries.STRUCTURE).getOrThrow(ResourceKey.create(Registries.STRUCTURE,Identifier.parse("minecraft:village_plains")));
+                        var search=query.prepareStructures(registry,HolderSet.direct(village),new BlockPos(-17,64,-33),0);
+                        require(!search.sets().isEmpty(),"registered village placement");
+                        var saved=new TerrainQueries.SavedStarts(true,Map.of("minecraft:village_plains",4));
+                        var hit=query.structures(search,p -> saved);
+                        var set=search.sets().getFirst();
+                        var candidate=set.placement().getPotentialStructureChunk(SEED,-2,-3);
+                        require(hit.getFirst().equals(set.placement().getLocatePos(candidate)) && hit.getSecond().equals(village),"saved start wins with references intact");
+                        require(query.structures(search,p -> new TerrainQueries.SavedStarts(true,Map.of()))==null,"saved empty starts suppress prediction");
+                        require(terrain.timings(request.profile()).gpuJobs()==jobs,"saved metadata needs no GPU work");
+                        savedScan(candidate);
+                        try { query.structures(search,p -> { throw new IllegalStateException("read failed"); }); throw new AssertionError("disk error swallowed"); }
+                        catch (IllegalStateException expected) { require(expected.getMessage().equals("read failed"),"disk errors propagate"); }
+                        var stronghold=registry.lookupOrThrow(Registries.STRUCTURE).getOrThrow(ResourceKey.create(Registries.STRUCTURE,Identifier.parse("minecraft:stronghold")));
+                        require(query.prepareStructures(registry,HolderSet.direct(stronghold),BlockPos.ZERO,100).sets().isEmpty(),"unsupported placements excluded");
+                        require(generator.metrics().snapshot().previewRegions()==0 && terrain.timings(request.profile()).chunks()==before.chunks(),"locate assembles zero regions/chunks");
+                        query.close();
+                        try { query.biomes(points); throw new AssertionError("closed world searched"); } catch (java.util.concurrent.CancellationException expected) { }
+                        System.out.println("QA_EVT {\"event\":\"locate_query_parity\",\"status\":\"pass\",\"context\":{\"composition\":"+composition+",\"datapack\":"+(args.length>0)+",\"points\":"+points.size()+",\"cold_ms\":"+cold/1e6+",\"warm_ms\":"+warm/1e6+",\"regions\":0}}");
+                    } finally { generator.closePreviews(); }
+                }
             }
             if (args.length == 0) netherSearches(registry);
         }
     }
-    private static void netherSearches(RegistryAccess registry) {
+    private static void netherSearches(RegistryAccess registry) throws Exception {
         var settings = registry.lookupOrThrow(Registries.NOISE_SETTINGS).getOrThrow(NoiseGeneratorSettings.NETHER);
         var biomes = MultiNoiseBiomeSource.createFromPreset(registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
                 .getOrThrow(MultiNoiseBiomeSourceParameterLists.NETHER));
@@ -155,43 +160,44 @@ public final class NativeLocateIntegrationTest {
                     default -> throw new AssertionError("search accessed world: " + method.getName());
                 });
         for (long seed : new long[]{SEED, -987654321L}) {
-            var generator = RetinaChunkGenerator.fromSource(new GenerationSource(net.minecraft.world.level.Level.NETHER,
-                    new NoiseBasedChunkGenerator(biomes, settings), dimension));
-            generator.bindWorld(registry, seed, PalettedContainerFactory.create(registry), StructureProfile.Context.NONE, false);
-            try {
-                var source = (RetinaBiomeSource) generator.getBiomeSource();
-                var query = generator.queries();
-                var terrain = NativeTerrain.instance();
-                var request = generator.request(seed, 0, 0);
-                long chunksBefore = terrain.timings(request.profile()).chunks();
-                var random = RandomState.create(registry.lookupOrThrow(Registries.NOISE), seed, settings.value());
-                var reference = new BiomeSource() {
-                    @Override protected MapCodec<? extends BiomeSource> codec() { return null; }
-                    @Override protected Stream<Holder<Biome>> collectPossibleBiomes() { return source.possibleBiomes().stream(); }
-                    @Override public BiomeResolver createResolver(Climate.Sampler sampler) {
-                        return (x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst();
+            try(var fixture=RuntimeDefinitionFixture.source(registry,new GenerationSource(net.minecraft.world.level.Level.NETHER,
+                    new NoiseBasedChunkGenerator(biomes,settings),dimension),seed,StructureProfile.Context.NONE,PalettedContainerFactory.create(registry))) {
+                var generator=fixture.generator();
+                try {
+                    var source = (RetinaBiomeSource) generator.getBiomeSource();
+                    var query = generator.queries();
+                    var terrain = NativeTerrain.instance();
+                    var request = generator.request(seed, 0, 0);
+                    long chunksBefore = terrain.timings(request.profile()).chunks();
+                    var random = RandomState.create(registry.lookupOrThrow(Registries.NOISE), seed, settings.value());
+                    var reference = new BiomeSource() {
+                        @Override protected MapCodec<? extends BiomeSource> codec() { return null; }
+                        @Override protected Stream<Holder<Biome>> collectPossibleBiomes() { return source.possibleBiomes().stream(); }
+                        @Override public BiomeResolver createResolver(Climate.Sampler sampler) {
+                            return (x,y,z) -> query.biomes(List.of(new BlockPos(x*4,y*4,z*4))).getFirst();
+                        }
+                    };
+                    var sizes = new ArrayList<Integer>();
+                    int checked = 0;
+                    for (int y : new int[]{-1, 0, 1, 63, 127, 128, 255, 256, 257}) {
+                        for (int x : new int[]{-160001, -17, 160001}) {
+                            var origin = new BlockPos(x, y, -x);
+                            sizes.clear();
+                            source.bindQueries(batch -> { sizes.add(batch.size()); return query.biomes(batch); });
+                            var found = source.findClosestQuery(origin, 1, 1, 1, b -> true, level.getMinY(), level.getMaxY());
+                            var expected = reference.findClosestBiome3d(origin, 1, 1, 1, b -> true, random, level);
+                            require(Objects.equals(found, expected), "Nether search order at " + origin + " seed=" + seed);
+                            require(sizes.equals(expected == null ? List.of() : List.of(1)),
+                                    "Nether unrestricted search queries only first valid point: " + sizes);
+                            checked++;
+                        }
                     }
-                };
-                var sizes = new ArrayList<Integer>();
-                int checked = 0;
-                for (int y : new int[]{-1, 0, 1, 63, 127, 128, 255, 256, 257}) {
-                    for (int x : new int[]{-160001, -17, 160001}) {
-                        var origin = new BlockPos(x, y, -x);
-                        sizes.clear();
-                        source.bindQueries(batch -> { sizes.add(batch.size()); return query.biomes(batch); });
-                        var found = source.findClosestQuery(origin, 1, 1, 1, b -> true, level.getMinY(), level.getMaxY());
-                        var expected = reference.findClosestBiome3d(origin, 1, 1, 1, b -> true, random, level);
-                        require(Objects.equals(found, expected), "Nether search order at " + origin + " seed=" + seed);
-                        require(sizes.equals(expected == null ? List.of() : List.of(1)),
-                                "Nether unrestricted search queries only first valid point: " + sizes);
-                        checked++;
-                    }
-                }
-                source.bindQueries(query::biomes);
-                require(generator.metrics().snapshot().previewRegions() == 0, "Nether search creates no region");
-                require(terrain.timings(request.profile()).chunks() == chunksBefore, "Nether search assembles no chunks");
-                System.out.println("QA_EVT {\"event\":\"nether_unrestricted_search\",\"status\":\"pass\",\"context\":{\"seed\":" + seed + ",\"searches\":" + checked + "}}");
-            } finally { generator.closePreviews(); }
+                    source.bindQueries(query::biomes);
+                    require(generator.metrics().snapshot().previewRegions() == 0, "Nether search creates no region");
+                    require(terrain.timings(request.profile()).chunks() == chunksBefore, "Nether search assembles no chunks");
+                    System.out.println("QA_EVT {\"event\":\"nether_unrestricted_search\",\"status\":\"pass\",\"context\":{\"seed\":" + seed + ",\"searches\":" + checked + "}}");
+                } finally { generator.closePreviews(); }
+            }
         }
     }
     private static void savedScan(ChunkPos position) throws Exception {

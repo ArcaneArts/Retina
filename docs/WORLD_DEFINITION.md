@@ -895,3 +895,11 @@ activation, and compiles legacy serialized Retina inputs before creating their
 runtime replacement from the file. Its controlled noise/arithmetic variants have
 separate definitions. The retained inputs are under
 `build/terralith-definition-{automatic,mca,chunk}/retina.dat`.
+
+`previewTest`, `locateTest`, `netherCompatibilityTest` and
+`biomeSearchBenchmark` use the normal compiler and file loader before runtime
+binding. Their fixture owns the native definition until all preview, query and
+shutdown checks finish. Search tests use the biome source reconstructed from the
+saved palette; benchmark rows include both diagnostic-profile and definition
+hashes. Native failure cleanup is exercised with an unknown native handle while
+the remaining request parameters come from the saved definition.
