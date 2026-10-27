@@ -73,6 +73,9 @@ dependencies {
     testImplementation "net.fabricmc:fabric-loader-junit:${loader_version}"
 }
 test { useJUnitPlatform() }
+if (providers.gradleProperty('retinaDefinitionMetadataQa').isPresent()) {
+    test { systemProperty 'retina.qa.savedMetadataWorld', providers.gradleProperty('retinaDefinitionMetadataQa').get() }
+}
 sourceSets.test.compileClasspath += sourceSets.gpuTest.output
 sourceSets.test.runtimeClasspath += sourceSets.gpuTest.output
 test {

@@ -477,3 +477,28 @@ registry rules. A bounded cache retains pending maps; a miss regenerates the
 same saved chunk through Rust. Closing a generator stops further chunk admission.
 The JDK-only bridge transfers binary NBT without requiring Minecraft classes;
 only the platform adapter decodes that output for installation.
+
+## Saved structure pieces
+
+Native structure starts use the saved child-piece NBT and bounding boxes on
+initial installation and saved MCA reopen. The platform resolves structure and
+piece-type identifiers for runtime identity, while the shared metadata reader
+avoids current template, pool and processor loaders. Start bounding boxes use
+the saved terrain-adaptation margin. End city ECP rotation and position handling
+is retained. These pieces cannot place blocks; native generation owns placement.
+A missing saved structure or piece identity raises a concrete binding error.
+
+The loader-transformed structure test covers nine non-End structure identities
+and the real End city source fixtures. To additionally read both complete
+captured Overworld/Nether MCA regions without a template manager, run:
+
+```sh
+./gradlew :fabric:test --tests '*EndCitySavedMetadataMixinTest' \
+  -PretinaNativePath=/absolute/path/to/libretina_worldgen.dylib \
+  -PretinaDefinitionMetadataQa=/absolute/path/to/captured-server-directory
+```
+
+The input directory contains `world/retina.dat` and the actual mod captures
+`captured/region/r.-2.1.mca` and `captured/DIM-1/region/r.-2.1.mca`. The test checks
+all saved starts and children in those regions, including their complete NBT,
+reference counts and saved adjustment bounds.

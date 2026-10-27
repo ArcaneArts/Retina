@@ -15,6 +15,7 @@ class EndCitySavedMetadataMixinTest {
         // Fabric defers this step until mod initialization; this isolated loader
         // fixture has no server startup to finish the built-in registry lifecycle.
         net.minecraft.core.registries.BuiltInRegistries.bootStrap();
+        SavedStructureMetadataChecks.run();
         EndCitySavedMetadataTest.main(new String[]{directory.toString(),System.getProperty("retina.end.cityFixture")});
         assertTrue(Arrays.stream(SerializableChunkData.class.getDeclaredMethods())
                 .anyMatch(method->method.getName().contains("retina$savedStarts")),"MCA read interception applied");
