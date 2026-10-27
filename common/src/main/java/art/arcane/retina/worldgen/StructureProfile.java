@@ -61,10 +61,18 @@ final class StructureProfile {
         this.registry=registry;this.biomes=biomes;this.materials=materials;this.context=context;
     }
     static JsonObject export(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context) {
+        return export(registry,biomes,materials,context,false);
+    }
+    static JsonObject export(HolderLookup.Provider registry,List<Holder<Biome>> biomes,LinkedHashMap<BlockState,Integer> materials,Context context,boolean end) {
         var out=new StructureProfile(registry,biomes,materials,context);
         if(context.enabled){out.load();StructureProcessorProfile.finish(out.pools,materials);out.finishProcessors(out.pools);}
         var result=new JsonObject();result.add("templates",out.templates);result.add("definitions",out.definitions);
         result.add("pools",out.pools);result.add("sets",out.sets);
+        // Resident data only until the city execution adapter is complete. The
+        // definition remains honestly unavailable in load() in the meantime.
+        if(end && context.enabled && registry.lookupOrThrow(Registries.STRUCTURE).listElements()
+                .anyMatch(h->h.value().getClass()==EndCityStructure.class && biomes.stream().anyMatch(h.value().biomes()::contains)))
+            result.add("end_cities",EndCityProfile.export(out));
         if(out.fortress!=null)result.add("fortress",out.fortress);
         if(out.fossils!=null)result.add("fossils",out.fossils);
         if(out.portals!=null)result.add("portals",out.portals);

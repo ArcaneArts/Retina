@@ -1,6 +1,8 @@
 //! Minecraft 26.3 End city plans. This stream belongs to the structure context,
 //! independently of random-spread candidate or weighted set selection streams.
 mod assembly;
+mod resident;
+pub use resident::{Resident, TemplateRef};
 use super::{add, intersects, rotate, Random};
 use crate::nbt;
 use serde::{Deserialize, Serialize};

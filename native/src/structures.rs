@@ -31,6 +31,8 @@ pub struct Profile {
     pub fossils: Option<fossils::Profile>,
     #[serde(default)]
     pub portals: Option<portals::Profile>,
+    #[serde(default)]
+    pub end_cities: Option<cities::Resident>,
     #[serde(skip)]
     pub(crate) names: Vec<String>,
     #[serde(skip)]
@@ -452,6 +454,9 @@ impl Profile {
         }
         if let Some(kit) = &self.portals {
             kit.validate(self, materials)?;
+        }
+        if let Some(kit) = &self.end_cities {
+            kit.validate(self)?;
         }
         for s in &self.sets {
             let space = value(&s.placement, "spacing", 0);

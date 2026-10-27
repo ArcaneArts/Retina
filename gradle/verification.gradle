@@ -899,3 +899,15 @@ tasks.register('endCityReferenceTest', JavaExec) {
     maxHeapSize = '512m'
     args rootProject.layout.buildDirectory.dir('end/city-reference').get().asFile.absolutePath
 }
+
+tasks.register('endCityCatalogTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare resident End city templates and full marker NBT with loaded vanilla data.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.EndCityCatalogTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '512m'
+    args rootProject.layout.buildDirectory.dir('end/city-catalog').get().asFile.absolutePath
+}
