@@ -36,21 +36,7 @@ pub(super) fn fit_blocks(
     if generation.min_y == storage.min_y && generation.height == storage.height {
         return Ok(());
     }
-    let air = if let Some(profile) = profile {
-        profile
-            .materials
-            .iter()
-            .position(|state| {
-                state
-                    .as_str()
-                    .or_else(|| state.get("id").and_then(serde_json::Value::as_str))
-                    == Some("minecraft:air")
-            })
-            .ok_or("storage padding requires an air block state in the saved palette")?
-            as u16
-    } else {
-        0
-    };
+    let air = storage_air(profile)?;
     let mut output = vec![air; storage.block_count()];
     let min = generation.min_y.max(storage.min_y);
     let max =
@@ -64,6 +50,24 @@ pub(super) fn fit_blocks(
     }
     *blocks = output;
     Ok(())
+}
+
+pub(super) fn storage_air(profile: Option<&WorldProfile>) -> Result<u16, String> {
+    Ok(if let Some(profile) = profile {
+        profile
+            .materials
+            .iter()
+            .position(|state| {
+                state
+                    .as_str()
+                    .or_else(|| state.get("id").and_then(serde_json::Value::as_str))
+                    == Some("minecraft:air")
+            })
+            .ok_or("storage padding requires an air block state in the saved palette")?
+            as u16
+    } else {
+        0
+    })
 }
 
 #[cfg(test)]

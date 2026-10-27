@@ -24,6 +24,8 @@ counters! {
     end_exact_noise_corners, end_skipped_noise_corners,
     end_lattice_nanos, end_substrate_nanos, end_exact_nanos,
     end_empty_spike_anchors, end_stair_columns_skipped,
+    end_final_material_allocated_bytes, end_final_dense_equivalent_bytes, end_final_uniform_sections,
+    lighting_material_upload_bytes,
     dependency_evaluation_nanos, final_structure_planning_nanos,
     distribution_nanos, teardown_nanos, region_pool_wait_nanos,
     teardown_commands_nanos, teardown_versions_nanos, teardown_outputs_nanos,

@@ -40,12 +40,15 @@ impl Updates {
         self.0.extend(other.0);
     }
     pub fn finish(self, profile: &WorldProfile, blocks: &mut [u16]) -> usize {
+        self.finish_materials(profile, blocks)
+    }
+    pub(crate) fn finish_materials<B: crate::material_blocks::Write + ?Sized>(self, profile: &WorldProfile, blocks: &mut B) -> usize {
         let mut removed = 0;
         // Support first, then partners: a structure may replace only the soil
         // underneath an otherwise intact pair. Candidate order must not leave
         // its upper half behind when the lower is removed later in this pass.
         for &index in &self.0 {
-            let Some(&id) = blocks.get(index) else {
+            let Some(id) = blocks.get(index) else {
                 continue;
             };
             let mask = profile
@@ -57,14 +60,14 @@ impl Updates {
                 && !index
                     .checked_sub(COLUMNS)
                     .and_then(|i| blocks.get(i))
-                    .is_some_and(|id| profile.material_flags[*id as usize] & mask != 0)
+                    .is_some_and(|id| profile.material_flags[id as usize] & mask != 0)
             {
-                blocks[index] = 0;
+                blocks.put(index, 0);
                 removed += 1;
             }
         }
         for index in self.0 {
-            let Some(&id) = blocks.get(index) else {
+            let Some(id) = blocks.get(index) else {
                 continue;
             };
             let half = profile.plant_halves.get(id as usize).copied().unwrap_or(0);
@@ -78,12 +81,12 @@ impl Updates {
             };
             if partner
                 .and_then(|i| blocks.get(i))
-                .and_then(|id| profile.plant_halves.get(*id as usize))
-                != Some(&-half)
+                .and_then(|id| profile.plant_halves.get(id as usize).copied())
+                != Some(-half)
             {
                 // DoublePlantBlock.updateShape returns air on a missing partner,
                 // including tall seagrass and waterlogged small dripleaf.
-                blocks[index] = 0;
+                blocks.put(index, 0);
                 removed += 1;
             }
         }

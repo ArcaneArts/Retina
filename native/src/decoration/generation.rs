@@ -90,13 +90,13 @@ impl Generation {
             });
         }
     }
-    pub(crate) fn apply(
+    pub(crate) fn apply<B: crate::material_blocks::Write + ?Sized>(
         &self,
         slot: usize,
         request: ChunkRequest,
         profile: &WorldProfile,
         placements: &[Placement],
-        blocks: &mut [u16],
+        blocks: &mut B,
     ) -> Result<structures::ChunkData, String> {
         let mut root = self.starts[slot].clone();
         let starts = nbt::field(nbt::field(&root, "structures").unwrap(), "starts").unwrap()[1]
@@ -287,6 +287,12 @@ mod tests {
         let data = generation
             .apply(0, request, &profile, &generation.placements[0], &mut blocks)
             .unwrap();
+        let mut compact = crate::material_blocks::Chunk::uniform(request.height, 0);
+        let compact_data = generation.apply(0, request, &profile, &generation.placements[0], &mut compact).unwrap();
+        assert_eq!(compact_data.tag, data.tag);
+        let mut compact_dense = Vec::new();
+        crate::material_blocks::Read::extend_dense(&compact, &mut compact_dense);
+        assert_eq!(compact_dense, blocks);
         assert_eq!(&blocks[..4], &[5, 1, 4, 5]);
         assert_eq!(
             nbt::list_values(nbt::field(&data.tag, "block_entities").unwrap()),
@@ -338,6 +344,12 @@ mod tests {
         let data = generation
             .apply(0, request, &profile, &commands, &mut blocks)
             .unwrap();
+        let mut compact = crate::material_blocks::Chunk::uniform(request.height, 0);
+        let compact_data = generation.apply(0, request, &profile, &commands, &mut compact).unwrap();
+        assert_eq!(compact_data.tag, data.tag);
+        let mut compact_dense = Vec::new();
+        crate::material_blocks::Read::extend_dense(&compact, &mut compact_dense);
+        assert_eq!(compact_dense, blocks);
         assert_eq!(
             nbt::list_values(nbt::field(&data.tag, "fluid_ticks").unwrap()),
             &[tick(0, 0), tick(1, -1), tick(2, 0)]
