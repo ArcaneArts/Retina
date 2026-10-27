@@ -21,6 +21,26 @@ final class DefinitionFixture implements AutoCloseable {
         this.world=world;this.dimension=dimension;this.file=file;
     }
 
+    /** Preserve the production source's distinct native/storage/generator geometry. */
+    static DefinitionFixture create(GenerationSource source,TerrainProfileData data,long seed) throws IOException {
+        return create(source,data,seed,true);
+    }
+
+    static DefinitionFixture create(GenerationSource source,TerrainProfileData data,long seed,boolean structures) throws IOException {
+        var directory=Files.createTempDirectory("retina-definition-source-fixture-");
+        String key=source.key().identifier().toString();
+        try {
+            var assembly=new WorldDefinitionAssembler(new WorldOptions(seed,structures,false),List.of(),"Retina source fixture");
+            assembly.supported(key,WorldDefinitionCompiler.parameters(source.generator(),source.dimension()),data,source.describe());
+            var result=open(WorldDefinitionFile.writeNew(directory,assembly.build()),key,2);
+            result.ownedDirectory=directory;
+            return result;
+        } catch(Throwable failure) {
+            try {delete(directory);}catch(Throwable cleanup){failure.addSuppressed(cleanup);}
+            throw failure;
+        }
+    }
+
     static DefinitionFixture create(String dimension,JsonObject profile,TerrainRequest identity,
                                     int storageMinY,int storageHeight,boolean skylight,boolean ceiling) throws IOException {
         return create(dimension,profile,identity,storageMinY,storageHeight,skylight,ceiling,null);
@@ -101,6 +121,8 @@ final class DefinitionFixture implements AutoCloseable {
     }
 
     TerrainRequest request(int x,int z) {return world.request(dimension,x,z);}
+    /** Borrow runtime metadata from the same loaded file; this fixture owns its native lifetime. */
+    WorldDefinitionContext.Dimension savedDimension() {return new WorldDefinitionContext(world).dimension(dimension);}
     int dataVersion() {return com.google.gson.JsonParser.parseString(world.metadata()).getAsJsonObject().get("data_version").getAsInt();}
     Path file() {return file;}
     String diagnosticProfile() {return world.diagnosticProfile(dimension);}

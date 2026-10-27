@@ -68,8 +68,10 @@ public final class FlatProfileTest {
             if (name.equals("the_void")) require(json.getAsJsonArray("decorations").asList().stream()
                     .anyMatch(v -> v.getAsJsonObject().get("kind").getAsString().equals("void_platform")), "void start platform is native");
             if (nativeChecks) {
-                // Validate registration with all the preset's actual optional features first.
-                BiomeTerrainProfile.register(data);
+                // Load the complete preset, including its optional features, before the bare reference.
+                try(var definition=DefinitionFixture.create(retina.selectedSource(),data,42)) {
+                    require(definition.request(0,0).seed()==42,"saved flat seed");
+                }
                 var bare = encoded.deepCopy().getAsJsonObject();
                 bare.addProperty("features", false);
                 bare.addProperty("lakes", false);
@@ -85,50 +87,53 @@ public final class FlatProfileTest {
 
     private static void checkCustomLayers(RegistryAccess registry, net.minecraft.world.level.dimension.DimensionType type) throws Exception {
         var ops = registry.createSerializationContext(JsonOps.INSTANCE);
+        int custom=0;
         for (String layers : List.of("[]", "[{\"height\":1,\"block\":\"minecraft:air\"}]",
                 "[{\"height\":1,\"block\":\"minecraft:bedrock\"},{\"height\":2,\"block\":\"minecraft:air\"},{\"height\":1,\"block\":\"minecraft:glass\"},{\"height\":3,\"block\":\"minecraft:water\"},{\"height\":1,\"block\":\"minecraft:short_grass\"}]")) {
             var encoded = JsonParser.parseString("{\"layers\":" + layers + ",\"biome\":\"minecraft:plains\",\"structure_overrides\":[]}");
             var settings = FlatLevelGeneratorSettings.CODEC.parse(ops, encoded).getOrThrow();
-            checkNativeLayers(registry, new GenerationSource(new FlatLevelSource(settings), type), "custom");
+            checkNativeLayers(registry, new GenerationSource(new FlatLevelSource(settings), type), "custom-"+(custom++));
         }
     }
 
     private static void checkNativeLayers(RegistryAccess registry, GenerationSource source, String name) throws Exception {
         var data = FlatTerrainProfile.export(registry, source, 42, StructureProfile.Context.NONE, true);
-        var profile = BiomeTerrainProfile.register(data);
-        var states = profile.materials();
-        var expected = new ArrayList<BlockState>();
-        for (var layer : ((FlatLevelSource) source.generator()).settings().getLayersInfo())
-            for (int i = 0; i < layer.getHeight() && expected.size() < source.dimension().height(); i++) expected.add(layer.getBlockState());
-        while (expected.size() < source.dimension().height()) expected.add(Blocks.AIR.defaultBlockState());
-        var request = new TerrainRequest(42, -33, 32, source.dimension().minY(), source.dimension().height(), 64, 48, .008F, profile.nativeId());
-        try (var chunk = NativeTerrain.instance().generate(request)) {
-            for (int y = 0; y < expected.size(); y++) for (int column = 0; column < 256; column++) {
-                int id = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (y * 256L + column) * 2));
-                require(states[id].equals(expected.get(y)), name + " exact configured native layer at " + y);
+        try(var definition=DefinitionFixture.create(source,data,42)) {
+            var profile = definition.savedDimension().bind(registry);
+            var states = profile.materials();
+            var expected = new ArrayList<BlockState>();
+            for (var layer : ((FlatLevelSource) source.generator()).settings().getLayersInfo())
+                for (int i = 0; i < layer.getHeight() && expected.size() < source.dimension().height(); i++) expected.add(layer.getBlockState());
+            while (expected.size() < source.dimension().height()) expected.add(Blocks.AIR.defaultBlockState());
+            var request = definition.request(-33,32);
+            try (var chunk = NativeTerrain.instance().generate(request)) {
+                for (int y = 0; y < expected.size(); y++) for (int column = 0; column < 256; column++) {
+                    int id = Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT, (y * 256L + column) * 2));
+                    require(states[id].equals(expected.get(y)), name + " exact configured native layer at " + y);
+                }
             }
+            var base = JsonParser.parseString(data.json()).getAsJsonObject().getAsJsonObject("flat").getAsJsonArray("base_layers");
+            var column = NativeTerrain.instance().column(request, 127);
+            var ops = registry.createSerializationContext(JsonOps.INSTANCE);
+            var original = ((FlatLevelSource) source.generator()).settings();
+            var referenceSettings = FlatLevelGeneratorSettings.CODEC.parse(ops,
+                    FlatLevelGeneratorSettings.CODEC.encodeStart(ops, original).getOrThrow()).getOrThrow();
+            referenceSettings.adjustGenerationSettings(referenceSettings.getBiome());
+            var reference = new FlatLevelSource(referenceSettings);
+            var bounds = net.minecraft.world.level.LevelHeightAccessor.create(request.minY(), request.height());
+            var vanilla = new net.minecraft.world.level.chunk.ProtoChunk(new net.minecraft.world.level.ChunkPos(0, 0),
+                    net.minecraft.world.level.chunk.UpgradeData.EMPTY, bounds,
+                    net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry), null);
+            reference.buildTerrain(vanilla, net.minecraft.world.level.levelgen.blending.Blender.empty(), null,
+                    null, null, null, java.util.Set.of(original.getBiome())).join();
+            for (int y = 0; y < column.length; y++) require(Short.toUnsignedInt(column[y]) == (y < base.size() ? base.get(y).getAsInt() : 0), "native base column matches deferred-layer semantics");
+            for (int y = 0; y < column.length; y++) require(states[Short.toUnsignedInt(column[y])]
+                    .equals(vanilla.getBlockState(new net.minecraft.core.BlockPos(0, request.minY() + y, 0))),
+                    "base terrain matches Minecraft FlatLevelSource exactly");
+            for (short biome : NativeTerrain.instance().sampleBiomes(request)) require(biome == 0, "fixed biome at every depth");
+            var directory=Path.of("build/flat-profiles",name);Files.createDirectories(directory);
+            Files.copy(definition.file(),directory.resolve("retina.dat"),java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         }
-        var base = JsonParser.parseString(data.json()).getAsJsonObject().getAsJsonObject("flat").getAsJsonArray("base_layers");
-        var column = NativeTerrain.instance().column(request, 127);
-        var ops = registry.createSerializationContext(JsonOps.INSTANCE);
-        var original = ((FlatLevelSource) source.generator()).settings();
-        var referenceSettings = FlatLevelGeneratorSettings.CODEC.parse(ops,
-                FlatLevelGeneratorSettings.CODEC.encodeStart(ops, original).getOrThrow()).getOrThrow();
-        referenceSettings.adjustGenerationSettings(referenceSettings.getBiome());
-        var reference = new FlatLevelSource(referenceSettings);
-        var bounds = net.minecraft.world.level.LevelHeightAccessor.create(request.minY(), request.height());
-        var vanilla = new net.minecraft.world.level.chunk.ProtoChunk(new net.minecraft.world.level.ChunkPos(0, 0),
-                net.minecraft.world.level.chunk.UpgradeData.EMPTY, bounds,
-                net.minecraft.world.level.chunk.PalettedContainerFactory.create(registry), null);
-        reference.buildTerrain(vanilla, net.minecraft.world.level.levelgen.blending.Blender.empty(), null,
-                null, null, null, java.util.Set.of(original.getBiome())).join();
-        for (int y = 0; y < column.length; y++) require(Short.toUnsignedInt(column[y]) == (y < base.size() ? base.get(y).getAsInt() : 0), "native base column matches deferred-layer semantics");
-        for (int y = 0; y < column.length; y++) require(states[Short.toUnsignedInt(column[y])]
-                .equals(vanilla.getBlockState(new net.minecraft.core.BlockPos(0, request.minY() + y, 0))),
-                "base terrain matches Minecraft FlatLevelSource exactly");
-        for (short biome : NativeTerrain.instance().sampleBiomes(request)) require(biome == 0, "fixed biome at every depth");
-        Files.createDirectories(Path.of("build/flat-profiles"));
-        Files.writeString(Path.of("build/flat-profiles/" + name + ".json"), data.json());
     }
 
     private static void require(boolean condition, String message) {

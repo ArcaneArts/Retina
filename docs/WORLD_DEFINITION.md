@@ -721,3 +721,19 @@ integer range, subnormal floats/doubles, negative zero, arrays, nested compounds
 and Java modified UTF-8 names. The Java codec fixture additionally exports actual
 Minecraft tags through the template compiler and writes a separate Minecraft NBT
 reference. Rust compares the resulting typed binary payload with that reference.
+
+### Flat source fixtures
+
+The flat preset, feature and preview tests publish complete definitions before
+binding native generation. Their fixture helper uses the production parameter
+compiler and assembler, then borrows runtime palette metadata from the loaded
+file. Native bounds, storage bounds and the source generator's depth remain
+distinct; requests and DataVersion come from that file. Preview caches drain
+before its native handle closes.
+
+Coverage retains all nine presets, empty/custom layers, Minecraft flat terrain
+and feature references, clipped dimensions, preview/region parity, player edits,
+heightmaps, lighting, and single-biome/shallow noise generators. Structure tests
+also check saved set selection and the saved global structures flag. Bare-layer
+fixture artifacts are `build/flat-profiles/<preset-or-custom-case>/retina.dat`;
+they can be supplied directly to the standalone generator.
