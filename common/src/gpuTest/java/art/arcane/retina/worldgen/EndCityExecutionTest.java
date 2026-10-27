@@ -32,34 +32,39 @@ public final class EndCityExecutionTest {
                 var exported=JsonParser.parseString(data.json()).getAsJsonObject();var sets=exported.getAsJsonObject("structures").getAsJsonArray("sets");
                 int set=-1;for(int i=0;i<sets.size();i++)if(sets.get(i).getAsJsonObject().get("id").getAsString().equals("minecraft:end_cities"))set=i;
                 require(set>=0,"actual city set exported");
-                var advertised=RetinaChunkGenerator.fromSource(source).createState(f.registry.lookupOrThrow(Registries.STRUCTURE_SET),state,seed).possibleStructureSets();
-                require(advertised.stream().anyMatch(h->h.value().structures().stream().anyMatch(e->e.structure().value()==city)),"End city search placement advertised");
-                var nativeProfile=BiomeTerrainProfile.register(data);
-                var root=new TerrainRequest(seed,0,0,0,256,64,0,1,nativeProfile.nativeId());
-                int[] queries=new int[group.getValue().size()*3];
-                for(int i=0;i<group.getValue().size();i++){var row=group.getValue().get(i);queries[i*3]=row.getAsJsonArray("chunk").get(0).getAsInt();queries[i*3+1]=row.getAsJsonArray("chunk").get(1).getAsInt();queries[i*3+2]=set;}
-                int[] answers=NativeTerrain.instance().queryStructureStarts(root,queries);
-                for(int i=0;i<group.getValue().size();i++) {
-                    var row=group.getValue().get(i);var at=new ChunkPos(queries[i*3],queries[i*3+1]);
-                    var expected=EndCityReferenceTest.capture(f,manager,serialization,city,state,seed,at);
-                    require(expected.equals(row),"independent reference still exact seed="+seed+" at="+at);
-                    boolean exists=expected.get("valid").getAsBoolean();require((answers[i]>=0)==exists,"native start query seed="+seed+" at="+at);candidates++;
-                    if(exists) {
-                        var request=new TerrainRequest(seed,at.x(),at.z(),0,256,64,0,1,nativeProfile.nativeId());
-                        var metadata=NativeTerrain.instance().structureStarts(request);var starts=metadata.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts");
-                        var start=starts.getCompoundOrEmpty("minecraft:end_city");
-                        require(start.getStringOr("id","").equals("minecraft:end_city"),"actual saved start id");
-                        require(start.getIntOr("ChunkX",Integer.MIN_VALUE)==at.x()&&start.getIntOr("ChunkZ",Integer.MIN_VALUE)==at.z(),"actual start coordinates");
-                        require(StructureProfile.tag(start.getListOrEmpty("Children")).equals(typedPieces(expected.getAsJsonArray("pieces"))),"full saved ECP children seed="+seed+" at="+at);
-                        require(start.getIntOr("references",-1)==0,"fresh start references");
-                        var reopened=StructureStart.loadStaticStart(serialization,start,seed);
-                        require(reopened!=null && reopened.isValid() && reopened.createTag(serialization,at).equals(start),"actual Minecraft city start reopen codec");
-                        require(NativeTerrain.instance().structureStarts(request).equals(metadata),"cached metadata stable");
-                        pieces+=start.getListOrEmpty("Children").size();valid++;
+                try(var nativeProfile=EndDefinitionFixture.create(f,data,seed)) {
+                    // Plain-JVM fixture: inspect the actual saved placement objects;
+                    // the mixin constructor itself is exercised in the mod harness.
+                    var savedSets=new SavedStructureSets(f.registry,JsonParser.parseString(nativeProfile.metadataJson()).getAsJsonObject());
+                    var field=SavedStructureSets.class.getDeclaredField("executable");field.setAccessible(true);
+                    @SuppressWarnings("unchecked") var advertised=(List<net.minecraft.core.Holder<StructureSet>>)field.get(savedSets);
+                    require(advertised.stream().anyMatch(h->h.value().structures().stream().anyMatch(e->e.structure().value()==city)),"saved End city search placement advertised");
+                    var root=nativeProfile.request(0, 0);
+                    int[] queries=new int[group.getValue().size()*3];
+                    for(int i=0;i<group.getValue().size();i++){var row=group.getValue().get(i);queries[i*3]=row.getAsJsonArray("chunk").get(0).getAsInt();queries[i*3+1]=row.getAsJsonArray("chunk").get(1).getAsInt();queries[i*3+2]=set;}
+                    int[] answers=NativeTerrain.instance().queryStructureStarts(root,queries);
+                    for(int i=0;i<group.getValue().size();i++) {
+                        var row=group.getValue().get(i);var at=new ChunkPos(queries[i*3],queries[i*3+1]);
+                        var expected=EndCityReferenceTest.capture(f,manager,serialization,city,state,seed,at);
+                        require(expected.equals(row),"independent reference still exact seed="+seed+" at="+at);
+                        boolean exists=expected.get("valid").getAsBoolean();require((answers[i]>=0)==exists,"native start query seed="+seed+" at="+at);candidates++;
+                        if(exists) {
+                            var request=nativeProfile.request(at.x(), at.z());
+                            var metadata=NativeTerrain.instance().structureStarts(request);var starts=metadata.getCompoundOrEmpty("structures").getCompoundOrEmpty("starts");
+                            var start=starts.getCompoundOrEmpty("minecraft:end_city");
+                            require(start.getStringOr("id","").equals("minecraft:end_city"),"actual saved start id");
+                            require(start.getIntOr("ChunkX",Integer.MIN_VALUE)==at.x()&&start.getIntOr("ChunkZ",Integer.MIN_VALUE)==at.z(),"actual start coordinates");
+                            require(StructureProfile.tag(start.getListOrEmpty("Children")).equals(typedPieces(expected.getAsJsonArray("pieces"))),"full saved ECP children seed="+seed+" at="+at);
+                            require(start.getIntOr("references",-1)==0,"fresh start references");
+                            var reopened=StructureStart.loadStaticStart(serialization,start,seed);
+                            require(reopened!=null && reopened.isValid() && reopened.createTag(serialization,at).equals(start),"actual Minecraft city start reopen codec");
+                            require(NativeTerrain.instance().structureStarts(request).equals(metadata),"cached metadata stable");
+                            pieces+=start.getListOrEmpty("Children").size();valid++;
+                        }
+                        cases.add(expected);
                     }
-                    cases.add(expected);
+                    Files.writeString(out.resolve("profile-"+seed+".json"),data.json());
                 }
-                Files.writeString(out.resolve("profile-"+seed+".json"),data.json());
             }
             var level=EndEntityFixture.create(f.registry);var entity=net.minecraft.world.entity.EntityTypes.SHULKER.create(level,net.minecraft.world.entity.EntitySpawnReason.STRUCTURE);
             require(entity!=null,"actual source shulker available");entity.setPos(-12.5,81,23.5);

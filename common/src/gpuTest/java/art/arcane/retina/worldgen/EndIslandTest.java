@@ -34,40 +34,42 @@ public final class EndIslandTest {
                 var recipes=json.getAsJsonArray("decorations");for(int i=0;i<recipes.size();i++)if(recipes.get(i).getAsJsonObject().get("kind").getAsString().equals("end_island"))recipe=i;
                 require(recipe>=0,"loaded island root exported");var island=recipes.get(recipe).getAsJsonObject().getAsJsonObject("end_island");
                 require(island.get("step").getAsInt()==step&&island.get("index").getAsInt()==index,"actual per-step source feature index");
-                var profile=BiomeTerrainProfile.register(data);var capture=f.new Capture(seed,-1);var resolver=f.resolver(f.state(seed));int successes=0,failures=0;
-                // Targeted coordinates discovered once from the source; no broad
-                // anchor search is needed on subsequent reference checks.
-                int[] anchors=seed==42?new int[]{-80,-81,-82,-83,-105,-110,-152,-188,-199,-204,-240,-264}
-                    :new int[]{80,81,82,83,108,128,159,190,193,210,213,289,3841};
-                for(int cz:anchors) {
-                    int cx=seed==42?-33:31;
-                    capture.blocks.clear();capture.blockEntities.clear();var random=new TraceRandom();
-                    long decoration=random.setDecorationSeed(seed,cx*16,cz*16);random.setFeatureSeed(decoration,index,step);
-                    new FeaturePlacer(capture.level,f.generator).placeWithBiomeCheck(placed,random,new BlockPos(cx*16,0,cz*16));
-                    boolean success=!capture.blocks.isEmpty();
-                    var noiseBiome=resolver.getNoiseBiome(cx*4+2,0,cz*4+2).unwrapKey().orElseThrow().identifier().toString();
-                    boolean neighbor=success&&!noiseBiome.equals("minecraft:small_end_islands");
-                    boolean extraNeighbor=neighbor&&!neighborBiomeCase;
-                    if((success&&successes>=8||!success&&failures>=4)&&!extraNeighbor)continue;
-                    var request=new TerrainRequest(seed,cx,cz,0,256,64,0,1,profile.nativeId());
-                    int[] writes=NativeTerrain.instance().decorationFeature(request,recipe,new int[]{cx*16,0,cz*16},0x12345678);
-                    var actual=new HashMap<BlockPos,BlockState>();var materials=profile.materials();
-                    for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),materials[writes[i+3]]);
-                    require(actual.equals(capture.blocks),"world-seeded island writes seed="+seed+" anchor="+cx+","+cz+" expected="+capture.blocks.size()+" actual="+actual.size());
-                    boolean two=random.draws.stream().filter(v->v[0]==3).count()>=2;
-                    boolean crossing=actual.keySet().stream().anyMatch(p->Math.floorDiv(p.getX(),512)!=Math.floorDiv(cx*16,512)||Math.floorDiv(p.getZ(),512)!=Math.floorDiv(cz*16,512));
-                    twoIslands|=success&&two;crossRegion|=crossing;
-                    var row=capture.snapshot();row.addProperty("seed",seed);row.add("anchor",EndReferenceFixtures.ints(cx,cz));row.addProperty("decoration_seed",decoration);
-                    row.addProperty("step",step);row.addProperty("index",index);row.addProperty("two_islands",two);row.addProperty("crosses_region",crossing);row.addProperty("anchor_noise_biome",noiseBiome);row.addProperty("neighbor_biome_root",neighbor);cases.add(row);
-                    if(success && (successes < 2 || extraNeighbor)) {
-                        checkChunk(f,profile,placed,seed,cx,cz,step,index,recipes.get(recipe).getAsJsonObject().get("reach").getAsInt());
-                        generatedChunks++;
+                try(var profile=EndDefinitionFixture.create(f,data,seed)) {
+                    var capture=f.new Capture(seed,-1);var resolver=f.resolver(f.state(seed));int successes=0,failures=0;
+                    // Targeted coordinates discovered once from the source; no broad
+                    // anchor search is needed on subsequent reference checks.
+                    int[] anchors=seed==42?new int[]{-80,-81,-82,-83,-105,-110,-152,-188,-199,-204,-240,-264}
+                        :new int[]{80,81,82,83,108,128,159,190,193,210,213,289,3841};
+                    for(int cz:anchors) {
+                        int cx=seed==42?-33:31;
+                        capture.blocks.clear();capture.blockEntities.clear();var random=new TraceRandom();
+                        long decoration=random.setDecorationSeed(seed,cx*16,cz*16);random.setFeatureSeed(decoration,index,step);
+                        new FeaturePlacer(capture.level,f.generator).placeWithBiomeCheck(placed,random,new BlockPos(cx*16,0,cz*16));
+                        boolean success=!capture.blocks.isEmpty();
+                        var noiseBiome=resolver.getNoiseBiome(cx*4+2,0,cz*4+2).unwrapKey().orElseThrow().identifier().toString();
+                        boolean neighbor=success&&!noiseBiome.equals("minecraft:small_end_islands");
+                        boolean extraNeighbor=neighbor&&!neighborBiomeCase;
+                        if((success&&successes>=8||!success&&failures>=4)&&!extraNeighbor)continue;
+                        var request=profile.request(cx, cz);
+                        int[] writes=NativeTerrain.instance().decorationFeature(request,recipe,new int[]{cx*16,0,cz*16},0x12345678);
+                        var actual=new HashMap<BlockPos,BlockState>();var materials=profile.materials();
+                        for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),materials[writes[i+3]]);
+                        require(actual.equals(capture.blocks),"world-seeded island writes seed="+seed+" anchor="+cx+","+cz+" expected="+capture.blocks.size()+" actual="+actual.size());
+                        boolean two=random.draws.stream().filter(v->v[0]==3).count()>=2;
+                        boolean crossing=actual.keySet().stream().anyMatch(p->Math.floorDiv(p.getX(),512)!=Math.floorDiv(cx*16,512)||Math.floorDiv(p.getZ(),512)!=Math.floorDiv(cz*16,512));
+                        twoIslands|=success&&two;crossRegion|=crossing;
+                        var row=capture.snapshot();row.addProperty("seed",seed);row.add("anchor",EndReferenceFixtures.ints(cx,cz));row.addProperty("decoration_seed",decoration);
+                        row.addProperty("step",step);row.addProperty("index",index);row.addProperty("two_islands",two);row.addProperty("crosses_region",crossing);row.addProperty("anchor_noise_biome",noiseBiome);row.addProperty("neighbor_biome_root",neighbor);cases.add(row);
+                        if(success && (successes < 2 || extraNeighbor)) {
+                            checkChunk(f,profile,placed,seed,cx,cz,step,index,recipes.get(recipe).getAsJsonObject().get("reach").getAsInt());
+                            generatedChunks++;
+                        }
+                        neighborBiomeCase|=neighbor;
+                        comparisons++;if(success){if(successes<8)successes++;accepted++;}else{failures++;rejected++;}
                     }
-                    neighborBiomeCase|=neighbor;
-                    comparisons++;if(success){if(successes<8)successes++;accepted++;}else{failures++;rejected++;}
+                    require(successes==8&&failures==4,"targeted accepted/rejected roots exercised");
+                    Files.writeString(out.resolve("profile-"+seed+".json"),data.json());
                 }
-                require(successes==8&&failures==4,"targeted accepted/rejected roots exercised");
-                Files.writeString(out.resolve("profile-"+seed+".json"),data.json());
             }
         }
         require(twoIslands,"two-island shared RNG branch exercised");require(crossRegion,"region-crossing island writes exercised");require(neighborBiomeCase,"neighbor-biome root discovery exercised");
@@ -78,13 +80,13 @@ public final class EndIslandTest {
         Files.writeString(out.resolve("reference.json"),new GsonBuilder().setPrettyPrinting().create().toJson(report)+"\n");
         System.out.println("QA_EVT {\"event\":\"end_island_parity\",\"roots\":"+comparisons+",\"accepted\":"+accepted+",\"rejected\":"+rejected+",\"status\":\"pass\"}");
     }
-    private static void checkChunk(EndReferenceFixtures f,BiomeTerrainProfile profile,PlacedFeature placed,long seed,int cx,int cz,int step,int index,int reach) {
+    private static void checkChunk(EndReferenceFixtures f,EndDefinitionFixture profile,PlacedFeature placed,long seed,int cx,int cz,int step,int index,int reach) {
         var capture=f.new Capture(seed,-1);int radius=(reach+15)/16;
         for(int z=cz-radius;z<=cz+radius;z++)for(int x=cx-radius;x<=cx+radius;x++) {
             var random=new WorldgenRandom(new XoroshiroRandomSource(0));long d=random.setDecorationSeed(seed,x*16,z*16);random.setFeatureSeed(d,index,step);
             new FeaturePlacer(capture.level,f.generator).placeWithBiomeCheck(placed,random,new BlockPos(x*16,0,z*16));
         }
-        var state=f.state(seed);var request=new TerrainRequest(seed,cx,cz,0,256,64,0,1,profile.nativeId());
+        var state=f.state(seed);var request=profile.request(cx, cz);
         try(var chunk=NativeTerrain.instance().generate(request)) {
             var materials=profile.materials();
             for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
