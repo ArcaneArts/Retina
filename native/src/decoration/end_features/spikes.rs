@@ -29,6 +29,15 @@ pub struct Recipe {
     pub placement: Vec<Modifier>,
 }
 impl Recipe {
+    /// Producer selection, not the affected block footprint. Validated spike
+    /// placement keeps points in the anchor chunk; radii may still cross it.
+    pub(in crate::decoration) fn affects_anchor(&self,x:i32,z:i32)->bool {
+        if self.spikes.is_empty() {
+            self.centers.iter().any(|p|p[0].div_euclid(16)==x && p[1].div_euclid(16)==z)
+        } else {
+            self.spikes.iter().any(|p|p.x.div_euclid(16)==x && p.z.div_euclid(16)==z)
+        }
+    }
     pub(in crate::decoration) fn validate(&self, palette: usize) -> bool {
         self.centers.len()==10 && self.bars.len()==16
             && [self.obsidian,self.air,self.bedrock,self.fire].iter().chain(&self.bars).all(|&id|(id as usize)<palette)
@@ -248,6 +257,11 @@ mod tests {
             let seed = case["seed"].as_i64().unwrap();
             let actual = recipe.layout(seed as u64);
             let expected = case["spikes"].as_array().unwrap();
+            for z in -8..=8 {for x in -8..=8 {
+                let selected=expected.iter().any(|s|s["x"].as_i64().unwrap().div_euclid(16)==i64::from(x)
+                    && s["z"].as_i64().unwrap().div_euclid(16)==i64::from(z));
+                assert_eq!(recipe.affects_anchor(x,z),selected,"producer chunk {x},{z}, seed {seed}");
+            }}
             assert_eq!(actual.len(), expected.len());
             for (a, e) in actual.iter().zip(expected) {
                 assert_eq!(
@@ -257,5 +271,10 @@ mod tests {
                 );
             }
         }
+        let mut explicit=recipe;
+        explicit.spikes=vec![Spike{x:-17,z:31,radius:100,height:100,guarded:false}];
+        assert!(explicit.affects_anchor(-2,1));
+        assert!(!explicit.affects_anchor(-1,1)); // Spilled writes still belong to the center's producer.
+        assert!(!explicit.affects_anchor(0,0)); // Explicit positions replace seeded centers.
     }
 }

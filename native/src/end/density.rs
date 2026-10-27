@@ -20,13 +20,36 @@ pub struct DenseTile {
     corner_origin: [i32; 2],
     corners_x: usize,
     corners: Vec<[f32; 33]>,
-    occupancy: Vec<[Occupancy; 32]>,
+    occupancy: Vec<CellColumn>,
     mask_nanos: u64,
     islands: super::CandidateField,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Occupancy { Empty, Solid, Uncertain }
+
+/// Uniform 8×4×8 cells share their four height bits across all 64 columns.
+/// Only uncertain cell indices need the ordinary interpolator. Two u64s avoid
+/// the extra alignment/padding of storing a u128 beside the u32 index mask.
+#[derive(Clone, Copy, Default)]
+struct CellColumn { solid: [u64;2], uncertain: u32 }
+impl CellColumn {
+    fn from_cells(cells:[Occupancy;32])->Self {
+        let mut result=Self::default();
+        for (cell,value) in cells.into_iter().enumerate() {result.set(cell,value);}
+        result
+    }
+    fn set(&mut self,cell:usize,value:Occupancy) {
+        let word=cell/16;let shift=cell%16*4;
+        self.solid[word]&=!(15u64<<shift);self.uncertain&=!(1u32<<cell);
+        match value {
+            Occupancy::Empty=>{},
+            Occupancy::Solid=>self.solid[word]|=15u64<<shift,
+            Occupancy::Uncertain=>self.uncertain|=1u32<<cell,
+        }
+    }
+    fn solid_bits(&self)->u128 {u128::from(self.solid[0])|(u128::from(self.solid[1])<<64)}
+}
 
 /// Interpolation uses two convex lerps followed by at most three accumulated
 /// quarter steps. Each rounded add/multiply contributes at most a few ulps of
@@ -104,21 +127,17 @@ impl DenseTile {
         let [a,b,c,d] = [&self.corners[index], &self.corners[index+1],
             &self.corners[index+self.corners_x], &self.corners[index+self.corners_x+1]];
         let ax = dx as f32 * 0.125; let az = dz as f32 * 0.125;
-        let mut bits = 0u128;
-        for cell in 0..32 {
-            match mask[cell] {
-                Occupancy::Empty => {},
-                Occupancy::Solid => bits |= 15u128 << (cell * 4),
-                Occupancy::Uncertain => {
-                    let bottom = lerp(ax, lerp(az,a[cell],c[cell]), lerp(az,b[cell],d[cell]));
-                    let top = lerp(ax, lerp(az,a[cell+1],c[cell+1]), lerp(az,b[cell+1],d[cell+1]));
-                    let step = (top - bottom) * 0.25;
-                    let mut value = bottom + step * 0.0;
-                    for dy in 0..4 {
-                        if squeeze(value) + 0.0 > 0.0 { bits |= 1u128 << (cell*4+dy); }
-                        value += step;
-                    }
-                },
+        let mut bits = mask.solid_bits();
+        let mut uncertain=mask.uncertain;
+        while uncertain!=0 {
+            let cell=uncertain.trailing_zeros() as usize;uncertain&=uncertain-1;
+            let bottom = lerp(ax, lerp(az,a[cell],c[cell]), lerp(az,b[cell],d[cell]));
+            let top = lerp(ax, lerp(az,a[cell+1],c[cell+1]), lerp(az,b[cell+1],d[cell+1]));
+            let step = (top - bottom) * 0.25;
+            let mut value = bottom + step * 0.0;
+            for dy in 0..4 {
+                if squeeze(value) + 0.0 > 0.0 { bits |= 1u128 << (cell*4+dy); }
+                value += step;
             }
         }
         Some(bits)
@@ -126,14 +145,16 @@ impl DenseTile {
 
     pub(crate) fn occupancy_counts(&self) -> [u64; 3] {
         let mut counts = [0;3];
-        for cells in &self.occupancy { for cell in cells {
-            counts[match cell { Occupancy::Empty=>0,Occupancy::Solid=>1,Occupancy::Uncertain=>2 }] += 1;
-        }}
+        for cells in &self.occupancy {
+            let solid=(cells.solid[0].count_ones()+cells.solid[1].count_ones()) as u64/4;
+            let uncertain=cells.uncertain.count_ones() as u64;
+            counts[0]+=32-solid-uncertain;counts[1]+=solid;counts[2]+=uncertain;
+        }
         counts
     }
 
     pub(crate) fn mask_nanos(&self) -> u64 { self.mask_nanos }
-    pub(crate) fn mask_bytes(&self) -> usize { self.occupancy.len()*std::mem::size_of::<[Occupancy;32]>() }
+    pub(crate) fn mask_bytes(&self) -> usize { self.occupancy.len()*std::mem::size_of::<CellColumn>() }
 
     pub fn lattice_points(&self) -> usize { self.corners.len() * 33 }
     pub fn lattice_bytes(&self) -> usize { self.corners.len() * std::mem::size_of::<[f32; 33]>() }
@@ -180,9 +201,9 @@ impl VanillaDensity {
         let mask_start = crate::performance::enabled().then(std::time::Instant::now);
         tile.occupancy = (0..(corners_z-1)*(corners_x-1)).map(|i| {
             let at = i / (corners_x-1) * corners_x + i % (corners_x-1);
-            std::array::from_fn(|cy| classify([
+            CellColumn::from_cells(std::array::from_fn(|cy| classify([
                 tile.corners[at][cy],tile.corners[at+1][cy],tile.corners[at+corners_x][cy],tile.corners[at+corners_x+1][cy],
-                tile.corners[at][cy+1],tile.corners[at+1][cy+1],tile.corners[at+corners_x][cy+1],tile.corners[at+corners_x+1][cy+1]]))
+                tile.corners[at][cy+1],tile.corners[at+1][cy+1],tile.corners[at+corners_x][cy+1],tile.corners[at+corners_x+1][cy+1]])))
         }).collect();
         tile.mask_nanos=mask_start.map_or(0,|t|t.elapsed().as_nanos() as u64);
         Ok(tile)

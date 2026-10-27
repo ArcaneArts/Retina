@@ -92,23 +92,26 @@ impl Profile {
         Ok(result)
     }
 
-    /// The same six-chunk guard geometry used by ordered decoration's cached
-    /// substrate. Material runs cover the inner tile, including feature anchors;
-    /// the outer chunk supplies biome/column probes without truncating writes.
+    /// Full regions cover the usual End placement/read neighborhood, including
+    /// chorus support reads and preceding gateway producers. Smaller demand
+    /// tiles retain six guard chunks. Farther/custom reads still generate tiles.
     fn build(&self, request: ChunkRequest, side: u32, metrics: Option<&crate::performance::Metrics>) -> Result<(Field<'static>, Arc<CaveMask>), String> {
-        let tile_side = side as usize + 6;
+        let guard=if side==32 {5}else{3};
+        let tile_side = side as usize + guard as usize*2;
         let origin = ChunkRequest {
-            chunk_x: request.chunk_x.checked_sub(3).ok_or("End halo X overflows")?,
-            chunk_z: request.chunk_z.checked_sub(3).ok_or("End halo Z overflows")?, ..request };
+            chunk_x: request.chunk_x.checked_sub(guard).ok_or("End halo X overflows")?,
+            chunk_z: request.chunk_z.checked_sub(guard).ok_or("End halo Z overflows")?, ..request };
         for z in 0..tile_side { for x in 0..tile_side {
             ChunkRequest { chunk_x: origin.chunk_x.checked_add(x as i32).ok_or("End halo X overflows")?,
                 chunk_z: origin.chunk_z.checked_add(z as i32).ok_or("End halo Z overflows")?, ..origin }.validate()?;
         }}
         let ox = origin.chunk_x * 16; let oz = origin.chunk_z * 16;
+        let lattice_started=metrics.and_then(|m|m.start());
         let density = VanillaDensity::new(request.seed);
         let tile = density.sparse_tile(ox, oz, tile_side as u32 * 16, tile_side as u32 * 16)?;
         if let Some(metrics) = metrics.filter(|_|crate::performance::enabled()) {
             use crate::performance::Counter::*;
+            metrics.elapsed(end_lattice_nanos,lattice_started);
             let [empty,solid,uncertain] = tile.occupancy_counts();
             metrics.add(end_mask_nanos,tile.mask_nanos());
             metrics.add(end_mask_bytes,tile.mask_bytes() as u64);
@@ -116,11 +119,13 @@ impl Profile {
             metrics.add(end_voxel_interpolations_avoided,(empty+solid)*8*4*8);
             let stats=tile.stats();
             metrics.add(end_bounds_nanos,stats.bounds_nanos);
+            metrics.add(end_exact_nanos,stats.exact_nanos);
             metrics.add(end_bounds_temporary_bytes,stats.temporary_bytes);
             metrics.add(end_partial_noise_probes,stats.partial_probes);
             metrics.add(end_exact_noise_corners,stats.exact_corners);
             metrics.add(end_skipped_noise_corners,stats.skipped_corners);
         }
+        let substrate_started=metrics.and_then(|m|m.start());
         let run_width = (tile_side - 2) * 16;
         let width = run_width + 2;
         let surface = width + 30;
@@ -187,6 +192,7 @@ impl Profile {
                 side: tile_side, columns }) });
         mask.validate_material_runs()?;
         let field = crop(request, side, &mask).ok_or("End tile does not cover its target")?;
+        if let Some(metrics)=metrics {metrics.elapsed(crate::performance::Counter::end_substrate_nanos,substrate_started);}
         Ok((field, mask))
     }
 }
@@ -313,6 +319,30 @@ mod tests {
                 expected.push(u32::from(current));
                 assert_eq!(actual,expected,"bits={bits:x} min_y={min_y} height={height}");
             }
+        }
+    }
+
+    #[test]
+    fn region_material_field_covers_anchor_neighbors_and_exact_boundary_columns() {
+        let profile=Profile{material:1,biomes:[4,1,2,3,0]};let r=request(-32,0);
+        let (_,mask)=profile.build(r,32,None).unwrap();
+        let field=crate::terrain_job::initial_material_field(&mask).unwrap();
+        assert_eq!((field.origin_x,field.origin_z,field.side),(r.chunk_x-4,r.chunk_z-4,40));
+        for z in -1..=33 {for x in -1..=33 {
+            assert!(crate::terrain_job::covers(&field,r.chunk_x+x-1,r.chunk_z+z-1,3));
+        }}
+        assert!(!crate::terrain_job::covers(&field,r.chunk_x-5,r.chunk_z,1));
+        assert!(!crate::terrain_job::covers(&field,r.chunk_x+36,r.chunk_z,1));
+        // Biome/height columns have an extra guard; this is not material
+        // coverage and must not cause a missing material column to be reused.
+        assert!(field.column((r.chunk_x+36)*16+8,r.chunk_z*16+8).is_some());
+        assert!(mask.material_run_range((r.chunk_x+36)*16+8,r.chunk_z*16+8).is_none());
+        let density=VanillaDensity::new(r.seed);let islands=IslandNoise::new(r.seed);
+        for (dx,dz) in [(-4,-4),(-4,35),(35,-4),(35,35),(0,0),(16,16),(32,32)] {
+            let x=(r.chunk_x+dx)*16+8;let z=(r.chunk_z+dz)*16+8;
+            let solid=density.column(x,z);let column=field.column(x,z).unwrap();
+            assert_eq!(column,self::Profile::column(&profile,r,profile.biome(&islands,x,z),&solid));
+            for y in 0..256 {assert_eq!(field.substrate.as_ref().unwrap().material_at(x,y,z),Some(u16::from(solid[y as usize])));}
         }
     }
 }
