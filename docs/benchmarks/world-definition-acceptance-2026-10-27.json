@@ -1,0 +1,580 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-27",
+  "implementation_through": "5d7ed3cc38d529a9d2d9ff495e6f7fd34072867e",
+  "platform": "macOS / Apple M4 Max / Metal",
+  "native_library_sha256": "251a14af11490aaca0af9c54688a522731f3a9dc0643deddfbced0ea5a1d1bff",
+  "cli_sha256": "01903a22fcdbf80fd7069fbccae607821379db2112d35c18a0cff4863a2d00e2",
+  "loader_measurements": {
+    "date": "2026-10-27",
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "cpu": "Apple M4 Max",
+    "library_sha256": "251a14af11490aaca0af9c54688a522731f3a9dc0643deddfbced0ea5a1d1bff",
+    "method": "Eight sequential actual production FFI file opens per artifact, closing each handle; first open reported separately, median of seven subsequent opens. Measures file read, gzip, NBT, validation and native profile construction. Excludes metadata serialization, GPU binding, Java compilation and close. OS page cache not flushed. No JVM, Minecraft or GPU binding in measurement process.",
+    "rows": [
+      {
+        "name": "vanilla_all_dimensions",
+        "definition_sha256": "bcee0be634210d09393584222f9ab9b12334624aab617ee04b87fda22aaefe2a",
+        "compressed_bytes": 2431176,
+        "uncompressed_nbt_bytes": 14552320,
+        "seed": -9223372036854775791,
+        "dimensions": [
+          "minecraft:overworld",
+          "minecraft:the_end",
+          "minecraft:the_nether"
+        ],
+        "samples_ms": [
+          709.615333,
+          706.986625,
+          692.559208,
+          672.696667,
+          680.033458,
+          677.384292,
+          680.360084,
+          677.77625
+        ],
+        "first_open_ms": 709.615333,
+        "median_subsequent_ms": 680.033458,
+        "minimum_subsequent_ms": 672.696667
+      },
+      {
+        "name": "terralith_overworld_benchmark",
+        "definition_sha256": "f8bef017cbb08e030768973cc439d79c29409a300b3ba39f60ff2a2f1aabc679",
+        "compressed_bytes": 3953724,
+        "uncompressed_nbt_bytes": 19707057,
+        "seed": 123456789,
+        "dimensions": [
+          "minecraft:overworld"
+        ],
+        "samples_ms": [
+          1151.137167,
+          1119.765791,
+          1111.692834,
+          1107.988958,
+          1120.552458,
+          1132.983459,
+          1150.220167,
+          1125.851042
+        ],
+        "first_open_ms": 1151.137167,
+        "median_subsequent_ms": 1120.552458,
+        "minimum_subsequent_ms": 1107.988958
+      }
+    ]
+  },
+  "packaged_artifacts": [
+    {
+      "loader": "fabric",
+      "jar": "/Users/cyberpwn/.cache/retina/world-definition-native-retirement-20261027/jars/retina-fabric-26.3-0.392.jar",
+      "sha256": "7632473bf21219f814608c63824e7ed0583785e6ff61beb221eec5973e023a6f",
+      "natives": [
+        {
+          "member": "natives/macos-aarch64/libretina_worldgen.dylib",
+          "sha256": "251a14af11490aaca0af9c54688a522731f3a9dc0643deddfbced0ea5a1d1bff"
+        }
+      ]
+    },
+    {
+      "loader": "neoforge",
+      "jar": "/Users/cyberpwn/.cache/retina/world-definition-native-retirement-20261027/jars/retina-neoforge-26.3-0.392.jar",
+      "sha256": "14b1d34efc3e532f8cd6653e8cbdcec4a87f45a40157c5b6eb16cff08b99f89d",
+      "natives": [
+        {
+          "member": "natives/macos-aarch64/libretina_worldgen.dylib",
+          "sha256": "251a14af11490aaca0af9c54688a522731f3a9dc0643deddfbced0ea5a1d1bff"
+        }
+      ]
+    }
+  ],
+  "live_resource_authority": {
+    "event": "live_resource_definition_authority",
+    "status": "pass",
+    "canonical_biome_probes": 400,
+    "noise_changed_probes": 195,
+    "decoded_chunks": 3,
+    "block_entities": 2,
+    "saved_diamond_blocks": 5,
+    "fresh_gold_blocks": 5,
+    "saved_a": "/Users/cyberpwn/.codex/worktrees/world-definition-resource-authority/Retina/fabric/build/world-definition-resource-authority/live-resources-8663878300854561593/world-a/retina.dat",
+    "fresh_b": "/Users/cyberpwn/.codex/worktrees/world-definition-resource-authority/Retina/fabric/build/world-definition-resource-authority/live-resources-8663878300854561593/world-b/retina.dat"
+  },
+  "merged_implementation_deliveries": [
+    {
+      "number": 255,
+      "title": "Add compressed NBT world definition schema and native reader",
+      "url": "https://github.com/ArcaneArts/Retina/pull/255",
+      "state": "MERGED",
+      "headRefName": "agent/manual/world-definition-codec",
+      "mergedAt": "2026-10-27T00:59:44Z",
+      "mergeCommit": {
+        "oid": "34dc61ac74a80076274c2c0bf00f625ee4683374"
+      }
+    },
+    {
+      "number": 257,
+      "title": "Compile world-level retina.dat files and verify Java/Rust fidelity",
+      "url": "https://github.com/ArcaneArts/Retina/pull/257",
+      "state": "MERGED",
+      "headRefName": "agent/manual/world-definition-compiler",
+      "mergedAt": "2026-10-27T01:23:31Z",
+      "mergeCommit": {
+        "oid": "357b5b2413049f4a79f967788f9b389727ad009b"
+      }
+    },
+    {
+      "number": 258,
+      "title": "Bind saved world definitions to the native engine",
+      "url": "https://github.com/ArcaneArts/Retina/pull/258",
+      "state": "MERGED",
+      "headRefName": "agent/manual/world-definition-runtime",
+      "mergedAt": "2026-10-27T02:24:30Z",
+      "mergeCommit": {
+        "oid": "39ba74854ef386ec384a1d449b82101d7aaa9293"
+      }
+    },
+    {
+      "number": 259,
+      "title": "Initialize mod generation from the saved world definition",
+      "url": "https://github.com/ArcaneArts/Retina/pull/259",
+      "state": "MERGED",
+      "headRefName": "agent/manual/world-definition-startup",
+      "mergedAt": "2026-10-27T02:42:14Z",
+      "mergeCommit": {
+        "oid": "9dd9e51bcfdf97f32f8981f8714d390e556de1b4"
+      }
+    },
+    {
+      "number": 261,
+      "title": "Generate region data headlessly from retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/261",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-cli",
+      "mergedAt": "2026-10-27T03:00:23Z",
+      "mergeCommit": {
+        "oid": "4fea3c094ae9ccd6d960150a4e815247843e6dcc"
+      }
+    },
+    {
+      "number": 265,
+      "title": "Preserve procedural terrain and cropped generation in world definitions",
+      "url": "https://github.com/ArcaneArts/Retina/pull/265",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-procedural",
+      "mergedAt": "2026-10-27T04:01:36Z",
+      "mergeCommit": {
+        "oid": "fb931c4e9a55acda62780e38679ef63871ade7e5"
+      }
+    },
+    {
+      "number": 266,
+      "title": "Retain saved structure metadata across native families",
+      "url": "https://github.com/ArcaneArts/Retina/pull/266",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-metadata",
+      "mergedAt": "2026-10-27T04:08:53Z",
+      "mergeCommit": {
+        "oid": "68e775c3cec7f043fa8eb4317211a786cf1bd39e"
+      }
+    },
+    {
+      "number": 269,
+      "title": "Persist generation exporter omissions in world definitions",
+      "url": "https://github.com/ArcaneArts/Retina/pull/269",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-omissions",
+      "mergedAt": "2026-10-27T04:19:08Z",
+      "mergeCommit": {
+        "oid": "234347cc1eeaaef8bd1ca2745dbd67e74d54984f"
+      }
+    },
+    {
+      "number": 270,
+      "title": "Use saved world definitions in pipeline and column benchmarks",
+      "url": "https://github.com/ArcaneArts/Retina/pull/270",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-tooling",
+      "mergedAt": "2026-10-27T04:29:44Z",
+      "mergeCommit": {
+        "oid": "6eb7d1651f4a0b9ad4f98d9413c897278ccd8638"
+      }
+    },
+    {
+      "number": 271,
+      "title": "Load saved definitions in ore planning and raster tools",
+      "url": "https://github.com/ArcaneArts/Retina/pull/271",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-ore-tools",
+      "mergedAt": "2026-10-27T04:36:48Z",
+      "mergeCommit": {
+        "oid": "78b494ecca4c3f81fe983478df8f2ead0edd5435"
+      }
+    },
+    {
+      "number": 274,
+      "title": "Bind file-backed integration fixtures with runtime dispatch options",
+      "url": "https://github.com/ArcaneArts/Retina/pull/274",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-fixture-model",
+      "mergedAt": "2026-10-27T05:18:38Z",
+      "mergeCommit": {
+        "oid": "d477560f58b7103881744d12c54f4a7817d1e5ec"
+      }
+    },
+    {
+      "number": 275,
+      "title": "Read saved definitions in decoration and material diagnostics",
+      "url": "https://github.com/ArcaneArts/Retina/pull/275",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-decoration-tools",
+      "mergedAt": "2026-10-27T05:26:17Z",
+      "mergeCommit": {
+        "oid": "344c8dc85965efe2e9f6a7a0d1c995136927362d"
+      }
+    },
+    {
+      "number": 277,
+      "title": "Run Python generation campaigns from saved world definitions",
+      "url": "https://github.com/ArcaneArts/Retina/pull/277",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-python-bench",
+      "mergedAt": "2026-10-27T05:37:37Z",
+      "mergeCommit": {
+        "oid": "060ce913c45bb43a8e2c4ab0d259c7f2525d8a2f"
+      }
+    },
+    {
+      "number": 278,
+      "title": "Load lighting integration rules from saved definition files",
+      "url": "https://github.com/ArcaneArts/Retina/pull/278",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-lighting-fixtures",
+      "mergedAt": "2026-10-27T05:47:57Z",
+      "mergeCommit": {
+        "oid": "02ac3fc94e9e4bb99fc20c49472131df8255764d"
+      }
+    },
+    {
+      "number": 279,
+      "title": "Load analytic terrain fixtures through saved world definitions",
+      "url": "https://github.com/ArcaneArts/Retina/pull/279",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-analytic-fixtures",
+      "mergedAt": "2026-10-27T06:02:10Z",
+      "mergeCommit": {
+        "oid": "64a20d20e557c57729c0ee85c0dbe9e58780f619"
+      }
+    },
+    {
+      "number": 280,
+      "title": "Honor saved density semantics and load compilation diagnostics from retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/280",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-frozen-density",
+      "mergedAt": "2026-10-27T06:42:05Z",
+      "mergeCommit": {
+        "oid": "d9665e8cc8268bb8d56b33099df721b9edf832ef"
+      }
+    },
+    {
+      "number": 281,
+      "title": "Validate embedded NBT numeric widths in saved world definitions",
+      "url": "https://github.com/ArcaneArts/Retina/pull/281",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-nbt-fidelity",
+      "mergedAt": "2026-10-27T06:54:56Z",
+      "mergeCommit": {
+        "oid": "ac56758eebe9428b843fd8ead2a6ee28b5d8803e"
+      }
+    },
+    {
+      "number": 282,
+      "title": "Exercise flat generation through saved definitions and runtime palettes",
+      "url": "https://github.com/ArcaneArts/Retina/pull/282",
+      "state": "MERGED",
+      "headRefName": "codex/world-definition-flat-fixtures",
+      "mergedAt": "2026-10-27T07:02:41Z",
+      "mergeCommit": {
+        "oid": "42b136b1d363da5fa45b158a165e2dc57d35a726"
+      }
+    },
+    {
+      "headRefName": "codex/world-definition-nether-foundations",
+      "mergeCommit": {
+        "oid": "0aaf4094790c755e9b986fda66e06b828b0dc050"
+      },
+      "mergedAt": "2026-10-27T09:32:39Z",
+      "number": 287,
+      "state": "MERGED",
+      "title": "Load Nether component fixtures from definitions and accept valid zero depths",
+      "url": "https://github.com/ArcaneArts/Retina/pull/287"
+    },
+    {
+      "headRefName": "codex/world-definition-parameter-bits",
+      "mergeCommit": {
+        "oid": "c7629a83e29312bbd7e9d47decd3af65003b87f8"
+      },
+      "mergedAt": "2026-10-27T09:50:14Z",
+      "number": 291,
+      "state": "MERGED",
+      "title": "Preserve exact procedural float parameters in retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/291"
+    },
+    {
+      "headRefName": "codex/world-definition-structures",
+      "mergeCommit": {
+        "oid": "bb120ef1e72587cd618af84dd0794b93abcb0ee9"
+      },
+      "mergedAt": "2026-10-27T10:06:05Z",
+      "number": 293,
+      "state": "MERGED",
+      "title": "Generate structure fixtures from retina.dat and prove headless parity",
+      "url": "https://github.com/ArcaneArts/Retina/pull/293"
+    },
+    {
+      "headRefName": "codex/world-definition-interrupted-write",
+      "mergeCommit": {
+        "oid": "6e7c6c6ad6c6fe79737bab58d2de759df71dc571"
+      },
+      "mergedAt": "2026-10-27T10:12:00Z",
+      "number": 294,
+      "state": "MERGED",
+      "title": "Prove recovery after interrupting retina.dat publication",
+      "url": "https://github.com/ArcaneArts/Retina/pull/294"
+    },
+    {
+      "headRefName": "codex/world-definition-nether-generation",
+      "mergeCommit": {
+        "oid": "509e78952ad18d558b53e8adf874394ea800b5a2"
+      },
+      "mergedAt": "2026-10-27T10:27:35Z",
+      "number": 295,
+      "state": "MERGED",
+      "title": "Generate Nether terrain and feature fixtures through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/295"
+    },
+    {
+      "headRefName": "codex/world-definition-nether-structures",
+      "mergeCommit": {
+        "oid": "7eb523052ca7ff957bf38a153c7d38113aa824bb"
+      },
+      "mergedAt": "2026-10-27T11:02:09Z",
+      "number": 297,
+      "state": "MERGED",
+      "title": "Load structure contract fixtures and seed bindings from retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/297"
+    },
+    {
+      "headRefName": "codex/world-definition-structure-families",
+      "mergeCommit": {
+        "oid": "be35af526738624954148353725ccab398d9a88c"
+      },
+      "mergedAt": "2026-10-27T11:15:11Z",
+      "number": 298,
+      "state": "MERGED",
+      "title": "Load structure family and baseline fixtures through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/298"
+    },
+    {
+      "headRefName": "codex/world-definition-end-fixtures",
+      "mergeCommit": {
+        "oid": "1af915b44d8a5e5a4655f45fe3d971203c853c42"
+      },
+      "mergedAt": "2026-10-27T11:26:06Z",
+      "number": 300,
+      "state": "MERGED",
+      "title": "Load End fixtures and region publication through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/300"
+    },
+    {
+      "headRefName": "codex/world-definition-registry-fixtures",
+      "mergeCommit": {
+        "oid": "8ea3c026995ab2963d054e28aa2a9197800c7217"
+      },
+      "mergedAt": "2026-10-27T11:37:16Z",
+      "number": 301,
+      "state": "MERGED",
+      "title": "Load registry program and biome fixtures through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/301"
+    },
+    {
+      "headRefName": "codex/world-definition-feature-fixtures",
+      "mergeCommit": {
+        "oid": "2f1f1d3ae6c2a30d81274a332eb5bbf2a4ccc3d5"
+      },
+      "mergedAt": "2026-10-27T11:47:43Z",
+      "number": 302,
+      "state": "MERGED",
+      "title": "Load geology, feature and sampler fixtures through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/302"
+    },
+    {
+      "headRefName": "codex/world-definition-block-fixtures",
+      "mergeCommit": {
+        "oid": "8715d02ae26973d3c02b38252a7834ee85ae132e"
+      },
+      "mergedAt": "2026-10-27T11:56:42Z",
+      "number": 303,
+      "state": "MERGED",
+      "title": "Load block feature reference fixtures through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/303"
+    },
+    {
+      "headRefName": "codex/world-definition-platform-fixtures",
+      "mergeCommit": {
+        "oid": "2bee723e2431bc6fca7ba40ce7dd3d60ecafdb0a"
+      },
+      "mergedAt": "2026-10-27T12:15:52Z",
+      "number": 304,
+      "state": "MERGED",
+      "title": "Load datapack and registry adapter fixtures through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/304"
+    },
+    {
+      "headRefName": "codex/world-definition-runtime-clients",
+      "mergeCommit": {
+        "oid": "0c57d86580ae6a97db9de4224e9f54eb3be63455"
+      },
+      "mergedAt": "2026-10-27T12:35:16Z",
+      "number": 305,
+      "state": "MERGED",
+      "title": "Load preview and search runtimes through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/305"
+    },
+    {
+      "headRefName": "codex/world-definition-java-retirement",
+      "mergeCommit": {
+        "oid": "81b60d4798aa0df3f93aaecccd9ec44047ef23a2"
+      },
+      "mergedAt": "2026-10-27T12:47:48Z",
+      "number": 306,
+      "state": "MERGED",
+      "title": "Require retina.dat for Java generation and remove profile upload",
+      "url": "https://github.com/ArcaneArts/Retina/pull/306"
+    },
+    {
+      "headRefName": "codex/world-definition-native-inputs",
+      "mergeCommit": {
+        "oid": "46b5a34f007a53ee2b30a44b1f3cc1fc08141d51"
+      },
+      "mergedAt": "2026-10-27T12:57:21Z",
+      "number": 307,
+      "state": "MERGED",
+      "title": "Enforce native generation inputs from retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/307"
+    },
+    {
+      "headRefName": "codex/world-definition-primitive-fixtures",
+      "mergeCommit": {
+        "oid": "299a243b3f19a246782ffda51f43687aba8025de"
+      },
+      "mergedAt": "2026-10-27T13:05:23Z",
+      "number": 308,
+      "state": "MERGED",
+      "title": "Load primitive bridge and MCA fixtures through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/308"
+    },
+    {
+      "headRefName": "codex/world-definition-native-fixtures",
+      "mergeCommit": {
+        "oid": "0ae092cba848adf1f451c2280ee248a1ca02c77e"
+      },
+      "mergedAt": "2026-10-27T13:12:11Z",
+      "number": 309,
+      "state": "MERGED",
+      "title": "Load Rust GPU integration fixtures through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/309"
+    },
+    {
+      "headRefName": "codex/world-definition-interpreter-tool",
+      "mergeCommit": {
+        "oid": "594c8a87ef2e0a34859c9ddfb79b940aebad1371"
+      },
+      "mergedAt": "2026-10-27T13:22:11Z",
+      "number": 310,
+      "state": "MERGED",
+      "title": "Load interpreter reuse proof variants through retina.dat",
+      "url": "https://github.com/ArcaneArts/Retina/pull/310"
+    },
+    {
+      "headRefName": "codex/world-definition-native-retirement",
+      "mergeCommit": {
+        "oid": "391a7ed0c94f99365c205e09999cf9c977eeb8c0"
+      },
+      "mergedAt": "2026-10-27T13:36:07Z",
+      "number": 311,
+      "state": "MERGED",
+      "title": "Retire native JSON registration and require loaded world handles",
+      "url": "https://github.com/ArcaneArts/Retina/pull/311"
+    },
+    {
+      "headRefName": "codex/world-definition-resource-authority",
+      "mergeCommit": {
+        "oid": "5d7ed3cc38d529a9d2d9ff495e6f7fd34072867e"
+      },
+      "mergedAt": "2026-10-27T14:29:04Z",
+      "number": 312,
+      "state": "MERGED",
+      "title": "Prove retina.dat remains authoritative after datapack changes",
+      "url": "https://github.com/ArcaneArts/Retina/pull/312"
+    }
+  ],
+  "verification": {
+    "native_units": {
+      "passed": 351,
+      "failed": 0,
+      "ignored": 82
+    },
+    "production_linked_gpu_tests": {
+      "passed": 3,
+      "failed": 0
+    },
+    "mod_headless_campaign": {
+      "worlds": 9,
+      "complete_decoded_chunk_comparisons": 18432,
+      "failed": 0
+    },
+    "cross_region_structure_campaign": {
+      "regions": 12,
+      "complete_decoded_chunk_comparisons": 12288,
+      "failed": 0
+    },
+    "final_release_cli_recheck": {
+      "complete_decoded_chunk_comparisons": 2048,
+      "failed": 0,
+      "cancellation_exit": 130
+    },
+    "end_combined": {
+      "chunks": 20,
+      "block_differences": 0,
+      "metadata_differences": 0
+    },
+    "end_region_publication": {
+      "regions": 4,
+      "decoded_chunks": 4096
+    },
+    "interpreter_reuse": {
+      "compared_block_ids": 1966080,
+      "complete_columns": 5120
+    },
+    "final_root_check": {
+      "result": "pass",
+      "duration_seconds": 42,
+      "excluded_tasks": [
+        ":buildNative",
+        ":packageNative",
+        ":common:nativeUnitTest"
+      ],
+      "reason": "Already tested release native image reused; this cycle changes QA and documentation only."
+    }
+  },
+  "evidence_root": "/Users/cyberpwn/.cache/retina",
+  "limitations": [
+    "Exact seed-bound snapshots; no seed override or seed-independent catalog.",
+    "Existing Retina generation coverage and recorded omissions/approximations remain.",
+    "GPU required; equality established on the tested Metal backend, not across GPUs.",
+    "CLI produces region data, not level.dat or a fully initialized playable save.",
+    "Runtime platform identities must exist and bind; content-mod block implementations are not made portable by the snapshot.",
+    "Bukkit, CraftBukkit and launch wrappers are outside this delivery.",
+    "Historical deferred End records have a narrow one-time mod support upgrade with original-byte backup; supported saved records are never recompiled."
+  ]
+}
