@@ -164,7 +164,7 @@ separate-process runs even reversed the overall result; do not interpret this
 noisy run as a stable throughput guarantee. The tile A/B establishes the isolated
 lighting gain more clearly.
 
-Export and benchmark fixtures without touching a live save:
+Export into a fresh fixture directory and benchmark without touching a live save:
 
 ```bash
 RETINA_LIGHTING_EXPORT="$PWD/build/lighting-fixtures" ./gradlew lightingTest \
@@ -174,9 +174,16 @@ python3 scripts/lighting-benchmark.py \
   --fixtures build/lighting-fixtures --out build/lighting-ab.json
 ```
 
+Each exported case contains a copied, already loaded `CASE/retina.dat`, raw block
+volume bytes, and a small JSON manifest with the definition path, dimension and
+volume side. Generation/lighting rules are structural NBT, not a JSON profile.
+The Python harness loads the file in each library and uses its saved requests,
+including height and seed.
+
 Use the host's `.so` / `.dll` instead on Linux / Windows. Pass
 `--reference-library=<retained old library>` to additionally enforce byte equality
-with a pre-change build. The script alternates order, reports median/p95 host and
+with a pre-change build that supports this saved-definition format/API. The script
+alternates order, reports median/p95 host and
 hardware timings, and checks every output hash on every iteration. Raw replay
 inputs stay in ignored `build/`; summary results are in
 [`benchmarks/gpu-lighting-sparse.json`](benchmarks/gpu-lighting-sparse.json).

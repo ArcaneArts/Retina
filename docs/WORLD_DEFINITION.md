@@ -636,3 +636,23 @@ Run the Python bridge integration with `RETINA_NATIVE_LIBRARY=LIB` and
 `python3 -m unittest discover -s scripts -p 'test_*.py'`. These tests execute the
 actual Rust decoder/binding and use the GPU; missing optional LZ4 Python packages
 are reported as a skipped decoder test. Rust's headless decoder checks LZ4 too.
+
+### Lighting fixtures
+
+`NativeLightingIntegrationTest` publishes complete saved definitions for each
+lighting-rule/native-geometry variant, then gets its requests from the loaded file.
+The shared test fixture helper can own a temporary definition directory and removes
+it after closing its native handle. Caller-owned definition files remain untouched.
+The MCA lighting tests also get DataVersion from the loaded metadata.
+
+With `RETINA_LIGHTING_EXPORT=FRESH_DIRECTORY`, the test copies the same published
+file alongside each raw block volume. The small JSON manifest names its dimension,
+relative `CASE/retina.dat`, block file and volume side; it carries no generation
+profile or independent seed/height. Repeated boundary cases have distinct names.
+The full-height saved-region path includes all states observed in its block volumes
+and publishes their lighting/type rules the same way.
+
+`scripts/lighting-benchmark.py` uses the common Python world-handle adapter for
+both current/reference libraries, and closes each case after synchronous lighting
+jobs complete. Dense/sparse/reference output comparisons retain their existing
+scope; raw blocks are explicit lighting inputs, while rules come only from the file.

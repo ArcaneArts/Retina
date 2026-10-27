@@ -370,6 +370,8 @@ tasks.register('lightingTest', JavaExec) {
     group = 'verification'
     description = 'Compare GPU lighting with Minecraft and validate mixed lit/unlit MCA regions.'
     dependsOn 'gpuTestClasses', ':packageNative', 'nativeLightingGpuTest'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeLightingIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
