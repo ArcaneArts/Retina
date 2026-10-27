@@ -168,5 +168,5 @@ candidate matches the packaged JAR's native library. SHA-256:
 
 Reproduce with `scripts/native-region-benchmark.py`, `--count 20 --warmups 2`,
 `--parallel 1` / `2`, `--program-execution specialized`,
-`--terrain-execution interpreter`, `--density-composition disabled`, and
+`--terrain-execution interpreter`, a separately compiled false-composition definition, and
 `--compare` against a retained matched-profile output directory.

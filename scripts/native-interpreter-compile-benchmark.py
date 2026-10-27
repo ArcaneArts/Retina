@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compare real first-profile interpreter compilation with fresh shader identities.
 
-Use the release native test executable, an actual exported registry profile and
+Use the release native test executable, a saved world definition and
 a fresh private output directory. No driver caches or live saves are modified.
 """
 import argparse
@@ -29,10 +29,10 @@ def records(path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--test-binary", type=Path, required=True)
-    parser.add_argument("--profile", type=Path, required=True)
+    parser.add_argument("--definition", type=Path, required=True)
+    parser.add_argument("--dimension", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--count", type=int, default=20)
-    parser.add_argument("--density-composition", choices=("enabled", "disabled"), default="disabled")
     parser.add_argument("--program-execution", choices=("interpreter", "auto"), default="interpreter")
     parser.add_argument("--comparison", choices=("dispatch", "preload"), default="dispatch")
     parser.add_argument("--order", choices=("direct-first", "shared-first", "reference-first", "candidate-first"), default="reference-first")
@@ -44,13 +44,13 @@ def main():
     for mode in modes:
         output = args.out / mode
         env = dict(os.environ, RETINA_COMPILE_PROBE="1", RETINA_COMPILE_REUSE="1",
-                   RETINA_DENSITY_COMPOSITION="1" if args.density_composition == "enabled" else "0", RETINA_SPECIALIZED_TERRAIN="0",
+                   RETINA_SPECIALIZED_TERRAIN="0",
                    RETINA_COMPILE_MODE=args.program_execution,
                    RETINA_INTERPRETER_DISPATCH="1" if args.comparison == "preload" or mode == "shared" else "0",
                    RETINA_INTERPRETER_PRELOAD="1" if mode == "preload" else "0",
                    RETINA_GENERIC_PIPELINE_TAG=f"retina-compile-{uuid.uuid4().hex}",
                    RETINA_COMPILE_REGIONS=str(args.count),
-                   RETINA_PROGRAM_PARITY_PROFILE=str(args.profile.resolve()),
+                   RETINA_COMPILE_DEFINITION=str(args.definition.resolve()), RETINA_COMPILE_DIMENSION=args.dimension,
                    RETINA_COMPILE_OUT=str(output.resolve()))
         log = args.out / f"{mode}.log"
         with log.open("w") as stream:
@@ -73,9 +73,9 @@ def main():
             bundles=[call for call in calls if call["phase"] == "bundle"],
             first_program_status=measured["regions"][0]["program_status"],
             last_program_status=measured["regions"][-1]["program_status"],
-            initialize_ms=measured["initialize_ms"], registration_ms=measured["registration_ms"],
+            initialize_ms=measured["initialize_ms"], load_and_bind_ms=measured["load_and_bind_ms"],
             first_region_ms=measured["regions"][0]["ms"],
-            init_to_first_region_ms=measured["initialize_ms"] + measured["registration_ms"] + measured["regions"][0]["ms"],
+            init_to_first_region_ms=measured["initialize_ms"] + measured["load_and_bind_ms"] + measured["regions"][0]["ms"],
             subsequent_mean_ms=statistics.mean(row["ms"] for row in measured["regions"][1:])
                 if args.count > 1 else None,
             bytes=sum(row["bytes"] for row in measured["regions"]),
@@ -89,8 +89,8 @@ def main():
                                         records(args.out / candidate / f"{index}.mca"), strict=True)):
             assert a == b, (index, slot)
             matched += 1
-    result = dict(comparison=args.comparison, profile=str(args.profile.resolve()),
-                  density_composition=args.density_composition, program_execution=args.program_execution,
+    result = dict(comparison=args.comparison, definition=str(args.definition.resolve()), dimension=args.dimension,
+                  density_composition=measured["density_composition"], seed=measured["seed"], data_version=measured["data_version"], program_execution=args.program_execution,
                   modes=reports, identical_nbt_chunks=matched)
     (args.out / "comparison.json").write_text(json.dumps(result, indent=2))
     print(json.dumps(dict(identical_nbt_chunks=matched)), flush=True)

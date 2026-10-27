@@ -164,7 +164,7 @@ nice -n 10 python3 scripts/native-region-benchmark.py \
   --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out /absolute/path/to/fresh-private-output --count 20 --warmups 2 \
   --program-execution specialized --terrain-execution interpreter \
-  --specialized-interpolation enabled --density-composition enabled
+  --specialized-interpolation enabled
 ```
 
 The fresh-identity compiler diagnostic now also supports

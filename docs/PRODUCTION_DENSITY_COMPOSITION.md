@@ -18,10 +18,10 @@ are not regenerated. Constructor overloads used by existing integrations retain
 their false default.
 
 Native profiles without `registry_program.density_composition` also retain their
-legacy semantics. Normal runtime selection now follows that profile flag rather
-than requiring an environment opt-in. `RETINA_DENSITY_COMPOSITION=0` remains a
-benchmark diagnostic disable; setting it to 1 cannot enable a false saved/native
-profile. The explicit native profile flag is the authority.
+legacy semantics. Runtime selection follows the saved profile flag.
+`RETINA_DENSITY_COMPOSITION` no longer overrides it in either direction. Compile
+separate benchmark definitions with `-PbenchmarkDensityComposition=true|false`
+when comparing those generation semantics.
 
 This completes the earlier opt-in [composition development](GPU_DENSITY_COMPOSITION.md).
 It is a fidelity change with a measured throughput cost, rather than a claimed
@@ -171,8 +171,8 @@ nice -n 10 python3 scripts/native-region-benchmark.py \
   --count 20 --warmups 2 --program-execution specialized --parallel 1
 ```
 
-Omitting the composition override exercises normal native selection. False-flag
-profiles exercise legacy compatibility. `--parallel 2` compares concurrent
+A true-flag definition exercises composed evaluation. A separately compiled
+false-flag definition exercises legacy compatibility. `--parallel 2` compares concurrent
 requests; `--compare` performs complete decompressed NBT comparisons.
 
 Fresh generic-entry startup reproduction:
@@ -180,9 +180,9 @@ Fresh generic-entry startup reproduction:
 ```sh
 python3 scripts/native-interpreter-compile-benchmark.py \
   --test-binary build/native-target/release/deps/retina_worldgen-<test-id> \
-  --profile /absolute/path/to/full-profile.json \
+  --definition /absolute/path/retina.dat --dimension minecraft:overworld \
   --out /absolute/path/to/fresh-private-output --count 20 \
-  --comparison preload --density-composition enabled --program-execution auto
+  --comparison preload --program-execution auto
 ```
 
 This records actual generic compile calls, automatic compiler status, first-region
