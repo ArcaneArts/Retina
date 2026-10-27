@@ -45,11 +45,19 @@ palette. Native materialization verifies their actual references, generates the
 192 bands using the existing 48-bit Java RNG semantics and selected world seed,
 and inserts the resulting array before normal definition validation.
 
-The vanilla asset contains `normal` and `normal-no-structures`. Both include
+The vanilla asset contains `normal`, `normal-no-structures`, and `bukkit-api`. All include
 Overworld, Nether and End. They are separately compiled variants: setting a root
 boolean on a structures-enabled profile would leave executable native structure
 data behind. Neither variant enables bonus-chest generation. Other presets,
 options and content mods are not implicitly approximated by this catalog.
+
+`bukkit-api` copies `normal-no-structures` and removes biome selection of
+decoration roots containing scheduled fluid springs. The public API cannot
+publish native tick queues. Recipe IDs, salts, the order of remaining roots,
+and the complete type palette stay intact; the disabled roots are recorded in
+the saved omission reports. This policy runs during catalog export, before
+materialization, and does not rewrite existing snapshots. Other variants and
+mod/native generation retain springs and structure metadata.
 
 The readable `manifest.json` records the source versions, exporter, actual pack
 inventory, variants, omission reports, compressed size and SHA-256. Source data

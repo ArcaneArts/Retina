@@ -69,7 +69,49 @@ final class WorldCatalogCompiler {
             variant.put("seed_derivations", recipes);
             variants.put(enabled ? "normal" : "normal-no-structures", variant);
         }
+        // Choose the API delivery policy before materializing a world. Keep the
+        // full native/mod variants unchanged. Unselected recipes retain their
+        // IDs so every remaining root keeps its original order and salt.
+        var bukkit = variants.getCompoundOrEmpty("normal-no-structures").copy();
+        var dimensions = bukkit.getCompoundOrEmpty("template").getCompoundOrEmpty("dimensions");
+        for (String key : dimensions.keySet()) {
+            var profile = dimensions.getCompoundOrEmpty(key).getCompoundOrEmpty("profile");
+            var recipes = profile.getListOrEmpty("decorations");
+            var removed = new java.util.HashSet<Integer>();
+            var omissions = profile.getListOrEmpty("decoration_omissions");
+            for (int i = 0; i < recipes.size(); i++) {
+                var recipe = ((CompoundTag) recipes.get(i)).getCompoundOrEmpty("v");
+                if (requiresScheduledTick(recipe)) {
+                    removed.add(i);
+                    omissions.add(StringTag.valueOf("bukkit-api:scheduled-spring-root:" + recipe.getStringOr("source", "unknown")));
+                }
+            }
+            profile.put("decoration_omissions", omissions);
+            for (var raw : profile.getListOrEmpty("biomes")) {
+                var biome = ((CompoundTag) raw).getCompoundOrEmpty("v");
+                Tag selected = biome.get("decorations");
+                int[] ids;
+                if (selected instanceof ByteArrayTag bytes) {
+                    byte[] values = bytes.getAsByteArray(); ids = new int[values.length];
+                    for (int i = 0; i < values.length; i++) ids[i] = Byte.toUnsignedInt(values[i]);
+                } else if (selected instanceof IntArrayTag ints) ids = ints.getAsIntArray();
+                else if (selected instanceof ListTag list && list.isEmpty()) ids = new int[0];
+                else throw new IllegalArgumentException("Unknown decoration selection representation in " + key);
+                biome.putIntArray("decorations", java.util.Arrays.stream(ids).filter(id -> !removed.contains(id)).toArray());
+            }
+        }
+        variants.put("bukkit-api", bukkit);
         catalog.put("variants", variants);
         return catalog;
+    }
+
+    private static boolean requiresScheduledTick(Tag value) {
+        if (value instanceof CompoundTag compound) {
+            if (compound.getStringOr("kind", "").equals("spring")) return true;
+            for (String key : compound.keySet()) if (requiresScheduledTick(compound.get(key))) return true;
+        } else if (value instanceof ListTag list) {
+            for (Tag child : list) if (requiresScheduledTick(child)) return true;
+        }
+        return false;
     }
 }

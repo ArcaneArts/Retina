@@ -1,0 +1,65 @@
+plugins {
+    id 'java-library'
+    id 'com.gradleup.shadow' version '9.6.1'
+}
+apply from: rootProject.file('gradle/java-toolchain.gradle')
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+}
+dependencies {
+    compileOnly "org.spigotmc:spigot-api:${bukkit_api_version}"
+    implementation project(':core')
+    implementation 'com.google.code.gson:gson:2.15.0'
+    implementation 'net.kyori:adventure-nbt:5.2.0'
+    testImplementation "org.spigotmc:spigot-api:${bukkit_api_version}"
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+base { archivesName = "retina-bukkit-${minecraft_version}" }
+processResources {
+    def metadata = [version: project.version, minecraft_version: minecraft_version]
+    inputs.properties(metadata)
+    filesMatching('plugin.yml') { expand(metadata) }
+    from rootProject.tasks.named('packageNative')
+    from(rootProject.file("assets/world-definitions/${minecraft_version}/vanilla")) {
+        into "catalogs/${minecraft_version}"
+    }
+}
+tasks.named('jar') { enabled = false }
+tasks.named('shadowJar') {
+    archiveClassifier = ''
+    relocate 'com.google.gson', 'art.arcane.retina.internal.gson'
+    relocate 'net.kyori', 'art.arcane.retina.internal.kyori'
+    from rootProject.tasks.named('packageCrossNatives')
+    from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
+    manifest { attributes('Implementation-Version': project.version) }
+    mergeServiceFiles()
+}
+tasks.named('assemble') { dependsOn 'shadowJar' }
+sourceSets {
+    serverTest {
+        compileClasspath += configurations.compileClasspath
+    }
+}
+tasks.named('processServerTestResources') {
+    def metadata = [minecraft_version: minecraft_version]
+    inputs.properties(metadata)
+    filesMatching('plugin.yml') { expand(metadata) }
+}
+tasks.register('serverProbeJar', Jar) {
+    group = 'verification'
+    description = 'Build a disposable public-API observer plugin for actual server verification.'
+    archiveBaseName = 'retina-bukkit-probe'
+    archiveClassifier = 'server-test'
+    from sourceSets.serverTest.output
+}
+test {
+    useJUnitPlatform()
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    systemProperty 'retina.test.catalog', rootProject.file("assets/world-definitions/${minecraft_version}/vanilla/retina-catalog.dat").absolutePath
+}

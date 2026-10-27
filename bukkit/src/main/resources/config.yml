@@ -1,0 +1,20 @@
+# New definitions use vanilla rules with structures and scheduled spring roots disabled.
+# Structure starts/references and raw chunk tick queues have no public Bukkit API.
+catalog-variant: bukkit-api
+chunk-cache: 64
+biome-cache: 256
+concurrent-loaders: 4
+# Explicit opt-in for imported snapshots whose metadata cannot be delivered.
+# Unsupported metadata is reported and omitted; saved generation rules never change.
+allow-metadata-loss: false
+# The server.properties level-name and its two standard dimensions are grouped
+# automatically on first startup and saved in plugins/Retina/worlds.yml.
+# Override/add mappings here. Other selected worlds own their own complete file.
+# worlds:
+#   - world: adventure
+#     root: adventure
+#     dimension: minecraft:overworld
+#   - world: adventure_hell
+#     root: adventure
+#     dimension: minecraft:the_nether
+worlds: []
