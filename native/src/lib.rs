@@ -186,7 +186,7 @@ impl TerrainEngine {
         column: u32,
         output: &mut [u16],
     ) -> Result<(), String> {
-        request.validate()?;
+        self.validate_request(&request)?;
         if column >= 256 || output.len() != request.height as usize {
             return Err("invalid base column buffer".into());
         }
@@ -375,7 +375,7 @@ impl TerrainEngine {
         request: ChunkRequest,
         points: &[[i32; 4]],
     ) -> Result<Vec<i32>, String> {
-        request.validate()?;
+        self.validate_request(&request)?;
         let profile = self
             .profile(request.reserved)?
             .ok_or("count queries require a registered profile")?;
@@ -404,7 +404,7 @@ impl TerrainEngine {
         points: &[[i32; 4]],
         job: Option<&timings::Timings>,
     ) -> Result<Vec<f32>, String> {
-        request.validate()?;
+        self.validate_request(&request)?;
         let profile = self
             .profile(request.reserved)?
             .ok_or("provider noise requires a registered profile")?;
@@ -504,6 +504,7 @@ impl TerrainEngine {
         mut details: Option<&mut decoration::diagnostics::Planning>,
         retain_prefix: bool,
     ) -> Result<Vec<Vec<decoration::Placement>>, String> {
+        self.validate_request(&request)?;
         if profile.decoration_source_order {
             return decoration::dependencies::plan(
                 self,
@@ -672,8 +673,9 @@ impl TerrainEngine {
         compression: region::codec::Compression,
         data_version: i32,
         storage: world_definition::wire::Bounds,
+        inputs: world_definition::residency::GenerationInputs,
     ) -> Result<u32, String> {
-        self.profiles.write().map_err(|_| "profile lock poisoned")?.world(profile, compression, data_version, storage)
+        self.profiles.write().map_err(|_| "profile lock poisoned")?.world(profile, compression, data_version, storage, inputs)
     }
 
     pub fn profile(&self, id: u32) -> Result<Option<Arc<WorldProfile>>, String> {
@@ -691,6 +693,12 @@ impl TerrainEngine {
 
     pub(crate) fn profile_storage_bounds(&self,id:u32) -> Result<Option<world_definition::wire::Bounds>,String> {
         self.profiles.read().map_err(|_| "profile lock poisoned")?.storage_bounds(id)
+    }
+
+    /// Validate the actual resident file inputs before caches, planning or GPU dispatch.
+    pub(crate) fn validate_request(&self, request: &ChunkRequest) -> Result<(), String> {
+        request.validate()?;
+        self.profiles.read().map_err(|_| "profile lock poisoned")?.validate_request(request)
     }
 
     pub fn sample_heights(&self, request: ChunkRequest) -> Result<[i32; COLUMNS], String> {
@@ -724,7 +732,7 @@ impl TerrainEngine {
             return Err("invalid biome query batch".into());
         }
         for r in requests {
-            r.validate()?;
+            self.validate_request(&r)?;
             if r.reserved != requests[0].reserved {
                 return Err("biome query profiles must match".into());
             }
@@ -794,7 +802,7 @@ impl TerrainEngine {
             return Err("GPU batch must contain 1 to 1024 chunks".into());
         }
         for request in requests {
-            request.validate()?;
+            self.validate_request(&request)?;
             if request.reserved != requests[0].reserved {
                 return Err("GPU batch profiles must match".into());
             }
@@ -867,7 +875,7 @@ impl TerrainEngine {
             })
             .collect::<Result<_, String>>()?;
         for request in &requests {
-            request.validate()?;
+            self.validate_request(&request)?;
         }
         if let Some(p) = self.profile(requests[0].reserved)? {
             if let Some(flat) = &p.flat {
@@ -943,7 +951,7 @@ impl TerrainEngine {
                         .ok_or("height tile Z overflows")?,
                     ..request
                 };
-                r.validate()?;
+                self.validate_request(&r)?;
                 Ok(r)
             })
             .collect::<Result<_, String>>()?;
@@ -1061,7 +1069,7 @@ impl TerrainEngine {
         if !(1..=32).contains(&side) {
             return Err("terrain side must be 1..32".into());
         }
-        request.validate()?;
+        self.validate_request(&request)?;
         let profile = self.profile(request.reserved)?;
         if profile.as_deref().is_some_and(|p| p.flat.is_some()) {
             return Ok((self.decoration_field(request, side)?, None));
@@ -1376,7 +1384,7 @@ impl TerrainEngine {
         request: ChunkRequest,
         blocks: &mut [u16],
     ) -> Result<[Column; COLUMNS], String> {
-        request.validate()?;
+        self.validate_request(&request)?;
         if blocks.len() != request.block_count() {
             return Err("incorrect block buffer length".into());
         }
@@ -1487,7 +1495,7 @@ impl TerrainEngine {
 
 impl TerrainEngine {
     pub fn structure_starts(&self, request: ChunkRequest) -> Result<Vec<u8>, String> {
-        request.validate()?;
+        self.validate_request(&request)?;
         let plans = structures::plans(self, request, 1)?;
         let root = if let Some(profile) = self.profile(request.reserved)? {
             structures::start_data(request, &profile, &plans)
@@ -1497,7 +1505,7 @@ impl TerrainEngine {
         Ok(nbt::root(&root))
     }
     pub fn structure_data(&self, request: ChunkRequest) -> Result<Vec<u8>, String> {
-        request.validate()?;
+        self.validate_request(&request)?;
         if let Some(data) = self
             .structures
             .lock()
@@ -1847,7 +1855,7 @@ pub unsafe extern "C" fn retina_light_volume(
             return Err("null lighting volume".into());
         }
         let request = unsafe { *request };
-        request.validate()?;
+        shared_engine()?.validate_request(&request)?;
         if chunks == 0
             || chunks > 12
             || count != chunks as u64 * chunks as u64 * request.height as u64 * 256
@@ -2012,7 +2020,7 @@ unsafe fn sample_decoration_feature(
             return Err("null registered feature buffer".into());
         }
         let request = unsafe { *request };
-        request.validate()?;
+        shared_engine()?.validate_request(&request)?;
         let engine = shared_engine()?;
         let profile = engine
             .profile(request.reserved)?
@@ -2073,7 +2081,7 @@ pub unsafe extern "C" fn retina_sample_decoration_placement(
             return Err("null registered placement buffer".into());
         }
         let request = unsafe { *request };
-        request.validate()?;
+        shared_engine()?.validate_request(&request)?;
         let engine = shared_engine()?;
         let profile = engine
             .profile(request.reserved)?
@@ -2114,7 +2122,7 @@ pub unsafe extern "C" fn retina_sample_biomes_u16(
             return Err("null biome buffer".into());
         }
         let r = unsafe { *request };
-        r.validate()?;
+        shared_engine()?.validate_request(&r)?;
         if r.height % 4 != 0 || r.min_y.rem_euclid(4) != 0 {
             return Err("biome queries require quart-aligned vertical bounds".into());
         }
@@ -2151,7 +2159,7 @@ pub unsafe extern "C" fn retina_generate_chunk_columns_u16(
             return Err("null chunk buffer".into());
         }
         let request = unsafe { *request };
-        request.validate()?;
+        shared_engine()?.validate_request(&request)?;
         if capacity != request.block_count() as u64 {
             return Err("incorrect native chunk buffer capacity".into());
         }
@@ -2200,7 +2208,7 @@ pub unsafe extern "C" fn retina_generate_chunk_u16(
             return Err("null native buffer".into());
         }
         let request = unsafe { *request };
-        request.validate()?;
+        shared_engine()?.validate_request(&request)?;
         if capacity != request.block_count() as u64 {
             return Err("incorrect native chunk buffer capacity".into());
         }

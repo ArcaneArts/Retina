@@ -55,6 +55,7 @@ impl WorldSession {
                 compression,
                 definition.data_version(),
                 dimension.parameters().storage_bounds(),
+                super::residency::GenerationInputs::new(definition.seed() as u64, dimension.parameters()),
             )?;
             dimensions.insert(key.clone(), id);
             profiles.push(profile);

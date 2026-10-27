@@ -68,6 +68,7 @@ public final class WorldDefinitionBindingTest {
                             require(generator.getSeaLevel() == -64, "primitive sea level preserved");
                             for (short biome : NativeTerrain.instance().sampleBiomes(request)) require(biome == 0, "fixed 3D biome samples");
                         }
+                        if (fixture.equals("vanilla") && key.equals(Level.OVERWORLD)) nativeInputAuthority(generator.request(-33,-65));
                         generator.bindWorld(PalettedContainerFactory.create(registry));
                         try { require(generator.queries().biomes(List.of(new BlockPos(-17, 32, -65))).size() == 1, "native saved biome query"); }
                         finally { generator.closePreviews(); }
@@ -99,5 +100,45 @@ public final class WorldDefinitionBindingTest {
         }
         System.out.println("QA_EVT {\"event\":\"saved_definition_binding\",\"status\":\"pass\",\"generation_registries\":false}");
     }
+    private static void nativeInputAuthority(TerrainRequest request) throws Exception {
+        var nativeTerrain = NativeTerrain.instance();
+        var expected = nativeTerrain.sampleColumns(request).heights(); // Warm caches before the rejected calls.
+        var mutations = List.of(
+                new TerrainRequest(request.seed() ^ (1L<<48),request.chunkX(),request.chunkZ(),request.minY(),request.height(),request.baseHeight(),request.amplitude(),request.frequency(),request.profile()),
+                new TerrainRequest(request.seed(),request.chunkX(),request.chunkZ(),request.minY()+16,request.height(),request.baseHeight(),request.amplitude(),request.frequency(),request.profile()),
+                new TerrainRequest(request.seed(),request.chunkX(),request.chunkZ(),request.minY(),request.height()-16,request.baseHeight(),request.amplitude(),request.frequency(),request.profile()),
+                new TerrainRequest(request.seed(),request.chunkX(),request.chunkZ(),request.minY(),request.height(),Math.nextUp(request.baseHeight()),request.amplitude(),request.frequency(),request.profile()),
+                new TerrainRequest(request.seed(),request.chunkX(),request.chunkZ(),request.minY(),request.height(),request.baseHeight(),Math.nextUp(request.amplitude()),request.frequency(),request.profile()),
+                new TerrainRequest(request.seed(),request.chunkX(),request.chunkZ(),request.minY(),request.height(),request.baseHeight(),request.amplitude(),Math.nextUp(request.frequency()),request.profile()));
+        var fields = List.of("seed","min_y","height","base_height","amplitude","frequency");
+        for (int i=0;i<mutations.size();i++) {
+            var changed=mutations.get(i);
+            rejectsSavedInput(() -> nativeTerrain.sampleColumns(changed),fields.get(i));
+        }
+        var changed=mutations.getFirst();
+        rejectsSavedInput(() -> nativeTerrain.sampleHeights(changed),"seed");
+        rejectsSavedInput(() -> nativeTerrain.sampleBiomes(changed),"seed");
+        rejectsSavedInput(() -> nativeTerrain.queryPoints(changed,new int[]{-17,32,-65},false),"seed");
+        rejectsSavedInput(() -> nativeTerrain.queryStructureStarts(changed,new int[]{-33,-65,0}),"seed");
+        rejectsSavedInput(() -> { try(var ignored=nativeTerrain.generate(changed)) {} },"seed");
+        rejectsSavedInput(() -> nativeTerrain.column(changed,0),"seed");
+        rejectsSavedInput(() -> nativeTerrain.structureStarts(changed),"seed");
+        rejectsSavedInput(() -> nativeTerrain.structureData(changed),"seed");
+        Path output=Files.createTempDirectory("retina-rejected-region-");
+        try {
+            rejectsSavedInput(() -> nativeTerrain.generateRegion(changed,output.resolve("r.-2.-3.mca"),1,"minecraft:plains"),"seed");
+            try(var files=Files.list(output)) { require(files.findAny().isEmpty(),"rejected identity publishes no output"); }
+        } finally {Files.delete(output);}
+        require(Arrays.equals(expected,nativeTerrain.sampleColumns(request).heights()),"failed override leaves saved generation intact");
+        System.out.println("QA_EVT {\"event\":\"native_saved_input_authority\",\"status\":\"pass\",\"fields\":6,\"rejected_calls\":15,\"warm_cache\":true}");
+    }
+
+    private static void rejectsSavedInput(Runnable call,String field) {
+        try {call.run();throw new AssertionError("Native call accepted changed saved "+field);}
+        catch(IllegalStateException expected) {
+            require(expected.getMessage().contains(field+" differs from retina.dat"),"concrete native input error: "+expected);
+        }
+    }
+
     private static void require(boolean value, String label) { if (!value) throw new AssertionError(label); }
 }
