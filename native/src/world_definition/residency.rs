@@ -13,6 +13,7 @@ struct Entry {
     owner: Owner,
     compression: Compression,
     data_version: Option<i32>,
+    storage: Option<super::wire::Bounds>,
 }
 
 enum Owner {
@@ -47,6 +48,7 @@ impl Profiles {
         self.insert(Entry {
             compression: profile.mca_compression,
             data_version: None,
+            storage: None,
             owner: Owner::Legacy(profile),
         })
     }
@@ -56,11 +58,13 @@ impl Profiles {
         profile: &Arc<WorldProfile>,
         compression: Compression,
         data_version: i32,
+        storage: super::wire::Bounds,
     ) -> Result<u32, String> {
         self.insert(Entry {
             owner: Owner::World(Arc::downgrade(profile)),
             compression,
             data_version: Some(data_version),
+            storage: Some(storage),
         })
     }
 
@@ -104,5 +108,14 @@ impl Profiles {
         let entry = self.entry(id)?;
         entry.profile()?;
         Ok(entry.data_version)
+    }
+
+    pub fn storage_bounds(&self, id: u32) -> Result<Option<super::wire::Bounds>, String> {
+        if id == 0 {
+            return Ok(None);
+        }
+        let entry = self.entry(id)?;
+        entry.profile()?;
+        Ok(entry.storage)
     }
 }

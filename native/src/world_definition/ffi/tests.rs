@@ -290,3 +290,114 @@ fn region_chunk(region: &[u8], slot: usize) -> fastnbt::Value {
         .unwrap();
     fastnbt::from_bytes(&nbt).unwrap()
 }
+
+#[test]
+#[ignore = "requires Java procedural definition fixtures and a real compute device"]
+fn saved_procedural_dimensions_match_the_original_kernel() {
+    let root = PathBuf::from(std::env::var("RETINA_WORLD_DEFINITION_FIXTURES").unwrap());
+    let definition = Arc::new(WorldDefinition::read(root.join("procedural/retina.dat")).unwrap());
+    let engine = Arc::new(crate::TerrainEngine::new().unwrap());
+    let session = WorldSession::bind(engine.clone(), definition.clone(), Compression::Zlib).unwrap();
+    let directory = temporary();
+    for key in ["minecraft:overworld", "minecraft:the_nether"] {
+        let lease = session.dimension(key).unwrap();
+        let saved = lease.request(-64,32).unwrap();
+        let original = ChunkRequest { reserved:0, ..saved };
+        let mut actual = vec![0; saved.block_count()];
+        let mut expected = actual.clone();
+        assert_eq!(engine.generate_into(saved,&mut actual).unwrap(), engine.generate_into(original,&mut expected).unwrap());
+        assert_eq!(actual,expected);
+        assert!(engine.profile(lease.profile_id()).unwrap().is_none(), "explicit procedural dispatch");
+        let biome = &definition.dimension(key).unwrap().profile().unwrap().biomes[0].id;
+        let label = key.replace(':',"_");
+        let path = directory.join(format!("{label}-saved.mca"));
+        let baseline = directory.join(format!("{label}-original.mca"));
+        lease.generate_region(-2,1,&path).unwrap();
+        crate::region::generate_region(&engine,original,&baseline,definition.data_version(),biome).unwrap();
+        let actual = std::fs::read(path).unwrap();
+        let expected = std::fs::read(baseline).unwrap();
+        for slot in 0..1024 {
+            assert!(region_chunk(&actual,slot)==region_chunk(&expected,slot), "{key}: procedural NBT mismatch at {slot}");
+        }
+        println!("QA_EVT {{\"event\":\"saved_procedural_parity\",\"dimension\":\"{key}\",\"chunks\":1024}}");
+    }
+    drop(session);
+    assert!(engine.profile(1).unwrap().is_none()); // Definition still owns its palette.
+    drop(definition);
+    assert!(engine.profile(1).is_err());
+    std::fs::remove_dir_all(directory).unwrap();
+}
+
+#[test]
+#[ignore = "requires cropped Java definition fixtures and a real compute device"]
+fn cropped_native_ranges_preserve_generation_and_encode_dimension_storage() {
+    let root=PathBuf::from(std::env::var("RETINA_WORLD_DEFINITION_FIXTURES").unwrap());
+    let engine=Arc::new(crate::TerrainEngine::new().unwrap());
+    let directory=temporary();
+    for case in ["cropped","cropped_registry"] {
+        let definition=Arc::new(WorldDefinition::read(root.join(case).join("retina.dat")).unwrap());
+        let session=WorldSession::bind(engine.clone(),definition.clone(),Compression::Zlib).unwrap();
+        let lease=session.dimension("minecraft:overworld").unwrap();
+        let request=lease.request(-64,32).unwrap();
+        assert_eq!((request.min_y,request.height),(0,64));
+        let baseline_id=if case=="cropped" { 0 } else {
+            engine.register_profile(&std::fs::read(root.join(case).join("expected-minecraft_overworld.json")).unwrap()).unwrap()
+        };
+        let original=ChunkRequest { reserved:baseline_id,..request };
+        let mut actual=vec![0;request.block_count()];
+        let mut expected=actual.clone();
+        assert_eq!(engine.generate_into(request,&mut actual).unwrap(),engine.generate_into(original,&mut expected).unwrap());
+        assert_eq!(actual,expected,"{case}: native generation changed");
+        let stored=directory.join(format!("{case}-stored.mca"));
+        let baseline=directory.join(format!("{case}-original.mca"));
+        let biome=&definition.dimension("minecraft:overworld").unwrap().profile().unwrap().biomes[0].id;
+        lease.generate_region(-2,1,&stored).unwrap();
+        crate::region::generate_region(&engine,original,&baseline,definition.data_version(),biome).unwrap();
+        let stored=std::fs::read(stored).unwrap(); let original=std::fs::read(baseline).unwrap();
+        for slot in 0..1024 {
+            let fastnbt::Value::Compound(new)=region_chunk(&stored,slot) else {panic!()};
+            let fastnbt::Value::Compound(old)=region_chunk(&original,slot) else {panic!()};
+            assert_eq!(new["yPos"],fastnbt::Value::Int(-4));
+            let fastnbt::Value::List(sections)=&new["sections"] else {panic!()};
+            assert_eq!(sections.iter().filter(|section|matches!(section,fastnbt::Value::Compound(fields) if fields.contains_key("block_states"))).count(),24);
+            for section in sections {
+                let fastnbt::Value::Compound(section)=section else {panic!()};
+                let fastnbt::Value::Byte(y)=section["Y"] else {panic!()};
+                if !(0..4).contains(&y) {
+                    if let Some(fastnbt::Value::Compound(states))=section.get("block_states") {
+                        let fastnbt::Value::List(palette)=&states["palette"] else {panic!()};
+                        assert_eq!(palette.len(),1,"{case}/{slot}/{y}: padding is not air");
+                        let id=match &palette[0] {fastnbt::Value::String(id)=>id,
+                            fastnbt::Value::Compound(fields)=>match &fields["id"] {fastnbt::Value::String(id)=>id,_=>panic!()},_=>panic!()};
+                        assert_eq!(id,"minecraft:air");
+                    }
+                } else {
+                    let fastnbt::Value::List(old_sections)=&old["sections"] else {panic!()};
+                    let old_section=old_sections.iter().find_map(|value|match value {
+                        fastnbt::Value::Compound(fields) if fields.get("Y")==Some(&fastnbt::Value::Byte(y))=>Some(fields),_=>None}).unwrap();
+                    for key in ["block_states","biomes","SkyLight","BlockLight"] {
+                        assert!(section.get(key)==old_section.get(key),"{case}/{slot}/{y}: {key} changed");
+                    }
+                }
+            }
+            let fastnbt::Value::Compound(new_maps)=&new["Heightmaps"] else {panic!()};
+            let fastnbt::Value::Compound(old_maps)=&old["Heightmaps"] else {panic!()};
+            for (name,values) in new_maps {
+                let fastnbt::Value::LongArray(values)=values else {panic!()};
+                let fastnbt::Value::LongArray(old_values)=&old_maps[name] else {panic!()};
+                for i in 0..256 {
+                    let new=(values[i/7] as u64>>((i%7)*9))&511;
+                    let old=(old_values[i/9] as u64>>((i%9)*7))&127;
+                    assert_eq!(new,if old==0 {0}else{old+64},"{case}/{slot}/{name}/{i}: world height changed");
+                }
+            }
+            for (key,value) in &old {
+                if !matches!(key.as_str(),"sections"|"Heightmaps"|"yPos") {
+                    assert!(new.get(key)==Some(value),"{case}/{slot}: metadata {key} changed");
+                }
+            }
+        }
+        println!("QA_EVT {{\"event\":\"cropped_storage_parity\",\"case\":\"{case}\",\"chunks\":1024}}");
+    }
+    std::fs::remove_dir_all(directory).unwrap();
+}

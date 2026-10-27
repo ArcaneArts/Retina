@@ -87,7 +87,7 @@ fn executable_help_usage_and_real_definition_errors() {
     let mut document = unsupported();
     for (version, dimension, expected) in [
         (
-            2,
+            3,
             "minecraft:overworld",
             "unsupported world definition format",
         ),
@@ -133,6 +133,7 @@ fn unsupported() -> wire::Document {
             wire::Dimension {
                 parameters: wire::Parameters {
                     generator: "test".into(),
+                    storage: None,
                     min_y: 0,
                     height: 64,
                     generator_depth: 64,

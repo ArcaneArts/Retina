@@ -36,7 +36,7 @@ public final class WorldDefinitionBindingTest {
                     return registry.lookup(key).map(value -> value);
                 }
             };
-            for (String fixture : List.of("vanilla", "flat", "legacy")) {
+            for (String fixture : List.of("vanilla", "flat", "legacy", "procedural", "cropped", "cropped_registry")) {
                 try (var world = new WorldDefinitionContext(NativeWorldDefinition.open(fixtures.resolve(fixture).resolve("retina.dat")))) {
                     for (var key : List.of(Level.OVERWORLD, Level.NETHER)) {
                         var dimension = world.dimension(key);
@@ -46,10 +46,27 @@ public final class WorldDefinitionBindingTest {
                         require(generator.profile().savedDefinition() == dimension, "saved profile binding");
                         require(generator.getMinY() == dimension.parameters().get("min_y").getAsInt(), "saved minimum");
                         require(generator.getGenDepth() == dimension.parameters().get("generator_depth").getAsInt(), "saved depth");
+                        if (fixture.startsWith("cropped") && key.equals(Level.OVERWORLD)) {
+                            require(generator.getMinY() == 0 && generator.request(123,0,0).height() == 64
+                                    && generator.mode().equals("chunk"), "cropped native geometry and execution");
+                            var type=registry.lookupOrThrow(Registries.DIMENSION_TYPE).getOrThrow(BuiltinDimensionTypes.OVERWORLD).value();
+                            dimension.bindDimensionType(type);
+                            require(dimension.storageBounds().get("min_y").getAsInt() == -64
+                                    && dimension.storageBounds().get("height").getAsInt() == 384,"independent storage geometry");
+                        }
                         if (fixture.equals("legacy") && key.equals(Level.OVERWORLD)) {
                             var request = generator.request(123, 0, 0);
                             require(request.baseHeight() == 87.5F && request.amplitude() == 42.25F
                                     && request.frequency() == .003F, "legacy procedural parameters");
+                        }
+                        if (fixture.equals("procedural") && key.equals(Level.OVERWORLD)) {
+                            require(generator.profile().biomes().size() == 1 && generator.profile().biomes().getFirst()
+                                    .is(net.minecraft.world.level.biome.Biomes.FOREST), "saved fixed biome");
+                            var request = generator.request(123, 0, 0);
+                            require(request.baseHeight() == 37.5F && request.amplitude() == 19.25F
+                                    && request.frequency() == .0041F && request.minY() == -64, "saved primitive parameters");
+                            require(generator.getSeaLevel() == -64, "primitive sea level preserved");
+                            for (short biome : NativeTerrain.instance().sampleBiomes(request)) require(biome == 0, "fixed 3D biome samples");
                         }
                         generator.bindWorld(bindingOnly, 123, PalettedContainerFactory.create(registry), StructureProfile.Context.NONE);
                         try { require(generator.queries().biomes(List.of(new BlockPos(-17, 32, -65))).size() == 1, "native saved biome query"); }

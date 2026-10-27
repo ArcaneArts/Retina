@@ -46,12 +46,26 @@ public final class WorldDefinitionContext implements AutoCloseable {
         private Dimension(String key, JsonObject data) { this.key = key; this.data = data; }
         public String key() { return key; }
         public JsonObject parameters() { return data.getAsJsonObject("parameters").deepCopy(); }
+        JsonObject storageBounds() {
+            var p = parameters();
+            return p.has("storage") && !p.get("storage").isJsonNull() ? p.getAsJsonObject("storage") : p;
+        }
+        boolean matchesStorageBounds() {
+            var p = parameters(); var storage = storageBounds();
+            return p.get("min_y").getAsInt() == storage.get("min_y").getAsInt()
+                    && p.get("height").getAsInt() == storage.get("height").getAsInt();
+        }
         public String unsupportedReason() { return data.has("unsupported_reason") ? data.get("unsupported_reason").getAsString() : null; }
         long seed() { return WorldDefinitionContext.this.seed(); }
         int dataVersion() { return WorldDefinitionContext.this.dataVersion(); }
         boolean structures() { return WorldDefinitionContext.this.structures(); }
         TerrainRequest request(int x, int z) { return nativeWorld.request(key, x, z); }
         String diagnosticProfile() { return nativeWorld.diagnosticProfile(key); }
+        net.minecraft.nbt.CompoundTag chunk(int x,int z) {
+            try (var input=new java.io.DataInputStream(new java.io.ByteArrayInputStream(nativeWorld.chunk(key,x,z)))) {
+                return net.minecraft.nbt.NbtIo.read(input,net.minecraft.nbt.NbtAccounter.unlimitedHeap());
+            } catch (java.io.IOException error) { throw new java.io.UncheckedIOException(error); }
+        }
 
         List<Holder<Biome>> biomes(HolderLookup.Provider registry) {
             var shared = metadata.getAsJsonObject("shared_types").getAsJsonArray("biomes");
@@ -76,10 +90,11 @@ public final class WorldDefinitionContext implements AutoCloseable {
 
         void bindDimensionType(DimensionType type) {
             var p = parameters();
-            if (p.get("min_y").getAsInt() != type.minY() || p.get("height").getAsInt() != type.height()
+            var storage = storageBounds();
+            if (storage.get("min_y").getAsInt() != type.minY() || storage.get("height").getAsInt() != type.height()
                     || p.get("skylight").getAsBoolean() != type.hasSkyLight())
                 throw new IllegalArgumentException("Saved Retina bounds/skylight cannot be installed in dimension " + key
-                        + " (saved " + p.get("min_y") + "/" + p.get("height") + "/" + p.get("skylight")
+                        + " (saved " + storage.get("min_y") + "/" + storage.get("height") + "/" + p.get("skylight")
                         + ", platform " + type.minY() + "/" + type.height() + "/" + type.hasSkyLight() + ")");
         }
     }

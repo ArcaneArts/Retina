@@ -3,6 +3,16 @@ use bytemuck::{Pod, Zeroable};
 use serde::Deserialize;
 use serde_json::Value;
 
+mod procedural;
+
+#[derive(Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TerrainKind {
+    #[default]
+    Registry,
+    Procedural,
+}
+
 #[derive(Clone, Deserialize)]
 pub struct BiomeProfile {
     #[serde(default)]
@@ -56,6 +66,8 @@ pub struct ClimateTarget {
 
 #[derive(Clone, Deserialize)]
 pub struct WorldProfile {
+    #[serde(default)]
+    pub terrain_kind: TerrainKind,
     #[serde(default)]
     pub mca_compression: crate::region::codec::Compression,
     #[serde(default)]
@@ -140,13 +152,20 @@ impl WorldProfile {
     pub fn parse(json: &[u8]) -> Result<Self, String> {
         let profile: Self =
             serde_json::from_slice(json).map_err(|e| format!("world profile: {e}"))?;
+        if profile.terrain_kind == TerrainKind::Procedural {
+            return Err("procedural terrain requires the world-definition loader".into());
+        }
         Self::initialize(profile, json.to_vec())
     }
 
     /// The NBT loader supplies decoded values directly. There is no JSON text
     /// serialization or second set of generation validation/initialization rules.
     pub(crate) fn from_definition(value: Value, identity: Vec<u8>) -> Result<Self, String> {
-        let profile = serde_json::from_value(value).map_err(|e| format!("world profile: {e}"))?;
+        let profile = if value.get("terrain_kind").and_then(Value::as_str) == Some("procedural") {
+            procedural::decode(value)?
+        } else {
+            serde_json::from_value(value).map_err(|e| format!("world profile: {e}"))?
+        };
         Self::initialize(profile, identity)
     }
 

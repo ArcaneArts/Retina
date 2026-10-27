@@ -194,6 +194,19 @@ pub unsafe extern "C" fn retina_world_dimension_request(
 /// # Safety
 /// key is length readable UTF-8 bytes; output and size are writable. Free with retina_free_bytes.
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_world_dimension_chunk(
+    handle:u64,key:*const u8,length:u64,x:i32,z:i32,output:*mut *mut u8,size:*mut u64,
+) -> i32 {
+    boundary(|| {
+        let owner=world(handle)?;
+        let dimension=owner.session()?.dimension(unsafe { text(key,length) }?)?;
+        unsafe { bytes(dimension.generate_chunk(x,z)?,output,size) }
+    })
+}
+
+/// # Safety
+/// key is length readable UTF-8 bytes; output and size are writable. Free with retina_free_bytes.
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_world_definition_profile_json(
     handle: u64,
     key: *const u8,

@@ -58,9 +58,9 @@ impl WorldDefinition {
     }
 
     fn from_document(document: wire::Document, fingerprint: [u8; 32]) -> Result<Self, String> {
-        if document.format_version != wire::FORMAT_VERSION {
+        if !(1..=wire::FORMAT_VERSION).contains(&document.format_version) {
             return Err(format!(
-                "unsupported world definition format {} (reader supports {})",
+                "unsupported world definition format {} (reader supports 1 through {})",
                 document.format_version,
                 wire::FORMAT_VERSION
             ));
@@ -188,6 +188,9 @@ impl Dimension {
         };
         if profile.is_some() {
             let p = &dimension.parameters;
+            if world.format_version >= 2 && p.storage.is_none() {
+                return Err("format 2 requires explicit dimension storage bounds".into());
+            }
             let height = u32::try_from(p.height).map_err(|_| "negative dimension height")?;
             ChunkRequest {
                 seed: world.seed as u64,
@@ -201,6 +204,14 @@ impl Dimension {
                 reserved: 1,
             }
             .validate()?;
+            let storage = p.storage_bounds();
+            ChunkRequest { min_y:storage.min_y,
+                height:u32::try_from(storage.height).map_err(|_| "negative storage height")?,
+                seed:0,chunk_x:0,chunk_z:0,base_height:0.,amplitude:0.,frequency:1.,reserved:1 }.validate()?;
+            if storage.min_y % 16 != 0 || storage.height % 16 != 0
+                || storage.min_y / 16 < -128 || (storage.min_y + storage.height - 1) / 16 > 127 {
+                return Err("storage bounds require aligned MCA sections with signed-byte Y".into());
+            }
             if p.generator.is_empty()
                 || p.generator_depth <= 0
                 || p.logical_height <= 0
@@ -303,3 +314,5 @@ fn identifier(id: &str) -> bool {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod procedural_tests;

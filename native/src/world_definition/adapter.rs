@@ -28,6 +28,9 @@ impl WorldDefinition {
                     "snow":profile.snow,"ice":profile.ice,
                     "terrain_features":{"bands":profile.terrain_features.bands},"biomes":biomes,
                     "structures":{"definitions":definitions,"sets":sets}});
+                if profile.terrain_kind == crate::profile::TerrainKind::Procedural {
+                    summary["terrain_kind"] = "procedural".into();
+                }
                 if self.source().dimensions[key].profile.as_ref().is_some_and(|raw|
                     matches!(raw,fastnbt::Value::Compound(fields) if fields.contains_key("lava"))) {
                     summary["lava"] = json!(profile.geology.lava);

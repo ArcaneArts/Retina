@@ -39,6 +39,23 @@ public final class WorldDefinitionCompileTest {
                     RetinaBiomeSource.fromRegistry(overworld.generator().getBiomeSource(), 256F, .55F),
                     -64, 384, 87.5F, 42.25F, .003F, "mca", Optional.empty(), true)));
             check(output.resolve("legacy"), registry, resources, legacy, 731);
+            var procedural = new LinkedHashMap<>(normal);
+            var fixed = registry.lookupOrThrow(Registries.BIOME).getOrThrow(net.minecraft.world.level.biome.Biomes.FOREST);
+            procedural.put(LevelStem.OVERWORLD, new LevelStem(overworld.type(), new RetinaChunkGenerator(
+                    new FixedBiomeSource(fixed), -64, 384, 37.5F, 19.25F, .0041F, "mca")));
+            procedural.put(LevelStem.NETHER, new LevelStem(normal.get(LevelStem.NETHER).type(), new RetinaChunkGenerator(
+                    new FixedBiomeSource(registry.lookupOrThrow(Registries.BIOME).getOrThrow(net.minecraft.world.level.biome.Biomes.NETHER_WASTES)),
+                    0, 256, 64F, 12F, .0027F, "mca")));
+            check(output.resolve("procedural"), registry, resources, procedural, Long.MIN_VALUE + 19);
+            var cropped = new LinkedHashMap<>(normal);
+            cropped.put(LevelStem.OVERWORLD, new LevelStem(overworld.type(), new RetinaChunkGenerator(
+                    new FixedBiomeSource(fixed), 0, 64, 37.5F, 19.25F, .0041F, "chunk")));
+            check(output.resolve("cropped"), registry, resources, cropped, Long.MIN_VALUE + 23);
+            var croppedRegistry = new LinkedHashMap<>(normal);
+            croppedRegistry.put(LevelStem.OVERWORLD, new LevelStem(overworld.type(), new RetinaChunkGenerator(
+                    RetinaBiomeSource.fromSelected(new FixedBiomeSource(fixed)), 0, 64,
+                    37.5F, 19.25F, .0041F, "chunk", Optional.empty(), true)));
+            check(output.resolve("cropped_registry"), registry, resources, croppedRegistry, Long.MIN_VALUE + 31);
             var flat = registry.lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(WorldPresets.FLAT)
                     .value().createWorldDimensions().dimensions();
             check(output.resolve("flat"), registry, resources, flat, Long.MAX_VALUE - 11);
@@ -64,7 +81,7 @@ public final class WorldDefinitionCompileTest {
         }
         checkCodec(output.resolve("codec"));
         checkFailedWrite(output.resolve("failed-write"));
-        System.out.println("QA_EVT {\"event\":\"world_definition_compilation\",\"status\":\"pass\",\"cases\":4,\"gpu_initialized\":false}");
+        System.out.println("QA_EVT {\"event\":\"world_definition_compilation\",\"status\":\"pass\",\"cases\":7,\"gpu_initialized\":false}");
     }
 
     private static MultiPackResourceManager resources(Path custom) {
@@ -85,7 +102,7 @@ public final class WorldDefinitionCompileTest {
                               Map<ResourceKey<LevelStem>, LevelStem> stems, long seed) throws Exception {
         Files.createDirectories(directory);
         Files.deleteIfExists(directory.resolve(WorldDefinitionFile.NAME)); // Only this test's build output.
-        boolean structures = !directory.getFileName().toString().equals("flat");
+        boolean structures = !directory.getFileName().toString().equals("flat") && !directory.getFileName().toString().startsWith("cropped");
         var options = new WorldOptions(seed, structures, !structures);
         var templates = StructureProfile.Context.of(resources);
         long start = System.nanoTime();
@@ -109,6 +126,13 @@ public final class WorldDefinitionCompileTest {
             if (unsupported != null) {
                 require(entry.getStringOr("unsupported_reason", "").equals(unsupported), "unsupported dimension explicit");
             } else {
+                if (stem.generator() instanceof RetinaChunkGenerator retina) {
+                    var originalRequest = retina.request(seed, 0, 0);
+                    var savedParameters = entry.getCompoundOrEmpty("parameters");
+                    require(savedParameters.getIntOr("min_y", 0) == originalRequest.minY()
+                            && savedParameters.getIntOr("height", 0) == originalRequest.height(),
+                            "saved legacy generation bounds match its actual native requests: " + directory.getFileName());
+                }
                 var selected = stem.generator() instanceof RetinaChunkGenerator ? null : new GenerationSource(level, stem.generator(), stem.type().value());
                 var effectiveTemplates = new StructureProfile.Context(templates.templates(), structures, templates.allowedSets());
                 var exported = stem.generator() instanceof RetinaChunkGenerator retina

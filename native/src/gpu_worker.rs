@@ -192,6 +192,9 @@ pub(crate) fn run(
             .flat_map(|job| {
                 job.requests.iter().enumerate().map(|(i, r)| {
                     let mut gpu = GpuRequest::from(*r);
+                    // The world handle still identifies ownership/caches. Zero
+                    // selects the shared procedural shader and default buffers.
+                    if job.profile.is_none() { gpu.profile = 0; }
                     gpu.padding = match mode {
                         1 => 1 << 31,
                         3 => 1 << 29,

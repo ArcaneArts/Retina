@@ -25,6 +25,7 @@ public final class NativeWorldDefinition implements AutoCloseable {
         static final MethodHandle METADATA = call("retina_world_definition_metadata", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, ADDRESS));
         static final MethodHandle BIND = call("retina_bind_world_dimension", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS));
         static final MethodHandle REQUEST = call("retina_world_dimension_request", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, ADDRESS));
+        static final MethodHandle CHUNK = call("retina_world_dimension_chunk", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, ADDRESS, ADDRESS));
         static final MethodHandle PROFILE = call("retina_world_definition_profile_json", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
         static final MethodHandle CLOSE = call("retina_close_world_definition", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
         static final MethodHandle FREE = call("retina_free_bytes", FunctionDescriptor.ofVoid(ADDRESS, JAVA_LONG));
@@ -83,6 +84,19 @@ public final class NativeWorldDefinition implements AutoCloseable {
         } catch (Throwable error) { throw failure(error); }
     }
 
+    /** Generate storage-shaped uncompressed chunk NBT using the loaded world. */
+    public byte[] chunk(String key,int x,int z) {
+        long opened;
+        synchronized (this) { ensureOpen(); opened=handle; }
+        // Native lookup acquires a dimension lease for the entire call. Do not
+        // serialize independent generation jobs on this Java object's monitor.
+        try (var arena=Arena.ofConfined()) {
+            var bytes=key.getBytes(StandardCharsets.UTF_8);
+            var input=arena.allocateFrom(JAVA_BYTE,bytes);
+            return readBuffer((pointer,length) -> (int) Calls.CHUNK.invokeExact(opened,input,(long)bytes.length,x,z,pointer,length));
+        } catch (Throwable error) { throw failure(error); }
+    }
+
     /** Explicit QA/diagnostic output, decoded from the same loaded file without rereading it. */
     public synchronized String diagnosticProfile(String key) {
         ensureOpen();
@@ -109,11 +123,15 @@ public final class NativeWorldDefinition implements AutoCloseable {
     }
 
     private static String readBytes(BytesCall call) throws Throwable {
+        return new String(readBuffer(call),StandardCharsets.UTF_8);
+    }
+
+    private static byte[] readBuffer(BytesCall call) throws Throwable {
         try (var arena = Arena.ofConfined()) {
             var pointer = arena.allocate(ADDRESS); var length = arena.allocate(JAVA_LONG);
             check(call.read(pointer,length));
             var data = pointer.get(ADDRESS,0); long count = length.get(JAVA_LONG,0);
-            try { return new String(data.reinterpret(count).toArray(JAVA_BYTE),StandardCharsets.UTF_8); }
+            try { return data.reinterpret(count).toArray(JAVA_BYTE); }
             finally { Calls.FREE.invokeExact(data,count); }
         }
     }

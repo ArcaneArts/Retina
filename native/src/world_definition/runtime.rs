@@ -38,6 +38,7 @@ impl WorldSession {
                 dimension.profile()?,
                 compression,
                 definition.data_version(),
+                dimension.parameters().storage_bounds(),
             )?;
             dimensions.insert(key.clone(), id);
         }
@@ -89,6 +90,12 @@ impl DimensionLease {
 
     pub fn request(&self, x: i32, z: i32) -> Result<ChunkRequest, String> {
         self.world.definition.request(&self.key, self.profile, x, z)
+    }
+
+    pub fn generate_chunk(&self,x:i32,z:i32) -> Result<Vec<u8>,String> {
+        let request=self.request(x,z)?;
+        let biome=&self.world.definition.dimension(&self.key)?.profile()?.biomes[0].id;
+        region::generate_chunk(&self.world.engine,request,self.world.definition.data_version(),biome)
     }
 
     /// Region coordinates, not chunk coordinates. Saved seed/bounds/DataVersion

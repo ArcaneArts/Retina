@@ -22,6 +22,7 @@ static ASSEMBLERS: OnceLock<Result<rayon::ThreadPool, String>> = OnceLock::new()
 #[path = "material_cache.rs"]
 mod material_cache;
 pub mod codec;
+mod geometry;
 use codec::{Encoder, Record};
 
 #[repr(C)]
@@ -112,6 +113,23 @@ pub fn generate_region(
     biome: &str,
 ) -> Result<RegionReport, String> {
     generate_region_inner(engine, request, path, data_version, biome, None, None, None)
+}
+
+/// A world-bound chunk uses the same storage fitting and NBT encoder as regions.
+/// Lighting remains at features status until its owning host has neighbors.
+pub(crate) fn generate_chunk(
+    engine:&TerrainEngine, request:ChunkRequest, data_version:i32, biome:&str,
+) -> Result<Vec<u8>,String> {
+    let profile=engine.profile(request.reserved)?;
+    let mut blocks=vec![0;request.block_count()];
+    let columns=engine.generate_columns_into(request,&mut blocks)?;
+    let (_,mask)=engine.terrain_field(request,1)?;
+    let data=engine.structures.lock().map_err(|_|"structure cache poisoned")?
+        .metadata(request).unwrap_or_else(crate::structures::empty_data);
+    let storage=geometry::storage_request(request,engine.profile_storage_bounds(request.reserved)?);
+    geometry::validate_storage(storage)?;
+    geometry::fit_blocks(request,storage,profile.as_deref(),&mut blocks)?;
+    Ok(chunk_nbt_blocks(storage,&columns,&blocks,data_version,biome,profile.as_deref(),mask.as_deref(),Some(&data)))
 }
 
 /// Preview generation also returns the undecorated GPU columns, without another dispatch.
@@ -208,13 +226,6 @@ fn generate_region_inner(
 ) -> Result<RegionReport, String> {
     request.validate()?;
     let cache_materials = output.is_some();
-    if request.min_y % 16 != 0
-        || !request.height.is_multiple_of(16)
-        || request.min_y / 16 < -128
-        || (request.min_y + request.height as i32 - 1) / 16 > 127
-    {
-        return Err("MCA sections require aligned heights with section Y in -128..127".into());
-    }
     if cached.is_none() && (biome.is_empty() || biome.len() > u16::MAX as usize) {
         return Err("invalid MCA biome identifier".into());
     }
@@ -313,11 +324,14 @@ fn generate_region_inner(
         let profile = engine.profile(request.reserved)?;
         let data_version = engine.profile_data_version(request.reserved)?.unwrap_or(data_version);
         let compression = engine.profile_compression(request.reserved)?;
+        let storage = engine.profile_storage_bounds(request.reserved)?;
         let origin = ChunkRequest {
             chunk_x: region_x * 32,
             chunk_z: region_z * 32,
             ..request
         };
+        let storage_origin = geometry::storage_request(origin, storage);
+        geometry::validate_storage(storage_origin)?;
         let decorated = profile
             .as_deref()
             .is_some_and(|p| !p.decorations.is_empty());
@@ -440,8 +454,8 @@ fn generate_region_inner(
                 .filter(|_| {
                     // Anvil stores section Y as a signed byte, including light-only padding.
                     requests.len() == 1024
-                        && origin.min_y / 16 > -128
-                        && (origin.min_y + origin.height as i32) / 16 <= 127
+                        && storage_origin.min_y / 16 > -128
+                        && (storage_origin.min_y + storage_origin.height as i32) / 16 <= 127
                         && std::env::var("RETINA_GPU_LIGHTING").as_deref() != Ok("0")
                 });
             let parallel_start = Instant::now();
@@ -542,6 +556,8 @@ fn generate_region_inner(
                         timings.time(timings::VEGETATION, || plant_updates.finish(p, &mut blocks));
                         if let Some(flat) = &p.flat { flat.finish(&mut blocks); }
                     }
+                    let storage_request = geometry::storage_request(request, storage);
+                    geometry::fit_blocks(request, storage_request, profile.as_deref(), &mut blocks)?;
                     if lighting.is_some() {
                         return Ok(PreparedRecord::Blocks(
                             blocks,
@@ -550,7 +566,7 @@ fn generate_region_inner(
                     }
                     timings.time(timings::NBT, || {
                         encode_chunk(
-                            request,
+                            storage_request,
                             columns,
                             &blocks,
                             data_version,
@@ -589,7 +605,7 @@ fn generate_region_inner(
                             let lighting = light.map(|tile| tile.chunk(tile_index));
                             timings.time(timings::NBT, || {
                                 encode_chunk(
-                                    request,
+                                    geometry::storage_request(request, storage),
                                     field.chunk(request.chunk_x, request.chunk_z),
                                     &blocks[i],
                                     data_version,
@@ -607,7 +623,7 @@ fn generate_region_inner(
                         })
                         .collect::<Result<Vec<_>, String>>()
                 };
-                crate::lighting::region(engine, origin, lighting, &blocks, &job, |tile| {
+                crate::lighting::region(engine, storage_origin, lighting, &blocks, &job, |tile| {
                     let encoding_start = Instant::now();
                     for (i, bytes) in encode(&tile.slots, Some(&tile))? {
                         records[i] = Some(bytes);
@@ -943,7 +959,6 @@ fn encode_chunk(
     lighting: Option<crate::lighting::ChunkLight<'_>>,
     scratch: &mut ChunkScratch,
 ) {
-    let heights: [i32; COLUMNS] = std::array::from_fn(|i| columns[i].height);
     let ChunkScratch {
         nbt,
         palette,
@@ -980,8 +995,6 @@ fn encode_chunk(
         section_light(nbt, light.section(0));
         nbt.end();
     }
-    let lowest = *heights.iter().min().unwrap();
-    let highest = *heights.iter().max().unwrap();
     for section in 0..request.height as i32 / 16 {
         let y = request.min_y + section * 16;
         nbt.byte("Y", (y / 16) as i8);
@@ -1043,7 +1056,7 @@ fn encode_chunk(
                     .and_then(|m| {
                         m.biome(
                             request.chunk_x * 16 + (index % 4) as i32 * 4,
-                            y + (index / 16) as i32 * 4,
+                            (y + (index / 16) as i32 * 4).clamp(m.min_y, m.min_y + m.height as i32 - 1),
                             request.chunk_z * 16 + ((index % 16) / 4) as i32 * 4,
                         )
                     })
@@ -1062,9 +1075,12 @@ fn encode_chunk(
             }
             nbt.end();
         } else {
-            let mixed = y < highest && y + 16 > lowest;
+            let values = &blocks[section as usize * 4096..(section as usize + 1) * 4096];
+            let has_air = values.contains(&0);
+            let has_stone = values.contains(&1);
+            let mixed = has_air && has_stone;
             nbt.list("palette", 8, if mixed { 2 } else { 1 });
-            nbt.text(if mixed || y >= highest {
+            nbt.text(if has_air {
                 "minecraft:air"
             } else {
                 "minecraft:stone"
@@ -1073,7 +1089,7 @@ fn encode_chunk(
                 nbt.text("minecraft:stone");
                 let mut packed = [0u64; 256]; // Two-entry palette uses four bits per block.
                 for index in 0..4096 {
-                    if y + ((index / COLUMNS) as i32) < heights[index % COLUMNS] {
+                    if values[index] != 0 {
                         packed[index / 16] |= 1 << ((index % 16) * 4);
                     }
                 }
@@ -1101,9 +1117,10 @@ fn encode_chunk(
     let mut surface = [0u32; COLUMNS];
     // Profiled terrain uses final block predicates below, not these legacy maps.
     if profile.is_none() {
-        for (i, column) in columns.iter().enumerate() {
-            ground[i] = (column.height - request.min_y) as u32;
-            surface[i] = (column.surface_height(profile) - request.min_y) as u32;
+        for i in 0..COLUMNS {
+            let height = (0..request.height as usize).rev().find(|&y|blocks[y*COLUMNS+i]!=0).map_or(0,|y|y as u32+1);
+            ground[i] = height;
+            surface[i] = height;
         }
     }
     let mut final_heights = [[0u32; COLUMNS]; 6];
