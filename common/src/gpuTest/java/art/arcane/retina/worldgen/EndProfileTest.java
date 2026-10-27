@@ -53,15 +53,24 @@ public final class EndProfileTest {
             Files.writeString(out.resolve("terrain-only-profile.json"), terrainData.json());
             int chunks = 0;
             if (nativeChecks) {
-                BiomeTerrainProfile.register(data); // Full exported tables must register too.
-                var fixedProfile = BiomeTerrainProfile.register(fixedData);
-                var fixedRequest = new TerrainRequest(42, -1, 0, 0, 256, 64, 0, 1, fixedProfile.nativeId());
-                for (short b : NativeTerrain.instance().sampleBiomes(fixedRequest)) require(b == 0, "native fixed End biome");
-                var registered = BiomeTerrainProfile.register(terrainData);
-                long[] seeds = {123456789, 123456789, 123456789, 42};
+                try (var full = EndDefinitionFixture.create(f, data, 123456789);
+                     var fixedProfile = DefinitionFixture.create(fixed, fixedData, 42)) {
+                    var fixedRequest = fixedProfile.request(-1, 0);
+                    for (short b : NativeTerrain.instance().sampleBiomes(fixedRequest)) require(b == 0, "native fixed End biome");
+                    full.copyTo(out.resolve("full-world"));
+                }
                 int[][] positions = {{0,0}, {32,0}, {256,-33}, {-257,-1}};
-                for (int i = 0; i < positions.length; i++) {
-                    checkNative(f, registered, seeds[i], positions[i][0], positions[i][1]); chunks++;
+                for (long seed : new long[]{123456789, 42}) {
+                    var exported = JsonParser.parseString(EndTerrainProfile.export(f.registry, source, seed, StructureProfile.Context.NONE).json()).getAsJsonObject();
+                    exported.add("decorations", new JsonArray()); exported.remove("structures"); exported.remove("terrain_features");
+                    exported.addProperty("decoration_source_order", false);
+                    for (var biome : exported.getAsJsonArray("biomes")) biome.getAsJsonObject().add("decorations", new JsonArray());
+                    try (var saved = EndDefinitionFixture.create(f, exported, seed)) {
+                        for (var at : positions) {
+                            checkNative(f, saved, seed, at[0], at[1]); chunks++;
+                        }
+                        saved.copyTo(out.resolve("terrain-world-"+seed));
+                    }
                 }
             }
             var receipt = new JsonObject(); receipt.addProperty("schema", "retina.end.profile-check.v1");
@@ -73,8 +82,8 @@ public final class EndProfileTest {
         }
     }
 
-    private static void checkNative(EndReferenceFixtures f, BiomeTerrainProfile p, long seed, int cx, int cz) {
-        var request = new TerrainRequest(seed, cx, cz, 0, 256, 64, 0, 1, p.nativeId());
+    private static void checkNative(EndReferenceFixtures f, EndDefinitionFixture p, long seed, int cx, int cz) {
+        var request = p.request(cx, cz);
         var state = f.state(seed); var resolver = f.resolver(state);
         var nativeTerrain = NativeTerrain.instance();
         var materials = p.materials();

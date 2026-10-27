@@ -29,39 +29,41 @@ public final class EndChorusTest {
                 require(recipe>=0,"chorus root exported");var chorus=recipes.get(recipe).getAsJsonObject().getAsJsonObject("end_chorus");
                 require(chorus.get("step").getAsInt()==step&&chorus.get("index").getAsInt()==index,"source feature seed indices");
                 require(recipes.get(recipe).getAsJsonObject().get("reach").getAsInt()==23,"derived spread and placement read reach");
-                var profile=BiomeTerrainProfile.register(data);var materials=profile.materials();var state=f.state(seed);var resolver=f.resolver(state);
-                int tested=0;
-                for(int cz=65;cz<400&&tested<16;cz++) {
-                    int cx=seed==42?-33:31;
-                    if(!resolver.getNoiseBiome(cx*4+2,0,cz*4+2).unwrapKey().orElseThrow().identifier().toString().equals("minecraft:end_highlands"))continue;
-                    var columns=new HashMap<Long,net.minecraft.world.level.NoiseColumn>();
-                    var capture=f.new Capture(seed,-1,pos->{
-                        if(pos.getY()<0||pos.getY()>=256)return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
-                        long key=((long)pos.getX()<<32)^Integer.toUnsignedLong(pos.getZ());
-                        return columns.computeIfAbsent(key,k->f.generator.getBaseColumn(pos.getX(),pos.getZ(),f.height,state)).getBlock(pos.getY());
-                    });
-                    var random=new EndIslandTest.TraceRandom();long decoration=random.setDecorationSeed(seed,cx*16,cz*16);random.setFeatureSeed(decoration,index,step);
-                    new FeaturePlacer(capture.level,f.generator).placeWithBiomeCheck(placed,random,new BlockPos(cx*16,0,cz*16));
-                    var request=new TerrainRequest(seed,cx,cz,0,256,64,0,1,profile.nativeId());
-                    int[] writes=NativeTerrain.instance().decorationFeature(request,recipe,new int[]{cx*16,0,cz*16},0x12345678);
-                    var actual=new HashMap<BlockPos,BlockState>();for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),materials[writes[i+3]]);
-                    if(!actual.equals(capture.blocks)) {
-                        var mismatch=new TreeSet<String>();capture.blocks.forEach((p,b)->{if(!b.equals(actual.get(p)))mismatch.add(p+" expected="+b+" actual="+actual.get(p));});
-                        actual.forEach((p,b)->{if(!capture.blocks.containsKey(p))mismatch.add(p+" unexpected="+b);});
-                        throw new AssertionError("chorus seed="+seed+" anchor="+cx+","+cz+" expected="+capture.blocks.size()+" actual="+actual.size()+" differences="+mismatch.stream().limit(8).toList());
+                try(var profile=EndDefinitionFixture.create(f,data,seed)) {
+                    var materials=profile.materials();var state=f.state(seed);var resolver=f.resolver(state);
+                    int tested=0;
+                    for(int cz=65;cz<400&&tested<16;cz++) {
+                        int cx=seed==42?-33:31;
+                        if(!resolver.getNoiseBiome(cx*4+2,0,cz*4+2).unwrapKey().orElseThrow().identifier().toString().equals("minecraft:end_highlands"))continue;
+                        var columns=new HashMap<Long,net.minecraft.world.level.NoiseColumn>();
+                        var capture=f.new Capture(seed,-1,pos->{
+                            if(pos.getY()<0||pos.getY()>=256)return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
+                            long key=((long)pos.getX()<<32)^Integer.toUnsignedLong(pos.getZ());
+                            return columns.computeIfAbsent(key,k->f.generator.getBaseColumn(pos.getX(),pos.getZ(),f.height,state)).getBlock(pos.getY());
+                        });
+                        var random=new EndIslandTest.TraceRandom();long decoration=random.setDecorationSeed(seed,cx*16,cz*16);random.setFeatureSeed(decoration,index,step);
+                        new FeaturePlacer(capture.level,f.generator).placeWithBiomeCheck(placed,random,new BlockPos(cx*16,0,cz*16));
+                        var request=profile.request(cx, cz);
+                        int[] writes=NativeTerrain.instance().decorationFeature(request,recipe,new int[]{cx*16,0,cz*16},0x12345678);
+                        var actual=new HashMap<BlockPos,BlockState>();for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),materials[writes[i+3]]);
+                        if(!actual.equals(capture.blocks)) {
+                            var mismatch=new TreeSet<String>();capture.blocks.forEach((p,b)->{if(!b.equals(actual.get(p)))mismatch.add(p+" expected="+b+" actual="+actual.get(p));});
+                            actual.forEach((p,b)->{if(!capture.blocks.containsKey(p))mismatch.add(p+" unexpected="+b);});
+                            throw new AssertionError("chorus seed="+seed+" anchor="+cx+","+cz+" expected="+capture.blocks.size()+" actual="+actual.size()+" differences="+mismatch.stream().limit(8).toList());
+                        }
+                        var row=capture.snapshot();row.addProperty("seed",seed);row.add("anchor",EndReferenceFixtures.ints(cx,cz));row.addProperty("step",step);row.addProperty("index",index);cases.add(row);
+                        boolean success=!actual.isEmpty();if(success)accepted++;else rejected++;
+                        int ax=cx,az=cz;crossing|=actual.keySet().stream().anyMatch(p->Math.floorDiv(p.getX(),512)!=Math.floorDiv(ax*16,512)||Math.floorDiv(p.getZ(),512)!=Math.floorDiv(az*16,512));
+                        multiple|=random.draws.stream().filter(v->v[0]==4).count()>12;
+                        if(success && duplicateHeightCases < (seed==42?2:1)) {
+                            var stem=capture.blocks.keySet().stream().filter(p->capture.base.apply(p.below()).is(net.minecraft.world.level.block.Blocks.END_STONE)).findFirst().orElseThrow();
+                            checkDuplicateHeight(f,data,json,recipe,placed,seed,step,index,stem);duplicateHeightCases++;
+                            checkChunk(f,profile,steps,seed,cx,cz);generatedChunks++;
+                        }
+                        tested++;roots++;
                     }
-                    var row=capture.snapshot();row.addProperty("seed",seed);row.add("anchor",EndReferenceFixtures.ints(cx,cz));row.addProperty("step",step);row.addProperty("index",index);cases.add(row);
-                    boolean success=!actual.isEmpty();if(success)accepted++;else rejected++;
-                    int ax=cx,az=cz;crossing|=actual.keySet().stream().anyMatch(p->Math.floorDiv(p.getX(),512)!=Math.floorDiv(ax*16,512)||Math.floorDiv(p.getZ(),512)!=Math.floorDiv(az*16,512));
-                    multiple|=random.draws.stream().filter(v->v[0]==4).count()>12;
-                    if(success && duplicateHeightCases < (seed==42?2:1)) {
-                        var stem=capture.blocks.keySet().stream().filter(p->capture.base.apply(p.below()).is(net.minecraft.world.level.block.Blocks.END_STONE)).findFirst().orElseThrow();
-                        checkDuplicateHeight(f,data,json,recipe,placed,seed,step,index,stem);duplicateHeightCases++;
-                        checkChunk(f,profile,steps,seed,cx,cz);generatedChunks++;
-                    }
-                    tested++;roots++;
+                    require(tested==16,"bounded highlands roots exercised");Files.writeString(out.resolve("profile-"+seed+".json"),data.json());
                 }
-                require(tested==16,"bounded highlands roots exercised");Files.writeString(out.resolve("profile-"+seed+".json"),data.json());
             }
         }
         require(accepted>16&&rejected>0,"successful and rejected roots");require(crossing,"region crossing plants");require(multiple,"recursive shared random draws");
@@ -69,7 +71,7 @@ public final class EndChorusTest {
         Files.writeString(out.resolve("reference.json"),new GsonBuilder().setPrettyPrinting().create().toJson(report)+"\n");
         System.out.println("QA_EVT {\"event\":\"end_chorus_parity\",\"roots\":"+roots+",\"accepted\":"+accepted+",\"rejected\":"+rejected+",\"status\":\"pass\"}");
     }
-    private static void checkChunk(EndReferenceFixtures f,BiomeTerrainProfile profile,List<FeatureSorter.StepFeatureData> steps,long seed,int cx,int cz) {
+    private static void checkChunk(EndReferenceFixtures f,EndDefinitionFixture profile,List<FeatureSorter.StepFeatureData> steps,long seed,int cx,int cz) {
         var state=f.state(seed);var columns=new HashMap<Long,net.minecraft.world.level.NoiseColumn>();
         java.util.function.Function<BlockPos,BlockState> base=p->{
             if(p.getY()<0||p.getY()>=256)return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
@@ -90,7 +92,7 @@ public final class EndChorusTest {
                 expected.putAll(capture.blocks);
             }
         }
-        var request=new TerrainRequest(seed,cx,cz,0,256,64,0,1,profile.nativeId());
+        var request=profile.request(cx, cz);
         try(var chunk=NativeTerrain.instance().generate(request)) {
             var materials=profile.materials();
             for(int z=0;z<16;z++)for(int x=0;x<16;x++)for(int y=0;y<256;y++) {
@@ -116,10 +118,11 @@ public final class EndChorusTest {
         for(int i=0;i<3;i++)positions.add(EndReferenceFixtures.ints(point.getX(),0,point.getZ()));fixed.add("positions",positions);program.add(fixed);
         var height=new JsonObject();height.addProperty("type","heightmap");height.addProperty("map",4);program.add(height);
         json.getAsJsonArray("decorations").get(recipe).getAsJsonObject().getAsJsonObject("end_chorus").add("placement",program);
-        int profile=NativeTerrain.instance().registerProfile(json.toString());
-        int[] writes=NativeTerrain.instance().decorationFeature(new TerrainRequest(seed,cx,cz,0,256,64,0,1,profile),recipe,new int[]{cx*16,0,cz*16},0);
-        var actual=new HashMap<BlockPos,BlockState>();for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),data.materials()[writes[i+3]]);
-        require(actual.equals(capture.blocks),"duplicate columns use live height after the first plant, seed="+seed);
+        try(var profile=EndDefinitionFixture.create(f,json,seed)) {
+            int[] writes=NativeTerrain.instance().decorationFeature(profile.request(cx, cz),recipe,new int[]{cx*16,0,cz*16},0);
+            var actual=new HashMap<BlockPos,BlockState>();for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),profile.materials()[writes[i+3]]);
+            require(actual.equals(capture.blocks),"duplicate columns use live height after the first plant, seed="+seed);
+        }
     }
     private static void require(boolean value,String message){if(!value)throw new AssertionError(message);}
 }

@@ -1,8 +1,6 @@
 package art.arcane.retina.worldgen;
 
 import com.google.gson.*;
-import com.mojang.serialization.JsonOps;
-import net.minecraft.SharedConstants;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.*;
@@ -26,9 +24,8 @@ import java.lang.foreign.ValueLayout;
 import java.nio.file.*;
 import java.security.*;
 import java.util.*;
-import java.util.stream.IntStream;
 
-/** Bounded production MCA publication from a saved development End definition. */
+/** Bounded production MCA publication from a normally compiled saved End definition. */
 public final class EndRegionPublicationTest {
     record Region(long seed,int x,int z,List<ChunkPos> extra) { }
     public static void main(String[] args) throws Exception {
@@ -41,12 +38,11 @@ public final class EndRegionPublicationTest {
         try(var f=new EndReferenceFixtures();var storage=LevelStorageSource.createDefault(out.resolve("template-storage")).createAccess("templates")) {
             var manager=new StructureTemplateManager(f.resources,storage,DataFixers.getDataFixer(),f.registry.lookupOrThrow(Registries.BLOCK));
             var type=f.registry.lookupOrThrow(Registries.DIMENSION_TYPE).getOrThrow(BuiltinDimensionTypes.END);
-            var source=new GenerationSource(Level.END,f.generator,type.value());
             for(int i=0;i<cases.size();i++) {
                 var c=cases.get(i);Path directory=Files.createTempDirectory(out,"disposable-region-"+i+"-");
-                var data=EndTerrainProfile.export(f.registry,source,c.seed(),StructureProfile.Context.of(manager,true));
-                var direct=BiomeTerrainProfile.register(data);
-                Path definition=developmentDefinition(f,data,c.seed(),type,directory);
+                Path definition=WorldDefinitionFile.writeNew(directory, WorldDefinitionCompiler.compile(f.registry,
+                        new WorldOptions(c.seed(),true,false),Map.of(LevelStem.END,new LevelStem(type,f.generator)),
+                        StructureProfile.Context.of(manager,true),List.of("vanilla"),"End publication fixture"));
                 var bindingOnly=new HolderLookup.Provider() {
                     @Override public java.util.stream.Stream<ResourceKey<? extends Registry<?>>> listRegistryKeys(){throw new AssertionError("Generation registry enumeration during saved binding");}
                     @Override public <T> Optional<HolderLookup.RegistryLookup<T>> lookup(ResourceKey<? extends Registry<? extends T>> key) {
@@ -55,7 +51,8 @@ public final class EndRegionPublicationTest {
                     }
                 };
                 Path path=directory.resolve("r."+c.x()+"."+c.z()+".mca");
-                try(var world=new WorldDefinitionContext(NativeWorldDefinition.open(definition))) {
+                try(var direct=EndDefinitionFixture.open(f,definition);
+                    var world=new WorldDefinitionContext(NativeWorldDefinition.open(definition))) {
                     var dimension=world.dimension(Level.END);dimension.bindDimensionType(type.value());
                     var generator=RetinaChunkGenerator.fromDefinition(dimension,bindingOnly);
                     require(generator.hasFrozenStructurePieces(),"saved city decoder selected");
@@ -80,7 +77,7 @@ public final class EndRegionPublicationTest {
         var report=new JsonObject();report.addProperty("schema","retina.end.region-publication.v1");report.add("cases",reports);report.addProperty("full_regions",4);report.addProperty("production_activated",false);report.addProperty("performance_acceptance",false);
         Files.writeString(out.resolve("validation.json"),new GsonBuilder().setPrettyPrinting().create().toJson(report)+"\n");System.out.println("QA_EVT "+report);
     }
-    private static JsonObject check(EndReferenceFixtures f,StructureTemplateManager manager,Region region,BiomeTerrainProfile direct,RetinaChunkGenerator generator,Path directory) throws Exception {
+    private static JsonObject check(EndReferenceFixtures f,StructureTemplateManager manager,Region region,EndDefinitionFixture direct,RetinaChunkGenerator generator,Path directory) throws Exception {
         var nativeTerrain=NativeTerrain.instance();var codec=PalettedContainer.codecRW(BlockState.CODEC,Strategy.createForBlockStates(Block.BLOCK_STATE_REGISTRY),Blocks.AIR.defaultBlockState());
         var city=f.registry.lookupOrThrow(Registries.STRUCTURE).getOrThrow(BuiltinStructures.END_CITY);
         var placement=(RandomSpreadStructurePlacement)f.registry.lookupOrThrow(Registries.STRUCTURE_SET).getValueOrThrow(BuiltinStructureSets.END_CITIES).placement();
@@ -97,7 +94,7 @@ public final class EndRegionPublicationTest {
         try(var storage=new RegionFileStorage(new RegionStorageInfo("end-publication-test",Level.END,"chunk"),directory,false)) {
             for(int z=oz;z<oz+32;z++)for(int x=ox;x<ox+32;x++) {
                 var at=new ChunkPos(x,z);var tag=storage.read(at);require(tag!=null,"saved slot "+at);
-                require(tag.getIntOr("DataVersion",-1)==SharedConstants.getCurrentVersion().dataVersion().version(),"saved data version overrides caller");
+                require(tag.getIntOr("DataVersion",-1)==direct.dataVersion(),"saved data version overrides caller");
                 require(tag.getIntOr("xPos",Integer.MIN_VALUE)==x&&tag.getIntOr("zPos",Integer.MIN_VALUE)==z&&tag.getIntOr("yPos",-1)==0,"saved coordinates requested="+at+" actual="+tag.get("xPos")+","+tag.get("yPos")+","+tag.get("zPos"));
                 boolean interior=x>ox&&x<ox+31&&z>oz&&z<oz+31;
                 require(tag.getStringOr("Status","").equals(interior?"minecraft:light":"minecraft:features"),"boundary lighting status "+at);
@@ -128,7 +125,7 @@ public final class EndRegionPublicationTest {
                 require(Arrays.equals(actualRefs,refs.toLongArray()),"source city references "+at);references+=refs.size();
                 blockEntities+=tag.getListOrEmpty("block_entities").size();entities+=tag.getListOrEmpty("entities").size();
                 if(probes.contains(at)) {
-                    var request=new TerrainRequest(region.seed(),x,z,0,256,64,0,1,direct.nativeId());
+                    var request=direct.request(x,z);
                     try(var generated=nativeTerrain.generate(request)) {
                         var all=new BlockState[65536];
                         for(var section:sections){int sy=section.getByteOr("Y",(byte)-1);var blocks=decodedBlocks.get(sy);
@@ -173,20 +170,6 @@ public final class EndRegionPublicationTest {
             require(missing.equals(storage.read(missingAt)),"repaired End slot equals original decoded NBT");
         }
         row.addProperty("partial_repaired_chunks",1);row.addProperty("edited_chunk_preserved",true);
-    }
-    private static Path developmentDefinition(EndReferenceFixtures f,TerrainProfileData data,long seed,Holder.Reference<DimensionType> type,Path directory) throws Exception {
-        // Keep the production End adapter disabled. Replace only this fixture's
-        // unsupported entry with its actual exported End profile and palettes.
-        var root=WorldDefinitionCompiler.compile(f.registry,new WorldOptions(seed,true,false),Map.of(LevelStem.END,new LevelStem(type,f.generator)),StructureProfile.Context.NONE,List.of("vanilla"),"End development publication fixture");
-        var entry=root.getCompoundOrEmpty("dimensions").getCompoundOrEmpty("minecraft:the_end");entry.remove("unsupported_reason");
-        entry.putIntArray("material_palette",IntStream.range(0,data.materials().length).toArray());entry.putIntArray("biome_palette",IntStream.range(0,data.biomes().size()).toArray());
-        var profile=JsonParser.parseString(data.json()).getAsJsonObject();profile.remove("materials");profile.remove("mca_compression");profile.addProperty("dimension","minecraft:the_end");entry.put("profile",ProfileNbt.encode(profile));
-        var materials=new ListTag();for(var state:data.materials()) {
-            var encoded=BlockState.CODEC.encodeStart(JsonOps.INSTANCE,state).getOrThrow();var tag=new CompoundTag();tag.putString("id",encoded.isJsonPrimitive()?encoded.getAsString():encoded.getAsJsonObject().get("id").getAsString());
-            var properties=new CompoundTag();if(encoded.isJsonObject()&&encoded.getAsJsonObject().has("properties"))encoded.getAsJsonObject().getAsJsonObject("properties").entrySet().forEach(p->properties.putString(p.getKey(),p.getValue().getAsString()));tag.put("properties",properties);materials.add(tag);
-        }
-        var biomes=new ListTag();data.biomes().forEach(b->biomes.add(StringTag.valueOf(b.unwrapKey().orElseThrow().identifier().toString())));root.getCompoundOrEmpty("shared_types").put("materials",materials);root.getCompoundOrEmpty("shared_types").put("biomes",biomes);
-        return WorldDefinitionFile.writeNew(directory,root);
     }
     private static void require(boolean condition,String description){if(!condition)throw new AssertionError(description);}
 }

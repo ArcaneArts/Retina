@@ -819,3 +819,21 @@ ruined-portal reference generation plus complete mixed-feature Nether regions.
 Each world seed binds its own saved definition, including baseline terrain for
 Minecraft's reference pieces. Cold concurrent passes independently open the same
 file. Region captures retain that file and use its DataVersion for output.
+
+### End fixtures
+
+The End terrain, platform, island, chorus, spike, gateway, city execution, city
+placement and combined-generation tasks now publish structural `retina.dat`
+fixtures before native generation. Each world seed owns its saved definition;
+requests and runtime palettes come from that file. The independent vanilla
+reference fixtures remain separate from native loading. Synthetic feature
+variants also go through the same writer and loader.
+
+`endProfileTest` with `-PretinaNativePath=/absolute/path/to/native/library`
+retains full and terrain-only definitions under `build/end/native-profile`.
+`endRegionPublicationTest` uses the normal world compiler, opens its published
+file independently for direct and adapter generation, and checks all four
+regions through Minecraft's chunk codecs. Its binding provider permits only
+biome and structure identity resolution. The check also preserves a player edit
+while repairing one missing chunk. It removes its explicitly disposable MCA
+files after validation; saved definitions and receipts remain in its output.

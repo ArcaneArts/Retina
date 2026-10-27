@@ -80,81 +80,83 @@ public final class EndCityPlacementTest {
                 targets.add(new Target(row.get("seed").getAsLong(),new ChunkPos(row.getAsJsonArray("chunk").get(0).getAsInt(),row.getAsJsonArray("chunk").get(1).getAsInt()),true));
                 if(targets.stream().filter(Target::dense).count()==2)break;
             }
-            var profiles=new HashMap<String,BiomeTerrainProfile>();var starts=new HashMap<Target,StructureStart>();
-            for(var target:targets) {
-                long seed=target.seed();var at=target.chunk();
-                var activePlacement=target.dense()?densePlacement:placement;
-                var profile=profiles.computeIfAbsent(seed+":"+target.dense(),s->{
-                    var full=EndTerrainProfile.export(f.registry,source,seed,StructureProfile.Context.of(manager,true));
-                    var json=JsonParser.parseString(full.json()).getAsJsonObject();json.add("decorations",new JsonArray());json.remove("terrain_features");
-                    if(target.dense())for(var value:json.getAsJsonObject("structures").getAsJsonArray("sets")) {
-                        var set=value.getAsJsonObject();if(set.get("id").getAsString().equals("minecraft:end_cities"))set.add("placement",denseJson.deepCopy());
-                    }
-                    for(var biome:json.getAsJsonArray("biomes"))biome.getAsJsonObject().add("decorations",new JsonArray());
-                    return BiomeTerrainProfile.register(new TerrainProfileData(full.seaLevel(),full.materials(),full.biomes(),json.toString()));
-                });
-                var state=f.state(seed);var columns=new HashMap<Long,NoiseColumn>();
-                var capture=f.new Capture(seed,-1,p->{
-                    if(p.getY()<0||p.getY()>=256)return Blocks.AIR.defaultBlockState();
-                    long key=((long)p.getX()<<32)^Integer.toUnsignedLong(p.getZ());
-                    return columns.computeIfAbsent(key,k->f.generator.getBaseColumn(p.getX(),p.getZ(),f.height,state)).getBlock(p.getY());
-                },entityLevel);
-                var referenced=new TreeMap<ChunkPos,StructureStart>(Comparator.comparingInt(ChunkPos::x).thenComparingInt(ChunkPos::z));
-                for(int gx=Math.floorDiv(at.x()-8,activePlacement.spacing());gx<=Math.floorDiv(at.x()+8,activePlacement.spacing());gx++)
-                    for(int gz=Math.floorDiv(at.z()-8,activePlacement.spacing());gz<=Math.floorDiv(at.z()+8,activePlacement.spacing());gz++) {
-                        var candidate=activePlacement.getPotentialStructureChunk(seed,gx*activePlacement.spacing(),gz*activePlacement.spacing());
-                        if(Math.abs(candidate.x()-at.x())>8||Math.abs(candidate.z()-at.z())>8)continue;
-                        var value=starts.computeIfAbsent(new Target(seed,candidate),key->start(f,manager,city,key.seed(),key.chunk()));
-                        if(value.isValid()&&value.getBoundingBox().intersects(at.getMinBlockX(),at.getMinBlockZ(),at.getMaxBlockX(),at.getMaxBlockZ()))referenced.put(candidate,value);
-                    }
-                var keys=new it.unimi.dsi.fastutil.longs.LongOpenHashSet();referenced.keySet().forEach(c->keys.add(c.pack()));
-                int decorationIndex=f.registry.lookupOrThrow(Registries.STRUCTURE).stream()
-                        .filter(value->value.step()==city.value().step()).toList().indexOf(city.value());
-                // Compare finished neighboring chunks: source template edge
-                // updates can reshape a stair in a previously placed chunk.
-                for(int nz=at.z()-1;nz<=at.z()+1;nz++)for(int nx=at.x()-1;nx<=at.x()+1;nx++) {
-                    var neighbor=new ChunkPos(nx,nz);
-                    var nearby=new TreeMap<ChunkPos,StructureStart>(Comparator.comparingInt(ChunkPos::x).thenComparingInt(ChunkPos::z));
-                    for(int gx=Math.floorDiv(nx-8,activePlacement.spacing());gx<=Math.floorDiv(nx+8,activePlacement.spacing());gx++)
-                        for(int gz=Math.floorDiv(nz-8,activePlacement.spacing());gz<=Math.floorDiv(nz+8,activePlacement.spacing());gz++) {
-                            var candidate=activePlacement.getPotentialStructureChunk(seed,gx*activePlacement.spacing(),gz*activePlacement.spacing());
-                            if(Math.abs(candidate.x()-nx)>8||Math.abs(candidate.z()-nz)>8)continue;
-                            var value=starts.computeIfAbsent(new Target(seed,candidate),key->start(f,manager,city,key.seed(),key.chunk()));
-                            if(value.isValid()&&value.getBoundingBox().intersects(neighbor.getMinBlockX(),neighbor.getMinBlockZ(),neighbor.getMaxBlockX(),neighbor.getMaxBlockZ()))nearby.put(candidate,value);
+            var profiles=new HashMap<String,EndDefinitionFixture>();var starts=new HashMap<Target,StructureStart>();
+            try {
+                for(var target:targets) {
+                    long seed=target.seed();var at=target.chunk();
+                    var activePlacement=target.dense()?densePlacement:placement;
+                    var profile=profiles.computeIfAbsent(seed+":"+target.dense(),s->{
+                        var full=EndTerrainProfile.export(f.registry,source,seed,StructureProfile.Context.of(manager,true));
+                        var json=JsonParser.parseString(full.json()).getAsJsonObject();json.add("decorations",new JsonArray());json.remove("terrain_features");
+                        if(target.dense())for(var value:json.getAsJsonObject("structures").getAsJsonArray("sets")) {
+                            var set=value.getAsJsonObject();if(set.get("id").getAsString().equals("minecraft:end_cities"))set.add("placement",denseJson.deepCopy());
                         }
-                    var neighborKeys=new it.unimi.dsi.fastutil.longs.LongOpenHashSet();nearby.keySet().forEach(c->neighborKeys.add(c.pack()));
-                    var random=new WorldgenRandom(new XoroshiroRandomSource(0));long decoration=random.setDecorationSeed(seed,nx*16,nz*16);
-                    random.setFeatureSeed(decoration,decorationIndex,city.value().step().ordinal());
-                    var bounds=new BoundingBox(nx*16,f.height.getMinY()+1,nz*16,nx*16+15,f.height.getMaxY(),nz*16+15);
-                    for(long key:neighborKeys)nearby.get(ChunkPos.unpack(key)).placeInChunk(capture.level,null,f.generator,random,bounds,neighbor);
-                }
-                var request=new TerrainRequest(seed,at.x(),at.z(),0,256,64,0,1,profile.nativeId());
-                try(var chunk=NativeTerrain.instance().generate(request)) {
-                    for(int y=0;y<256;y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
-                        var pos=new BlockPos(at.getMinBlockX()+x,y,at.getMinBlockZ()+z);var wanted=capture.state(pos);
-                        var actual=profile.materials()[Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT,(y*256L+z*16+x)*2))];
-                        require(actual.equals(wanted),"city block seed="+seed+" chunk="+at+" pos="+pos+" source="+wanted+" actual="+actual);
+                        for(var biome:json.getAsJsonArray("biomes"))biome.getAsJsonObject().add("decorations",new JsonArray());
+                        return EndDefinitionFixture.create(f,json,seed);
+                    });
+                    var state=f.state(seed);var columns=new HashMap<Long,NoiseColumn>();
+                    var capture=f.new Capture(seed,-1,p->{
+                        if(p.getY()<0||p.getY()>=256)return Blocks.AIR.defaultBlockState();
+                        long key=((long)p.getX()<<32)^Integer.toUnsignedLong(p.getZ());
+                        return columns.computeIfAbsent(key,k->f.generator.getBaseColumn(p.getX(),p.getZ(),f.height,state)).getBlock(p.getY());
+                    },entityLevel);
+                    var referenced=new TreeMap<ChunkPos,StructureStart>(Comparator.comparingInt(ChunkPos::x).thenComparingInt(ChunkPos::z));
+                    for(int gx=Math.floorDiv(at.x()-8,activePlacement.spacing());gx<=Math.floorDiv(at.x()+8,activePlacement.spacing());gx++)
+                        for(int gz=Math.floorDiv(at.z()-8,activePlacement.spacing());gz<=Math.floorDiv(at.z()+8,activePlacement.spacing());gz++) {
+                            var candidate=activePlacement.getPotentialStructureChunk(seed,gx*activePlacement.spacing(),gz*activePlacement.spacing());
+                            if(Math.abs(candidate.x()-at.x())>8||Math.abs(candidate.z()-at.z())>8)continue;
+                            var value=starts.computeIfAbsent(new Target(seed,candidate),key->start(f,manager,city,key.seed(),key.chunk()));
+                            if(value.isValid()&&value.getBoundingBox().intersects(at.getMinBlockX(),at.getMinBlockZ(),at.getMaxBlockX(),at.getMaxBlockZ()))referenced.put(candidate,value);
+                        }
+                    var keys=new it.unimi.dsi.fastutil.longs.LongOpenHashSet();referenced.keySet().forEach(c->keys.add(c.pack()));
+                    int decorationIndex=f.registry.lookupOrThrow(Registries.STRUCTURE).stream()
+                            .filter(value->value.step()==city.value().step()).toList().indexOf(city.value());
+                    // Compare finished neighboring chunks: source template edge
+                    // updates can reshape a stair in a previously placed chunk.
+                    for(int nz=at.z()-1;nz<=at.z()+1;nz++)for(int nx=at.x()-1;nx<=at.x()+1;nx++) {
+                        var neighbor=new ChunkPos(nx,nz);
+                        var nearby=new TreeMap<ChunkPos,StructureStart>(Comparator.comparingInt(ChunkPos::x).thenComparingInt(ChunkPos::z));
+                        for(int gx=Math.floorDiv(nx-8,activePlacement.spacing());gx<=Math.floorDiv(nx+8,activePlacement.spacing());gx++)
+                            for(int gz=Math.floorDiv(nz-8,activePlacement.spacing());gz<=Math.floorDiv(nz+8,activePlacement.spacing());gz++) {
+                                var candidate=activePlacement.getPotentialStructureChunk(seed,gx*activePlacement.spacing(),gz*activePlacement.spacing());
+                                if(Math.abs(candidate.x()-nx)>8||Math.abs(candidate.z()-nz)>8)continue;
+                                var value=starts.computeIfAbsent(new Target(seed,candidate),key->start(f,manager,city,key.seed(),key.chunk()));
+                                if(value.isValid()&&value.getBoundingBox().intersects(neighbor.getMinBlockX(),neighbor.getMinBlockZ(),neighbor.getMaxBlockX(),neighbor.getMaxBlockZ()))nearby.put(candidate,value);
+                            }
+                        var neighborKeys=new it.unimi.dsi.fastutil.longs.LongOpenHashSet();nearby.keySet().forEach(c->neighborKeys.add(c.pack()));
+                        var random=new WorldgenRandom(new XoroshiroRandomSource(0));long decoration=random.setDecorationSeed(seed,nx*16,nz*16);
+                        random.setFeatureSeed(decoration,decorationIndex,city.value().step().ordinal());
+                        var bounds=new BoundingBox(nx*16,f.height.getMinY()+1,nz*16,nx*16+15,f.height.getMaxY(),nz*16+15);
+                        for(long key:neighborKeys)nearby.get(ChunkPos.unpack(key)).placeInChunk(capture.level,null,f.generator,random,bounds,neighbor);
                     }
+                    var request=profile.request(at.x(),at.z());
+                    try(var chunk=NativeTerrain.instance().generate(request)) {
+                        for(int y=0;y<256;y++)for(int z=0;z<16;z++)for(int x=0;x<16;x++) {
+                            var pos=new BlockPos(at.getMinBlockX()+x,y,at.getMinBlockZ()+z);var wanted=capture.state(pos);
+                            var actual=profile.materials()[Short.toUnsignedInt(chunk.blocks().get(ValueLayout.JAVA_SHORT,(y*256L+z*16+x)*2))];
+                            require(actual.equals(wanted),"city block seed="+seed+" chunk="+at+" pos="+pos+" source="+wanted+" actual="+actual);
+                        }
+                    }
+                    var metadata=NativeTerrain.instance().structureData(request);var wantedBlockEntities=new TreeMap<String,CompoundTag>();
+                    capture.blockEntities.forEach((pos,entity)->{if(ChunkPos.containing(pos).equals(at))wantedBlockEntities.put(pos.toShortString(),entity.saveWithFullMetadata(f.registry));});
+                    var actualBlockEntities=new TreeMap<String,CompoundTag>();
+                    for(var value:metadata.getListOrEmpty("block_entities")){var tag=(CompoundTag)value;actualBlockEntities.put(new BlockPos(tag.getIntOr("x",0),tag.getIntOr("y",0),tag.getIntOr("z",0)).toShortString(),tag);}
+                    require(actualBlockEntities.equals(wantedBlockEntities),"city block entity data seed="+seed+" chunk="+at+" source="+wantedBlockEntities+" actual="+actualBlockEntities);
+                    wantedBlockEntities.values().forEach(tag->blockEntityKinds.merge(tag.getStringOr("id",""),1,Integer::sum));
+                    var wantedEntities=capture.entities.stream().filter(entity->ChunkPos.containing(entity.blockPosition()).equals(at)).map(entityLevel::save).toList();var actualEntities=metadata.getListOrEmpty("entities");
+                    require(wantedEntities.size()==actualEntities.size(),"city entity count");
+                    for(int i=0;i<wantedEntities.size();i++) {
+                        var actual=(CompoundTag)actualEntities.get(i);checkEntity(wantedEntities.get(i),actual);
+                        require(entityLevel.roundTrip(actual).equals(actual),"actual city entity reopen codec");
+                        entityKinds.merge(actual.getStringOr("id",""),1,Integer::sum);
+                    }
+                    var refs=metadata.getCompoundOrEmpty("structures").getCompoundOrEmpty("References").getLongArray("minecraft:end_city").orElse(new long[0]);
+                    require(Arrays.equals(refs,keys.toLongArray()),"source reference iteration order");
+                    var row=new JsonObject();row.addProperty("seed",seed);row.add("chunk",EndReferenceFixtures.ints(at.x(),at.z()));row.addProperty("source_starts",keys.size());row.addProperty("dense_placement_variant",target.dense());maxReferences=Math.max(maxReferences,keys.size());
+                    row.addProperty("block_entities",wantedBlockEntities.size());row.addProperty("entities",wantedEntities.size());row.addProperty("source_writes",capture.blocks.size());rows.add(row);
+                    chunks++;blockEntities+=wantedBlockEntities.size();entities+=wantedEntities.size();loot+=wantedBlockEntities.values().stream().filter(t->t.contains("LootTable")).count();
                 }
-                var metadata=NativeTerrain.instance().structureData(request);var wantedBlockEntities=new TreeMap<String,CompoundTag>();
-                capture.blockEntities.forEach((pos,entity)->{if(ChunkPos.containing(pos).equals(at))wantedBlockEntities.put(pos.toShortString(),entity.saveWithFullMetadata(f.registry));});
-                var actualBlockEntities=new TreeMap<String,CompoundTag>();
-                for(var value:metadata.getListOrEmpty("block_entities")){var tag=(CompoundTag)value;actualBlockEntities.put(new BlockPos(tag.getIntOr("x",0),tag.getIntOr("y",0),tag.getIntOr("z",0)).toShortString(),tag);}
-                require(actualBlockEntities.equals(wantedBlockEntities),"city block entity data seed="+seed+" chunk="+at+" source="+wantedBlockEntities+" actual="+actualBlockEntities);
-                wantedBlockEntities.values().forEach(tag->blockEntityKinds.merge(tag.getStringOr("id",""),1,Integer::sum));
-                var wantedEntities=capture.entities.stream().filter(entity->ChunkPos.containing(entity.blockPosition()).equals(at)).map(entityLevel::save).toList();var actualEntities=metadata.getListOrEmpty("entities");
-                require(wantedEntities.size()==actualEntities.size(),"city entity count");
-                for(int i=0;i<wantedEntities.size();i++) {
-                    var actual=(CompoundTag)actualEntities.get(i);checkEntity(wantedEntities.get(i),actual);
-                    require(entityLevel.roundTrip(actual).equals(actual),"actual city entity reopen codec");
-                    entityKinds.merge(actual.getStringOr("id",""),1,Integer::sum);
-                }
-                var refs=metadata.getCompoundOrEmpty("structures").getCompoundOrEmpty("References").getLongArray("minecraft:end_city").orElse(new long[0]);
-                require(Arrays.equals(refs,keys.toLongArray()),"source reference iteration order");
-                var row=new JsonObject();row.addProperty("seed",seed);row.add("chunk",EndReferenceFixtures.ints(at.x(),at.z()));row.addProperty("source_starts",keys.size());row.addProperty("dense_placement_variant",target.dense());maxReferences=Math.max(maxReferences,keys.size());
-                row.addProperty("block_entities",wantedBlockEntities.size());row.addProperty("entities",wantedEntities.size());row.addProperty("source_writes",capture.blocks.size());rows.add(row);
-                chunks++;blockEntities+=wantedBlockEntities.size();entities+=wantedEntities.size();loot+=wantedBlockEntities.values().stream().filter(t->t.contains("LootTable")).count();
-            }
+            } finally { profiles.values().forEach(EndDefinitionFixture::close); }
         }
         Files.writeString(out.resolve("cases.json"),rows.toString()+"\n");
         require(chunks>0&&entities>0&&loot>0&&crossing&&maxReferences>1,"meaningful marker, shared-stream and boundary coverage; maxReferences="+maxReferences);

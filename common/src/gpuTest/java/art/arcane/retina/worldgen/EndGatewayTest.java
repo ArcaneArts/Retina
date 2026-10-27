@@ -30,39 +30,42 @@ public final class EndGatewayTest {
                 var data=EndTerrainProfile.export(f.registry,new GenerationSource(Level.END,f.generator,type),seed,StructureProfile.Context.NONE);
                 var json=JsonParser.parseString(data.json()).getAsJsonObject();int recipe=-1;var recipes=json.getAsJsonArray("decorations");
                 for(int i=0;i<recipes.size();i++)if(recipes.get(i).getAsJsonObject().get("kind").getAsString().equals("end_gateway"))recipe=i;
-                require(recipe>=0,"gateway root exported");var profile=BiomeTerrainProfile.register(data);var materials=profile.materials();var state=f.state(seed);
-                int successes=0,failures=0;boolean boundary=false;
-                // Source-discovered accepted/rejected anchors, retained as
-                // tiny fixtures rather than rediscovered by a repeated search.
-                int[] anchors=seed==42?new int[]{65,66,67,68,69,70,71,72,6077,7338,8113,8660,11145,14722,20066,20731,23384}:new int[]{65,66,67,68,69,70,71,72,2354,3862,6104,8145,11618,17067,18721,19361};
-                for(int cz:anchors) {
-                    int cx=seed==42?-33:31;
-                    var prefilter=new WorldgenRandom(new XoroshiroRandomSource(0));long d=prefilter.setDecorationSeed(seed,cx*16,cz*16);prefilter.setFeatureSeed(d,index,step);drawCandidates++;
-                    // The complete source placed feature below remains the
-                    // oracle; this records which source rarity branch it took.
-                    boolean rarity=prefilter.nextFloat()<1.0f/700.0f;
-                    if(!rarity&&failures>=8)continue;
-                    var capture=capture(f,seed,state);
-                    var random=new WorldgenRandom(new XoroshiroRandomSource(0));random.setFeatureSeed(d,index,step);
-                    new FeaturePlacer(capture.level,f.generator).placeWithBiomeCheck(placed,random,new BlockPos(cx*16,0,cz*16));
-                    boolean success=!capture.blocks.isEmpty();
-                    int ax=cx,az=cz;boolean crosses=capture.blocks.keySet().stream().anyMatch(p->Math.floorDiv(p.getX(),512)!=Math.floorDiv(ax*16,512)||Math.floorDiv(p.getZ(),512)!=Math.floorDiv(az*16,512));
-                    if(success&&successes>=8&&(!crosses||boundary)||!success&&failures>=8)continue;
-                    var request=new TerrainRequest(seed,cx,cz,0,256,64,0,1,profile.nativeId());
-                    var writes=NativeTerrain.instance().decorationFeature(request,recipe,new int[]{cx*16,0,cz*16},0x12345678);
-                    var actual=new HashMap<BlockPos,BlockState>();for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),materials[writes[i+3]]);
-                    require(actual.equals(capture.blocks),"world-seeded gateway geometry seed="+seed+" anchor="+cx+","+cz+" source="+capture.blocks+" actual="+actual);
-                    if(success) {
-                        var metadata=NativeTerrain.instance().structureData(request);checkEntities(f,capture,metadata);
-                        require(NativeTerrain.instance().structureData(request).equals(metadata),"gateway metadata reread is stable");
+                require(recipe>=0,"gateway root exported");
+                try(var profile=EndDefinitionFixture.create(f,data,seed)) {
+                    var materials=profile.materials();var state=f.state(seed);
+                    int successes=0,failures=0;boolean boundary=false;
+                    // Source-discovered accepted/rejected anchors, retained as
+                    // tiny fixtures rather than rediscovered by a repeated search.
+                    int[] anchors=seed==42?new int[]{65,66,67,68,69,70,71,72,6077,7338,8113,8660,11145,14722,20066,20731,23384}:new int[]{65,66,67,68,69,70,71,72,2354,3862,6104,8145,11618,17067,18721,19361};
+                    for(int cz:anchors) {
+                        int cx=seed==42?-33:31;
+                        var prefilter=new WorldgenRandom(new XoroshiroRandomSource(0));long d=prefilter.setDecorationSeed(seed,cx*16,cz*16);prefilter.setFeatureSeed(d,index,step);drawCandidates++;
+                        // The complete source placed feature below remains the
+                        // oracle; this records which source rarity branch it took.
+                        boolean rarity=prefilter.nextFloat()<1.0f/700.0f;
+                        if(!rarity&&failures>=8)continue;
+                        var capture=capture(f,seed,state);
+                        var random=new WorldgenRandom(new XoroshiroRandomSource(0));random.setFeatureSeed(d,index,step);
+                        new FeaturePlacer(capture.level,f.generator).placeWithBiomeCheck(placed,random,new BlockPos(cx*16,0,cz*16));
+                        boolean success=!capture.blocks.isEmpty();
+                        int ax=cx,az=cz;boolean crosses=capture.blocks.keySet().stream().anyMatch(p->Math.floorDiv(p.getX(),512)!=Math.floorDiv(ax*16,512)||Math.floorDiv(p.getZ(),512)!=Math.floorDiv(az*16,512));
+                        if(success&&successes>=8&&(!crosses||boundary)||!success&&failures>=8)continue;
+                        var request=profile.request(cx, cz);
+                        var writes=NativeTerrain.instance().decorationFeature(request,recipe,new int[]{cx*16,0,cz*16},0x12345678);
+                        var actual=new HashMap<BlockPos,BlockState>();for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),materials[writes[i+3]]);
+                        require(actual.equals(capture.blocks),"world-seeded gateway geometry seed="+seed+" anchor="+cx+","+cz+" source="+capture.blocks+" actual="+actual);
+                        if(success) {
+                            var metadata=NativeTerrain.instance().structureData(request);checkEntities(f,capture,metadata);
+                            require(NativeTerrain.instance().structureData(request).equals(metadata),"gateway metadata reread is stable");
+                        }
+                        var row=capture.snapshot();row.addProperty("seed",seed);row.add("anchor",EndReferenceFixtures.ints(cx,cz));row.addProperty("step",step);row.addProperty("index",index);row.addProperty("cross_region",crosses);row.addProperty("rarity_accepted",rarity);cases.add(row);
+                        if(crosses&&!boundary) {checkChunk(f,profile,steps,seed,cx,cz);generatedChunks++;}
+                        boundary|=crosses;crossing|=crosses;roots++;if(success){successes++;accepted++;}else{failures++;rejected++;}
                     }
-                    var row=capture.snapshot();row.addProperty("seed",seed);row.add("anchor",EndReferenceFixtures.ints(cx,cz));row.addProperty("step",step);row.addProperty("index",index);row.addProperty("cross_region",crosses);row.addProperty("rarity_accepted",rarity);cases.add(row);
-                    if(crosses&&!boundary) {checkChunk(f,profile,steps,seed,cx,cz);generatedChunks++;}
-                    boundary|=crosses;crossing|=crosses;roots++;if(success){successes++;accepted++;}else{failures++;rejected++;}
+                    require(successes>=8&&failures==8&&boundary,"bounded source roots and natural boundary gateway found");
+                    checkVariants(f,data,json,recipe,step,index,seed,cases);
+                    Files.writeString(out.resolve("profile-"+seed+".json"),data.json());
                 }
-                require(successes>=8&&failures==8&&boundary,"bounded source roots and natural boundary gateway found");
-                checkVariants(f,data,json,recipe,step,index,seed,cases);
-                Files.writeString(out.resolve("profile-"+seed+".json"),data.json());
             }
         }
         require(roots==33,"all targeted natural roots exercised");
@@ -70,7 +73,7 @@ public final class EndGatewayTest {
         Files.writeString(out.resolve("reference.json"),new GsonBuilder().setPrettyPrinting().create().toJson(report)+"\n");
         System.out.println("QA_EVT {\"event\":\"end_gateway_parity\",\"roots\":"+roots+",\"accepted\":"+accepted+",\"rejected\":"+rejected+",\"status\":\"pass\"}");
     }
-    private static void checkChunk(EndReferenceFixtures f,BiomeTerrainProfile profile,List<FeatureSorter.StepFeatureData> steps,long seed,int cx,int cz) {
+    private static void checkChunk(EndReferenceFixtures f,EndDefinitionFixture profile,List<FeatureSorter.StepFeatureData> steps,long seed,int cx,int cz) {
         var json=JsonParser.parseString(profile.json()).getAsJsonObject();int reach=0;
         for(var recipe:json.getAsJsonArray("decorations")) reach=Math.addExact(reach,recipe.getAsJsonObject().get("reach").getAsInt());
         // Bound the complete chain of preceding roots, not just this feature's
@@ -87,7 +90,7 @@ public final class EndGatewayTest {
                 level.blockEntities.forEach((p,e)->entities.put(p,e.saveWithFullMetadata(f.registry)));
             }
         }
-        var request=new TerrainRequest(seed,cx,cz,0,256,64,0,1,profile.nativeId());
+        var request=profile.request(cx, cz);
         try(var chunk=NativeTerrain.instance().generate(request)) {
             var materials=profile.materials();
             for(int z=0;z<16;z++)for(int x=0;x<16;x++)for(int y=0;y<256;y++) {
@@ -132,12 +135,14 @@ public final class EndGatewayTest {
             // Make every End biome eligible for this fixture; the native root
             // remains a genuine exported root with only its loaded definition changed.
             for(var biome:json.getAsJsonArray("biomes")) {var ids=biome.getAsJsonObject().getAsJsonArray("decorations");if(!ids.asList().contains(new JsonPrimitive(recipe)))ids.add(recipe);}
-            int profile=NativeTerrain.instance().registerProfile(json.toString());var request=new TerrainRequest(seed,cx,cz,0,256,64,0,1,profile);
-            var capture=f.new Capture(seed,-1);feature.place(capture.level,f.generator,new WorldgenRandom(new XoroshiroRandomSource(0)),origin);feature.place(capture.level,f.generator,new WorldgenRandom(new XoroshiroRandomSource(0)),variant==1?origin.west():origin);
-            var writes=NativeTerrain.instance().decorationFeature(request,recipe,new int[]{cx*16,0,cz*16},0);
-            var actual=new HashMap<BlockPos,BlockState>();for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),data.materials()[writes[i+3]]);
-            require(actual.equals(capture.blocks),"configured gateway geometry and duplicate placement");checkEntities(f,capture,NativeTerrain.instance().structureData(request));
-            var row=capture.snapshot();row.addProperty("configured_variant",variant);row.addProperty("overlapping_metadata",variant==1);row.addProperty("seed",seed);cases.add(row);
+            try(var profile=EndDefinitionFixture.create(f,json,seed)) {
+                var request=profile.request(cx, cz);
+                var capture=f.new Capture(seed,-1);feature.place(capture.level,f.generator,new WorldgenRandom(new XoroshiroRandomSource(0)),origin);feature.place(capture.level,f.generator,new WorldgenRandom(new XoroshiroRandomSource(0)),variant==1?origin.west():origin);
+                var writes=NativeTerrain.instance().decorationFeature(request,recipe,new int[]{cx*16,0,cz*16},0);
+                var actual=new HashMap<BlockPos,BlockState>();for(int i=0;i<writes.length;i+=4)actual.put(new BlockPos(writes[i],writes[i+1],writes[i+2]),profile.materials()[writes[i+3]]);
+                require(actual.equals(capture.blocks),"configured gateway geometry and duplicate placement");checkEntities(f,capture,NativeTerrain.instance().structureData(request));
+                var row=capture.snapshot();row.addProperty("configured_variant",variant);row.addProperty("overlapping_metadata",variant==1);row.addProperty("seed",seed);cases.add(row);
+            }
         }
     }
     private static void require(boolean value,String message){if(!value)throw new AssertionError(message);}
