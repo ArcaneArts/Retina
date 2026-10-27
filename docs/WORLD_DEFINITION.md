@@ -924,3 +924,10 @@ The native input-authority regression suite rejects fifteen bridge calls after w
 The native bridge, full MCA decoder and column-cache lifecycle fixtures publish and reopen procedural `retina.dat` files. Their requests and native timing counters use the loaded world's handle. The Java `bridgeTest` task runs the parallel bridge and packet contracts independently; `gpuTest` retains its complete existing GPU prerequisites. Procedural shader slot zero remains an internal shared implementation detail; transfer diagnostics belong to the actual saved world handle.
 
 The saved procedural fixture run passes 128 parallel complete voxel checks, native timing/error/packet contracts and full Minecraft decoding of a 1,024-chunk MCA. Repair preserves edits, while cache checks cover cold reload, LRU eviction, sidecar I/O failure and a read lease held through shutdown. All 351 native unit tests and the root checks pass with the counter attribution fix. Evidence is retained under `~/.cache/retina/world-definition-primitive-fixtures-20261027`.
+
+
+### Rust GPU integration fixtures
+
+The Rust GPU integration suite publishes gzip structural NBT using the codec's existing test encoder, then reopens it through the production `WorldDefinition` loader and `WorldSession`. It no longer uploads JSON or generates with profile zero. Different seeds and cropped native bounds use separate saved definitions; interpreter selection remains an execution option. Independent chunk/tile bindings reopen the same file.
+
+All three real-GPU tests pass: 256 parallel complete primitive chunks, physical coast/point/region-tile parity across interpreter variants, sparse biome/height and cached-quart queries, and exact column/mask bytes with overlapping readback compared to an independent one-slot engine. Root checks also pass. Evidence is retained under `~/.cache/retina/world-definition-native-fixtures-20261027`.

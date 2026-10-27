@@ -1,9 +1,12 @@
+mod support;
+use support::SavedFixture;
+
 use std::sync::Arc;
 use std::time::Instant;
 
 use retina_worldgen::{AIR, COLUMNS, ChunkRequest, STONE, TerrainEngine};
 
-fn request(x: i32, z: i32) -> ChunkRequest {
+fn parameters(x: i32, z: i32) -> ChunkRequest {
     ChunkRequest {
         seed: 0x1234_5678_9abc_def0,
         chunk_x: x,
@@ -24,16 +27,20 @@ fn actual_gpu_parallel_chunks_and_height_queries() {
         "QA_EVT {{\"event\":\"gpu_backend\",\"status\":\"pass\",\"details\":\"{}\"}}",
         engine.backend()
     );
-    let origin = engine.sample_heights(request(0, 0)).unwrap();
+    let primitive = serde_json::json!({"terrain_kind":"procedural","sea_level":-64,
+        "materials":["minecraft:air","minecraft:stone"],"biomes":[{"id":"minecraft:plains"}]});
+    let saved = SavedFixture::new(engine.clone(),primitive.clone(),parameters(0,0));
+    let origin = engine.sample_heights(saved.request(0, 0)).unwrap();
     assert!(
         origin.iter().any(|h| *h != origin[0]),
         "simplex must vary across columns"
     );
-    let mut other_seed = request(0, 0);
-    other_seed.seed ^= 1 << 40;
+    let other_seed = SavedFixture::new(engine.clone(),primitive.clone(),ChunkRequest {
+        seed:parameters(0,0).seed ^ (1 << 40), ..parameters(0,0)
+    });
     assert_ne!(
         origin,
-        engine.sample_heights(other_seed).unwrap(),
+        engine.sample_heights(other_seed.request(0,0)).unwrap(),
         "all 64 seed bits participate"
     );
     println!("QA_EVT {{\"event\":\"simplex_variation\",\"status\":\"pass\"}}");
@@ -42,10 +49,11 @@ fn actual_gpu_parallel_chunks_and_height_queries() {
     let threads: Vec<_> = (0..16)
         .map(|worker| {
             let engine = Arc::clone(&engine);
+            let dimension = saved.lease();
             std::thread::spawn(move || {
                 let mut total_ms = 0.0;
                 for i in 0..16 {
-                    let request = request(worker - 8, i - 8);
+                    let request = dimension.request(worker - 8, i - 8).unwrap();
                     let begin = Instant::now();
                     let mut blocks = vec![255; request.block_count()];
                     let heights = engine.generate_into(request, &mut blocks).unwrap();
@@ -79,22 +87,22 @@ fn actual_gpu_parallel_chunks_and_height_queries() {
     );
 
     // Verify the global-coordinate convention across a negative chunk boundary.
-    let left = engine.sample_heights(request(-1, 0)).unwrap();
-    let right = engine.sample_heights(request(0, 0)).unwrap();
+    let left = engine.sample_heights(saved.request(-1, 0)).unwrap();
+    let right = engine.sample_heights(saved.request(0, 0)).unwrap();
     for z in 0..16 {
         assert!(
             (left[z * 16 + 15] - right[z * 16]).abs() <= 12,
             "adjacent columns should not reset their simplex coordinates"
         );
     }
-    let short = ChunkRequest {
+    let short = SavedFixture::new(engine.clone(),primitive,ChunkRequest {
         min_y: -16,
         height: 16,
         base_height: -8.0,
         amplitude: 64.0,
-        ..request(-1, -1)
-    };
-    let heights = engine.sample_heights(short).unwrap();
+        ..parameters(-1, -1)
+    });
+    let heights = engine.sample_heights(short.request(-1,-1)).unwrap();
     assert!(
         heights.iter().all(|height| (-15..=0).contains(height)),
         "GPU respects vertical bounds"
@@ -105,7 +113,7 @@ fn actual_gpu_parallel_chunks_and_height_queries() {
 #[test]
 fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
     use serde_json::json;
-    let engine = TerrainEngine::new().unwrap();
+    let engine = Arc::new(TerrainEngine::new().unwrap());
     let constant = |v: f32| json!({"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[v,0,0,0]}],"roots":[0]});
     let noise = json!({"frequency":0.02,"amplitude":0.5,"modifiers":[1]});
     let density = json!({"nodes":[
@@ -129,11 +137,6 @@ fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
         "registry_program":{"programs":[constant(0.4),density,constant(1.),constant(2.),constant(2.),constant(4.)],
             "noises":[{"frequency":0.02,"amplitude":0.5,"salt":42,"coefficients":[1]}],"points":[],"surface":[-64,384,0]}
     });
-    let request_at = |id, x, z| ChunkRequest {
-        reserved: id,
-        seed: 123456789,
-        ..request(x, z)
-    };
     for mode in ["interpreter", "wide_interpreter", "specialized"] {
         let mut source = profile.clone();
         source["program_execution"] = json!(if mode == "wide_interpreter" {
@@ -163,12 +166,10 @@ fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
             let root = nodes.len() - 1;
             source["registry_program"]["programs"][0]["roots"] = json!(vec![root; 6]);
         }
-        let chunk_id = engine
-            .register_profile(&serde_json::to_vec(&source).unwrap())
-            .unwrap();
+        let chunk_world = SavedFixture::new(engine.clone(),source,ChunkRequest {seed:123456789,..parameters(0,0)});
         let requests: Vec<_> = [(31, -1), (32, -1), (33, -1), (31, 0), (32, 0), (33, 0)]
             .into_iter()
-            .map(|(x, z)| request_at(chunk_id, x, z))
+            .map(|(x, z)| chunk_world.request(x,z))
             .collect();
         let sparse = engine.sample_biomes(&requests, None).unwrap();
         use retina_worldgen::queries::{Kind, Point};
@@ -223,11 +224,10 @@ fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
             engine.sample_biomes(&requests, None).unwrap(),
             "cache does not change query results"
         );
-        let tile_id = engine
-            .register_profile(&serde_json::to_vec(&source).unwrap())
-            .unwrap();
+        let tile_world = chunk_world.reopen(engine.clone());
+        assert_ne!(chunk_world.id(),tile_world.id(),"independent file opens have separate ownership");
         for (x, z) in [(0, -32), (32, -32), (0, 0), (32, 0)] {
-            let tile = engine.sample_tile(request_at(tile_id, x, z), 32).unwrap();
+            let tile = engine.sample_tile(tile_world.request(x,z), 32).unwrap();
             for (i, r) in requests.iter().enumerate() {
                 if r.chunk_x < x || r.chunk_x >= x + 32 || r.chunk_z < z || r.chunk_z >= z + 32 {
                     continue;
@@ -250,12 +250,13 @@ fn physical_coasts_match_sparse_chunks_and_neighbor_regions() {
 #[test]
 fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
     use serde_json::json;
-    let engine = TerrainEngine::new().unwrap();
+    let engine = Arc::new(TerrainEngine::new().unwrap());
     let constant = |v: f32| json!({"nodes":[{"op":0,"a":0,"b":0,"c":0,"p":[v,0,0,0]}],"roots":[0]});
     let noise = json!({"frequency":0.02,"amplitude":0.5,"modifiers":[1,0.5]});
     let climate = json!({"nodes":[{"op":2,"a":0,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0,0,0,0,0,0]});
     let density = json!({"nodes":[{"op":3,"a":1,"b":0,"c":0,"p":[-64,128,1,-1]}],"roots":[0]});
-    let mut last_profile = 0;
+    let mut worlds = Vec::new();
+    let mut last_source = serde_json::Value::Null;
     for mode in 0..3 {
         let mut source = json!({
             "biome_scale":256,"blend":0.55,"sea_level":32,"stone":1,"water":2,
@@ -278,20 +279,15 @@ fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
             ]);
             source["weirdness_noise"] = noise.clone();
         }
-        let id = engine
-            .register_profile(&serde_json::to_vec(&source).unwrap())
-            .unwrap();
-        last_profile = id;
+        last_source = source.clone();
+        worlds.push(SavedFixture::new(engine.clone(),source,ChunkRequest {height:192,..parameters(0,0)}));
+        let world = worlds.last().unwrap();
+        let id = world.id();
         // Exact queries run cold before any field exists and must agree at every
         // local offset, including negative chunks and distant world coordinates.
         use retina_worldgen::queries::{Kind, Point};
         for (x, z) in [(-31, 17), (10_000, -10_000)] {
-            let r = ChunkRequest {
-                reserved: id,
-                min_y: -64,
-                height: 192,
-                ..request(x, z)
-            };
+            let r = world.request(x,z);
             let points: Vec<_> = (0..16)
                 .map(|i| Point {
                     x: x * 16 + i,
@@ -351,14 +347,11 @@ fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
                 started.elapsed().as_secs_f64() * 1000.
             );
         }
+        let cropped_world = SavedFixture::new(engine.clone(),last_source.clone(),ChunkRequest {min_y:-63,height:191,..parameters(0,0)});
+        let id = cropped_world.id();
         let requests: Vec<_> = [(-31, 17), (17, -31), (10_000, -10_000), (-10_000, 10_000)]
             .into_iter()
-            .map(|(x, z)| ChunkRequest {
-                reserved: id,
-                min_y: -63,
-                height: 191,
-                ..request(x, z)
-            })
+            .map(|(x, z)| cropped_world.request(x,z))
             .collect();
         let ys = [-61, -27, 8, 66];
         let before = engine.timings(id).snapshot();
@@ -427,10 +420,9 @@ fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
     }
     // Different mask sizes force scratch growth and slot reuse while submissions
     // overlap. Compare every returned byte with an independent one-slot engine.
-    let serial = TerrainEngine::with_pipeline_depth(1).unwrap();
-    let serial_profile = serial
-        .register_profile(&engine.profile(last_profile).unwrap().unwrap().encoded)
-        .unwrap();
+    let cropped = SavedFixture::new(engine.clone(),last_source,ChunkRequest {min_y:-63,height:191,..parameters(0,0)});
+    let serial = Arc::new(TerrainEngine::with_pipeline_depth(1).unwrap());
+    let serial_world = cropped.reopen(serial.clone());
     let cases = [(0, 0, 32), (32, 0, 16), (-32, 0, 8), (0, -32, 1)];
     let barrier = std::sync::Barrier::new(cases.len());
     let parallel = std::thread::scope(|scope| {
@@ -439,14 +431,10 @@ fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
             .map(|&(x, z, side)| {
                 let engine = &engine;
                 let barrier = &barrier;
+                let cropped = &cropped;
                 scope.spawn(move || {
                     barrier.wait();
-                    let r = ChunkRequest {
-                        reserved: last_profile,
-                        min_y: -63,
-                        height: 191,
-                        ..request(x, z)
-                    };
+                    let r = cropped.request(x,z);
                     engine.terrain_field(r, side).unwrap()
                 })
             })
@@ -457,12 +445,7 @@ fn sparse_biomes_match_full_fields_and_reuse_cached_quarts() {
             .collect::<Vec<_>>()
     });
     for ((x, z, side), (actual, mask)) in cases.into_iter().zip(parallel) {
-        let r = ChunkRequest {
-            reserved: serial_profile,
-            min_y: -63,
-            height: 191,
-            ..request(x, z)
-        };
+        let r = serial_world.request(x,z);
         let (expected, reference) = serial.terrain_field(r, side).unwrap();
         assert_eq!(
             bytemuck::cast_slice::<_, u8>(&actual.columns),
