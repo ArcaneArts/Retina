@@ -117,7 +117,7 @@ the same release settings. Enable the experimental environment switch only for
 the candidate. Use two Cargo jobs, two CPU workers, nice +10, a 60-second build
 deadline and a 30-second execution deadline, with process-group cleanup.
 
-Run `decoration_plan_benchmark PROFILE 123456789 X Z 5 32 2` with interpreter
+Run `decoration_plan_benchmark DEFINITION DIMENSION X Z 5 32 2` with interpreter
 preload disabled. Set `RETINA_PLAN_OUTPUT` to retain each full ordered plan.
 Use `scripts/native-region-benchmark.py` with the table's caller/count settings,
 one warmup, matching execution/readiness policies, and `--compare` against the

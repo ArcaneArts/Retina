@@ -169,7 +169,7 @@ programs and explicit overrides. Only Metal execution/performance was tested.
 
 Use `scripts/native-region-benchmark.py` with matching pinned libraries/profiles,
 fresh output directories, `--compare`, and the caller/count/readiness settings
-above. Planner reproduction uses `decoration_plan_benchmark PROFILE 123456789
+above. Planner reproduction uses `decoration_plan_benchmark DEFINITION DIMENSION
 X Z 5 32 2`, `RETINA_INTERPRETER_PRELOAD=0`, and `RETINA_PLAN_OUTPUT` to export
 the complete ordered vector.
 

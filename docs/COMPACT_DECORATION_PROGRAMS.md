@@ -117,7 +117,7 @@ a fresh `--out` directory, and `--compare` pointing at the retained baseline out
 Use `--parallel 2` for the concurrent correctness case. Set `RAYON_NUM_THREADS=2`
 and `RETINA_REGION_THREADS=2`, lower process priority, and wrap each invocation in
 a 30-second process-group deadline. Build separately with `CARGO_BUILD_JOBS=2`.
-For the planner use `decoration_plan_benchmark PROFILE 123456789 X Z 3 32 2`.
+For the planner use `decoration_plan_benchmark DEFINITION DIMENSION X Z 3 32 2`.
 
 No game launch or GitHub Actions was used. Merged changes can be tested normally
 through the existing Fabric `./gradlew runClient` command.

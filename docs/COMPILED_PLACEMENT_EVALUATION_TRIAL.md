@@ -121,7 +121,7 @@ The candidate production library built in 44.09 seconds; separate example links
 completed in under two seconds. Logs include failed and successful work.
 
 Apply the archived patch to its stated base in an isolated worktree. Run
-`decoration_plan_benchmark PROFILE 123456789 X Z 5 32 2` with
+`decoration_plan_benchmark DEFINITION DIMENSION X Z 5 32 2` with
 `RETINA_INTERPRETER_PRELOAD=0` and `RETINA_PLAN_OUTPUT` for each variant. Both
 executables must include the tick correction. Full-region reproduction uses
 `scripts/native-region-benchmark.py` with pinned libraries, matching profiles,

@@ -1,49 +1,71 @@
 //! Check actual exported profiles' GPU placement substrate across region/chunk
 //! boundaries, independent requests, cached fields and concurrent submissions.
-//! material_substrate_check <profile.json> [specialized|interpreter] [side=32]
-use retina_worldgen::{COLUMNS, ChunkRequest, TerrainEngine};
+//! material_substrate_check <halo-retina.dat> <baseline-retina.dat> <dimension> [specialized|interpreter] [side=32]
+//! Both generation variants must be compiled before loading. Dispatch is a binding option.
+use retina_worldgen::{
+    COLUMNS, TerrainEngine,
+    region::codec::Compression,
+    world_definition::{
+        WorldDefinition,
+        runtime::{ProgramExecution, WorldSession},
+    },
+};
 use std::sync::Arc;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let source = std::fs::read(args.next().ok_or("profile path required")?)?;
+    let source = Arc::new(WorldDefinition::read(
+        args.next().ok_or("halo definition path required")?,
+    )?);
+    let baseline = Arc::new(WorldDefinition::read(
+        args.next().ok_or("baseline definition path required")?,
+    )?);
+    let key = args.next().ok_or("dimension required")?;
     let mode = args.next().unwrap_or_else(|| "specialized".into());
     let side: u32 = args.next().map(|v| v.parse()).transpose()?.unwrap_or(32);
-    let mut value: serde_json::Value = serde_json::from_slice(&source)?;
-    value["program_execution"] = mode.clone().into();
-    value["registry_program"]["material_halo"] = true.into();
-    let source = serde_json::to_vec(&value)?;
-    let engine = TerrainEngine::new()?;
-    let profile_id = engine.register_profile(&source)?;
-    let profile = engine.profile(profile_id)?.ok_or("missing profile")?;
-    value["registry_program"]["material_halo"] = false.into();
-    let legacy_id = engine.register_profile(&serde_json::to_vec(&value)?)?;
-    let request = ChunkRequest {
-        seed: 123456789,
-        chunk_x: -32,
-        chunk_z: -32,
-        min_y: -64,
-        height: 384,
-        base_height: 64.,
-        amplitude: 48.,
-        frequency: 0.008,
-        reserved: profile_id,
+    if args.next().is_some() {
+        return Err("unexpected argument; seed and geometry come from retina.dat".into());
+    }
+    let execution = match mode.as_str() {
+        "specialized" => ProgramExecution::Specialized,
+        "interpreter" => ProgramExecution::Interpreter,
+        _ => return Err("execution must be specialized or interpreter".into()),
     };
+    let engine = Arc::new(TerrainEngine::new()?);
+    let world = WorldSession::bind_with_execution(
+        engine.clone(),
+        source.clone(),
+        Compression::Zlib,
+        Some(execution),
+    )?;
+    let legacy_world = WorldSession::bind_with_execution(
+        engine.clone(),
+        baseline.clone(),
+        Compression::Zlib,
+        Some(execution),
+    )?;
+    let dimension = world.dimension(&key)?;
+    let legacy_dimension = legacy_world.dimension(&key)?;
+    let request = dimension.request(-32, -32)?;
+    let legacy_request = legacy_dimension.request(-32, -32)?;
+    let profile_id = request.reserved;
+    let profile = engine.profile(profile_id)?.ok_or("missing profile")?;
+    let legacy_profile = engine
+        .profile(legacy_request.reserved)?
+        .ok_or("missing baseline profile")?;
     let (field, mask) = engine.terrain_field(request, side)?;
     let mask = mask.ok_or("missing substrate")?;
     assert!(field.substrate.is_some());
     assert_eq!(field.side, side as usize + 2, "no additional anchor ring");
-    let (legacy_field, legacy_mask) = engine.terrain_field(
-        ChunkRequest {
-            reserved: legacy_id,
-            ..request
-        },
-        side,
-    )?;
+    let (legacy_field, legacy_mask) = engine.terrain_field(legacy_request, side)?;
     let legacy_mask = legacy_mask.ok_or("missing legacy base mask")?;
     assert!(
         legacy_field.substrate.is_none(),
         "old profile behavior retained"
+    );
+    assert_eq!(
+        profile.material_nbt, legacy_profile.material_nbt,
+        "compared numeric materials name the same block states"
     );
     assert_eq!(field.columns.len(), legacy_field.columns.len());
     for (a, b) in field.columns.iter().zip(&legacy_field.columns) {
@@ -59,7 +81,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect();
     // A separate engine prevents these calls from borrowing the region mask.
     let chunks = Arc::new(TerrainEngine::new()?);
-    let chunk_id = chunks.register_profile(&source)?;
+    let chunk_world = WorldSession::bind_with_execution(
+        chunks.clone(),
+        source.clone(),
+        Compression::Zlib,
+        Some(execution),
+    )?;
+    let chunk_dimension = chunk_world.dimension(&key)?;
     let mut comparisons = 0u64;
     let mut heightmaps = 0u64;
     let mut voids = 0u64;
@@ -69,17 +97,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .iter()
             .map(|&(x, z)| {
                 let chunks = chunks.clone();
-                std::thread::spawn(move || {
-                    chunks.terrain_field(
-                        ChunkRequest {
-                            chunk_x: x,
-                            chunk_z: z,
-                            reserved: chunk_id,
-                            ..request
-                        },
-                        1,
-                    )
-                })
+                let dimension = chunk_dimension.clone();
+                std::thread::spawn(move || chunks.terrain_field(dimension.request(x, z)?, 1))
             })
             .collect();
         for (&(cx, cz), job) in group.iter().zip(jobs) {
@@ -153,29 +172,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         None
     );
     assert_eq!(
-        mask.material_at(request.chunk_x * 16, -65, request.chunk_z * 16),
+        mask.material_at(
+            request.chunk_x * 16,
+            request.min_y - 1,
+            request.chunk_z * 16
+        ),
         Some(0)
     );
     assert_eq!(
-        mask.material_at(request.chunk_x * 16, 320, request.chunk_z * 16),
+        mask.material_at(
+            request.chunk_x * 16,
+            request.min_y + request.height as i32,
+            request.chunk_z * 16
+        ),
         Some(0)
     );
     let mut cached_blocks = vec![0; request.block_count()];
     let mut independent_blocks = vec![0; request.block_count()];
     for &(cx, cz) in &origins {
-        let r = ChunkRequest {
-            chunk_x: cx,
-            chunk_z: cz,
-            ..request
-        };
+        let r = dimension.request(cx, cz)?;
         let a = engine.generate_into(r, &mut cached_blocks)?;
-        let b = chunks.generate_into(
-            ChunkRequest {
-                reserved: chunk_id,
-                ..r
-            },
-            &mut independent_blocks,
-        )?;
+        let b = chunks.generate_into(chunk_dimension.request(cx, cz)?, &mut independent_blocks)?;
         assert_eq!(a, b, "final heights at {cx}/{cz}");
         if let Some(i) = cached_blocks
             .iter()
@@ -190,7 +207,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!(
         "{}",
-        serde_json::json!({"status":"pass","mode":mode,"side":side,"backend":engine.backend(),"columns":origins.len()*COLUMNS,"voxel_comparisons":comparisons,"final_block_comparisons":origins.len()*request.block_count(),"heightmap_checks":heightmaps,"below_surface_air":voids,"below_surface_fluid":fluids,"region_mask_words":mask.words.len(),"legacy_mask_words":legacy_mask.words.len(),"cached_gpu_jobs":0})
+        serde_json::json!({"status":"pass","dimension":key,"seed":source.seed(),"mode":mode,"side":side,"backend":engine.backend(),"columns":origins.len()*COLUMNS,"voxel_comparisons":comparisons,"final_block_comparisons":origins.len()*request.block_count(),"heightmap_checks":heightmaps,"below_surface_air":voids,"below_surface_fluid":fluids,"region_mask_words":mask.words.len(),"legacy_mask_words":legacy_mask.words.len(),"cached_gpu_jobs":0})
     );
     Ok(())
 }

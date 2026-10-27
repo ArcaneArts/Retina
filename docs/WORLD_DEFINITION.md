@@ -586,3 +586,21 @@ New files omit dispatch preferences, and format 2 rejects `program_execution`
 in a profile with an actionable binding-option error. Format 1's historical
 profile hints remain readable for compatibility. Choosing a GPU implementation
 is separate from choosing generation rules and does not rewrite `retina.dat`.
+
+### Decoration and material diagnostics
+
+`decoration_plan_benchmark retina.dat minecraft:overworld X Z ITERATIONS SIDE WORKERS`
+and the optional `decoration_replay_benchmark retina.dat minecraft:overworld SIDE PAIRS X Z`
+load the saved seed and geometry, then bind interpreter execution. Neither accepts a
+seed override or rewrites generation rules. Existing ordered-output and detailed-plan
+comparisons still run outside measured intervals.
+
+`material_substrate_check HALO/retina.dat BASELINE/retina.dat minecraft:overworld specialized 32`
+compares two explicit generation snapshots. Compile them separately with
+`:common:exportBenchmarkDefinition -PbenchmarkDefinitionRoot=HALO -PbenchmarkMaterialHalo=true`
+and the corresponding `BASELINE` / `false` options; use the same `benchmarkSeed` and
+`benchmarkPack` for both. The default exporter retains its normal halo setting.
+The checker loads each file unchanged and binds the selected interpreter/specialized
+dispatch preference, including a second independent engine for cold chunk comparisons.
+It takes geometry and all requests from the files, including out-of-range probes.
+These are benchmark fixtures, not a way to change the seed or rules of an existing world.

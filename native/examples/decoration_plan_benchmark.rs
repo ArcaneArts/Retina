@@ -1,43 +1,44 @@
 //! Real GPU terrain, registered feature planning, and ordered-output validation.
-//! decoration_plan_benchmark <profile.json> [seed] [chunk_x] [chunk_z] [iterations=3] [side=4] [workers=2]
+//! decoration_plan_benchmark <retina.dat> <dimension> [chunk_x] [chunk_z] [iterations=3] [side=4] [workers=2]
 //! Run under a process-group deadline. This diagnostic forces interpreter terrain
 //! to avoid starting expensive asynchronous shader specialization.
-use retina_worldgen::{ChunkRequest, TerrainEngine};
-use std::time::Instant;
+use retina_worldgen::{
+    TerrainEngine,
+    region::codec::Compression,
+    world_definition::{
+        WorldDefinition,
+        runtime::{ProgramExecution, WorldSession},
+    },
+};
+use std::{sync::Arc, time::Instant};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let mut source: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(args.next().ok_or("profile path required")?)?)?;
-    source["program_execution"] = "interpreter".into();
-    let source = serde_json::to_vec(&source)?;
-    let seed = args
-        .next()
-        .map(|v| v.parse())
-        .transpose()?
-        .unwrap_or(123456789);
+    let source = Arc::new(WorldDefinition::read(
+        args.next().ok_or("definition path required")?,
+    )?);
+    let key = args.next().ok_or("dimension required")?;
     let chunk_x = args.next().map(|v| v.parse()).transpose()?.unwrap_or(0);
     let chunk_z = args.next().map(|v| v.parse()).transpose()?.unwrap_or(0);
     let iterations: usize = args.next().map(|v| v.parse()).transpose()?.unwrap_or(3);
     let side: usize = args.next().map(|v| v.parse()).transpose()?.unwrap_or(4);
     let threads: usize = args.next().map(|v| v.parse()).transpose()?.unwrap_or(2);
+    if args.next().is_some() {
+        return Err("unexpected argument; seed comes from retina.dat".into());
+    }
     if !(1..=9).contains(&iterations) || !(1..=32).contains(&side) || !(1..=2).contains(&threads) {
         return Err("use iterations 1..9, side 1..32 and workers 1..2".into());
     }
-    let engine = TerrainEngine::new()?;
-    let reserved = engine.register_profile(&source)?;
-    let profile = engine.profile(reserved)?.ok_or("missing profile")?;
-    let request = ChunkRequest {
-        seed,
-        chunk_x,
-        chunk_z,
-        min_y: -64,
-        height: 384,
-        base_height: 64.,
-        amplitude: 48.,
-        frequency: 0.008,
-        reserved,
-    };
+    let engine = Arc::new(TerrainEngine::new()?);
+    let world = WorldSession::bind_with_execution(
+        engine.clone(),
+        source.clone(),
+        Compression::Zlib,
+        Some(ProgramExecution::Interpreter),
+    )?;
+    let dimension = world.dimension(&key)?;
+    let request = dimension.request(chunk_x, chunk_z)?;
+    let profile = engine.profile(request.reserved)?.ok_or("missing profile")?;
     let (field, mask) = engine.terrain_field(request, side as u32)?;
     let workers = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
@@ -108,7 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     sorted.sort_by(f64::total_cmp);
     println!(
         "{}",
-        serde_json::json!({"backend":engine.backend(),"seed":seed,
+        serde_json::json!({"backend":engine.backend(),"dimension":key,"seed":source.seed(),
         "chunk_x":chunk_x,"chunk_z":chunk_z,"workers":threads,"side":side,"warmups":1,"iterations":iterations,"phases":phases,
         "placements":placements,"signature":format!("{:016x}", expected.unwrap()),
         "median_ms":sorted[iterations/2],"max_ms":sorted[iterations-1],

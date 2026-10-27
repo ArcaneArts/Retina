@@ -145,7 +145,7 @@ Use `scripts/native-region-benchmark.py --count 12 --warmups 1 --parallel 2
 --readiness shader-ready --specialization-timeout 15` with pinned libraries,
 matching profiles, fresh output directories and `--compare` for the candidate.
 The harness now also accepts four/eight callers, independently of the two-worker
-environment limit. Use `decoration_plan_benchmark PROFILE 123456789 X Z 5 32 2`
+environment limit. Use `decoration_plan_benchmark DEFINITION DIMENSION X Z 5 32 2`
 with `RETINA_INTERPRETER_PRELOAD=0`; `RETINA_PLAN_OUTPUT` exports full vectors.
 Keep the documented resource limits and deadlines for all reproductions.
 
