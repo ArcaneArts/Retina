@@ -8,6 +8,7 @@ loom {
         vmArg '--enable-native-access=ALL-UNNAMED'
         if (providers.gradleProperty('retinaNativePath').isPresent()) vmArg "-Dretina.native.path=${providers.gradleProperty('retinaNativePath').get()}"
         if (providers.gradleProperty('retinaQa').isPresent()) {
+            if (providers.gradleProperty('retinaEndLifecycleQa').isPresent()) vmArg '-Dretina.qa.end.lifecycle=true'
             if (providers.gradleProperty('retinaDefinitionFailCompilerQa').isPresent()) vmArg '-Dretina.qa.definition.failCompiler=true'
             vmArg '-Dretina.qa=true'
             [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',

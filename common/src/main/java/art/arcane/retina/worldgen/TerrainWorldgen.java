@@ -56,6 +56,7 @@ public final class TerrainWorldgen {
     }
 
     private static void endTick(MinecraftServer server, RetinaPlatform platform) {
+        EndLifecycleQa.tick(server);
         NetherUnloadQa.tick(server);
         NetherLifecycleQa.tick(server);
         NetherProgressionQa.tick(server);
