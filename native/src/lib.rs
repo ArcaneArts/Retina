@@ -39,6 +39,7 @@ mod gpu_worker;
 pub mod lighting;
 pub mod pipeline;
 pub mod profile;
+pub mod world_definition;
 pub mod queries;
 mod tree_shapes;
 

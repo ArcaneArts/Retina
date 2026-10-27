@@ -1,0 +1,366 @@
+use super::{WorldDefinition, value, wire::*};
+use crate::profile::WorldProfile;
+use fastnbt::{IntArray, Value as Nbt};
+use flate2::{Compression, write::GzEncoder};
+use serde_json::{Value, json};
+use std::{collections::BTreeMap, io::Write};
+
+fn profile(biome: &str) -> Value {
+    let noise = json!({"frequency":0.001,"amplitude":1,"modifiers":[1]});
+    json!({
+        "biome_scale":128,"blend":0.55,"sea_level":63,
+        "stone":1,"water":1,"bedrock":1,"deepslate":1,"snow":1,"ice":1,
+        "biomes":[{"id":biome,"climate":[0,0,0,0],"terrain":[0,0,0],
+            "top":1,"filler":1,"underwater":1,"flags":0}],
+        "noises":[noise,noise,noise,noise],"material_flags":[0,1],"heightmap_masks":[0,63],
+        "flat":{"base_layers":[1,1,0],"deferred_layers":[],"air_materials":[0]}
+    })
+}
+
+fn document() -> Document {
+    let dimensions = [
+        ("minecraft:overworld", "minecraft:plains", 1, 0),
+        ("minecraft:the_nether", "minecraft:nether_wastes", 2, 1),
+    ]
+    .into_iter()
+    .map(|(id, biome, material, biome_id)| {
+        (
+            id.into(),
+            Dimension {
+                parameters: Parameters {
+                    generator: "flat".into(),
+                    min_y: -64,
+                    height: 384,
+                    generator_depth: 384,
+                    sea_level: 63,
+                    spawn_height: 64,
+                    skylight: true,
+                    ceiling: false,
+                    logical_height: 384,
+                    coordinate_scale: 1.0,
+                    base_height: 64.0,
+                    amplitude: 48.0,
+                    frequency: 0.008,
+                },
+                material_palette: IntArray::new(vec![0, material]),
+                biome_palette: IntArray::new(vec![biome_id]),
+                profile: Some(value::encode(&profile(biome)).unwrap()),
+                unsupported_reason: None,
+            },
+        )
+    })
+    .collect();
+    Document {
+        format_version: FORMAT_VERSION,
+        generation_version: GENERATION_VERSION,
+        minecraft_version: "26.3".into(),
+        data_version: 5000,
+        exporter: "Retina codec test".into(),
+        seed: i64::MIN + 17,
+        generate_structures: true,
+        bonus_chest: false,
+        datapacks: vec![Datapack {
+            id: "vanilla".into(),
+            digest: None,
+        }],
+        shared_types: SharedTypes {
+            materials: ["minecraft:air", "minecraft:stone", "minecraft:netherrack"]
+                .into_iter()
+                .map(|id| BlockState {
+                    id: id.into(),
+                    properties: BTreeMap::new(),
+                })
+                .collect(),
+            biomes: vec!["minecraft:plains".into(), "minecraft:nether_wastes".into()],
+        },
+        dimensions,
+    }
+}
+
+fn gzip(document: &Document) -> Vec<u8> {
+    let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
+    encoder
+        .write_all(&fastnbt::to_bytes(document).unwrap())
+        .unwrap();
+    encoder.finish().unwrap()
+}
+
+fn load(document: &Document) -> WorldDefinition {
+    WorldDefinition::from_gzip(gzip(document).as_slice()).unwrap()
+}
+
+fn error(document: &Document) -> String {
+    WorldDefinition::from_gzip(gzip(document).as_slice())
+        .err()
+        .expect("invalid definition accepted")
+}
+
+#[test]
+fn shared_world_file_preserves_dimension_palettes_seed_and_native_profiles() {
+    let doc = document();
+    let bytes = gzip(&doc);
+    let world = WorldDefinition::from_gzip(bytes.as_slice()).unwrap();
+    assert_eq!(world.seed(), i64::MIN + 17);
+    assert_eq!(world.data_version(), doc.data_version);
+    assert_eq!(world.dimensions().len(), 2);
+    assert!(world.source().generate_structures);
+    assert!(!world.source().bonus_chest);
+    for (id, source) in &doc.dimensions {
+        let loaded = world.dimension(id).unwrap().profile().unwrap();
+        let mut previous = value::decode(source.profile.clone().unwrap()).unwrap();
+        previous["materials"] = Value::Array(
+            source
+                .material_palette
+                .iter()
+                .map(|&id| Value::String(doc.shared_types.materials[id as usize].id.clone()))
+                .collect(),
+        );
+        let previous = WorldProfile::parse(&serde_json::to_vec(&previous).unwrap()).unwrap();
+        assert_eq!(loaded.gpu_bytes(), previous.gpu_bytes());
+        assert_eq!(loaded.climate_gpu_bytes(), previous.climate_gpu_bytes());
+        assert_eq!(loaded.material_nbt, previous.material_nbt);
+        assert_eq!(
+            loaded.materials[1]["id"],
+            if id == "minecraft:overworld" {
+                "minecraft:stone"
+            } else {
+                "minecraft:netherrack"
+            }
+        );
+        let request = world.request(id, 9, -33, 64).unwrap();
+        assert_eq!(request.seed, world.seed() as u64);
+        assert_eq!(
+            (
+                request.chunk_x,
+                request.chunk_z,
+                request.min_y,
+                request.height
+            ),
+            (-33, 64, -64, 384)
+        );
+        let mut blocks = vec![0; request.block_count()];
+        loaded.flat.as_ref().unwrap().assemble(&mut blocks);
+        assert!(blocks[..512].iter().all(|&id| id == 1));
+        assert!(blocks[512..].iter().all(|&id| id == 0));
+    }
+    let reopened = WorldDefinition::from_gzip(bytes.as_slice()).unwrap();
+    assert_eq!(world.fingerprint(), reopened.fingerprint());
+    assert_eq!(
+        world
+            .dimension("minecraft:overworld")
+            .unwrap()
+            .profile()
+            .unwrap()
+            .encoded,
+        reopened
+            .dimension("minecraft:overworld")
+            .unwrap()
+            .profile()
+            .unwrap()
+            .encoded
+    );
+    assert_ne!(
+        world
+            .dimension("minecraft:overworld")
+            .unwrap()
+            .profile()
+            .unwrap()
+            .encoded,
+        world
+            .dimension("minecraft:the_nether")
+            .unwrap()
+            .profile()
+            .unwrap()
+            .encoded
+    );
+}
+
+#[test]
+fn structural_codec_preserves_mixed_nullable_numeric_and_unicode_data() {
+    let original = json!({
+        "bytes":[0,127,128,255],"ints":[i32::MIN,0,i32::MAX],
+        "longs":[i64::MIN,9007199254740993_i64,i64::MAX],
+        "double":[-0.0,f64::MIN_POSITIVE,1.0/3.0],
+        "bool":[true,false],"strings":["\u{0}你好🦊","v"],
+        "mixed":[null,true,-1,9007199254740993_i64,"marker",{"v":null},[1,"two"]],
+        "empty":[],"compound":{},"nullable":[null,{"field":false},null]
+    });
+    let wire = value::encode(&original).unwrap();
+    let bytes = fastnbt::to_bytes(&wire).unwrap();
+    let decoded = value::decode(fastnbt::from_bytes(&bytes).unwrap()).unwrap();
+    assert_eq!(decoded, original);
+    assert_eq!(
+        decoded["double"][0].as_f64().unwrap().to_bits(),
+        (-0.0_f64).to_bits()
+    );
+    let Nbt::Compound(fields) = wire else {
+        panic!()
+    };
+    assert!(matches!(fields["bytes"], Nbt::ByteArray(_)));
+    assert!(matches!(fields["ints"], Nbt::IntArray(_)));
+    assert!(matches!(fields["longs"], Nbt::LongArray(_)));
+}
+
+#[test]
+fn typed_template_nbt_survives_native_validation_and_compilation() {
+    let tag = json!([10,{
+        "name":[8,"marker 🦊\u{0}"],"seed":[4,i64::MAX],
+        "bytes":[7,[-128,127]],"ints":[11,[i32::MIN,i32::MAX]],
+        "longs":[12,[i64::MIN,i64::MAX]],"float":[5,1.125],"double":[6,1.0/3.0],
+        "list":[9,[8,[[8,"first"],[8,"second"]]]]
+    }]);
+    let mut doc = document();
+    let source = doc.dimensions.get_mut("minecraft:overworld").unwrap();
+    let mut data = value::decode(source.profile.take().unwrap()).unwrap();
+    data["structures"] = json!({"templates":[{
+        "id":"test:marker","size":[1,1,1],"ground":0,"palettes":[[[1,1,1,1]]],
+        "blocks":[0,0,0,0],"tags":{"0":tag},"joints":[],"entities":[]
+    }],"definitions":[],"pools":{},"sets":[]});
+    source.profile = Some(value::encode(&data).unwrap());
+    let world = load(&doc);
+    let actual = &world
+        .dimension("minecraft:overworld")
+        .unwrap()
+        .profile()
+        .unwrap()
+        .structures
+        .templates[0]
+        .tags[&0];
+    assert_eq!(actual, &tag);
+    assert_eq!(crate::nbt::root(actual), crate::nbt::root(&tag));
+}
+
+#[test]
+fn optional_end_profiles_load_without_altering_end_execution() {
+    let mut doc = document();
+    let source = doc.dimensions.get_mut("minecraft:overworld").unwrap();
+    let mut data = value::decode(source.profile.take().unwrap()).unwrap();
+    data.as_object_mut().unwrap().remove("flat");
+    data["end"] = json!({"material":1,"biomes":[0,0,0,0,0]});
+    source.profile = Some(value::encode(&data).unwrap());
+    source.parameters.generator = "end".into();
+    let world = load(&doc);
+    let loaded = world
+        .dimension("minecraft:overworld")
+        .unwrap()
+        .profile()
+        .unwrap();
+    assert_eq!(loaded.end.as_ref().unwrap().material, 1);
+    assert_eq!(loaded.end.as_ref().unwrap().biomes, [0; 5]);
+    assert!(loaded.flat.is_none());
+}
+
+#[test]
+fn unsupported_dimensions_are_explicit_and_do_not_disable_other_dimensions() {
+    let mut doc = document();
+    let mut unsupported = doc.dimensions["minecraft:overworld"].clone();
+    unsupported.profile = None;
+    unsupported.unsupported_reason = Some("custom generator requires executable mod code".into());
+    doc.dimensions.insert("test:custom".into(), unsupported);
+    let world = load(&doc);
+    assert!(
+        world
+            .dimension("minecraft:overworld")
+            .unwrap()
+            .profile()
+            .is_ok()
+    );
+    assert!(
+        world
+            .dimension("test:custom")
+            .unwrap()
+            .profile()
+            .err()
+            .unwrap()
+            .contains("custom generator")
+    );
+    assert!(world.request("test:custom", 1, 0, 0).is_err());
+    assert!(world.request("test:missing", 1, 0, 0).is_err());
+    assert!(world.request("minecraft:overworld", 0, 0, 0).is_err());
+}
+
+#[test]
+fn loader_reports_actual_format_reference_and_generation_errors() {
+    let mut doc = document();
+    doc.format_version += 1;
+    assert!(error(&doc).contains("unsupported world definition format"));
+    let mut doc = document();
+    doc.generation_version += 1;
+    assert!(error(&doc).contains("unsupported generation semantics"));
+    let mut doc = document();
+    doc.dimensions
+        .get_mut("minecraft:overworld")
+        .unwrap()
+        .material_palette = IntArray::new(vec![0, 99]);
+    assert!(error(&doc).contains("dimension minecraft:overworld: unknown shared material 99"));
+    let mut doc = document();
+    doc.dimensions
+        .get_mut("minecraft:overworld")
+        .unwrap()
+        .biome_palette = IntArray::new(vec![1]);
+    assert!(error(&doc).contains("biome palette differs"));
+    let mut doc = document();
+    doc.dimensions
+        .get_mut("minecraft:overworld")
+        .unwrap()
+        .parameters
+        .sea_level = 9;
+    assert!(error(&doc).contains("sea level differs"));
+    let mut doc = document();
+    doc.dimensions
+        .get_mut("minecraft:overworld")
+        .unwrap()
+        .parameters
+        .height = -1;
+    assert!(error(&doc).contains("negative dimension height"));
+    let mut doc = document();
+    doc.dimensions
+        .get_mut("minecraft:overworld")
+        .unwrap()
+        .unsupported_reason = Some("ambiguous".into());
+    assert!(error(&doc).contains("either a profile or an unsupported reason"));
+}
+
+#[test]
+fn malformed_profile_values_and_runtime_settings_are_rejected_during_decode() {
+    assert!(value::decode(Nbt::Byte(2)).unwrap_err().contains("boolean"));
+    assert!(
+        value::decode(Nbt::Double(f64::NAN))
+            .unwrap_err()
+            .contains("non-finite")
+    );
+    assert!(value::decode(Nbt::List(vec![Nbt::Compound(Default::default())])).is_err());
+    let mut doc = document();
+    let source = doc.dimensions.get_mut("minecraft:overworld").unwrap();
+    let mut data = value::decode(source.profile.take().unwrap()).unwrap();
+    data["mca_compression"] = "zlib".into();
+    source.profile = Some(value::encode(&data).unwrap());
+    assert!(error(&doc).contains("runtime compression"));
+}
+
+#[test]
+fn read_uses_the_published_file_and_preserves_it_after_errors() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let dir = std::env::temp_dir().join(format!(
+        "retina-definition-{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    ));
+    std::fs::create_dir(&dir).unwrap();
+    let path = dir.join("retina.dat");
+    assert!(
+        WorldDefinition::read(&path)
+            .err()
+            .unwrap()
+            .contains("retina.dat")
+    );
+    let bytes = gzip(&document());
+    std::fs::write(&path, &bytes).unwrap();
+    assert_eq!(WorldDefinition::read(&path).unwrap().dimensions().len(), 2);
+    let truncated = &bytes[..bytes.len() - 8];
+    std::fs::write(&path, truncated).unwrap();
+    assert!(WorldDefinition::read(&path).err().unwrap().contains("gzip"));
+    assert_eq!(std::fs::read(&path).unwrap(), truncated);
+    std::fs::remove_dir_all(dir).unwrap();
+}

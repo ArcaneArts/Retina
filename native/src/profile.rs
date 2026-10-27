@@ -138,8 +138,19 @@ impl WorldProfile {
     pub(crate) fn material_layers(&self) -> bool { self.end.is_some() || self.registry_program.as_ref().is_some_and(|p| p.material_layers) }
     pub(crate) fn material_halo(&self) -> bool { self.end.is_some() || self.registry_program.as_ref().is_some_and(|p| p.material_halo) }
     pub fn parse(json: &[u8]) -> Result<Self, String> {
-        let mut profile: Self =
+        let profile: Self =
             serde_json::from_slice(json).map_err(|e| format!("world profile: {e}"))?;
+        Self::initialize(profile, json.to_vec())
+    }
+
+    /// The NBT loader supplies decoded values directly. There is no JSON text
+    /// serialization or second set of generation validation/initialization rules.
+    pub(crate) fn from_definition(value: Value, identity: Vec<u8>) -> Result<Self, String> {
+        let profile = serde_json::from_value(value).map_err(|e| format!("world profile: {e}"))?;
+        Self::initialize(profile, identity)
+    }
+
+    fn initialize(mut profile: Self, identity: Vec<u8>) -> Result<Self, String> {
         if let Some(end) = &profile.end {
             end.validate(profile.materials.len(), profile.biomes.len())?;
             if profile.flat.is_some() || profile.registry_program.is_some() { return Err("End profiles cannot mix flat or registry density terrain".into()); }
@@ -395,7 +406,7 @@ impl WorldProfile {
                         .any(|n| n.op == 0 && n.p[0] >= 1.0 && is_half(n.p[0] as usize - 1))
                 })
         });
-        profile.encoded = json.to_vec();
+        profile.encoded = identity;
         Ok(profile)
     }
 

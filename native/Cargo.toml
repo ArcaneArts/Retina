@@ -40,6 +40,7 @@ smallvec = { version = "1", features = ["union"] }
 # or enable process-wide malloc interposition.
 mimalloc = { version = "=0.1.52", optional = true, default-features = false, features = ["local_dynamic_tls"] }
 sha2 = "0.10"
+fastnbt = "2.6.3"
 
 [dev-dependencies]
 libc = "0.2"
