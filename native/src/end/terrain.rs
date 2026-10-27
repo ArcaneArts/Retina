@@ -106,7 +106,7 @@ impl Profile {
         }}
         let ox = origin.chunk_x * 16; let oz = origin.chunk_z * 16;
         let density = VanillaDensity::new(request.seed);
-        let tile = density.tile(ox, oz, tile_side as u32 * 16, tile_side as u32 * 16)?;
+        let tile = density.sparse_tile(ox, oz, tile_side as u32 * 16, tile_side as u32 * 16)?;
         if let Some(metrics) = metrics.filter(|_|crate::performance::enabled()) {
             use crate::performance::Counter::*;
             let [empty,solid,uncertain] = tile.occupancy_counts();
@@ -114,6 +114,12 @@ impl Profile {
             metrics.add(end_mask_bytes,tile.mask_bytes() as u64);
             metrics.add(end_empty_cells,empty); metrics.add(end_solid_cells,solid); metrics.add(end_uncertain_cells,uncertain);
             metrics.add(end_voxel_interpolations_avoided,(empty+solid)*8*4*8);
+            let stats=tile.stats();
+            metrics.add(end_bounds_nanos,stats.bounds_nanos);
+            metrics.add(end_bounds_temporary_bytes,stats.temporary_bytes);
+            metrics.add(end_partial_noise_probes,stats.partial_probes);
+            metrics.add(end_exact_noise_corners,stats.exact_corners);
+            metrics.add(end_skipped_noise_corners,stats.skipped_corners);
         }
         let run_width = (tile_side - 2) * 16;
         let width = run_width + 2;

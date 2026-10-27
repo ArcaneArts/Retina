@@ -20,6 +20,8 @@ counters! {
     end_columns_nanos, end_query_nanos, end_terrain_nanos,
     end_mask_nanos, end_mask_bytes, end_empty_cells, end_solid_cells, end_uncertain_cells,
     end_voxel_interpolations_avoided,
+    end_bounds_nanos, end_bounds_temporary_bytes, end_partial_noise_probes,
+    end_exact_noise_corners, end_skipped_noise_corners,
     dependency_evaluation_nanos, final_structure_planning_nanos,
     distribution_nanos, teardown_nanos, region_pool_wait_nanos,
     teardown_commands_nanos, teardown_versions_nanos, teardown_outputs_nanos,
