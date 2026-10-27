@@ -6,9 +6,10 @@ Rust `world_definition` module reads it without initializing Minecraft, loading
 datapacks, or creating a GPU device.
 
 Implementation is being delivered in separate cycles. The format, reader,
-Java compiler and atomic file writer are implemented. Automatic startup
-integration and the standalone runner follow; ordinary worlds still use the
-existing profile registration path until that integration is merged.
+Java compiler, atomic file writer, native session binding and JDK-only bridge
+are implemented. Automatic startup integration and the standalone runner
+follow; ordinary worlds still use the existing profile registration path
+until that integration is merged.
 
 ## Version 1 wire format
 
@@ -184,3 +185,92 @@ Rust's correctly rounded `f64` conversion. The legacy JSON parser's default
 fast conversion can round some decimals one ULP differently from Java. The
 file preserves Java's binary doubles exactly; GPU/material comparisons still
 use the unchanged legacy runtime parser as their independent baseline.
+
+## Native sessions and host bridge
+
+`WorldDefinition::read` remains the single reader. The opaque-handle API and
+the Rust `WorldSession` both consume its immutable result. Definition open,
+metadata, diagnostics and close do not initialize a GPU. Binding a supported
+dimension starts the shared engine and registers its saved profile. All
+supported dimensions share the same loaded definition and engine.
+
+The C ABI exposes:
+
+- `retina_open_world_definition`: read the actual file; handle zero means only
+  an absent file, while malformed or inaccessible files fail.
+- `retina_world_definition_metadata`: compact host metadata from the loaded
+  definition, including palettes, parameters, and query/preview information.
+- `retina_bind_world_dimension`: bind a dimension with an output codec
+  (`2` for zlib, `4` for LZ4Block).
+- `retina_world_dimension_request`: populate the existing 40-byte request
+  from the saved seed/settings plus supplied chunk coordinates.
+- `retina_world_definition_profile_json`: explicit diagnostic output of the
+  complete decoded profile, with its material palette resolved.
+- `retina_close_world_definition`: release the host's world ownership after
+  it has stopped admitting work and drained generation.
+
+The JSON returned by metadata/diagnostic calls is host-facing output. It is
+not a second input to the saved-definition binder. Ordinary metadata omits
+the density graphs and full generation resources. Neither call rereads the
+file or consults a Minecraft registry.
+
+`NativeWorldDefinition` uses only JDK classes and FFM. `NativeLibrary` loads a
+single library image shared with `NativeTerrain`, keeping definition I/O
+separate from GPU initialization. The Java bridge owns a native handle,
+provides saved requests, and closes idempotently. Platform palette resolution
+and automatic server/world lifecycle integration are the next delivery cycle.
+
+Rust dimension leases retain their session and definition while work runs.
+The profile registry holds weak references for saved profiles; active jobs
+hold strong references. Heavy parsed profile data is released after the last
+owner/job, and stale requests cannot resolve it. IDs are never reused for
+different worlds, so existing cache keys cannot alias a reopened world.
+The process-wide engine and its existing GPU caches remain shared.
+
+Output compression is a session setting rather than saved generation data.
+It does not mutate the definition. Region output obtains DataVersion from a
+saved binding even when a legacy caller supplies a different host value.
+The existing writer preserves complete regions and validates existing data.
+
+## Runtime verification
+
+The normal `world_definition` tests include opaque handle behavior and profile
+ownership. Run the isolated test below to prove definition I/O does not
+initialize the shared engine:
+
+```sh
+cargo test --lib definition_io_does_not_initialize_the_gpu -- --ignored --nocapture
+```
+
+After generating the Java fixtures, these explicitly named tests require a
+real compute device:
+
+```sh
+RETINA_WORLD_DEFINITION_FIXTURES="$PWD/../build/world-definition-fixtures" \
+  cargo test --lib saved_file_generates_regions_and_keeps_active_dimension_leases_alive -- --ignored --nocapture
+RETINA_WORLD_DEFINITION_FIXTURES="$PWD/../build/world-definition-fixtures" \
+  cargo test --lib saved_overworld_and_nether_regions_match_legacy_generation -- --ignored --nocapture
+```
+
+The first generates a complete flat region, compares flat chunk data against
+the existing path, checks negative region coordinates and saved DataVersion,
+preserves a complete region byte-for-byte, and exercises lease lifetime.
+The second generates saved/legacy Overworld and Nether regions and compares
+the complete decoded NBT of every chunk (2,048 comparisons). Native generation
+content is compared independently of MCA header timestamps and compound-key
+serialization order. This includes every field emitted in those chunks;
+targeted rare-feature and cross-boundary coverage remains part of end-to-end QA.
+
+The Java bridge tests compile and run with a JDK-only classpath:
+
+```sh
+./gradlew worldDefinitionBridgeTest
+./gradlew worldDefinitionBridgeGpuTest
+```
+
+They check vanilla/flat/datapack metadata, exact seeds, missing and malformed
+files, frozen data after a source-file change, close behavior, and dimension
+binding/request layout. The first needs no GPU initialization; the second
+binds a real native engine. `-PretinaNativePath=/path/to/library` and
+`-PretinaDefinitionFixtures=/path/to/world-definition-fixtures` can select
+existing test artifacts. Missing inputs fail their actual open/load operations.

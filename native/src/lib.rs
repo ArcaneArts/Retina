@@ -162,7 +162,7 @@ struct Job {
 pub struct TerrainEngine {
     sender: mpsc::SyncSender<Job>,
     backend: String,
-    profiles: RwLock<Vec<Arc<WorldProfile>>>,
+    profiles: RwLock<world_definition::residency::Profiles>,
     cache: Mutex<ColumnCache>,
     height_cache: Mutex<ColumnCache>,
     query_cache: Mutex<queries::Cache>,
@@ -255,7 +255,7 @@ impl TerrainEngine {
             feature_gpu: Mutex::new(counts),
             vine_gpu,
             light_gpu,
-            profiles: RwLock::new(Vec::new()),
+            profiles: RwLock::new(world_definition::residency::Profiles::default()),
             cache: Mutex::new(ColumnCache::default()),
             height_cache: Mutex::new(ColumnCache::default()),
             query_cache: Mutex::new(queries::Cache::default()),
@@ -656,26 +656,29 @@ impl TerrainEngine {
     }
 
     pub fn register_profile(&self, bytes: &[u8]) -> Result<u32, String> {
-        let profile = WorldProfile::parse(bytes)?;
-        let mut profiles = self.profiles.write().map_err(|_| "profile lock poisoned")?;
-        if let Some(index) = profiles.iter().position(|p| p.encoded == bytes) {
-            return Ok(index as u32 + 1);
-        }
-        profiles.push(Arc::new(profile));
-        Ok(profiles.len() as u32)
+        let profile = Arc::new(WorldProfile::parse(bytes)?);
+        self.profiles.write().map_err(|_| "profile lock poisoned")?.legacy(profile)
+    }
+
+    pub(crate) fn register_world_profile(
+        &self,
+        profile: &Arc<WorldProfile>,
+        compression: region::codec::Compression,
+        data_version: i32,
+    ) -> Result<u32, String> {
+        self.profiles.write().map_err(|_| "profile lock poisoned")?.world(profile, compression, data_version)
     }
 
     pub fn profile(&self, id: u32) -> Result<Option<Arc<WorldProfile>>, String> {
-        if id == 0 {
-            return Ok(None);
-        }
-        self.profiles
-            .read()
-            .map_err(|_| "profile lock poisoned")?
-            .get(id as usize - 1)
-            .cloned()
-            .map(Some)
-            .ok_or_else(|| "unknown world profile".into())
+        self.profiles.read().map_err(|_| "profile lock poisoned")?.get(id)
+    }
+
+    pub(crate) fn profile_compression(&self, id: u32) -> Result<region::codec::Compression, String> {
+        self.profiles.read().map_err(|_| "profile lock poisoned")?.compression(id)
+    }
+
+    pub(crate) fn profile_data_version(&self, id: u32) -> Result<Option<i32>, String> {
+        self.profiles.read().map_err(|_| "profile lock poisoned")?.data_version(id)
     }
 
     pub fn sample_heights(&self, request: ChunkRequest) -> Result<[i32; COLUMNS], String> {
@@ -1623,7 +1626,7 @@ pub unsafe extern "C" fn retina_chunk_structure_starts(
 }
 /// # Safety
 /// data and length must describe an allocation returned by a Retina byte-buffer
-/// API (structure data or performance JSON), freed exactly once.
+/// API (structure data, definition metadata, or performance JSON), freed exactly once.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_free_bytes(data: *mut u8, length: u64) {
     if !data.is_null() {

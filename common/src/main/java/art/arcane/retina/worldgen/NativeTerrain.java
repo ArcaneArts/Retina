@@ -5,12 +5,9 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Locale;
 
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
@@ -47,7 +44,7 @@ public final class NativeTerrain {
     private final String backend;
 
     private NativeTerrain() {
-        var symbols = SymbolLookup.libraryLookup(extractLibrary(), Arena.global());
+        var symbols = NativeLibrary.symbols();
         var linker = Linker.nativeLinker();
         var initialize = linker.downcallHandle(symbols.findOrThrow("retina_initialize"), FunctionDescriptor.of(JAVA_INT));
         pointQueries = linker.downcallHandle(symbols.findOrThrow("retina_query_points"), FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS));
@@ -405,36 +402,6 @@ public final class NativeTerrain {
             var bytes = arena.allocate(4096);
             long length = (long) call.invokeExact(bytes, 4096L);
             return new String(bytes.asSlice(0, length).toArray(JAVA_BYTE), StandardCharsets.UTF_8);
-        }
-    }
-
-    private static Path extractLibrary() {
-        String override = System.getProperty("retina.native.path");
-        if (override != null) {
-            return Path.of(override).toAbsolutePath();
-        }
-        String osName = System.getProperty("os.name").toLowerCase(Locale.ROOT);
-        String os = osName.contains("mac") ? "macos" : osName.contains("win") ? "windows" : "linux";
-        String archName = System.getProperty("os.arch").toLowerCase(Locale.ROOT);
-        String arch = switch (archName) {
-            case "aarch64", "arm64" -> "aarch64";
-            case "amd64", "x86_64" -> "x86_64";
-            default -> archName;
-        };
-        String name = System.mapLibraryName("retina_worldgen");
-        String resource = "/natives/" + os + "-" + arch + "/" + name;
-        try (var stream = NativeTerrain.class.getResourceAsStream(resource)) {
-            if (stream == null) {
-                throw new IllegalStateException("Native library is not packaged for " + os + "-" + arch + ": " + resource);
-            }
-            Path directory = Files.createTempDirectory("retina-native-");
-            Path library = directory.resolve(name);
-            Files.copy(stream, library);
-            directory.toFile().deleteOnExit();
-            library.toFile().deleteOnExit();
-            return library;
-        } catch (IOException error) {
-            throw new IllegalStateException("Could not load Retina's native terrain library", error);
         }
     }
 

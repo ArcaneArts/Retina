@@ -409,6 +409,39 @@ tasks.register('worldDefinitionCompileTest', JavaExec) {
 }
 check.dependsOn 'worldDefinitionCompileTest'
 
+def worldDefinitionBridgeClasses = tasks.register('worldDefinitionBridgeClasses', JavaCompile) {
+    source file('src/main/java/art/arcane/retina/worldgen/NativeLibrary.java'),
+            file('src/main/java/art/arcane/retina/worldgen/NativeWorldDefinition.java'),
+            file('src/main/java/art/arcane/retina/worldgen/TerrainRequest.java'),
+            file('src/gpuTest/java/art/arcane/retina/worldgen/NativeWorldDefinitionBridgeTest.java')
+    classpath = files()
+    destinationDirectory = layout.buildDirectory.dir('world-definition-bridge/classes')
+    javaCompiler = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(25) }
+    options.release = 25
+}
+['worldDefinitionBridgeTest': false, 'worldDefinitionBridgeGpuTest': true].each { taskName, bind ->
+    tasks.register(taskName, JavaExec) {
+        group = 'verification'
+        description = bind ? 'Bind saved dimensions through the JDK-only bridge on the actual GPU.'
+                : 'Open saved definitions on a JDK-only classpath without Minecraft or GPU initialization.'
+        dependsOn worldDefinitionBridgeClasses
+        def library = providers.gradleProperty('retinaNativePath')
+                .orElse(nativeTarget.map { it.file("release/${System.mapLibraryName('retina_worldgen')}").asFile.absolutePath })
+        if (!providers.gradleProperty('retinaNativePath').isPresent()) dependsOn ':buildNative'
+        def fixtures = providers.gradleProperty('retinaDefinitionFixtures')
+                .orElse(rootProject.layout.buildDirectory.dir('world-definition-fixtures').map { it.asFile.absolutePath })
+        if (!providers.gradleProperty('retinaDefinitionFixtures').isPresent()) dependsOn 'worldDefinitionCompileTest'
+        classpath = files(worldDefinitionBridgeClasses.flatMap { it.destinationDirectory })
+        mainClass = 'art.arcane.retina.worldgen.NativeWorldDefinitionBridgeTest'
+        javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+        jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+        maxHeapSize = '128m'
+        args library.get(), fixtures.get()
+        if (bind) args '--bind'
+    }
+}
+check.dependsOn 'worldDefinitionBridgeTest'
+
 tasks.register('geologyTest', JavaExec) {
     group = 'verification'
     description = 'Validate registry-derived parallel ores, GPU cave masks and exposure rules.'
