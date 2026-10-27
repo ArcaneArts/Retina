@@ -56,7 +56,7 @@ impl TerrainEngine {
         points: &[Point],
         kind: Kind,
     ) -> Result<Vec<Column>, String> {
-        request.validate()?;
+        self.validate_request(&request)?;
         if request.min_y.rem_euclid(4) != 0 || request.height % 4 != 0 {
             return Err("point queries require quart-aligned vertical bounds".into());
         }

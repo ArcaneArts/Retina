@@ -687,6 +687,7 @@ pub fn plans(
     request: ChunkRequest,
     side: i32,
 ) -> Result<Vec<Arc<Start>>, String> {
+    engine.validate_request(&request)?;
     Ok(plans_inner(engine, request, side, true, None, None, None)?
         .into_iter()
         .map(|(_, start)| start)
@@ -905,7 +906,7 @@ pub fn query_starts(
     request: ChunkRequest,
     candidates: &[[i32; 3]],
 ) -> Result<Vec<i32>, String> {
-    request.validate()?;
+    engine.validate_request(&request)?;
     let Some(profile) = engine.profile(request.reserved)? else {
         return Ok(vec![-1; candidates.len()]);
     };

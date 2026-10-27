@@ -121,6 +121,7 @@ pub fn generate_region(
 pub(crate) fn generate_chunk(
     engine:&TerrainEngine, request:ChunkRequest, data_version:i32, biome:&str,
 ) -> Result<Vec<u8>,String> {
+    engine.validate_request(&request)?;
     let profile=engine.profile(request.reserved)?;
     let mut blocks=vec![0;request.block_count()];
     let columns=engine.generate_columns_into(request,&mut blocks)?;
@@ -225,7 +226,7 @@ fn generate_region_inner(
     cached: Option<&Path>,
     detail: Option<&mut timings::Snapshot>,
 ) -> Result<RegionReport, String> {
-    request.validate()?;
+    engine.validate_request(&request)?;
     let cache_materials = output.is_some();
     if cached.is_none() && (biome.is_empty() || biome.len() > u16::MAX as usize) {
         return Err("invalid MCA biome identifier".into());
