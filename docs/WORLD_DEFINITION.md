@@ -706,3 +706,18 @@ takes `RETINA_DENSITY_DEFINITIONS` pointing to a JSON object with `composed` and
 flag. It launches fresh, environment-cleared processes using only a copied file,
 compares all decoded chunks across absent/0/1 legacy environment values, and also
 requires the two explicit generation variants to produce different terrain.
+
+### Embedded NBT fidelity
+
+Template and entity payloads retain their declared NBT numeric widths. Loading
+rejects byte/short/int values and byte/int array elements outside their signed
+width, and float values that would become infinite when written as a float.
+The error identifies the definition, dimension and affected structure template;
+the existing file remains untouched. Valid snapshots keep their current behavior
+without a format or semantics migration.
+
+Physical-file tests cover numeric boundaries, 64-bit values beyond double's exact
+integer range, subnormal floats/doubles, negative zero, arrays, nested compounds
+and Java modified UTF-8 names. The Java codec fixture additionally exports actual
+Minecraft tags through the template compiler and writes a separate Minecraft NBT
+reference. Rust compares the resulting typed binary payload with that reference.
