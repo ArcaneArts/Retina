@@ -190,6 +190,12 @@ impl WorldProfile {
                     return Err("End chorus recipes require a compatible End profile and biome mapping".into());
                 }
             }
+            if let crate::decoration::Kind::EndGateway { end_gateway } = &recipe.feature {
+                if profile.end.is_none() || !profile.decoration_source_order || !profile.ordered_decorations || end_gateway.biomes.iter().any(|&b|b as usize>=profile.biomes.len())
+                    || profile.decorations.iter().filter(|r|r.generation_step==recipe.generation_step && r.root_order==recipe.root_order).count()!=1 {
+                    return Err("End gateway roots require a compatible End profile and exclusive ordered root".into());
+                }
+            }
             if let crate::decoration::Kind::EndSpikes { end_spikes } = &recipe.feature {
                 if profile.end.is_none() || !profile.decoration_source_order || !profile.ordered_decorations || end_spikes.biomes.iter().any(|&b| b as usize >= profile.biomes.len())
                     || profile.decorations.iter().filter(|r|r.generation_step==recipe.generation_step && r.root_order==recipe.root_order).count()!=1 {

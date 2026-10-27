@@ -84,6 +84,9 @@ pub(super) fn validate(program: &[Modifier], biomes: &[u16], palette: usize) -> 
         && placement::validate(program, palette).is_ok()
         && program.iter().all(|op| match op {
             Modifier::Count { count } => supported_int(count),
+            Modifier::Offset { x, y, z } => {
+                supported_int(x) && supported_int(y) && supported_int(z)
+            }
             Modifier::Heightmap { .. }
             | Modifier::RarityFilter { .. }
             | Modifier::InSquare
@@ -132,6 +135,11 @@ pub(super) fn walk(
             Modifier::InSquare => {
                 modified.push([at[0] + random.below(16), at[1], at[2] + random.below(16)])
             }
+            Modifier::Offset { x, y, z } => modified.push([
+                at[0] + integer(x, &mut random),
+                at[1] + integer(y, &mut random),
+                at[2] + integer(z, &mut random),
+            ]),
             Modifier::Heightmap { map } => {
                 if let Some(y) = live.height(field, profile, request, at[0], at[2], *map) {
                     if y > request.min_y {
@@ -169,5 +177,66 @@ pub(super) fn walk(
         } else {
             stack.extend(modified.iter().rev().map(|&p| (p, index + 1)));
         }
+    }
+}
+
+/// Exact supported programs whose terminal points stay in the anchor chunk.
+pub(super) fn owned(program: &[Modifier]) -> bool {
+    let mut low = [0i64; 2];
+    let mut high = [0i64; 2];
+    for op in program {
+        match op {
+            Modifier::InSquare => {
+                high[0] += 15;
+                high[1] += 15;
+            }
+            Modifier::FixedPlacement { .. } => {
+                if low.iter().any(|&v| v < 0) || high.iter().any(|&v| v > 15) {
+                    return false;
+                }
+                low = [0; 2];
+                high = [15; 2];
+            }
+            Modifier::Offset { x, z, .. } => {
+                for (i, value) in [x, z].into_iter().enumerate() {
+                    let Ok((a, b)) = value.bounds() else {
+                        return false;
+                    };
+                    low[i] += i64::from(a);
+                    high[i] += i64::from(b);
+                }
+            }
+            _ => {}
+        }
+    }
+    low.iter().all(|&v| v >= 0) && high.iter().all(|&v| v <= 15)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn metadata_owner_proof_covers_offset_and_fixed_position_programs() {
+        let zero = || IntProvider::Value(0);
+        let offset = |x, z| Modifier::Offset {
+            x: IntProvider::Value(x),
+            y: zero(),
+            z: IntProvider::Value(z),
+        };
+        assert!(owned(&[Modifier::InSquare, offset(0, 0)]));
+        assert!(!owned(&[Modifier::InSquare, offset(1, 0)]));
+        assert!(!owned(&[offset(-1, 0)]));
+        assert!(owned(&[offset(1, 0), offset(-1, 0)]));
+        assert!(!owned(&[Modifier::InSquare, Modifier::InSquare]));
+        assert!(owned(&[
+            Modifier::FixedPlacement {
+                positions: vec![[-1, 134, 511]]
+            },
+            offset(0, 0)
+        ]));
+        assert!(!owned(&[
+            offset(16, 0),
+            Modifier::FixedPlacement { positions: vec![] }
+        ]));
     }
 }

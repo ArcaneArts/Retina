@@ -37,6 +37,7 @@ impl Recipe {
                 && s.x.checked_sub(s.radius).is_some() && s.x.checked_add(s.radius).is_some()
                 && s.z.checked_sub(s.radius).is_some() && s.z.checked_add(s.radius).is_some())
             && super::placement::validate(&self.placement,&self.biomes,palette)
+            && super::placement::owned(&self.placement)
             // Entity ownership stays in this root's anchor chunk. Unknown
             // cross-chunk modifiers are explicitly unsupported by this adapter.
             && self.placement.iter().all(|op|!matches!(op,Modifier::InSquare|Modifier::FixedPlacement{..}))
