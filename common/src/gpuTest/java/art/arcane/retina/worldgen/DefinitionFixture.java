@@ -23,14 +23,45 @@ final class DefinitionFixture implements AutoCloseable {
 
     static DefinitionFixture create(String dimension,JsonObject profile,TerrainRequest identity,
                                     int storageMinY,int storageHeight,boolean skylight,boolean ceiling) throws IOException {
+        return create(dimension,profile,identity,storageMinY,storageHeight,skylight,ceiling,null);
+    }
+
+    static DefinitionFixture create(String dimension,JsonObject profile,TerrainRequest identity,
+                                    int storageMinY,int storageHeight,boolean skylight,boolean ceiling,
+                                    NativeWorldDefinition.ProgramExecution execution) throws IOException {
+        try(var snapshot=snapshot(dimension,profile,identity,storageMinY,storageHeight,skylight,ceiling)) {
+            var result=snapshot.open(execution);
+            result.ownedDirectory=snapshot.directory;snapshot.directory=null;
+            return result;
+        }
+    }
+
+    /** Own one published file while opening separate execution bindings to it. */
+    static Snapshot snapshot(String dimension,JsonObject profile,TerrainRequest identity,
+                             int storageMinY,int storageHeight,boolean skylight,boolean ceiling) throws IOException {
         var directory=Files.createTempDirectory("retina-definition-fixture-");
         try {
-            var result=open(write(directory,dimension,profile,identity,storageMinY,storageHeight,skylight,ceiling),dimension,2);
-            result.ownedDirectory=directory;
-            return result;
+            return new Snapshot(directory,write(directory,dimension,profile,identity,storageMinY,storageHeight,skylight,ceiling),dimension);
         } catch(Throwable failure) {
             try {delete(directory);}catch(Throwable cleanup){failure.addSuppressed(cleanup);}
             throw failure;
+        }
+    }
+
+    static final class Snapshot implements AutoCloseable {
+        private Path directory;
+        private final Path file;
+        private final String dimension;
+        private Snapshot(Path directory,Path file,String dimension) {
+            this.directory=directory;this.file=file;this.dimension=dimension;
+        }
+        DefinitionFixture open(NativeWorldDefinition.ProgramExecution execution) {
+            return DefinitionFixture.open(file,dimension,2,execution);
+        }
+        Path file() {return file;}
+        @Override public void close() {
+            var owned=directory;directory=null;
+            if(owned!=null)try {delete(owned);}catch(IOException error){throw new UncheckedIOException(error);}
         }
     }
 

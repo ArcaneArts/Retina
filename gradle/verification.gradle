@@ -194,6 +194,8 @@ tasks.register('coordinateTest', JavaExec) {
     group = 'verification'
     description = 'Validate registered SliceFunction export against Minecraft samplers and GPU chunk fields.'
     dependsOn 'gpuTestClasses'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeCoordinateIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -216,6 +218,8 @@ tasks.register('interpolationTest', JavaExec) {
     group = 'verification'
     description = 'Validate registered interpolation fields and nested/sliced scopes against Minecraft samplers.'
     dependsOn 'gpuTestClasses', ':packageNative'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeInterpolationIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -489,6 +493,8 @@ tasks.register('snowTest', JavaExec) {
     group = 'verification'
     description = 'Check loaded snow support, bare frozen oceans and MCA/chunk consistency.'
     dependsOn 'gpuTestClasses', ':packageNative'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeSnowIntegrationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -512,6 +518,8 @@ tasks.register('aquiferTest', JavaExec) {
     group = 'verification'
     description = 'Compare actual GPU local fluids and pressure barriers with Minecraft aquifer equations.'
     dependsOn 'gpuTestClasses', ':packageNative'
+    if (providers.gradleProperty('retinaNativePath').isPresent())
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     classpath = sourceSets.gpuTest.runtimeClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeAquiferIntegrationTest'
     jvmArgs '--enable-native-access=ALL-UNNAMED'
