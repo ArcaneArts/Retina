@@ -14,8 +14,8 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 5. Reuse concurrent Nether dependencies | Merged: [PR #326](https://github.com/ArcaneArts/Retina/pull/326), `456257d3` | Complete |
 | 6. Optimize material counting | Resolved: trials rejected; [PR #327](https://github.com/ArcaneArts/Retina/pull/327), `382a4e84` | No production optimization selected; evidence and boundary regression validated |
 | 7. Reduce catalog overhead | 7a merged [PR #328](https://github.com/ArcaneArts/Retina/pull/328), `841cc5b2`; 7b merged [PR #329](https://github.com/ArcaneArts/Retina/pull/329), `da267c93`; 7c merged [PR #330](https://github.com/ArcaneArts/Retina/pull/330), `4276e9d0` | Complete; final integrated acceptance remains |
-| 8. Separate registry tooling/build inspection | Pending | Actual task execution and Fabric/NeoForge/Bukkit JAR inspection |
-| 9. Improve Bukkit chunk transfer | Pending | Phase/allocation profile, public API and lifecycle fidelity |
+| 8. Separate registry tooling/build inspection | Merged [PR #331](https://github.com/ArcaneArts/Retina/pull/331), `0121a1a1` | Complete; host-only artifacts verified, six-native release requirement retained |
+| 9. Improve Bukkit chunk transfer | Validated; PR pending | Memory/allocation improvement; no general throughput claim |
 | 10. Improve mixed-section installation | Pending | Actual server timing and every-block/biome comparisons |
 | 11. Bound MCA publication buffering | Pending | Partial/preview/resume/failure/durability and memory evidence |
 | Integrated acceptance | Pending | Relevant Fabric/NeoForge/Bukkit/CLI paths in all dimensions |
@@ -1009,3 +1009,147 @@ Evidence root: `/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle8/`
 see task graphs, actual run logs, `java-only-evidence.json`, and
 `artifact-check-tests.log`. Exported files are outside Git; bundled assets were
 not regenerated in the checkout.
+
+
+## Cycle 9: Bukkit transfer investigation (in progress)
+
+Added an opt-in `:bukkit:transferInventory` probe that captures actual native
+chunk NBT for three coordinates in each dimension, then measures FFM copying,
+NBT parsing, palette decoding, metadata validation and height queries separately.
+A package-private parsed-root constructor separates palette decoding from parsing;
+normal byte-array construction retains its behavior. The native library and all
+terrain generation remain unchanged. All 22 Bukkit tests passed with no skips.
+
+The first one-process inventory used seed 123456789, the bundled Bukkit variant,
+coordinates (0,0), (-1,-1), (12,-13), 50 warmups, and 500–1000 iterations per
+independent stage. Median samples across coordinates:
+
+| Stage | Overworld | Nether | End |
+|---|---:|---:|---:|
+| FFM copy only | 3.59 us | 2.06 us | 0.53 us |
+| NBT parse only | 89.61 us / 166,472 B | 36.38 us / 94,096 B | 14.48 us / 56,736 B |
+| Palette decode from parsed root | 30.82 us / 48,592 B | 4.81 us / 24,088 B | 2.01 us / 9,056 B |
+| 256 height queries | 12.25 us / 79,888 B | 10.20 us / 79,888 B | 5.93 us / 79,888 B |
+
+Allocations use the JDK thread-allocation counter. These independent stages are
+not additive and are not an A/B speedup result. In particular, JIT warmup makes
+some isolated parsing timings higher than combined parse/decode timings.
+Adventure NBT 5.2.0 bytecode confirms `LongArrayBinaryTag.value()` uses
+`Arrays.copyOf`. Current height queries copy the packed heightmap on every query,
+and decoded sections retain copied arrays alongside the original parsed NBT.
+Immutable indexed tag access is the next candidate. Native encoding timing,
+retained-memory measurements, whole-delivery A/B comparison and real server
+acceptance are still pending; no ABI redesign or optimization is accepted yet.
+
+Evidence root: `/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle9/`.
+It contains `baseline-identity.json`, `baseline-inventory.log`, all captured NBT
+and allocation samples under `baseline-inventory/`, and actual library bytecode
+in `long-array-accessors.txt`.
+
+The first candidate keeps immutable `LongArrayBinaryTag` references instead of
+copying packed block/biome arrays and reads heightmap words directly. All nine
+new native captures match the baseline byte-for-byte. The inventory reports
+palette-decode allocations of 27,160 / 7,032 / 4,384 bytes for Overworld / Nether /
+End, versus 48,592 / 24,088 / 9,056. A sweep of 256 height queries falls from
+79,888 bytes to 16 bytes (the probe boxes the accumulated result). These are
+initial allocation measurements, not matched latency or server-throughput claims.
+The original implementation and compiled classes are preserved under
+`cycle9/indexed-control/`, and candidate captures/logs under `indexed-inventory/`.
+A replay mode now permits fixed-fixture repeated comparisons without regeneration.
+A focused heightmap regression covers all Bukkit map types, padded-word boundaries,
+negative storage minima, wrapped coordinates and missing-map failure. Actual
+CraftBukkit acceptance is in progress; native encoding, retained-memory and
+complete-delivery measurements remain outstanding before cycle 9 can merge.
+
+The actual CraftBukkit suite subsequently passed, including its acceptance and
+invalid-definition preservation cases. All 23 Bukkit tests passed without skips.
+Full server artifacts are retained in `cycle9/indexed-server-acceptance/`.
+This establishes compatibility for that harness, not a delivery-latency gain.
+
+### Cycle 9 matched replay and reachable heap
+
+Four independent JDK 25 processes ran control/candidate/candidate/control against
+identical captured NBT, using two active processors, 256 MiB initial/1 GiB max heap,
+two full-workload warmup rounds and five measured rounds. Per-process medians
+for 256 height queries were 5.70–5.90 / 3.43–3.48 us (Overworld), 5.77 / 3.43–3.49
+us (Nether), and 5.78–5.83 / 3.39–3.45 us (End). Parsing plus palette decoding
+showed small/noisy changes: Overworld controls 56.69/57.52 us versus candidates
+53.61/56.22; Nether 31.03/31.11 versus 29.38/31.51; End 16.11/16.58 versus
+15.28/16.34. These stages are independent and not additive. Steam, Finder and
+FSEvents activity was present; no user process was stopped.
+
+A Java instrumentation agent measured each complete reachable snapshot graph,
+identity-deduplicating references and including object/array headers. This is
+reachable heap, not exclusive retained size or process RSS. Median snapshot sizes
+fell from 105,920 to 85,048 bytes (Overworld), 60,376 to 43,512 (Nether), and
+29,488 to 24,912 (End). All packed arrays remain immutable and reachable through
+the original metadata root; copied arrays are eliminated. Reproduction scripts,
+source/fixture identities and raw samples are in `cycle9/replay-abba/` and
+`cycle9/retained-graph/` with drivers in their parent directory.
+
+### Native encoding and actual CraftBukkit transfer
+
+An opt-in native test captures actual generated inputs once, then measures the
+unchanged production encoder alone. Twenty warmups and 100 measured encodings
+per chunk give median 57.17 / 37.65 / 27.38 us for Overworld / Nether / End.
+All nine isolated outputs match both the production generation call and the
+original Java captures byte-for-byte. This does not include terrain generation.
+The test passed on Metal; ordinary runs do not launch it. Evidence and identities
+are in `cycle9/native-encoding/`; source is `region::transfer_probe`.
+
+Four actual CraftBukkit processes ran ABBA against copies of the same saved
+world. The control/candidate JARs differ only in the two ChunkSnapshot classes,
+manifest and plugin version. The server-only observer copies captured native
+bytes through FFM, parses, validates metadata, installs into actual ChunkData,
+and queries 256 heights. Two warmup and five measured rounds of 100 operations
+per fixture exclude native generation and metadata population. Per-process median
+latencies in us: Overworld controls 1701/1685 versus candidates 1733/1706;
+Nether 1165/1189 versus 1168/1157; End 940/892 versus 856/858. Overworld/Nether
+show small variation; End improves in both runs. Allocations fall approximately
+84–101 KB per delivery. All nine every-block/biome/height digests match across
+all four processes. These are transfer/installation results, not complete new-chunk
+server throughput. Logs, immutable JARs, identities, parity and raw samples are
+in `cycle9/server-transfer-abba/`.
+
+A follow-up live-native version is in progress to include generation and FFM
+ownership in the timed path. Its first control run exposed a QA-only dimension
+name error (`minecraft:nether`); the probe was corrected to `minecraft:the_nether`.
+That failed run is retained separately and excluded from matched results.
+
+### Cycle 9 acceptance
+
+The corrected live-native ABBA comparison passed all nine block/biome/height
+digests across four independent CraftBukkit processes. Each timed operation calls
+the actual native chunk API (generation, encoding, FFM copy/free), constructs and
+validates a snapshot, allocates and installs real ChunkData, and queries 256
+heights. Two warmup rounds and five measured rounds of five operations per fixture
+use warm internal native caches. Region publication and metadata population are
+not in this timer; their fidelity is covered by the dedicated server suite.
+Control medians in ms versus candidates: Overworld 4.985/4.803 versus 4.850/5.074;
+Nether 16.273/17.091 versus 16.713/16.213; End 1.585/1.478 versus 1.549/1.439.
+These overlapping results do not establish a general throughput improvement or
+systematic regression. Allocation reductions remain consistent. Evidence is in
+`cycle9/server-live-transfer-abba-v2/`; the first failed QA run is excluded.
+
+Accept this as a memory/allocation improvement with compatible behavior, not a
+new transfer ABI or a promised terrain speedup. FFM ownership is unchanged:
+`readBuffer` frees returned native bytes in its `finally` before any Java NBT
+parsing; snapshot tags retain only Java-owned immutable arrays. The native call
+holds its dimension lease while generating. Existing cache coalescing/eviction
+and failed-load retry tests pass; actual server unload/reopen and disable markers
+pass, including concurrent height requests. Metadata persistence/failure cases,
+all dimensions and player edits pass in the full dedicated suite. All 23 Bukkit
+tests pass without skips. No QA classes are included in the installable plugin.
+Only the host native image is packaged for these experiments; it is unchanged
+from cycle 7c. No foreign backend runtime coverage or six-platform rebuild is
+claimed. The new native diagnostic is test-only and passed separately.
+
+Probe entry points: `:bukkit:transferInventory` takes `retinaNativePath`,
+`retinaTransferDefinition` and `retinaTransferOutput`; pass `--replay` as the first
+property and a capture directory as the second to replay without generation.
+`retinaprobe transfer-benchmark <capture-directory>` runs fixed-byte delivery;
+`transfer-live-benchmark` uses the real saved worlds and native chunk API instead.
+These commands belong only to the disposable server-test plugin. The native
+ignored test `native_chunk_encoding_inventory` takes `RETINA_TRANSFER_DEFINITION`
+and `RETINA_TRANSFER_OUTPUT`; its output directory must be new. All benchmark
+comparisons and heap instrumentation drivers are preserved in the evidence root.
