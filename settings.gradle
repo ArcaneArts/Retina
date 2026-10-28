@@ -11,4 +11,4 @@ pluginManagement {
 
 rootProject.name = 'retina'
 
-include 'core', 'common', 'fabric', 'neoforge', 'bukkit'
+include 'core', 'common', 'fabric', 'neoforge', 'bukkit', 'universal'
