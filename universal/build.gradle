@@ -54,8 +54,18 @@ tasks.named('shadowJar') {
     archiveClassifier = ''
     configurations = [project.configurations.shadedLibraries]
     from mergeRuntime
-    from rootProject.tasks.named('packageNative')
-    from rootProject.tasks.named('packageCrossNatives')
+    def releasePlatforms = ['macos-aarch64', 'windows-x86_64', 'linux-x86_64']
+    from(rootProject.tasks.named('packageNative')) {
+        include releasePlatforms.collect { "natives/${it}/**" }
+    }
+    from(rootProject.tasks.named('packageCrossNatives')) {
+        include releasePlatforms.collect { "natives/${it}/**" }
+    }
+    if (providers.gradleProperty('retinaNativeDirectory').isPresent()) {
+        from(new File(providers.gradleProperty('retinaNativeDirectory').get(), 'manifests')) {
+            into 'META-INF/retina/natives'
+        }
+    }
     from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
     exclude 'module-info.class', 'META-INF/versions/**/module-info.class'
     relocate 'com.electronwill.nightconfig', 'art.arcane.retina.internal.nightconfig'

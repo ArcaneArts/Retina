@@ -57,24 +57,45 @@ def inspect_bukkit(archive: ZipFile, minecraft: str, version: str) -> None:
 def stage(minecraft: str, version: str) -> None:
     destination = Path('build/release')
     destination.mkdir(parents=True, exist_ok=True)
+    jar = Path('universal/build/libs', f'retina-{minecraft}-{version}.jar')
     libraries = {
-        'macos': 'libretina_worldgen.dylib',
-        'linux': 'libretina_worldgen.so',
-        'windows': 'retina_worldgen.dll',
+        'aarch64-apple-darwin': ('macos-aarch64', 'libretina_worldgen.dylib'),
+        'x86_64-pc-windows-msvc': ('windows-x86_64', 'retina_worldgen.dll'),
+        'x86_64-unknown-linux-gnu': ('linux-x86_64', 'libretina_worldgen.so'),
     }
-    for loader in ('fabric', 'neoforge', 'bukkit'):
-        jar = Path(loader, 'build/libs', f'retina-{loader}-{minecraft}-{version}.jar')
-        # Inspect the built artifacts themselves; sources/common JARs are not releases.
-        with ZipFile(jar) as archive:
-            for system, library in libraries.items():
-                for arch in ('x86_64', 'aarch64'):
-                    member = f'natives/{system}-{arch}/{library}'
-                    if not archive.read(member):
-                        raise ValueError(f'{jar}: empty native library {member}')
-            if loader == 'bukkit': inspect_bukkit(archive, minecraft, version)
-            else: inspect_mod_catalogs(archive, minecraft)
-        shutil.copy2(jar, destination / jar.name)
-        print(f'Staged {jar.name} with all six native libraries')
+    with ZipFile(jar) as archive:
+        names = archive.namelist()
+        if len(names) != len(set(names)): raise ValueError('Duplicate ZIP members')
+        expected_natives = set()
+        for target, (platform, library) in libraries.items():
+            member = f'natives/{platform}/{library}'
+            expected_natives.add(member)
+            content = archive.read(member)
+            manifest = json.loads(archive.read(f'META-INF/retina/natives/{target}.json'))
+            if manifest['resource'] != member or manifest['inputs']['target'] != target:
+                raise ValueError(f'Incorrect native target manifest: {target}')
+            if len(content) != manifest['bytes'] or hashlib.sha256(content).hexdigest() != manifest['sha256']:
+                raise ValueError(f'Native bytes differ from build manifest: {target}')
+        actual_natives = {name for name in names if name.startswith('natives/') and not name.endswith('/')}
+        if actual_natives != expected_natives: raise ValueError(f'Unexpected native set: {actual_natives}')
+        fabric = json.loads(archive.read('fabric.mod.json'))
+        if fabric['version'] != version or fabric['depends']['minecraft'] != minecraft:
+            raise ValueError('Incorrect Fabric version')
+        import tomllib
+        neo = tomllib.loads(archive.read('META-INF/neoforge.mods.toml').decode())
+        if neo['mods'][0]['version'] != version: raise ValueError('Incorrect NeoForge version')
+        for entry in ['art/arcane/retina/fabric/RetinaFabric.class',
+                      'art/arcane/retina/fabric/RetinaFabricClient.class',
+                      'art/arcane/retina/neoforge/RetinaNeoForge.class',
+                      'retina.mixins.json', 'retina.client.mixins.json',
+                      'META-INF/retina/runtime-inputs.json']:
+            if not archive.read(entry): raise ValueError(f'Missing runtime entry {entry}')
+        inspect_bukkit(archive, minecraft, version)
+        inspect_mod_catalogs(archive, minecraft)
+    for old in destination.glob('*.jar'):
+        old.unlink()
+    shutil.copy2(jar, destination / jar.name)
+    print(f'Staged {jar.name} sha256={hashlib.sha256(jar.read_bytes()).hexdigest()} with three native platforms')
 
 
 if __name__ == '__main__':
