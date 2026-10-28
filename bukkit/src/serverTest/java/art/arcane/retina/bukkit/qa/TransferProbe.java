@@ -26,8 +26,26 @@ final class TransferProbe extends ChunkGenerator {
         var field = owner.getClass().getDeclaredField(name); field.setAccessible(true); return field.get(owner);
     }
     static void run(JavaPlugin probe, Path input, boolean live) throws Exception {
+        run(probe, input, live, Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("Retina")).getClass().getClassLoader());
+    }
+    static void runReference(JavaPlugin probe, Path input, Path jar) throws Exception {
+        var parent = Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("Retina")).getClass().getClassLoader();
+        // Isolate only the implementation under test; Bukkit and NBT types stay shared.
+        try (var loader = new java.net.URLClassLoader(new java.net.URL[]{jar.toUri().toURL()}, parent) {
+            @Override protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+                if (!name.equals("art.arcane.retina.bukkit.ChunkSnapshot") && !name.startsWith("art.arcane.retina.bukkit.ChunkSnapshot$"))
+                    return super.loadClass(name, resolve);
+                synchronized (getClassLoadingLock(name)) {
+                    var type = findLoadedClass(name);
+                    if (type == null) type = findClass(name);
+                    if (resolve) resolveClass(type);
+                    return type;
+                }
+            }
+        }) { run(probe, input, false, loader); }
+    }
+    private static void run(JavaPlugin probe, Path input, boolean live, ClassLoader loader) throws Exception {
         var retina = Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("Retina"));
-        var loader = retina.getClass().getClassLoader();
         var snapshot = loader.loadClass("art.arcane.retina.bukkit.ChunkSnapshot");
         var compound = loader.loadClass("art.arcane.retina.internal.kyori.adventure.nbt.CompoundBinaryTag");
         var constructor = snapshot.getDeclaredConstructor(byte[].class, int.class, int.class); constructor.setAccessible(true);
@@ -95,6 +113,16 @@ final class TransferProbe extends ChunkGenerator {
                     long allocated = allocation.getThreadAllocatedBytes(Thread.currentThread().threadId()) - before;
                     if (round >= 0) probe.getLogger().info("RETINA_TRANSFER_SAMPLE " + name + " " + round + " " + elapsed / (double) iterations + " " + allocated / (double) iterations);
                 }
+            }
+            for (int round = -2; round < 5; round++) {
+                long before = allocation.getThreadAllocatedBytes(Thread.currentThread().threadId());
+                long start = System.nanoTime();
+                for (int i = 0; i < 100; i++) {
+                    var data = factory.target(world); install.invoke(reference, data, bind); sink = data;
+                }
+                long elapsed = System.nanoTime() - start;
+                long allocated = allocation.getThreadAllocatedBytes(Thread.currentThread().threadId()) - before;
+                if (round >= 0) probe.getLogger().info("RETINA_INSTALL_SAMPLE " + name + " " + round + " " + elapsed / 100.0 + " " + allocated / 100.0);
             }
         }
         probe.getLogger().info("RETINA_TRANSFER_PASS");

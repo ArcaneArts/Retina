@@ -31,6 +31,48 @@ class ChunkSnapshotTest {
         assertEquals("minecraft:forest", chunk.biome(-16, -64, -16));
     }
 
+    @Test void mixedPaletteInstallsEveryCellAcrossPaddedWordsAndRowBoundaries() {
+        int[] expected = new int[4096], writes = new int[4096];
+        var states = new org.bukkit.block.data.BlockData[17];
+        var palette = net.kyori.adventure.nbt.ListBinaryTag.builder();
+        for (int i = 0; i < states.length; i++) {
+            String name = "test:state_" + i;
+            palette.add(net.kyori.adventure.nbt.StringBinaryTag.stringBinaryTag(name));
+            states[i] = (org.bukkit.block.data.BlockData) java.lang.reflect.Proxy.newProxyInstance(
+                    getClass().getClassLoader(), new Class<?>[]{org.bukkit.block.data.BlockData.class},
+                    (proxy, method, args) -> { throw new AssertionError("Unexpected state call " + method); });
+        }
+        long[] words = new long[(4096 + 11) / 12]; // Seventeen states require five padded bits.
+        for (int i = 0; i < expected.length; i++) {
+            expected[i] = (i / 16) % 3 == 0 ? i % 17 : (i / 16) % 17;
+            words[i / 12] |= (long) expected[i] << ((i % 12) * 5);
+        }
+        var blocks = net.kyori.adventure.nbt.CompoundBinaryTag.builder()
+                .put("palette", palette.build()).putLongArray("data", words).build();
+        var section = net.kyori.adventure.nbt.CompoundBinaryTag.builder().putByte("Y", (byte) -1)
+                .put("block_states", blocks).build();
+        var root = net.kyori.adventure.nbt.CompoundBinaryTag.builder().put("sections",
+                net.kyori.adventure.nbt.ListBinaryTag.from(java.util.List.of(section))).build();
+        var target = (org.bukkit.generator.ChunkGenerator.ChunkData) java.lang.reflect.Proxy.newProxyInstance(
+                getClass().getClassLoader(), new Class<?>[]{org.bukkit.generator.ChunkGenerator.ChunkData.class}, (proxy, method, args) -> {
+                    if (method.getName().equals("getMinHeight")) return -64;
+                    if (method.getName().equals("getMaxHeight")) return 320;
+                    boolean region = method.getName().equals("setRegion");
+                    if (!region && !method.getName().equals("setBlock")) throw new AssertionError(method);
+                    int x0 = (int) args[0], y0 = (int) args[1], z0 = (int) args[2];
+                    int x1 = region ? (int) args[3] : x0 + 1, y1 = region ? (int) args[4] : y0 + 1,
+                            z1 = region ? (int) args[5] : z0 + 1;
+                    assertTrue(x0 >= 0 && x1 <= 16 && y0 >= -16 && y1 <= 0 && z0 >= 0 && z1 <= 16);
+                    for (int y = y0; y < y1; y++) for (int z = z0; z < z1; z++) for (int x = x0; x < x1; x++) {
+                        int index = ((y + 16) * 16 + z) * 16 + x;
+                        assertSame(states[expected[index]], args[region ? 6 : 3]); writes[index]++;
+                    }
+                    return null;
+                });
+        new ChunkSnapshot(root, -16, 16).install(target, name -> states[Integer.parseInt(name.substring(11))]);
+        for (int count : writes) assertEquals(1, count);
+    }
+
     @Test void heightmapsPreservePaddedWordsAndNegativeStorageMinimum() {
         int minimum = -64, height = 384, bits = 9, perWord = 64 / bits;
         long[] words = new long[(256 + perWord - 1) / perWord];

@@ -70,9 +70,19 @@ final class ChunkSnapshot {
             var states = Arrays.stream(section.states()).map(bind).toArray(BlockData[]::new);
             if (states.length == 1) {
                 target.setRegion(0, section.y(), 0, 16, section.y() + 16, 16, states[0]);
-            } else for (int i = 0; i < 4096; i++) {
-                int state = packed(section.blocks(), i, bits(states.length, 4));
-                target.setBlock(i & 15, section.y() + (i >>> 8), (i >>> 4) & 15, states[state]);
+            } else {
+                int width = bits(states.length, 4);
+                for (int row = 0; row < 4096; row += 16) {
+                    int state = packed(section.blocks(), row, width), start = 0;
+                    int y = section.y() + (row >>> 8), z = (row >>> 4) & 15;
+                    for (int x = 1; x <= 16; x++) {
+                        int next = x == 16 ? -1 : packed(section.blocks(), row + x, width);
+                        if (next == state) continue;
+                        if (x == start + 1) target.setBlock(start, y, z, states[state]);
+                        else target.setRegion(start, y, z, x, y + 1, z + 1, states[state]);
+                        state = next; start = x;
+                    }
+                }
             }
         }
     }
