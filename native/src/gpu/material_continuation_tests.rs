@@ -199,6 +199,40 @@ fn material_continuation_replay() {
 
 #[test]
 #[ignore = "requires RETINA_MATERIAL_PROFILE and a real GPU"]
+fn material_runs_outside_generation_bounds_are_single_air_runs() {
+    let profile = fixture();
+    let generation = profile.registry_program.as_ref().unwrap()
+        .generation.as_ref().unwrap();
+    let mut gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
+    let times = timings::Timings::default();
+    for budget in [0, 1, 32] {
+        gpu.material_retained_runs = budget;
+        for height in [1, 32] {
+            for min_y in [
+                generation.min_y - height,
+                generation.min_y + generation.height,
+            ] {
+                let mut r = request(1, -33, 3, height as u32);
+                r.min_y = min_y;
+                r.max_y = min_y + height;
+                let pending = gpu.submit(&[r], Some(&profile), &times).unwrap();
+                let result = gpu.complete(pending, &times).unwrap();
+                let mask = result.mask.as_ref().unwrap();
+                mask.validate_material_runs().unwrap();
+                for z in 0..mask.width - 2 {
+                    for x in 0..mask.width - 2 {
+                        assert_eq!(mask.material_runs(mask.origin_x + 1 + x as i32,
+                            mask.origin_z + 1 + z as i32).unwrap(), &[0],
+                            "air outside generation bounds: budget={budget}, min_y={min_y}, height={height}");
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires RETINA_MATERIAL_PROFILE and a real GPU"]
 fn retained_material_runs_preserve_fit_overflow_and_interleaved_ownership() {
     let profile = fixture();
     let mut other = profile.clone();
