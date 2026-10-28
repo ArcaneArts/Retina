@@ -30,6 +30,7 @@ class Server:
         command = [str(args.java), '--enable-native-access=ALL-UNNAMED', '-Djava.awt.headless=true',
                    '-Dterminal.jline=false', '-Dterminal.ansi=false', '-XX:ActiveProcessorCount=4', '-Xmx2G']
         if materializer_disabled: command += ['-Dretina.qa.catalog.failMaterializer=true']
+        command += getattr(args, 'jvm_args', [])
         command += ['-jar', str(args.server.resolve()), '--nogui']
         self.writer = self.log.open('w')
         self.process = subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE, stdout=self.writer,
@@ -88,7 +89,7 @@ def prepare(args, directory, seed=SEED, variant='bukkit-api'):
                                          '  world_nether:\n    generator: Retina\n  world_the_end:\n    generator: Retina\n')
     # Cold vanilla structure-ring searches can exceed Spigot's 60-second default.
     # Operations remain bounded by this driver's timeout and fail on actual callback errors.
-    (directory / 'spigot.yml').write_text('settings:\n  timeout-time: 120\n  restart-on-crash: false\n')
+    (directory / 'spigot.yml').write_text('settings:\n  timeout-time: 300\n  restart-on-crash: false\n')
     config = plugins / 'Retina'; config.mkdir()
     (config / 'config.yml').write_text(f'catalog-variant: {variant}\nchunk-cache: 64\nbiome-cache: 256\nconcurrent-loaders: 4\nallow-metadata-loss: false\nworlds: []\n')
 

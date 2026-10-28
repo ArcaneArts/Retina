@@ -3,6 +3,9 @@
 catalog-variant: bukkit-api
 chunk-cache: 64
 biome-cache: 256
+# Retain exact sparse biome tiles across restarts (maximum 16384 per dimension).
+# These are disposable files under the logical root's retina-cache/. Set 0 to disable.
+biome-disk-cache: 16384
 concurrent-loaders: 4
 # Explicit opt-in for imported snapshots whose metadata cannot be delivered.
 # Unsupported metadata is reported and omitted; saved generation rules never change.

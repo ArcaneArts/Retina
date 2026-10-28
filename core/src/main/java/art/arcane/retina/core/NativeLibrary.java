@@ -11,9 +11,21 @@ import java.util.Locale;
 public final class NativeLibrary {
     private NativeLibrary() { }
     private static final class Holder {
-        static final SymbolLookup SYMBOLS = SymbolLookup.libraryLookup(extract(), Arena.global());
+        static final Path IMAGE = extract();
+        static final SymbolLookup SYMBOLS = SymbolLookup.libraryLookup(IMAGE, Arena.global());
     }
     public static SymbolLookup symbols() { return Holder.SYMBOLS; }
+
+    /** Digest of the selected native image, including an explicit development override. */
+    public static byte[] imageDigest() throws IOException {
+        try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            try (var input = new java.security.DigestInputStream(Files.newInputStream(Holder.IMAGE), digest)) {
+                input.transferTo(java.io.OutputStream.nullOutputStream());
+            }
+            return digest.digest();
+        } catch (java.security.NoSuchAlgorithmException impossible) { throw new AssertionError(impossible); }
+    }
 
     private static Path extract() {
         String override = System.getProperty("retina.native.path");

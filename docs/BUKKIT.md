@@ -139,7 +139,16 @@ the acceptance test checks the actual saved nondefault range.
 Generation uses bounded caches and coalesced jobs. Defaults retain 64 complete
 chunks and 256 biome grids/tiles per bound dimension, with four concurrent
 loaders per cache. Sparse horizontal searches use the existing native point
-query path; multiple queried heights switch to full quart grids. Whole callback
+query path; multiple queried heights switch to full quart grids. Exact sparse
+answers also have a bounded persistent backing cache under the logical root's
+`retina-cache/`. The default `biome-disk-cache: 16384` retains up to 16,384
+32-by-32-block tiles per dimension (4 MiB of raw biome IDs plus map/array
+metadata). Set it to `0` to disable this backing cache. Files are gzip-compressed,
+checked against the complete `retina.dat` and selected native image SHA-256,
+and saved atomically on world save and owner shutdown. Changed identities and
+invalid files use normal native queries; cache I/O failures only emit warnings.
+Deleting `retina-cache/` is safe while the server is stopped. Existing hot cache
+and loader limits remain unchanged. Whole callback
 leases prevent native closure during delivery. Unload/disable stops admission
 and drains work before releasing the logical owner. Plugin hot reload is not
 supported; restart the server when updating the plugin or native runtime.
@@ -200,13 +209,16 @@ catalog exported byte-identically twice. See [the acceptance report](BUKKIT_ACCE
 for artifact hashes, exact commands, timings, sampled memory, retained evidence
 and the distinction between host runtime verification and foreign cross-builds.
 
-CraftBukkit/Spigot cold Overworld requests took 87–100 seconds in the final runs,
-including vanilla stronghold-ring biome searches despite structures being
-disabled. Persistent-world restart repeated this work (86–104 seconds). Normal
-public Bukkit APIs do not suppress that delegate work. On Spigot, configure
-`settings.timeout-time: 120` in `spigot.yml`; its 60-second default can terminate
-valid slow generation. The integration test uses 120 seconds and still fails
-immediately on actual callback errors. The tested Paper build did not incur that
-long delay: nine requested Overworld chunks took 2.95 seconds and restart 5.29
-seconds. These are bounded end-to-end observations, not sustained engine rates.
-One-entry saved biome palettes return their sole canonical biome directly.
+CraftBukkit/Spigot perform vanilla stronghold-ring biome searches even when
+structures are disabled. First-time generation still pays for those exact
+queries. The persistent cache avoids repeating native point queries on later
+launches when the saved answers fit its capacity and the definition/native image
+have not changed. See [the biome-cache report](BUKKIT_BIOME_CACHE.md) for the
+before/after measurements, cache sizes and parity checks.
+On Spigot, increase `settings.timeout-time` in `spigot.yml` to cover cold
+generation on the host: the 60-second default can terminate valid slow
+requests. The acceptance test and focused cold benchmark use 300 seconds for
+that server watchdog. Both remain bounded and fail on actual callback errors. The
+previously tested Paper build did not incur the long stronghold delay. These
+are bounded end-to-end observations, not sustained engine rates. One-entry
+saved biome palettes return their sole canonical biome directly.

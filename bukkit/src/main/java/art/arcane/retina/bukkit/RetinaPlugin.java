@@ -4,6 +4,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.WorldUnloadEvent;
+import org.bukkit.event.world.WorldSaveEvent;
 import org.bukkit.generator.BiomeProvider;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -32,6 +33,9 @@ public final class RetinaPlugin extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void unload(WorldUnloadEvent event) { worlds.unload(event.getWorld().getName()); }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void save(WorldSaveEvent event) { worlds.save(event.getWorld().getName()); }
 
     @Override public void onDisable() { if (worlds != null) worlds.close(); }
 }

@@ -155,6 +155,11 @@ final class WorldRepository implements AutoCloseable {
         } catch (RuntimeException | Error error) { definition.close(); throw error; }
     }
 
+    synchronized void save(String name) {
+        var binding = bindings.get(name);
+        if (binding != null) binding.dimension.save();
+    }
+
     synchronized void unload(String name) {
         unloaded.add(name);
         var binding = bindings.remove(name);

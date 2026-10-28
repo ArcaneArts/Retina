@@ -1,5 +1,9 @@
 # Bukkit pathway acceptance
 
+These measurements describe the initial Bukkit implementation. Subsequent
+persistent-cache changes and current restart measurements are recorded in the
+[biome-cache report](BUKKIT_BIOME_CACHE.md).
+
 Verified on 2026-10-27 against Minecraft 26.3, JDK 25.0.1, macOS 27.0.1
 (build 26A434), Apple M4 Max and the Metal backend. Dedicated servers ran with
 four active Java processors, a 2 GiB Java heap and no GUI. Their only plugins

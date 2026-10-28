@@ -13,6 +13,9 @@ final class GenerationCache<K, V> implements AutoCloseable {
     private final int retained;
     private int active;
     private boolean closed;
+    private long hits, loads, evictions, loadNanos;
+    record Statistics(long hits, long loads, long evictions, long loadNanos, int entries) { }
+    synchronized Statistics statistics() { return new Statistics(hits, loads, evictions, loadNanos, entries.size()); }
 
     GenerationCache(int retained, int concurrent) {
         if (retained < 1 || concurrent < 1) throw new IllegalArgumentException("Cache sizes must be positive");
@@ -22,7 +25,7 @@ final class GenerationCache<K, V> implements AutoCloseable {
     V get(K key, Supplier<V> load) {
         CompletableFuture<V> result;
         synchronized (this) {
-            requireOpen(); result = entries.get(key);
+            requireOpen(); result = entries.get(key); if (result != null) hits++;
         }
         if (result != null) return value(result);
         // Wait before admitting a new key, so pending keys cannot grow the map.
@@ -31,9 +34,11 @@ final class GenerationCache<K, V> implements AutoCloseable {
         synchronized (this) {
             if (closed) { loaders.release(); requireOpen(); }
             result = entries.get(key); owner = result == null;
-            if (owner) { result = new CompletableFuture<>(); entries.put(key, result); active++; }
+            if (owner) { result = new CompletableFuture<>(); entries.put(key, result); active++; loads++; }
+            else hits++;
         }
         if (!owner) { loaders.release(); return value(result); }
+        long started = System.nanoTime();
         try {
             result.complete(load.get());
         } catch (Throwable error) {
@@ -42,10 +47,11 @@ final class GenerationCache<K, V> implements AutoCloseable {
         } finally {
             synchronized (this) {
                 active--;
+                loadNanos += System.nanoTime() - started;
                 var iterator = entries.entrySet().iterator();
                 int completed = entries.size() - active;
                 while (completed > retained && iterator.hasNext()) {
-                    if (iterator.next().getValue().isDone()) { iterator.remove(); completed--; }
+                    if (iterator.next().getValue().isDone()) { iterator.remove(); completed--; evictions++; }
                 }
                 notifyAll();
             }

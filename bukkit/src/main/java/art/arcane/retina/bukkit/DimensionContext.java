@@ -20,8 +20,7 @@ final class DimensionContext implements AutoCloseable {
     private final GenerationCache<Long, ChunkSnapshot> chunks;
     private final GenerationCache<Long, short[]> biomeGrids;
     private final GenerationCache<Long, Integer> firstBiomeHeights;
-    private final GenerationCache<BiomeTile, int[]> biomeTiles;
-    private record BiomeTile(int x, int y, int z) { }
+    private final BiomeTileCache biomeTiles;
 
     DimensionContext(WorldRepository.Owner owner, String key, WorldInfo info, RetinaPlugin plugin) {
         this.owner = owner; this.key = key;
@@ -63,7 +62,9 @@ final class DimensionContext implements AutoCloseable {
         chunks = new GenerationCache<>(plugin.getConfig().getInt("chunk-cache", 64), concurrent);
         biomeGrids = new GenerationCache<>(plugin.getConfig().getInt("biome-cache", 256), concurrent);
         firstBiomeHeights = new GenerationCache<>(plugin.getConfig().getInt("biome-cache", 256), concurrent);
-        biomeTiles = new GenerationCache<>(plugin.getConfig().getInt("biome-cache", 256), concurrent);
+        biomeTiles = new BiomeTileCache(plugin.getConfig().getInt("biome-cache", 256), concurrent,
+                owner.root, key, plugin.getConfig().getInt("biome-disk-cache", 16384), biomes.size(), owner.log,
+                points -> owner.definition.biomePoints(key, points));
         owner.definition.bindDimension(key, 2);
         plugin.getLogger().info("Bound " + info.getName() + " -> " + owner.root + " / " + key
                 + " blocks=" + blocks.size() + " biomes=" + biomes.size() + " bounds=" + minimum + ".." + (minimum + height));
@@ -119,17 +120,7 @@ final class DimensionContext implements AutoCloseable {
             // Server structure-ring searches can probe thousands of distant
             // chunks at one height even when structure generation is disabled.
             // Use the existing sparse query path until a full 3D grid is useful.
-            var tile = new BiomeTile(x >> 5, quart, z >> 5);
-            int[] sampled = biomeTiles.get(tile, () -> {
-                int[] points = new int[64 * 3];
-                for (int i = 0; i < 64; i++) {
-                    points[i * 3] = tile.x() * 32 + (i & 7) * 4;
-                    points[i * 3 + 1] = tile.y() * 4;
-                    points[i * 3 + 2] = tile.z() * 32 + (i >>> 3) * 4;
-                }
-                return owner.definition.biomePoints(key, points);
-            });
-            return biomes.get(sampled[((z & 31) >> 2) * 8 + ((x & 31) >> 2)]);
+            return biomes.get(biomeTiles.biome(x, y, z));
         }
         if (grid == null) grid = biomeGrids.get(chunk, () -> owner.definition.biomes(key, x >> 4, z >> 4));
         int index = ((Math.floorDiv(y - nativeMinimum, 4) * 4 + ((z & 15) >> 2)) * 4) + ((x & 15) >> 2);
@@ -137,5 +128,11 @@ final class DimensionContext implements AutoCloseable {
     }
 
     private static long position(int x, int z) { return ((long) x << 32) | (z & 0xffffffffL); }
-    @Override public void close() { chunks.close(); biomeGrids.close(); firstBiomeHeights.close(); biomeTiles.close(); }
+    void save() { biomeTiles.save(); }
+    @Override public void close() {
+        if (Boolean.getBoolean("retina.qa.biomeStats")) owner.log.info("RETINA_BIOME_STATS " + key
+                + " tiles=" + biomeTiles.statistics() + " disk=" + biomeTiles.diskStatistics() + " grids=" + biomeGrids.statistics()
+                + " heights=" + firstBiomeHeights.statistics());
+        chunks.close(); biomeGrids.close(); firstBiomeHeights.close(); biomeTiles.close();
+    }
 }
