@@ -1,0 +1,36 @@
+plugins { id 'base' }
+evaluationDependsOn(':common')
+evaluationDependsOn(':fabric')
+
+def catalogRoot = layout.buildDirectory.dir("generated/catalogs/${minecraft_version}")
+def exports = [generateVanillaRecompiled: ['common', 'vanilla-recompiled'],
+               generateVanillaBinary: ['fabric', 'vanilla-binary']]
+exports.each { taskName, target ->
+    def runtime = project(":" + target[0])
+    tasks.register(taskName, JavaExec) {
+        group = 'build'
+        description = "Generate the ${target[1]} vanilla catalog with Minecraft ${minecraft_version}."
+        dependsOn runtime.tasks.named('compileGpuTestJava')
+        classpath = runtime.registryToolClasspath
+        mainClass = 'art.arcane.retina.worldgen.VanillaCatalogExport'
+        javaLauncher = runtime.javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+        jvmArgs '-XX:ActiveProcessorCount=2'
+        maxHeapSize = '1g'
+        workingDir catalogRoot.get().asFile
+        // Relative arguments keep the cache reusable across checkout locations.
+        args target[1]
+        if (target[0] == 'fabric') {
+            systemProperty 'retina.catalog.environment', 'Retina Minecraft binary registry exporter (Fabric classpath)'
+        }
+        inputs.property('minecraftVersion', minecraft_version)
+        outputs.dir(catalogRoot.map { it.dir(target[1]) })
+        outputs.cacheIf { true }
+        doFirst { getWorkingDir().mkdirs() }
+    }
+}
+tasks.register('generateCatalogs') {
+    group = 'build'
+    description = 'Generate both exact vanilla catalog snapshots without native compilation or game launch.'
+    dependsOn exports.keySet()
+}
+tasks.named('assemble') { dependsOn 'generateCatalogs' }

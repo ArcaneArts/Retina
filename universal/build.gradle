@@ -3,7 +3,7 @@ plugins {
     id 'com.gradleup.shadow' version '9.6.1'
 }
 apply from: rootProject.file('gradle/java-toolchain.gradle')
-['core', 'fabric', 'neoforge', 'bukkit'].each { evaluationDependsOn(":" + it) }
+['core', 'fabric', 'neoforge', 'bukkit', 'data'].each { evaluationDependsOn(":" + it) }
 repositories { mavenCentral() }
 configurations { shadedLibraries }
 dependencies {
@@ -38,12 +38,14 @@ processResources {
     from rootProject.file('neoforge/src/main/resources')
     from rootProject.file('bukkit/src/main/resources')
     filesMatching(['fabric.mod.json', 'META-INF/neoforge.mods.toml', 'plugin.yml']) { expand(metadata) }
-    ['vanilla': 'vanilla-recompiled', 'vanilla-binary': 'vanilla-binary'].each { source, snapshot ->
-        from(rootProject.file("assets/world-definitions/${minecraft_version}/${source}")) {
-            into "catalogs/${minecraft_version}/${snapshot}"
-        }
+    from(project(':data').tasks.named('generateVanillaRecompiled')) {
+        into "catalogs/${minecraft_version}/vanilla-recompiled"
     }
-    from(rootProject.file("assets/world-definitions/${minecraft_version}/vanilla")) {
+    from(project(':data').tasks.named('generateVanillaBinary')) {
+        into "catalogs/${minecraft_version}/vanilla-binary"
+    }
+    // Bukkit keeps its existing resource path and API-specific catalog variant.
+    from(project(':data').tasks.named('generateVanillaRecompiled')) {
         into "catalogs/${minecraft_version}"
     }
 }
