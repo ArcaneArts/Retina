@@ -1,0 +1,2 @@
+// Deliberately has no plugins, version calculation, toolchains or compilation.
+apply from: rootProject.file('gradle/publish.gradle')

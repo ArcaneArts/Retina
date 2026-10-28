@@ -107,15 +107,7 @@ jobs:
           cache-read-only: false
       - name: Version from the triggering commit
         id: version
-        run: |
-          echo "version=0.$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
-          python3 - <<'PY'
-          import os
-          from pathlib import Path
-          values = dict(line.split('=', 1) for line in Path('gradle.properties').read_text().splitlines() if '=' in line)
-          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
-              output.write('minecraft=' + values['minecraft_version'] + '\n')
-          PY
+        run: python3 scripts/release_version.py
       - uses: actions/download-artifact@v7
         with:
           pattern: native-*-${{ github.sha }}
@@ -173,22 +165,21 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      pull-requests: read
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      RETINA_VERSION: ${{ needs.assemble.outputs.version }}
-      RELEASE_COMMIT: ${{ github.sha }}
     steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
       - uses: actions/download-artifact@v7
         with:
           name: universal-${{ github.sha }}
           path: dist
-      - name: Publish the single installable JAR
-        run: |
-          tag="v$RETINA_VERSION"
-          if ! gh release view "$tag" > /dev/null 2>&1; then
-            gh release create "$tag" --target "$RELEASE_COMMIT" \
-              --title "Retina $RETINA_VERSION" --generate-notes --draft
-          fi
-          gh release upload "$tag" dist/*.jar --clobber
-          gh release edit "$tag" --draft=false
+      - name: Publish immutable artifact with PR and direct-commit notes
+        run: python3 scripts/publish-release.py

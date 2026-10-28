@@ -70,3 +70,35 @@ same actual JAR on a JDK-only classpath. It loads the embedded library, material
 and reopens both vanilla snapshots, verifies dimensions/seed and unchanged saved
 bytes, then deletes its temporary definitions. This is a CPU-side native loading
 check; it does not claim GPU-generation or game-loader acceptance.
+
+## Publishing
+
+Run `./gradlew publish` (or the compatibility alias `releaseRetina`). A publish-only
+invocation selects a minimal Gradle build with no Minecraft plugins or toolchains.
+It fetches remote branches, captures the fetched `origin/main` commit, and pushes
+that commit to `origin/release` without force. The current branch, tracked edits,
+and untracked files remain untouched. Initial branch creation works; an unchanged
+release is a no-op; divergence is rejected by the real Git push.
+
+Only a push to `release` starts the workflow. Every job checks out that event's SHA;
+artifacts are named by SHA. A failed run can be rerun without another branch push.
+`version.json` supplies major and minor as integers or integer strings, and full
+Git history supplies the patch count: major 1, minor 1, 450 commits produces
+`1.1.450`, tag `v1.1.450`, and title `Retina 1.1.450`.
+
+Publication creates a draft, uploads the one universal JAR, then publishes it after
+native checks pass. Notes use a “What's Changed” list with PR titles, author mentions,
+and PR links, plus direct mainline commits and a Full Changelog link. Merge commits
+represent their PR once. The first release links its complete history. Minecraft,
+platforms, source commit, and artifact SHA-256 follow the change list.
+
+A rerun verifies an already published tag and downloads its asset to compare actual
+bytes; it never replaces a different published artifact. Draft recovery can replace
+an incomplete upload. Each publisher reconciles Latest against the newest published
+Retina commit count after writing, so a late older run cannot simply mark itself
+Latest. Concurrent builds retain distinct artifact identities and do not cancel
+one another merely because another release advances.
+
+`python3 scripts/test-publish.py` exercises the actual Gradle task using disposable
+local Git repositories, including remote advancement, dirty work preservation,
+initial branch creation, no-op repeat, and rejected divergence.

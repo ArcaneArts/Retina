@@ -1,5 +1,7 @@
+import groovy.json.JsonSlurper
+
 // Each supported Minecraft version supplies the matching loader dependencies.
-// Actions discovers the same files to build its release matrix.
+// Universal releases currently use the single configured Minecraft target.
 def minecraftTarget = providers.gradleProperty('minecraft_version').get()
 def targetProperties = new Properties()
 file("gradle/minecraft/${minecraftTarget}.properties").withInputStream {
@@ -12,26 +14,21 @@ def commitCount = providers.exec {
     workingDir rootDir
     commandLine 'git', 'rev-list', '--count', 'HEAD'
 }.standardOutput.asText.get().trim()
+def releaseVersion = new JsonSlurper().parseText(
+        providers.fileContents(layout.projectDirectory.file('version.json')).asText.get())
+def versionParts = ['major', 'minor'].collect { key ->
+    def value = releaseVersion[key]?.toString()
+    if (value == null || !(value ==~ /0|[1-9][0-9]*/)) {
+        throw new GradleException("version.json ${key} must be a non-negative integer or integer string")
+    }
+    value
+}
 allprojects { targetProject ->
-    targetProject.version = "0.${commitCount}"
+    targetProject.version = "${versionParts[0]}.${versionParts[1]}.${commitCount}"
     targetProperties.each { key, value ->
         targetProject.ext.set(key.toString(),
                 targetProject.providers.gradleProperty(key.toString()).getOrElse(value.toString()))
     }
 }
 
-def fetchMain = tasks.register('fetchRetinaReleaseMain', Exec) {
-    description = 'Fetch the published main revision for releaseRetina.'
-    workingDir rootDir
-    commandLine 'git', 'fetch', 'origin', '+refs/heads/main:refs/remotes/origin/main'
-}
-
-tasks.register('releaseRetina', Exec) {
-    group = 'publishing'
-    description = 'Advance origin/release to origin/main, triggering the GitHub release build.'
-    dependsOn fetchMain
-    workingDir rootDir
-    // Git creates the branch on the first release and rejects non-fast-forward updates.
-    // No checkout, local commit, build, or force push is involved.
-    commandLine 'git', 'push', 'origin', 'refs/remotes/origin/main:refs/heads/release'
-}
+apply from: rootProject.file('gradle/publish.gradle')
