@@ -42,3 +42,31 @@ Gradle build-cache entry reusable across checkouts. The generated catalog and
 manifest are restored together. A cache miss executes the exporter normally;
 committed catalog assets are not a release fallback. Binary/recompiled snapshots
 remain separate to preserve their exact noise offsets.
+
+## Native release jobs and caching
+
+The release workflow builds macOS ARM64, Windows x64 (static MSVC CRT), and Linux
+x64 (the existing glibc 2.17 Zig target), using Rust 1.93.0. Native jobs run once per
+target and upload libraries with content manifests. `native-release.py` fingerprints
+Rust source/shaders, Cargo inputs, compiler configuration, build script, actual
+toolchain versions, target, and relevant build environment. Exact native output
+cache hits are accepted only after checking both current inputs and library bytes.
+Cargo dependency/compilation caches accelerate misses but do not skip compilation.
+Native cache identities contain no Minecraft version or Java release commit.
+
+Assembly downloads these artifacts and supplies `-PretinaNativeDirectory=<directory>`.
+With this property, native packaging reads supplied files and has no compiler task
+dependency. The final JAR includes exactly the three release platforms and their
+manifests. Ordinary loader developer builds retain their existing native setup.
+Gradle's dependency and build caches cover Java/Minecraft tooling and generated data.
+
+Blacksmith is the default provider. Set repository variable `RETINA_GITHUB_RUNNERS`
+to `true` to use the corresponding GitHub-hosted runners if Blacksmith execution is
+unavailable. This is an explicit provider selection, not a speculative runtime
+availability check. The publish job uses a GitHub-hosted Linux runner.
+
+After assembly, each native platform runs `UniversalNativeSmoke.java` against the
+same actual JAR on a JDK-only classpath. It loads the embedded library, materializes
+and reopens both vanilla snapshots, verifies dimensions/seed and unchanged saved
+bytes, then deletes its temporary definitions. This is a CPU-side native loading
+check; it does not claim GPU-generation or game-loader acceptance.

@@ -1,6 +1,7 @@
 def nativeDirectory = layout.projectDirectory.dir('native')
 def nativeTarget = layout.buildDirectory.dir('native-target')
 def nativeResources = layout.buildDirectory.dir('generated/native-resources')
+def suppliedNatives = providers.gradleProperty('retinaNativeDirectory').map { file(it) }
 def nativeLibraryName = System.mapLibraryName('retina_worldgen')
 def nativeOsName = System.getProperty('os.name').toLowerCase(Locale.ROOT)
 def nativeOs = nativeOsName.contains('mac') ? 'macos' : nativeOsName.contains('win') ? 'windows' : 'linux'
@@ -24,10 +25,14 @@ tasks.register('buildNative', Exec) {
     outputs.file nativeTarget.map { it.file("release/${nativeLibraryName}") }
 }
 
-tasks.register('packageNative', Copy) {
-    dependsOn 'buildNative'
-    from(nativeTarget.map { it.file("release/${nativeLibraryName}") }) {
-        into "natives/${nativeOs}-${nativeArch}"
+tasks.register('packageNative', Sync) {
+    if (suppliedNatives.isPresent()) {
+        from(suppliedNatives) { include "natives/${nativeOs}-${nativeArch}/${nativeLibraryName}" }
+    } else {
+        dependsOn 'buildNative'
+        from(nativeTarget.map { it.file("release/${nativeLibraryName}") }) {
+            into "natives/${nativeOs}-${nativeArch}"
+        }
     }
     into nativeResources
 }
@@ -36,7 +41,7 @@ tasks.register('packageNative', Copy) {
 // Only distributable JARs require foreign libraries. Keep them out of the
 // runtime resource source set so runClient/runServer and tests stay host-only.
 def crossNativeTargets = []
-if (!providers.gradleProperty('retinaHostOnly').isPresent()) {
+if (!suppliedNatives.isPresent() && !providers.gradleProperty('retinaHostOnly').isPresent()) {
     if (nativeOs == 'macos') {
         def otherArch = nativeArch == 'aarch64' ? 'x86_64' : 'aarch64'
         crossNativeTargets.add([name: 'Macos', triple: "${otherArch}-apple-darwin",
@@ -60,6 +65,12 @@ def crossNativeResources = tasks.register('packageCrossNatives', Sync) {
     group = 'build'
     description = 'Stage cross-compiled libraries for distributable JARs only.'
     into layout.buildDirectory.dir('generated/cross-native-resources')
+    if (suppliedNatives.isPresent()) {
+        from(suppliedNatives) {
+            include 'natives/**'
+            exclude "natives/${nativeOs}-${nativeArch}/**"
+        }
+    }
 }
 def previousNativeBuild = tasks.named('buildNative')
 crossNativeTargets.each { target ->

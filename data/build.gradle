@@ -11,7 +11,11 @@ exports.each { taskName, target ->
         group = 'build'
         description = "Generate the ${target[1]} vanilla catalog with Minecraft ${minecraft_version}."
         dependsOn runtime.tasks.named('compileGpuTestJava')
-        classpath = runtime.registryToolClasspath
+        // The core JAR manifest contains the release version. Use its actual classes
+        // here so a documentation-only release does not invalidate vanilla exports.
+        def coreJar = project(':core').tasks.named('jar').get().archiveFile.get().asFile
+        classpath = runtime.registryToolClasspath.filter { it != coreJar } +
+                project(':core').sourceSets.main.output.classesDirs
         mainClass = 'art.arcane.retina.worldgen.VanillaCatalogExport'
         javaLauncher = runtime.javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
         jvmArgs '-XX:ActiveProcessorCount=2'
