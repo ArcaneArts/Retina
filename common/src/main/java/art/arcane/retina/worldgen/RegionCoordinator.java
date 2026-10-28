@@ -18,6 +18,7 @@ public final class RegionCoordinator {
     private final RetinaChunkGenerator generator;
     private final Path folder;
     private final TemporaryRegions previews;
+    private final RegionGenerationBudget.Scope publicationAdmission = RegionGenerationBudget.SHARED.scope();
     // Budget waiters must not occupy all preparation workers before portal work
     // can join the queue. Native execution still uses the same global limit.
     // Native foreign calls pin virtual-thread carriers. Platform tasks preserve
@@ -47,11 +48,15 @@ public final class RegionCoordinator {
         long key = generator.cacheKey(position);
         return loads.load(key, foreground, () -> previews != null && !prepared.contains(key) && Files.notExists(
                         folder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".mca")),
-                priority -> previews.prepare(position, priority),
+                (priority, cancellation) -> previews.prepare(position, priority, cancellation),
                 () -> { if (previews != null) previews.promote(position); }, read);
     }
 
+    /** Stop queued generation before the I/O worker waits for its shutdown barrier. */
+    public void stopAdmission() { publicationAdmission.close(); }
+
     public void close() {
+        stopAdmission();
         NetherUnloadQa.storageClosing(generator);
         loads.close();
     }
@@ -84,7 +89,7 @@ public final class RegionCoordinator {
                 return;
             }
             NativeTerrain.RegionReport report;
-            var releaseGeneration = RegionGenerationBudget.SHARED.request(true).acquire();
+            var releaseGeneration = publicationAdmission.acquire(true);
             try {
                 report = NativeTerrain.instance().generateRegion(
                         generator.request(position.x(), position.z()), destination,
@@ -101,6 +106,9 @@ public final class RegionCoordinator {
                             generator.dimension().identifier(), position.getRegionX(), position.getRegionZ(), report.generated(), report.preserved(), elapsed / 1_000_000.0, report.bytes());
                 }
             }
+        } catch (java.util.concurrent.CancellationException cancelled) {
+            generator.metrics().cancelled();
+            throw cancelled;
         } catch (Throwable error) {
             generator.metrics().failed();
             if (error instanceof IOException io) throw io;

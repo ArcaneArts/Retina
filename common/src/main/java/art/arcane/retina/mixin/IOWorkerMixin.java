@@ -61,6 +61,8 @@ public abstract class IOWorkerMixin implements RegionIoBridge {
     private void retina$stopAhead(CallbackInfo callback) {
         // A publication is either queued before shutdown's drain barrier or rejected here.
         synchronized (this) { retina$closing = true; }
+        var coordinator = ((RegionStorageBridge)(Object) storage).retina$coordinator();
+        if (coordinator != null) coordinator.stopAdmission();
     }
     @WrapMethod(method = "loadAsync")
     private CompletableFuture<Optional<CompoundTag>> retina$loadPreparedRegion(ChunkPos position,

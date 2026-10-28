@@ -32,8 +32,8 @@ public final class RegionAheadPumpTest {
         pump.close(); pump.close(); dispatch.drain();
         for (var job : jobs) job.complete(null);
         dispatch.drain();
-        require(jobs.size() == 9 && result.get().stopped() && result.get().completed() == 9,
-                "pause stops admissions but lets the bounded in-flight publications finish");
+        require(jobs.size() == 9 && result.get().stopped() && result.get().completed() == 1 && result.get().failure() == null,
+                "pause cancels outstanding observers without reporting an expected cancellation as failure");
 
         var completed = new AtomicInteger();
         next.set(0);

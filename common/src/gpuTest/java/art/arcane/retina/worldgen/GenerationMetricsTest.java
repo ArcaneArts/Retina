@@ -35,6 +35,11 @@ public final class GenerationMetricsTest {
         var unchanged = metrics.snapshot();
         close(unchanged.averageRegionMs(), 16.5, "promotion and existing saves do not skew generation speed");
         require(unchanged.regionSamples() == 20 && unchanged.inFlight() == 0 && unchanged.total() == 26 * 1024, "cached terrain is not counted twice");
+        metrics.begin(); metrics.cancelled();
+        var cancelled = metrics.snapshot();
+        require(cancelled.inFlight() == 0 && cancelled.failures() == 0
+                && cancelled.total() == unchanged.total() && cancelled.regionSamples() == unchanged.regionSamples(),
+                "cancelled admission balances activity without counting terrain or failures");
         var partial = new GenerationMetrics(initialClock::get);
         initialClock.addAndGet(1_000_000_000L);
         partial.begin(); partial.completedRegion(1024, 1_000_000);

@@ -254,6 +254,7 @@ public final class NativePreviewIntegrationTest {
             }
             require(!Files.exists(previewFolder), "world close deletes all temporary regions and their directory");
 
+            verifyCancelledPreparation(generator);
             var raceMetrics = new GenerationMetrics();
             var race = new TemporaryRegions(generator.request(320, 320), "minecraft:plains", generator.profile(), raceMetrics, 1);
             try (var workers = Executors.newSingleThreadExecutor()) {
@@ -280,5 +281,56 @@ public final class NativePreviewIntegrationTest {
             try (var files = Files.walk(save)) { for (var path : files.sorted(Comparator.reverseOrder()).toList()) Files.delete(path); }
         }
     }
+    private static void verifyCancelledPreparation(RetinaChunkGenerator generator) throws Exception {
+        var budget = RegionGenerationBudget.SHARED;
+        for (boolean keepForeground : new boolean[]{false, true}) {
+            var held = new ArrayList<Runnable>();
+            var workers = Executors.newFixedThreadPool(2);
+            var metrics = new GenerationMetrics();
+            var cache = new TemporaryRegions(generator.request(640, 640), "minecraft:plains", generator.profile(), metrics, 2);
+            var scheduler = new RegionLoadScheduler(workers, 2, lease -> {
+                try { lease.close(); } catch (Exception error) { throw new AssertionError(error); }
+            });
+            var position = new ChunkPos(640, 640);
+            try {
+                for (int i = 0; i < budget.limit(); i++) held.add(budget.acquire());
+                var background = scheduler.load(1, false, () -> true,
+                        (priority, cancellation) -> cache.prepare(position, priority, cancellation),
+                        () -> cache.promote(position), () -> { throw new AssertionError("cancelled background published"); });
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+                while (budget.queuedRequests() != 1 && System.nanoTime() < deadline) Thread.sleep(1);
+                require(budget.queuedRequests() == 1, "real preview waits in saturated native admission");
+                CompletableFuture<Integer> foreground = keepForeground ? scheduler.load(1, true, () -> true,
+                        (priority, cancellation) -> { throw new AssertionError("shared preview duplicated"); },
+                        () -> cache.promote(position), () -> CompletableFuture.completedFuture(1)) : null;
+                background.cancel(false);
+                if (keepForeground) {
+                    require(budget.queuedRequests() == 1, "foreground interest retains the promoted preview");
+                    held.forEach(Runnable::run); held.clear();
+                    require(foreground.get(30, TimeUnit.SECONDS) == 1, "foreground finishes after background cancellation");
+                } else {
+                    require(budget.queuedRequests() == 0, "abandoned preview removes its admission ticket immediately");
+                    // Race a fresh caller against the cancelled entry's cleanup and filename reuse.
+                    var replacement = workers.submit(() -> cache.prepare(position));
+                    deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+                    while (budget.queuedRequests() != 1 && System.nanoTime() < deadline) Thread.sleep(1);
+                    require(budget.queuedRequests() == 1 && metrics.snapshot().previewRegions() == 0,
+                            "fresh caller requeues safely; abandoned native generation never started");
+                    held.forEach(Runnable::run); held.clear();
+                    replacement.get(30, TimeUnit.SECONDS).close();
+                }
+                require(metrics.snapshot().previewRegions() == 1 && metrics.snapshot().failures() == 0
+                        && metrics.snapshot().inFlight() == 0, "only the surviving request generates one real region");
+            } finally {
+                held.forEach(Runnable::run);
+                scheduler.close(); cache.close(); workers.shutdown();
+                require(workers.awaitTermination(30, TimeUnit.SECONDS), "cancelled preview workers drain");
+                cache.closeAndAwaitGeneration();
+            }
+            require(!Files.exists(cache.folder()), "cancellation releases all real preview files and leases");
+        }
+        System.out.println("QA_EVT {\"event\":\"temporary_mca_cancelled_admission_and_shared_foreground\",\"status\":\"pass\"}");
+    }
+
     private static void require(boolean condition, String detail) { if (!condition) throw new AssertionError(detail); }
 }

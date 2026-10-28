@@ -102,6 +102,8 @@ final class TemporaryRegions implements AutoCloseable {
         BaseMaterialCache baseMaterials;
         RegionFileStorage storage;
         int pins;
+        int interests;
+        final CompletableFuture<Void> disposed = new CompletableFuture<>();
         boolean retired;
         Entry(ChunkPos position) {
             key = key(position);
@@ -141,6 +143,7 @@ final class TemporaryRegions implements AutoCloseable {
             cool();
             try { Files.deleteIfExists(path); Files.deleteIfExists(columnPath); Files.deleteIfExists(materialPath); }
             catch (IOException error) { Retina.LOGGER.warn("Could not remove temporary Retina region {}", path, error); }
+            disposed.complete(null);
         }
 
         synchronized BlockState[] baseColumn(ChunkPos position, int index) throws IOException {
@@ -152,13 +155,27 @@ final class TemporaryRegions implements AutoCloseable {
 
     private final class Lease implements AutoCloseable {
         final Entry entry;
+        private boolean interested = true;
+        private boolean released;
+        private Runnable detachCancellation = () -> {};
         Lease(Entry entry) { this.entry = entry; }
+        void abandon() {
+            synchronized (TemporaryRegions.this) {
+                if (!interested) return;
+                interested = false;
+                if (--entry.interests == 0 && !entry.generated.isDone()) entry.admission.cancel();
+            }
+        }
         NativeTerrain.RegionReport data() { return entry.generated.join(); }
         @Override public void close() {
+            detachCancellation.run();
             synchronized (TemporaryRegions.this) {
+                if (released) return;
+                released = true;
+                abandon();
                 entry.pins--; users--;
                 if (entry.pins == 0 && entry.generated.isCompletedExceptionally()) {
-                    entries.remove(entry.key); warm.remove(entry.key); entry.retired = true;
+                    entries.remove(entry.key, entry); warm.remove(entry.key, entry); entry.retired = true;
                 }
                 if (entry.retired && entry.pins == 0) entry.dispose();
                 trim(); trimWarm();
@@ -182,47 +199,76 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     private Lease acquireIfOpen(ChunkPos position, BooleanSupplier foreground) {
+        return acquireIfOpen(position, foreground, null);
+    }
+
+    private Lease acquireIfOpen(ChunkPos position, BooleanSupplier foreground, RegionCancellation cancellation) {
         Entry entry;
         boolean generate;
-        synchronized (this) {
-            if (closed) return null;
-            long key = key(position);
-            entry = entries.get(key);
-            generate = entry == null;
-            if (generate) { entry = new Entry(position); entries.put(key, entry); }
-            else { metrics.previewCacheHit(); if (entry.generated.isDone()) warm.put(key, entry); }
-            if (foreground.getAsBoolean()) entry.admission.promote();
-            entry.pins++; users++;
-            trim(); trimWarm();
+        while (true) {
+            CompletableFuture<Void> retired = null;
+            synchronized (this) {
+                if (closed) return null;
+                if (cancellation != null && cancellation.isCancelled())
+                    throw new java.util.concurrent.CancellationException("Retina preview preparation abandoned");
+                long key = key(position);
+                entry = entries.get(key);
+                generate = entry == null;
+                if (entry != null && entry.admission.isCancelled()) {
+                    // Let old owners finish cleanup before a fresh entry reuses its filenames.
+                    retired = entry.disposed;
+                } else {
+                    if (generate) { entry = new Entry(position); entries.put(key, entry); }
+                    else { metrics.previewCacheHit(); if (entry.generated.isDone()) warm.put(key, entry); }
+                    if (foreground.getAsBoolean()) entry.admission.promote();
+                    entry.pins++; entry.interests++; users++;
+                    trim(); trimWarm();
+                }
+            }
+            if (retired == null) break;
+            retired.join();
         }
         var lease = new Lease(entry);
+        if (cancellation != null) lease.detachCancellation = cancellation.onCancel(lease::abandon);
         if (generate) {
             long queued = System.nanoTime();
-            var releaseGeneration = entry.admission.acquire();
-            long queueNanos = System.nanoTime() - queued;
-            metrics.begin();
-            long start = System.nanoTime();
-            try (var background = PortalBackgroundQa.begin(dimension, entry.origin)) {
-                var r = new TerrainRequest(settings.seed(), entry.origin.x(), entry.origin.z(), settings.minY(), settings.height(),
-                        settings.baseHeight(), settings.amplitude(), settings.frequency(), settings.profile());
-                var data = NativeTerrain.instance().generateRegionColumns(r, entry.path,
-                        SharedConstants.getCurrentVersion().dataVersion().version(), biome, entry.columnPath);
-                var report = data.report();
-                if (background != null) background.complete(report.generated());
-                entry.retainColumns(data.columns());
-                NetherIntegrationQa.generated(dimension, entry.origin);
-                long columnCacheNanos=data.columnCacheNanos();
-                long elapsed = System.nanoTime() - start;
-                metrics.completedPreviewRegion(report.generated(), elapsed, report.stages(), columnCacheNanos);
-                PortalBackgroundQa.generated(dimension, entry.origin, report.generated());
-                entry.generated.complete(report);
-                synchronized (this) { if (!entry.retired) warm.put(entry.key, entry); trimWarm(); }
-                if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(
-                        "QA_EVT {\"event\":\"temporary_mca_region\",\"status\":\"pass\",\"context\":{\"dimension\":\"{}\",\"x\":{},\"z\":{},\"chunks\":{},\"ms\":{},\"queue_ms\":{},\"bytes\":{}}}",
-                        dimension.identifier(), position.getRegionX(), position.getRegionZ(), report.generated(), elapsed / 1e6, queueNanos / 1e6, report.bytes());
+            Runnable releaseGeneration = () -> {};
+            boolean started = false;
+            try {
+                releaseGeneration = entry.admission.acquire();
+                synchronized (this) {
+                    if (closed) throw new java.util.concurrent.CancellationException("Retina world closed before generation");
+                    // Closing after this point drains this admitted native operation.
+                    started = true;
+                }
+                long queueNanos = System.nanoTime() - queued;
+                metrics.begin();
+                long start = System.nanoTime();
+                try (var background = PortalBackgroundQa.begin(dimension, entry.origin)) {
+                    var r = new TerrainRequest(settings.seed(), entry.origin.x(), entry.origin.z(), settings.minY(), settings.height(),
+                            settings.baseHeight(), settings.amplitude(), settings.frequency(), settings.profile());
+                    var data = NativeTerrain.instance().generateRegionColumns(r, entry.path,
+                            SharedConstants.getCurrentVersion().dataVersion().version(), biome, entry.columnPath);
+                    var report = data.report();
+                    if (background != null) background.complete(report.generated());
+                    entry.retainColumns(data.columns());
+                    NetherIntegrationQa.generated(dimension, entry.origin);
+                    long columnCacheNanos=data.columnCacheNanos();
+                    long elapsed = System.nanoTime() - start;
+                    metrics.completedPreviewRegion(report.generated(), elapsed, report.stages(), columnCacheNanos);
+                    PortalBackgroundQa.generated(dimension, entry.origin, report.generated());
+                    entry.generated.complete(report);
+                    synchronized (this) { if (!entry.retired) warm.put(entry.key, entry); trimWarm(); }
+                    if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(
+                            "QA_EVT {\"event\":\"temporary_mca_region\",\"status\":\"pass\",\"context\":{\"dimension\":\"{}\",\"x\":{},\"z\":{},\"chunks\":{},\"ms\":{},\"queue_ms\":{},\"bytes\":{}}}",
+                            dimension.identifier(), position.getRegionX(), position.getRegionZ(), report.generated(), elapsed / 1e6, queueNanos / 1e6, report.bytes());
+                }
             } catch (Throwable error) {
-                NetherUnloadQa.generationFailed(error);
-                metrics.failed(); entry.generated.completeExceptionally(error);
+                if (started) {
+                    NetherUnloadQa.generationFailed(error);
+                    metrics.failed();
+                }
+                entry.generated.completeExceptionally(error);
                 lease.close();
                 if (error instanceof IOException io) throw new UncheckedIOException(io);
                 if (error instanceof RuntimeException runtime) throw runtime;
@@ -239,7 +285,12 @@ final class TemporaryRegions implements AutoCloseable {
     }
 
     AutoCloseable prepare(ChunkPos position, BooleanSupplier foreground) {
-        var lease = acquire(position, foreground);
+        return prepare(position, foreground, null);
+    }
+
+    AutoCloseable prepare(ChunkPos position, BooleanSupplier foreground, RegionCancellation cancellation) {
+        var lease = acquireIfOpen(position, foreground, cancellation);
+        if (lease == null) throw new IllegalStateException("Temporary Retina regions are closed");
         try { lease.data(); return lease; }
         catch (Throwable error) { lease.close(); throw error; }
     }
@@ -355,11 +406,11 @@ final class TemporaryRegions implements AutoCloseable {
         synchronized (this) {
             if (closed) return null;
             var entry = entries.get(key(position));
-            if (entry == null) return null;
+            if (entry == null || entry.admission.isCancelled()) return null;
             // Existing/partial MCA reads can bypass asynchronous preparation.
             // Promote any shared preview before publication waits for it too.
             entry.admission.promote();
-            entry.pins++; users++; lease = new Lease(entry);
+            entry.pins++; entry.interests++; users++; lease = new Lease(entry);
         }
         try (lease) {
             lease.data();
@@ -375,8 +426,13 @@ final class TemporaryRegions implements AutoCloseable {
         // Keep this snapshot after entries are retired: loader unload can close
         // previews before the I/O worker reaches its own shutdown barrier.
         closingGeneration = CompletableFuture.allOf(entries.values().stream()
-                .map(entry -> entry.generated).toArray(CompletableFuture[]::new));
+                .map(entry -> entry.generated.handle((value, error) -> {
+                    if (error != null && !(error instanceof java.util.concurrent.CancellationException))
+                        throw new java.util.concurrent.CompletionException(error);
+                    return null;
+                })).toArray(CompletableFuture[]::new));
         for (var entry : entries.values()) {
+            entry.admission.cancel();
             entry.retired = true;
             if (entry.pins == 0) entry.dispose();
         }

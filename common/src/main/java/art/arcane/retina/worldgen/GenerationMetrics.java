@@ -72,6 +72,7 @@ public final class GenerationMetrics {
         if(timings.size()>128)timings.removeFirst();
         prune(now);
     }
+    public synchronized void cancelled() { inFlight--; }
     public synchronized void failed() { inFlight--; failures++; }
     public synchronized Snapshot snapshot() {
         long now=clock.getAsLong();prune(now);
