@@ -87,7 +87,7 @@ public final class AutomaticGenerationQa {
     }
 
     public static void checkSavedEdits(MinecraftServer server, boolean reopened) {
-        for (var key : java.util.List.of(Level.OVERWORLD, Level.NETHER)) {
+        for (var key : java.util.List.of(Level.OVERWORLD, Level.NETHER, Level.END)) {
             var level = server.getLevel(key);
             if (level == null) continue;
             var position = key.equals(Level.NETHER) ? new BlockPos(-17, 200, -17) : EDIT;
