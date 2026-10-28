@@ -17,8 +17,8 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 8. Separate registry tooling/build inspection | Merged [PR #331](https://github.com/ArcaneArts/Retina/pull/331), `0121a1a1` | Complete; host-only artifacts verified, six-native release requirement retained |
 | 9. Improve Bukkit chunk transfer | Merged [PR #332](https://github.com/ArcaneArts/Retina/pull/332), `91fe6d9b` | Complete; memory/allocation improvement, no general throughput claim |
 | 10. Improve mixed-section installation | Merged [PR #333](https://github.com/ArcaneArts/Retina/pull/333), `6aabfcfd` | Complete; public-API x-run batching, exact output and measured adapter gains |
-| 11. Bound MCA publication buffering | Pending | Partial/preview/resume/failure/durability and memory evidence |
-| Integrated acceptance | Pending | Relevant Fabric/NeoForge/Bukkit/CLI paths in all dimensions |
+| 11. Bound MCA publication buffering | Merged [PR #342](https://github.com/ArcaneArts/Retina/pull/342), `f21bde27` | Complete; bounded publication, exact preservation, CLI recovery and memory evidence |
+| Integrated acceptance | Passed; [final QA PR #343](https://github.com/ArcaneArts/Retina/pull/343) | All three dimensions in both mod loaders, Bukkit and CLI; artifact inspection and evidence audit complete |
 
 ## Cycle 1: buffered biome-cache serialization
 
@@ -1449,3 +1449,83 @@ JAR tasks pass with the updated native staging/build configuration; see
 `cycle11/rebased-packaging.log`. Upstream now defines a universal distribution
 and its current release platform set; this cycle preserves those upstream rules
 rather than restoring the earlier six-native packaging policy.
+
+## Final integration and requirement audit
+
+Final integration starts from `f21bde27` in its own
+`codex/perf-final-acceptance` worktree. The only runtime-source edit extends the
+opt-in saved-edit QA loop to End. The external driver now requires generation,
+edit and reopened-edit observations in all three dimensions for both mod loaders;
+End activation alone is insufficient. Earlier chronological entries above retain
+failed trials and intermediate open questions; the status table and this audit
+record their final disposition.
+
+All fourteen delivery merge commits (PRs #321–#333 and #342) are verified ancestors
+of this checkout, with GitHub merge states/timestamps retained in
+`final-acceptance/merged-prs.json`. Thirty-three retained measurement, lifecycle,
+parity and test artifacts were read and hashed in `audit-evidence-identities.json`.
+The publication source is byte-identical to the source used for the final native
+and CLI tests and measured library. No shader or generation algorithm changed in
+this final QA cycle.
+
+| Requirement | Implementation and inspected evidence |
+|---|---|
+| 1. Buffered compatible persistence | PR #321; `cycle1/results.json` compares decoded contents and restore behavior with forty measured saves per workload/implementation. |
+| 2. Short locks, bounded/coalesced writes, revision/failure/close correctness | PR #322; current coalesced-save/cache tests, `cycle2/aligned/server-results.json`, lifecycle and restart results cover actual callbacks, blocked writers during unload/disable, retry and restoration. |
+| 3. Final-owner resource retirement and bounded sharing | PRs #323/#324; `cycle3/candidate-cache/inventory.json`, lease/failure GPU tests, full-chunk/full-region comparisons and production ABBA evidence establish stable owned resources, stale-handle rejection, multiple worlds and unchanged output. Logical resource release is distinguished from physical RSS. |
+| 4. Cancel abandoned admission while retaining active/shared work | PR #325; scheduler/preview tests, `cycle4/unload-abba/results.json` and both loaders' End boundary/reopen logs cover race handling, foreground interest, permit accounting, running-work drain and measured cancellation savings. |
+| 5. Safe concurrent Nether dependency reuse | PR #326; cache/context/root/bounds tests, diagnostic counters, ordinary/repeat/tail matrices and correctness/End corpora cover 1/2/4/8 callers, multiple seeds/bounds/orders, full NBT, CPU, latency and memory. |
+| 6. Counting/surface investigation | PR #327; device-stage and full-region experiments reject air clipping and both surface-cache variants. `cycle6/material-columns-dedup-summary.json` and full corpus show no acceptable overall gain; restored-baseline ordinary and GPU boundary tests pass. No rejected production shader ships. |
+| 7. Catalog selection/materialization/open | PRs #328–#330; independent variants, compatible legacy loading, owned materialization and one published-file open. Three matched startup studies, all-variant/full-width-seed/option comparisons, atomic-creator tests, Java references and loader/datapack runs cover authority and numerical compatibility. |
+| 8. Java-only tooling and actual artifact checks | PR #331; `cycle8/java-only-evidence.json` proves real exports/checks without native tasks; actual JAR catalog inspection and corruption/missing-resource regressions pass. Upstream universal release policy remains intact. |
+| 9. Bukkit transfer allocations/ownership | PR #332; immutable packed-array access, independent native encoding inventory, reachable-heap measurements and fixed/live server comparisons preserve every block/biome/height and metadata. Allocation savings are not represented as a general throughput gain. |
+| 10. Mixed-section installation | PR #333; single-pass x-runs, 17-state padded-word/exact-write regression, real-terrain paired comparisons and fragmented-palette comparison. Full actual-server output and lifecycle acceptance pass. |
+| 11. Bounded durable MCA publication | PR #342; production-FFI ABBA/paired matrices, storage failure tests, CLI control parity with player edits, compressed-record/timestamp/no-op preservation, corrupt files, LZ4, permission failure/retry and cancellation/resume all pass. |
+
+Evidence paths in this table are relative to
+`/Users/cyberpwn/.cache/retina/performance-pass-20261028/`. Each cycle's detailed
+section records drivers, artifacts, commands, environment and measurement scope.
+The evidence contains failed experiments as well as accepted runs; failure logs
+are not counted as passing coverage. No workload combines overlapping stage
+timers into total latency, and no microbenchmark is presented as server TPS.
+
+Final Java/package execution passes all 24 Bukkit and three Fabric catalog tests
+with no skips. Fabric, NeoForge, Bukkit and universal host-only JARs build. Actual
+JAR inspection checks catalog V2 manifests, variants, hashes and sizes, plugin
+resources/shading, unique ZIP entries, and the exact measured macOS native hash.
+All four JARs contain matching binary/recompiled catalog bytes for their respective
+paths. These are host validation artifacts, not a claimed three-platform release.
+
+All six strengthened mod runtime cases pass: bundled creation with compiler
+failure injection, saved-file reopening with materialization disabled, and neutral
+datapack export fallback with materialization disabled, on both loaders. All
+three dimensions receive actual edits; End generation/publication events appear
+on creation and its edit survives reopening. Saved definition hashes stay fixed,
+profiles match direct exports exactly, and owners close after drain. Reports are
+in `final-acceptance/runtime/`. The final dedicated Bukkit run remains in progress
+until its terminal result is recorded below.
+
+Clean, merged owned worktrees `perf-material-counting`, `perf-catalog-loading`,
+`perf-catalog-materialization`, `perf-registry-tooling`, `perf-bukkit-transfer`,
+`perf-bukkit-install` and `perf-mca-publication` are explicitly accounted for:
+the app has accepted archive requests with status `queued`, but still lists them
+as active. Needed benchmark evidence is retained externally. They are not claimed
+removed and will not be manually deleted behind the app. The final acceptance
+worktree remains active until its PR merges and evidence is preserved.
+
+
+The final dedicated Bukkit suite finishes successfully: 917,504 blocks, 14,336
+quart biomes, three player edits, persisted metadata and ten End crystals match.
+Creation, restart, import, unload/reopen/disable and all five invalid-definition
+preservation scenarios pass. The tested plugin/native hashes match the inspected
+artifacts. Full worlds, logs and reports are retained externally in
+`final-acceptance/bukkit-server-acceptance/`. Every final driver stage exits zero.
+
+Together with the exact-source native/CLI validation in cycle 11, this completes
+the requested integrated coverage. Runtime evidence is macOS ARM64/Metal only;
+Windows/Linux GPU execution and a complete foreign-native release build were not
+performed. Existing partial-region regeneration can produce different lighting
+status than generating the whole region in one call; the candidate matches the
+old library exactly on the same partial input. This pre-existing behavior is not
+claimed fixed. Counting experiments remain explicitly rejected, and measured
+speedups retain their workload-specific scopes.
