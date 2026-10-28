@@ -29,6 +29,13 @@ import net.neoforged.neoforge.registries.RegisterEvent;
 import java.util.function.Consumer;
 
 public final class NeoForgePlatform implements RetinaPlatform {
+    @Override public java.util.Set<String> vanillaDataPacks() {
+        var vanilla = java.util.Set.of("minecraft", "neoforge", "retina");
+        if (net.neoforged.fml.ModList.get().getMods().stream().anyMatch(mod -> !vanilla.contains(mod.getModId())))
+            return java.util.Set.of();
+        return java.util.Set.of("vanilla", "mod_data", "mod/neoforge", "mod/retina");
+    }
+
     private final IEventBus modBus;
 
     public NeoForgePlatform(IEventBus modBus) {

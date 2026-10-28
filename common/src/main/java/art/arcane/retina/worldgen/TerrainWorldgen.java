@@ -17,6 +17,10 @@ public final class TerrainWorldgen {
 
     private TerrainWorldgen() { }
 
+    static java.util.Set<String> vanillaDataPacks() {
+        return platform == null ? java.util.Set.of() : platform.vanillaDataPacks();
+    }
+
     public static boolean finalizeStructureMob(Mob mob, ServerLevelAccessor level) {
         return platform.finalizeStructureMob(mob, level);
     }

@@ -24,12 +24,19 @@ public final class WorldDefinitions {
         long started = System.nanoTime();
         var nativeWorld = NativeWorldDefinition.tryOpen(path);
         boolean created = nativeWorld == null;
+        boolean bundled = false;
         if (created) {
             // Publish the complete file, then reopen it through the same Rust
             // decoder used on subsequent starts and by the CLI.
-            try { WorldDefinitionFile.writeNew(root, WorldDefinitionCompiler.compile(server)); }
+            try {
+                nativeWorld = BundledVanillaDefinition.tryCreate(server, root);
+                bundled = nativeWorld != null;
+                if (!bundled) {
+                    WorldDefinitionFile.writeNew(root, WorldDefinitionCompiler.compile(server));
+                    nativeWorld = NativeWorldDefinition.open(path);
+                }
+            }
             catch (IOException error) { throw new UncheckedIOException("Writing " + path, error); }
-            nativeWorld = NativeWorldDefinition.open(path);
         }
         try {
             if (!created && WorldDefinitionEndUpgrade.hasDeferred(nativeWorld.metadata())) {
@@ -45,8 +52,8 @@ public final class WorldDefinitions {
             Retina.LOGGER.info("Retina {} world definition {} in {} ms", created ? "created and reopened" : "loaded", path,
                     (System.nanoTime() - started) / 1_000_000);
             if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(
-                    "QA_EVT {\"event\":\"world_definition_open\",\"created\":{},\"dimensions\":{},\"seed\":{}}",
-                    created, result.dimensionCount(), result.seed());
+                    "QA_EVT {\"event\":\"world_definition_open\",\"created\":{},\"dimensions\":{},\"seed\":{},\"source\":\"{}\"}",
+                    created, result.dimensionCount(), result.seed(), bundled ? "bundled-vanilla" : created ? "registry-export" : "saved-file");
             return result;
         } catch (Throwable error) {
             try { nativeWorld.close(); } catch (Throwable close) { error.addSuppressed(close); }

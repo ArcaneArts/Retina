@@ -14,6 +14,7 @@ loom {
             if (providers.gradleProperty('retinaEndUnloadQa').isPresent()) vmArg '-Dretina.qa.end.unload=true'
             if (providers.gradleProperty('retinaEndActivationQa').isPresent()) vmArg '-Dretina.qa.end.activation=true'
             if (providers.gradleProperty('retinaDefinitionFailCompilerQa').isPresent()) vmArg '-Dretina.qa.definition.failCompiler=true'
+            if (providers.gradleProperty('retinaCatalogFailMaterializerQa').isPresent()) vmArg '-Dretina.qa.catalog.failMaterializer=true'
             vmArg '-Dretina.qa=true'
             [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',
              DefinitionCapture: 'definition.capture', NetherCompatibility: 'nether.compatibility', Automatic: 'automatic', AutomaticReopen: 'automatic.reopen',
@@ -126,4 +127,18 @@ tasks.register('exportBenchmarkProfile', JavaExec) {
     workingDir rootProject.projectDir
     args providers.gradleProperty('benchmarkProfile').getOrElse('build/benchmark-fabric-profile.json')
     if (providers.gradleProperty('benchmarkPack').isPresent()) args providers.gradleProperty('benchmarkPack').get()
+}
+
+tasks.register('exportVanillaCatalog', JavaExec) {
+    group = 'verification'
+    description = 'Regenerate the vanilla snapshot using Minecraft binary classes (including exact double noise offsets).'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.VanillaCatalogExport'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '1g'
+    workingDir rootProject.projectDir
+    systemProperty 'retina.catalog.environment', 'Retina Minecraft binary registry exporter (Fabric classpath)'
+    args providers.gradleProperty('catalogOutput').getOrElse("assets/world-definitions/${minecraft_version}/vanilla-binary")
 }

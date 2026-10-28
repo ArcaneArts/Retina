@@ -6,9 +6,10 @@ Rust `world_definition` module reads it without initializing Minecraft, loading
 datapacks, or creating a GPU device.
 
 Fabric, NeoForge and the standalone runner use the same Rust loader and
-generation engine. Java compiles and atomically publishes a missing file, then
-discards its compiler output and reopens the published file through Rust. Later
-starts load the saved file directly. Runtime registries resolve platform
+generation engine. For ordinary vanilla worlds, the mods materialize a missing
+file from the registry catalog bundled in their JAR. Other worlds use the live
+Java registry compiler. Both paths atomically publish and reopen the file through
+Rust. Later starts load the saved file directly. Runtime registries resolve platform
 identities; they do not supply generation rules. Production JSON profile upload
 and profile-zero generation have been removed. See the
 [implementation acceptance report](WORLD_DEFINITION_ACCEPTANCE.md) for merged
@@ -16,6 +17,29 @@ deliveries, executed verification, artifact measurements and current limits.
 Reusable vanilla data for creating new arbitrary-seed snapshots is described in
 [world catalogs](WORLD_CATALOG.md). Materialized worlds still use this file
 format and loader; existing snapshots keep their exact original seed and rules.
+
+## Bundled vanilla data in the mods
+
+Fabric and NeoForge include the committed Minecraft-version-specific catalogs.
+Creating a normal vanilla world with Retina and the loader's framework libraries
+uses that data with the selected 64-bit seed, structures flag and bonus-chest
+flag. The resulting `retina.dat` still covers Overworld, Nether and End and is
+opened by the same Rust loader. No registry export command or user configuration
+is needed. Ordinary Gradle builds package these assets without regenerating them.
+
+New worlds with data packs, additional mods, custom dimensions or other world
+presets keep the live registry exporter. The selection compares the complete
+serialized dimension settings with the normal preset. Unknown environments use
+the exporter rather than approximating a custom world with vanilla data.
+Existing `retina.dat` files are always opened first, irrespective of current
+packs, mods or the bundled catalog version; this feature does not replace them.
+
+Minecraft 26.3's binary and recompiled development runtimes produce different
+floating-point provider-noise offsets. Both snapshots are bundled, and the mod
+selects using the running game's actual random-number implementation. This
+preserves exact parity with that runtime's exporter. An unfamiliar implementation
+uses the live exporter. See [mod catalog verification](MOD_VANILLA_CATALOG.md)
+for the executed parity and dedicated-server checks and regeneration commands.
 
 ## Wire format and storage geometry
 

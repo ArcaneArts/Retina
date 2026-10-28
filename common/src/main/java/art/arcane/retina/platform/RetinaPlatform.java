@@ -14,6 +14,9 @@ import java.nio.file.Path;
 public interface RetinaPlatform {
     Path configDirectory();
 
+    /** Known loader/Retina data packs, or empty when other mods can change vanilla generation. */
+    default java.util.Set<String> vanillaDataPacks() { return java.util.Set.of(); }
+
     void registerWorldgen();
 
     void registerTerrainStats();

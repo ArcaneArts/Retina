@@ -204,8 +204,12 @@ after restart. Five concrete startup failure cases per server preserved their
 supplied definitions and did not fall back to vanilla generation.
 
 The tests ran on Java 25.0.1, macOS 27.0.1 and Apple M4 Max/Metal using the same
-universal JAR with no external native override. The 2,706,404-byte committed
-catalog exported byte-identically twice. See [the acceptance report](BUKKIT_ACCEPTANCE.md)
+universal JAR with no external native override. The catalog tested in that
+acceptance run was 2,706,404 bytes and exported byte-identically twice. The
+current 5,274,690-byte catalog also includes bonus-chest variants for the mods;
+its original three variants, including `bukkit-api`, are structurally unchanged.
+See [mod catalog verification](MOD_VANILLA_CATALOG.md) for the new asset checks
+and [the acceptance report](BUKKIT_ACCEPTANCE.md)
 for artifact hashes, exact commands, timings, sampled memory, retained evidence
 and the distinction between host runtime verification and foreign cross-builds.
 

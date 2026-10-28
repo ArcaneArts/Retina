@@ -7,6 +7,11 @@ sourceSets.main {
 }
 processResources {
     from rootProject.tasks.named('packageNative')
+    ["vanilla": "vanilla-recompiled", "vanilla-binary": "vanilla-binary"].each { source, snapshot ->
+        from(rootProject.file("assets/world-definitions/${minecraft_version}/${source}")) {
+            into "catalogs/${minecraft_version}/${snapshot}"
+        }
+    }
 }
 base { archivesName = "retina-${project.name}-${minecraft_version}" }
 tasks.named('jar') {
