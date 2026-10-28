@@ -26,3 +26,19 @@ The assembly script has small standalone checks:
 `python3 scripts/test-merge-universal.py`.
 Actual three-loader acceptance and the release workflow are separate from assembly;
 a successful ZIP build alone does not establish runtime compatibility.
+
+## Generated vanilla data
+
+`./gradlew :data:generateCatalogs --build-cache` initializes the actual Minecraft
+registries on two Java-only tool classpaths: the binary runtime through Fabric,
+and the recompiled runtime through common/NeoForm. It does not launch a server,
+create a world, load a GPU, or compile Rust. Outputs live under
+`data/build/generated/catalogs/<minecraft>/` and universal resource processing
+consumes those task outputs directly. Explicit developer exports remain available.
+
+Each JavaExec task tracks its actual exporter/runtime classpath, Java launcher,
+Minecraft version, and execution options. Its relative output argument makes the
+Gradle build-cache entry reusable across checkouts. The generated catalog and
+manifest are restored together. A cache miss executes the exporter normally;
+committed catalog assets are not a release fallback. Binary/recompiled snapshots
+remain separate to preserve their exact noise offsets.
