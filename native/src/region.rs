@@ -1,11 +1,10 @@
 //! Anvil terrain writer. The caller owns Minecraft's region I/O queue while this runs.
 //! Existing chunk records (including external .mcc records) are never regenerated.
-use std::fs::{self, OpenOptions};
-use std::io::{ErrorKind, Write};
+#[cfg(test)]
+use std::fs;
 use std::path::Path;
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 use rayon::prelude::*;
 use crate::material_blocks::{Chunk as MaterialChunk, Read as MaterialRead, View as MaterialView};
@@ -18,12 +17,12 @@ use crate::{
 
 const SECTOR: usize = 4096;
 const HEADER: usize = SECTOR * 2;
-static TEMP_ID: AtomicU64 = AtomicU64::new(0);
 static ASSEMBLERS: OnceLock<Result<rayon::ThreadPool, String>> = OnceLock::new();
 #[path = "material_cache.rs"]
 mod material_cache;
 pub mod codec;
 mod geometry;
+mod storage;
 #[cfg(test)]
 mod transfer_probe;
 use codec::{Encoder, Record};
@@ -228,12 +227,19 @@ fn generate_region_inner(
     cached: Option<&Path>,
     detail: Option<&mut timings::Snapshot>,
 ) -> Result<RegionReport, String> {
-    engine.validate_request(&request)?;
+    // Cached records are opaque publication inputs and need no live generation profile.
+    if cached.is_some() { request.validate()?; } else { engine.validate_request(&request)?; }
     let cache_materials = output.is_some();
     if cached.is_none() && (biome.is_empty() || biome.len() > u16::MAX as usize) {
         return Err("invalid MCA biome identifier".into());
     }
-    let session = engine.timings(request.reserved);
+    let session = if cached.is_some() {
+        // Hold the registry read guard until timing lookup finishes, so retirement
+        // cannot remove an owner and then have this operation recreate its entry.
+        let profiles = engine.profiles.read().unwrap_or_else(|error| error.into_inner());
+        if profiles.get(request.reserved).is_ok() { engine.timings(request.reserved) }
+        else { Default::default() }
+    } else { engine.timings(request.reserved) };
     let job = timings::Timings::default();
     let timings = RegionTimers {
         session: &session,
@@ -241,25 +247,14 @@ fn generate_region_inner(
     };
     let mut gpu_trace = timings::Snapshot::default();
     let mut parallel_nanos = 0;
-    let mut file = match timings.time(timings::IO, || fs::read(path)) {
-        Ok(bytes) => bytes,
-        Err(e) if e.kind() == ErrorKind::NotFound => vec![0; HEADER],
-        Err(e) => return Err(format!("read region {}: {e}", path.display())),
-    };
-    // Vanilla/DH can open an empty region before writing its first record.
-    if file.is_empty() {
-        file.resize(HEADER, 0);
-    }
-    if file.len() < HEADER {
-        return Err(format!("truncated MCA header: {}", path.display()));
-    }
+    let mut file = timings.time(timings::IO, || storage::Source::open(path, true))?;
     let region_x = request.chunk_x.div_euclid(32);
     let region_z = request.chunk_z.div_euclid(32);
     let mut slots = Vec::new();
     let mut requests = Vec::new();
+    let reading = timings.span(timings::IO);
     for slot in 0..1024 {
-        let location = u32::from_be_bytes(file[slot * 4..slot * 4 + 4].try_into().unwrap());
-        if location == 0 {
+        if file.record(slot)?.is_none() {
             let chunk = ChunkRequest {
                 chunk_x: region_x * 32 + (slot % 32) as i32,
                 chunk_z: region_z * 32 + (slot / 32) as i32,
@@ -268,23 +263,13 @@ fn generate_region_inner(
             chunk.validate()?;
             slots.push(slot);
             requests.push(chunk);
-        } else {
-            // Validate the records we are preserving; never replace a corrupt save with new terrain.
-            let offset = (location >> 8) as usize * SECTOR;
-            let length = (location & 255) as usize * SECTOR;
-            if offset < HEADER || length == 0 || offset + length > file.len() {
-                return Err(format!("invalid MCA sector location at slot {slot}"));
-            }
-            let payload = u32::from_be_bytes(file[offset..offset + 4].try_into().unwrap()) as usize;
-            if payload < 1 || payload + 4 > length {
-                return Err(format!("invalid MCA record length at slot {slot}"));
-            }
         }
     }
+    drop(reading);
     let mut report = RegionReport {
         generated: slots.len() as u32,
         preserved: (1024 - slots.len()) as u32,
-        bytes: file.len() as u64,
+        bytes: file.len(),
         ..Default::default()
     };
     if slots.is_empty() {
@@ -296,34 +281,8 @@ fn generate_region_inner(
 
     let start = Instant::now();
     let mut pending_versions = None;
-    let records: Result<Vec<Record>, String> = if let Some(cached) = cached {
-        let source = timings
-            .time(timings::IO, || fs::read(cached))
-            .map_err(|e| format!("read preview {}: {e}", cached.display()))?;
-        if source.len() < HEADER {
-            return Err("truncated cached MCA header".into());
-        }
-        slots
-            .iter()
-            .map(|slot| {
-                let location =
-                    u32::from_be_bytes(source[slot * 4..slot * 4 + 4].try_into().unwrap());
-                let offset = (location >> 8) as usize * SECTOR;
-                let length = (location & 255) as usize * SECTOR;
-                if offset < HEADER || length == 0 || offset + length > source.len() {
-                    return Err(format!("invalid cached MCA location at slot {slot}"));
-                }
-                let payload =
-                    u32::from_be_bytes(source[offset..offset + 4].try_into().unwrap()) as usize;
-                if payload < 1 || payload + 4 > length {
-                    return Err(format!("invalid cached MCA record at slot {slot}"));
-                }
-                Ok(Record {
-                    codec: codec::Compression::from_id(source[offset + 4])?,
-                    bytes: source[offset + 5..offset + 4 + payload].to_vec(),
-                })
-            })
-            .collect()
+    let records: Result<storage::Records, String> = if let Some(cached) = cached {
+        timings.time(timings::IO, || storage::Records::cached(cached, &slots))
     } else {
         let profile = engine.profile(request.reserved)?;
         let data_version = engine.profile_data_version(request.reserved)?.unwrap_or(data_version);
@@ -689,7 +648,7 @@ fn generate_region_inner(
                     })
                     .collect())
             }
-        })
+        }).map(storage::Records::Generated)
     };
     let records = records?;
     if cached.is_none() {
@@ -698,58 +657,12 @@ fn generate_region_inner(
     report.assembly_nanos = (start.elapsed().as_nanos() as u64).saturating_sub(report.gpu_nanos);
     let start = Instant::now();
     let _io = timings.span(timings::IO);
-    file.resize(file.len().div_ceil(SECTOR) * SECTOR, 0);
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|e| e.to_string())?
-        .as_secs() as u32;
-    for (slot, compressed) in slots.into_iter().zip(records) {
-        let offset = file.len() / SECTOR;
-        let sectors = (compressed.bytes.len() + 5).div_ceil(SECTOR);
-        if sectors > 255 || offset > 0x00ff_ffff {
-            return Err("generated MCA record exceeds the inline Anvil sector limit".into());
-        }
-        file[slot * 4..slot * 4 + 4]
-            .copy_from_slice(&(((offset as u32) << 8) | sectors as u32).to_be_bytes());
-        file[SECTOR + slot * 4..SECTOR + slot * 4 + 4].copy_from_slice(&timestamp.to_be_bytes());
-        file.extend_from_slice(&((compressed.bytes.len() + 1) as u32).to_be_bytes());
-        file.push(compressed.codec.id());
-        file.extend_from_slice(&compressed.bytes);
-        file.resize((offset + sectors) * SECTOR, 0);
-    }
-    let parent = path.parent().ok_or("MCA path needs a parent directory")?;
-    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    let temp = parent.join(format!(
-        ".retina-{}-{}.mca.tmp",
-        std::process::id(),
-        TEMP_ID.fetch_add(1, Ordering::Relaxed)
-    ));
-    let result: Result<(), String> = (|| {
-        let mut output = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temp)
-            .map_err(|e| e.to_string())?;
-        output.write_all(&file).map_err(|e| e.to_string())?;
-        output.sync_all().map_err(|e| e.to_string())?;
-        drop(output);
-        fs::rename(&temp, path).map_err(|e| format!("publish region {}: {e}", path.display()))?;
-        // On Unix, make the directory entry durable along with the file contents.
-        #[cfg(unix)]
-        fs::File::open(parent)
-            .and_then(|directory| directory.sync_all())
-            .map_err(|e| e.to_string())?;
-        Ok(())
-    })();
-    if result.is_err() {
-        let _ = fs::remove_file(&temp);
-    }
-    result?;
+    let published_bytes = storage::publish(file, &slots, records, path)?;
     if let Some(pending) = pending_versions {
         pending.publish(engine, &session.performance);
     }
     report.write_nanos = start.elapsed().as_nanos() as u64;
-    report.bytes = file.len() as u64;
+    report.bytes = published_bytes;
     drop(_io);
     if let Some(detail) = detail {
         *detail = job.snapshot();
