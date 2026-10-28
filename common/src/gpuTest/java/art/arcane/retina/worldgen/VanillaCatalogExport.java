@@ -41,6 +41,7 @@ public final class VanillaCatalogExport {
             manifest.addProperty("data_version", SharedConstants.getCurrentVersion().dataVersion().version());
             manifest.addProperty("catalog_version", WorldCatalogCompiler.CONTAINER_VERSION); manifest.addProperty("materialization_version", 1);
             manifest.addProperty("generation_version", WorldDefinitionCompiler.GENERATION_VERSION);
+            manifest.addProperty("runtime_snapshot", BundledVanillaDefinition.runtimeSnapshot());
             manifest.addProperty("exporter", WorldCatalogCompiler.EXPORTER);
             manifest.addProperty("environment", System.getProperty("retina.catalog.environment", "Retina mod-development registry exporter"));
             manifest.add("content_mods", new JsonArray());

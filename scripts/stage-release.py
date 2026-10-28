@@ -8,12 +8,12 @@ from pathlib import Path
 from zipfile import ZipFile
 
 
-def inspect_catalog(archive: ZipFile, directory: str, minecraft: str) -> None:
+def inspect_catalog(archive: ZipFile, directory: str, minecraft: str, snapshot: str = 'vanilla-recompiled') -> None:
     manifest = json.loads(archive.read(directory + 'manifest.json'))
     catalog = archive.read(directory + 'retina-catalog.dat')
     expected = {'minecraft_version': minecraft, 'catalog_version': 2,
                 'materialization_version': 1, 'generation_version': 1,
-                'asset': 'retina-catalog.dat'}
+                'asset': 'retina-catalog.dat', 'runtime_snapshot': snapshot}
     for key, value in expected.items():
         if manifest.get(key) != value:
             raise ValueError(f'{directory}manifest {key}: {manifest.get(key)!r}, expected {value!r}')
@@ -27,7 +27,7 @@ def inspect_catalog(archive: ZipFile, directory: str, minecraft: str) -> None:
 
 def inspect_mod_catalogs(archive: ZipFile, minecraft: str) -> None:
     for snapshot in ('vanilla-recompiled', 'vanilla-binary'):
-        inspect_catalog(archive, f'catalogs/{minecraft}/{snapshot}/', minecraft)
+        inspect_catalog(archive, f'catalogs/{minecraft}/{snapshot}/', minecraft, snapshot)
 
 
 def inspect_bukkit(archive: ZipFile, minecraft: str, version: str) -> None:
