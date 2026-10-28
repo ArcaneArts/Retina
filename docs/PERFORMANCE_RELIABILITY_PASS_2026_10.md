@@ -13,7 +13,7 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 4. Cancel abandoned admissions | Merged: [PR #325](https://github.com/ArcaneArts/Retina/pull/325), `1ea0b77f` | Complete |
 | 5. Reuse concurrent Nether dependencies | Merged: [PR #326](https://github.com/ArcaneArts/Retina/pull/326), `456257d3` | Complete |
 | 6. Optimize material counting | Resolved: trials rejected; [PR #327](https://github.com/ArcaneArts/Retina/pull/327), `382a4e84` | No production optimization selected; evidence and boundary regression validated |
-| 7. Reduce catalog overhead | 7a selective decoding validated; 7b materialization pending | Phase/RSS measurements, variant/seed fidelity, packaged assets |
+| 7. Reduce catalog overhead | 7a merged [PR #328](https://github.com/ArcaneArts/Retina/pull/328), `841cc5b2`; 7b pending | Phase/RSS measurements, variant/seed fidelity, packaged assets |
 | 8. Separate registry tooling/build inspection | Pending | Actual task execution and Fabric/NeoForge/Bukkit JAR inspection |
 | 9. Improve Bukkit chunk transfer | Pending | Phase/allocation profile, public API and lifecycle fidelity |
 | 10. Improve mixed-section installation | Pending | Actual server timing and every-block/biome comparisons |
@@ -805,3 +805,97 @@ algorithm changes. Host runtime coverage is macOS ARM64/Metal; foreign native
 images are not claimed built or executed in this cycle. Full-goal integrated
 acceptance remains pending. Cycle 7b will address the measured template copying,
 compression and repeated validation costs separately; cycle 7 is not yet closed.
+
+
+## Cycle 7b: faster materialization with fewer copies
+
+The runtime FFI path consumes the selected catalog template instead of cloning
+it. Borrowed materialization remains available for repeated use. Materialization
+uses the existing libdeflater dependency at its default level 6 and releases the
+template and raw serialized buffer before validation. The production loader still
+validates the actual gzip bytes, publication still uses the existing synced
+no-replace hard link, and Java still reopens the saved file. No generation,
+catalog schema, seed recipe, or existing-world authority changes.
+
+An opt-in compression inventory compared flate2 best with libdeflate levels
+1/3/6/9/12 on real definitions. Each setting includes compressor construction and
+output allocation, with two warmup sweeps and ten measured sweeps in alternating
+order. Every output was decompressed and compared byte-for-byte, and every
+setting passed the production world loader. Level 6 gave these results:
+
+| Definition | flate2 best median / bytes | libdeflate level 6 median / bytes |
+|---|---:|---:|
+| Binary normal | 402.25 ms / 2,473,802 | 65.35 ms / 2,557,008 |
+| Binary Bukkit | 42.46 ms / 141,582 | 9.44 ms / 150,534 |
+
+The tradeoff is 3.4% larger normal definitions and 6.3% larger Bukkit definitions.
+These are compression-only measurements; full startup results follow.
+
+### Production publication, validation, reopen and close
+
+Sixteen fresh-process ABBA runs compare the merged cycle-7a library with the
+candidate, using identical V2 catalogs, two warmups and ten measured samples per
+run. Both snapshots use seeds 0, -1, signed-64 minimum/maximum, and 123456789.
+Every compared file matched every decompressed NBT byte: 144 comparisons including
+warmups. Timings include actual publication/fsync, validation, reopening and close;
+no GPU or Minecraft initialization is included.
+
+| Snapshot / variant | Control medians (ms) | Candidate medians (ms) |
+|---|---:|---:|
+| Recompiled normal | 1914.7 / 1905.9 | 1601.1 / 1616.8 |
+| Binary normal | 1913.2 / 1906.7 | 1609.6 / 1611.1 |
+| Recompiled Bukkit | 140.1 / 140.4 | 110.1 / 108.0 |
+| Binary Bukkit | 144.2 / 143.6 | 111.4 / 112.7 |
+
+This is approximately 16% lower normal startup latency and 22% lower Bukkit
+startup latency relative to selective loading alone. Normal process high-water
+RSS ranged 766–892 MiB for controls and 575–602 MiB for candidates. RSS includes
+Python and comparison buffers outside timing, not just native memory. Bukkit
+RSS showed no consistent improvement (controls 183–255 MiB, candidates 179–195
+MiB). Measurements used the Apple M4 Max/macOS host with desktop background CPU
+activity present. Benchmark comparisons explicitly allow different gzip encodings
+while checking every decompressed NBT byte.
+
+### Validation and retained evidence
+
+A separate cross-library comparison passed all 50 definitions: two snapshots,
+five variants (all structures/bonus-chest combinations and Bukkit), and five
+full-width seeds. Every complete decompressed NBT payload matched the merged
+baseline and every output was reopened by the production loader.
+
+The final ordinary native suite passed 359 tests, with 92 explicit optional
+fixture/GPU/probe tests ignored. Regression coverage checks borrowed/owned
+materialization parity, missing variants, unsupported versions, deterministic
+output, and preservation of existing malformed destinations. The Java catalog
+bridge passed, as did all three bundled-vanilla tests and all 22 Bukkit tests
+with zero skips. Host-only Fabric, NeoForge and Bukkit 0.410 JARs built; actual
+ZIP inspection verified expected V2 catalog resources/manifests/hashes, the exact
+measured macOS ARM64 native image, and absence of exporter/repacker test classes.
+No cross-platform native release build is claimed.
+
+Evidence root:
+`/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle7/materialization/`.
+It contains compression inventories, `candidate-identity.json`, immutable library
+and source patch, `startup-abba/`, `startup-summary.json`, `all-variants/`, build
+and test logs, `jar-report.json`, and retained `artifacts/`. The compression probe
+is `world_definition::catalog::loading_probe::definition_compression_inventory`,
+using `RETINA_COMPRESSION_INPUT` and `RETINA_COMPRESSION_OUTPUT`.
+
+All six dedicated Fabric/NeoForge runs passed: bundled vanilla creation with the
+compiler disabled, unchanged saved-file restart with compiler/materializer
+disabled, and neutral-datapack registry export with materializer disabled. End
+activation, save/player-edit/reopen observations and drained close passed.
+Independent native reads found exact profiles in all three dimensions between
+cached and datapack definitions (only exporter metadata differed). Reports and
+logs are retained under `runtime/`.
+
+The full dedicated CraftBukkit server suite passed in 2m 7s, including first
+creation/restart, metadata persistence, all dimensions, player edits, and
+malformed/missing-material/missing-biome/seed-mismatch/unsupported-metadata
+failure preservation. Its parity checks covered 12 chunks, 917,504 blocks and
+14,336 quart biomes. The report, worlds and logs are preserved under
+`craftbukkit-acceptance/run-er44alo0/`, with Java exports in `mod-fixtures/`.
+These correctness runs are not additional performance claims.
+
+Repeated validation/reopening remains measured but unchanged and requires
+follow-up before goal item 7 is closed.

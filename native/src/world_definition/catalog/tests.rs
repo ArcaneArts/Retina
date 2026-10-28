@@ -84,7 +84,7 @@ fn materializes_exact_seed_and_deterministic_binary_without_mutating_catalog() {
         let bytes = source.materialize("normal", seed).unwrap();
         assert_eq!(bytes, source.materialize("normal", seed).unwrap());
         let reloaded: WorldCatalog = fastnbt::from_bytes(&before).unwrap();
-        assert_eq!(bytes, reloaded.materialize("normal", seed).unwrap());
+        assert_eq!(bytes, reloaded.materialize_owned("normal", seed).unwrap());
         let world = WorldDefinition::from_gzip(bytes.as_slice()).unwrap();
         assert_eq!(world.seed(), seed);
         let bands =
@@ -108,6 +108,8 @@ fn validates_real_catalog_fields_and_preserves_existing_destination() {
             .unwrap_err()
             .contains("no variant")
     );
+    assert_eq!(source.materialize("missing", 0).unwrap_err(),
+        source.clone().materialize_owned("missing", 0).unwrap_err());
     source.catalog_version = 99;
     assert!(
         source
@@ -115,6 +117,8 @@ fn validates_real_catalog_fields_and_preserves_existing_destination() {
             .unwrap_err()
             .contains("versions")
     );
+    assert_eq!(source.materialize("normal", 0).unwrap_err(),
+        source.clone().materialize_owned("normal", 0).unwrap_err());
     source.catalog_version = 1;
     source
         .variants
@@ -134,13 +138,14 @@ fn validates_real_catalog_fields_and_preserves_existing_destination() {
     let root = scratch();
     fs::write(root.join("retina.dat"), b"damaged existing world").unwrap();
     assert!(source.publish("normal", 5, &root).is_err());
+    assert!(source.clone().publish_owned("normal", 5, &root).is_err());
     assert_eq!(
         fs::read(root.join("retina.dat")).unwrap(),
         b"damaged existing world"
     );
     assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
     fs::remove_file(root.join("retina.dat")).unwrap();
-    let file = source.publish("normal", i64::MIN + 17, &root).unwrap();
+    let file = source.publish_owned("normal", i64::MIN + 17, &root).unwrap();
     assert_eq!(WorldDefinition::read(file).unwrap().seed(), i64::MIN + 17);
     fs::remove_dir_all(root).unwrap();
 }

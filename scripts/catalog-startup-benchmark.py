@@ -2,6 +2,7 @@
 """Measure real catalog publication/reopening without initializing Minecraft/GPU."""
 import argparse
 import ctypes as c
+import gzip
 import hashlib
 import json
 import platform
@@ -20,6 +21,7 @@ def main():
     parser.add_argument('--warmups', type=int, default=2)
     parser.add_argument('--count', type=int, default=10)
     parser.add_argument('--compare', type=Path)
+    parser.add_argument('--compare-decoded', action='store_true', help='Compare every decompressed NBT byte when the gzip encoder differs')
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
     library = c.CDLL(str(args.library.resolve()))
@@ -68,7 +70,10 @@ def main():
         actual_hash = digest(artifact)
         if args.compare:
             expected = args.compare / str(index) / 'retina.dat'
-            if artifact.read_bytes() != expected.read_bytes():
+            actual_bytes, expected_bytes = artifact.read_bytes(), expected.read_bytes()
+            if args.compare_decoded:
+                actual_bytes, expected_bytes = gzip.decompress(actual_bytes), gzip.decompress(expected_bytes)
+            if actual_bytes != expected_bytes:
                 raise AssertionError(f'Changed complete world definition at sample {index}')
         if index >= args.warmups:
             samples.append({'seed': seeds[index % len(seeds)], 'publish_ms': (published-start)*1000,
@@ -76,7 +81,7 @@ def main():
                             'total_ms': (closed-start)*1000,
                             'cpu_ms': ((after.ru_utime+after.ru_stime)-(before.ru_utime+before.ru_stime))*1000,
                             'peak_rss_bytes': peak, 'definition_sha256': actual_hash})
-    result = {'schema': 1, 'command': sys.argv, 'host': platform.platform(),
+    result = {'schema': 1, 'comparison': 'complete decompressed NBT bytes' if args.compare_decoded else 'complete gzip bytes', 'command': sys.argv, 'host': platform.platform(),
               'machine': platform.machine(), 'python': platform.python_version(),
               'library': str(args.library.resolve()), 'library_sha256': digest(args.library),
               'catalog': str(args.catalog.resolve()), 'catalog_sha256': digest(args.catalog),

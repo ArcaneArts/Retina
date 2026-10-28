@@ -2,7 +2,9 @@
 //! still opens the published file through WorldDefinition, never through a catalog.
 use super::WorldDefinition;
 use fastnbt::{IntArray, Value};
-use flate2::{Compression, read::GzDecoder, write::GzEncoder};
+use flate2::read::GzDecoder;
+#[cfg(test)]
+use flate2::{Compression, write::GzEncoder};
 use serde::{
     Deserialize, Serialize,
     ser::{SerializeMap, SerializeSeq},
@@ -83,17 +85,38 @@ impl WorldCatalog {
 
     /// Returns complete validated gzip NBT. The caller still publishes/reopens it.
     pub fn materialize(&self, variant: &str, seed: i64) -> Result<Vec<u8>, String> {
+        self.validate_versions()?;
+        let selected = self
+            .variants
+            .get(variant)
+            .ok_or_else(|| format!("catalog has no variant {variant}"))?
+            .clone();
+        Self::materialize_selected(selected, seed)
+    }
+
+    /// Consume a runtime selection so its potentially large template is not copied.
+    pub fn materialize_owned(mut self, variant: &str, seed: i64) -> Result<Vec<u8>, String> {
+        self.validate_versions()?;
+        let selected = self
+            .variants
+            .remove(variant)
+            .ok_or_else(|| format!("catalog has no variant {variant}"))?;
+        drop(self);
+        Self::materialize_selected(selected, seed)
+    }
+
+    fn validate_versions(&self) -> Result<(), String> {
         if self.catalog_version != 1 || self.materialization_version != 1 {
             return Err(format!(
                 "unsupported catalog/materialization versions {}/{} (supported 1/1)",
                 self.catalog_version, self.materialization_version
             ));
         }
-        let selected = self
-            .variants
-            .get(variant)
-            .ok_or_else(|| format!("catalog has no variant {variant}"))?;
-        let mut template = selected.template.clone();
+        Ok(())
+    }
+
+    fn materialize_selected(selected: Variant, seed: i64) -> Result<Vec<u8>, String> {
+        let mut template = selected.template;
         let root = compound_mut(&mut template)?;
         if root.contains_key("seed") {
             return Err("catalog template contains a captured world seed".into());
@@ -155,13 +178,17 @@ impl WorldCatalog {
                 }
             }
         }
-        let mut gzip = GzEncoder::new(Vec::new(), Compression::best());
-        gzip.write_all(
-            &fastnbt::to_bytes(&Canonical(&template))
-                .map_err(|e| format!("materialized NBT: {e}"))?,
-        )
-        .map_err(|e| e.to_string())?;
-        let bytes = gzip.finish().map_err(|e| e.to_string())?;
+        let raw = fastnbt::to_bytes(&Canonical(&template))
+            .map_err(|e| format!("materialized NBT: {e}"))?;
+        drop(template);
+        let mut compressor = libdeflater::Compressor::new(libdeflater::CompressionLvl::default());
+        let mut bytes = vec![0; compressor.gzip_compress_bound(raw.len())];
+        let size = compressor
+            .gzip_compress(&raw, &mut bytes)
+            .map_err(|e| e.to_string())?;
+        bytes.truncate(size);
+        drop(raw);
+        drop(compressor);
         // Validate the actual bytes with the sole production world loader.
         WorldDefinition::from_gzip(bytes.as_slice())?;
         Ok(bytes)
@@ -176,7 +203,20 @@ impl WorldCatalog {
         world_root: impl AsRef<Path>,
     ) -> Result<PathBuf, String> {
         let bytes = self.materialize(variant, seed)?;
-        let root = world_root.as_ref();
+        Self::publish_bytes(bytes, world_root.as_ref())
+    }
+
+    pub fn publish_owned(
+        self,
+        variant: &str,
+        seed: i64,
+        world_root: impl AsRef<Path>,
+    ) -> Result<PathBuf, String> {
+        let bytes = self.materialize_owned(variant, seed)?;
+        Self::publish_bytes(bytes, world_root.as_ref())
+    }
+
+    fn publish_bytes(bytes: Vec<u8>, root: &Path) -> Result<PathBuf, String> {
         fs::create_dir_all(root).map_err(|e| format!("{}: {e}", root.display()))?;
         let destination = root.join("retina.dat");
         static NEXT: AtomicU64 = AtomicU64::new(0);
