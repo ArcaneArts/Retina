@@ -14,12 +14,13 @@ public final class NativeCatalogBridgeTest {
         catch (ClassNotFoundException expected) { }
         Path catalog = Path.of(args[1]), output = Files.createTempDirectory("retina-catalog-bridge-");
         try {
-            for (String variant : new String[]{"normal", "normal-no-structures"}) {
-                long seed = variant.equals("normal") ? Long.MIN_VALUE + 17 : Long.MAX_VALUE - 11;
+            for (String variant : new String[]{"normal", "normal-no-structures", "normal-bonus-chest", "normal-no-structures-bonus-chest"}) {
+                long seed = variant.startsWith("normal-no-structures") ? Long.MAX_VALUE - 11 : Long.MIN_VALUE + 17;
                 var root = output.resolve(variant);
                 try (var world = NativeCatalog.create(catalog, variant, seed, root)) {
                     require(world.metadata().contains("\"seed\":" + seed), "seed belongs to materialized file");
-                    require(world.metadata().contains("\"generate_structures\":" + variant.equals("normal")), "variant flags");
+                    require(world.metadata().contains("\"generate_structures\":" + !variant.startsWith("normal-no-structures")), "variant flags");
+                    require(world.metadata().contains("\"bonus_chest\":" + variant.endsWith("-bonus-chest")), "bonus chest flag");
                     require(world.metadata().contains("minecraft:the_end") && world.metadata().contains("minecraft:the_nether"), "complete logical world");
                 }
                 byte[] before = Files.readAllBytes(root.resolve("retina.dat"));
@@ -36,7 +37,7 @@ public final class NativeCatalogBridgeTest {
             try { NativeCatalog.create(catalog, "normal", 3, broken).close(); throw new AssertionError("Replaced malformed definition"); }
             catch (IllegalStateException expected) { }
             require(Files.readString(broken.resolve("retina.dat")).equals("existing damaged world"), "malformed present file preserved");
-            System.out.println("QA_EVT {\"event\":\"jdk_only_catalog_materialization\",\"status\":\"pass\",\"variants\":2,\"dimensions\":3}");
+            System.out.println("QA_EVT {\"event\":\"jdk_only_catalog_materialization\",\"status\":\"pass\",\"variants\":4,\"dimensions\":3}");
         } finally {
             try (var paths = Files.walk(output)) {
                 for (var path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);

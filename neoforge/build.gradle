@@ -26,6 +26,7 @@ neoForge {
                 if (providers.gradleProperty('retinaEndUnloadQa').isPresent()) systemProperty 'retina.qa.end.unload', 'true'
                 if (providers.gradleProperty('retinaEndActivationQa').isPresent()) systemProperty 'retina.qa.end.activation', 'true'
                 if (providers.gradleProperty('retinaDefinitionFailCompilerQa').isPresent()) systemProperty 'retina.qa.definition.failCompiler', 'true'
+                if (providers.gradleProperty('retinaCatalogFailMaterializerQa').isPresent()) systemProperty 'retina.qa.catalog.failMaterializer', 'true'
                 systemProperty 'retina.qa', 'true'
                 [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',
                  DefinitionCapture: 'definition.capture', NetherCompatibility: 'nether.compatibility', Automatic: 'automatic', AutomaticReopen: 'automatic.reopen',

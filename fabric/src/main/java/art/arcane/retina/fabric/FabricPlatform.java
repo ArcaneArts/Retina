@@ -22,6 +22,26 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import java.util.function.Consumer;
 
 public final class FabricPlatform implements RetinaPlatform {
+    @Override public java.util.Set<String> vanillaDataPacks() {
+        if (Boolean.getBoolean("retina.qa.biomeModification")) return java.util.Set.of();
+        var roots = java.util.Set.of("minecraft", "java", "fabricloader", "fabric-api", "mixinextras", "retina");
+        var packs = new java.util.HashSet<String>(); packs.add("vanilla"); packs.add("fabric");
+        for (var mod : net.fabricmc.loader.api.FabricLoader.getInstance().getAllMods()) {
+            var root = mod;
+            while (root.getContainingMod().isPresent()) root = root.getContainingMod().orElseThrow();
+            // Loom may expose the official API modules as top-level containers.
+            var metadata = root.getMetadata();
+            boolean apiModule = metadata.getId().startsWith("fabric-") && metadata.getContact().get("sources")
+                    .filter("https://github.com/FabricMC/fabric"::equals).isPresent();
+            if (!roots.contains(metadata.getId()) && !apiModule) {
+                Retina.debug("Vanilla catalog uses live registries for additional mod {}", root.getMetadata().getId());
+                return java.util.Set.of();
+            }
+            packs.add(mod.getMetadata().getId());
+        }
+        return java.util.Set.copyOf(packs);
+    }
+
     @Override
     public java.nio.file.Path configDirectory() {
         return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir();

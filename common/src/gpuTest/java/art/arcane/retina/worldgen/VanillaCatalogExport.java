@@ -42,7 +42,7 @@ public final class VanillaCatalogExport {
             manifest.addProperty("catalog_version", 1); manifest.addProperty("materialization_version", 1);
             manifest.addProperty("generation_version", WorldDefinitionCompiler.GENERATION_VERSION);
             manifest.addProperty("exporter", WorldCatalogCompiler.EXPORTER);
-            manifest.addProperty("environment", "Retina mod-development registry exporter");
+            manifest.addProperty("environment", System.getProperty("retina.catalog.environment", "Retina mod-development registry exporter"));
             manifest.add("content_mods", new JsonArray());
             var sourcePacks = new JsonArray(); packs.forEach(sourcePacks::add); manifest.add("source_packs", sourcePacks);
             manifest.addProperty("asset", WorldCatalogCompiler.NAME);
@@ -53,7 +53,7 @@ public final class VanillaCatalogExport {
                 var template = catalog.getCompoundOrEmpty("variants").getCompoundOrEmpty(name).getCompoundOrEmpty("template");
                 var entry = new JsonObject();
                 entry.addProperty("generate_structures", template.getBooleanOr("generate_structures", false));
-                entry.addProperty("bonus_chest", false);
+                entry.addProperty("bonus_chest", template.getBooleanOr("bonus_chest", false));
                 if (name.equals("bukkit-api")) entry.addProperty("delivery_policy",
                         "Public Bukkit API: structures and decoration roots requiring saved scheduled spring updates are disabled before world materialization");
                 var dimensions = new JsonArray(); new TreeSet<>(template.getCompoundOrEmpty("dimensions").keySet()).forEach(dimensions::add);

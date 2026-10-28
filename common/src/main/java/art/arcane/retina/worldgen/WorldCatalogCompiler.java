@@ -67,7 +67,11 @@ final class WorldCatalogCompiler {
             var variant = new CompoundTag();
             variant.put("template", template);
             variant.put("seed_derivations", recipes);
-            variants.put(enabled ? "normal" : "normal-no-structures", variant);
+            String name = enabled ? "normal" : "normal-no-structures";
+            variants.put(name, variant);
+            var bonus = variant.copy();
+            bonus.getCompoundOrEmpty("template").putBoolean("bonus_chest", true);
+            variants.put(name + "-bonus-chest", bonus);
         }
         // Choose the API delivery policy before materializing a world. Keep the
         // full native/mod variants unchanged. Unselected recipes retain their

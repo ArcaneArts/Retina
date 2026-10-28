@@ -7,8 +7,9 @@ The world's `<world-root>/retina.dat` remains an immutable, seed-bound snapshot.
 The two files have distinct schemas; the normal world loader cannot execute a
 catalog as a snapshot.
 
-This is a prerequisite for the Bukkit distribution. A plugin is not delivered
-by the catalog/runtime modules alone.
+The Bukkit plugin and the Fabric/NeoForge mods consume these catalogs to create
+ordinary vanilla snapshots. See [mod catalog selection](MOD_VANILLA_CATALOG.md)
+for the mods' environment selection and the second runtime-precision snapshot.
 
 ## Publication and runtime
 
@@ -45,10 +46,12 @@ palette. Native materialization verifies their actual references, generates the
 192 bands using the existing 48-bit Java RNG semantics and selected world seed,
 and inserts the resulting array before normal definition validation.
 
-The vanilla asset contains `normal`, `normal-no-structures`, and `bukkit-api`. All include
-Overworld, Nether and End. They are separately compiled variants: setting a root
+The vanilla asset contains `normal`, `normal-no-structures`, their
+`-bonus-chest` variants, and `bukkit-api`. All include Overworld, Nether and End.
+The structures-on/off profiles are separately compiled: setting a root
 boolean on a structures-enabled profile would leave executable native structure
-data behind. Neither variant enables bonus-chest generation. Other presets,
+data behind. Bonus-chest variants preserve those profiles and set the world
+option retained in the saved definition. Other presets,
 options and content mods are not implicitly approximated by this catalog.
 
 `bukkit-api` copies `normal-no-structures` and removes biome selection of
@@ -95,6 +98,8 @@ Explicitly refresh the committed asset with the actual registry compiler:
 
 ```sh
 ./gradlew :common:exportVanillaCatalog --no-watch-fs
+# Minecraft binary snapshot used by the mods when its RNG matches the runtime:
+./gradlew :fabric:exportVanillaCatalog --no-watch-fs
 ```
 
 Ordinary builds consume committed assets and do not run this exporter. Use
