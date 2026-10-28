@@ -1,10 +1,14 @@
 # Nether visual inspection
 
-The inspected images below are Minecraft 26.3 framebuffer captures of Retina
+The images inspected for this report were Minecraft 26.3 framebuffer captures of Retina
 terrain, plus independently decoded MCA cross-sections. The saved world uses the
 ordinary Normal preset, seed 123456789, enabled structures and the original
 Minecraft generator definitions. The capture fixture opens a disposable copy;
 it does not place terrain or structures for the images.
+
+The image assets have been removed from the repository. The observations below
+record the original inspection; capture metadata and reproduction instructions
+remain linked for reference.
 
 ## Capture method
 
@@ -33,13 +37,11 @@ angles remain diagnostic evidence; the published tour uses the revised views.
 
 | Scene | Inspected result |
 | --- | --- |
-| [Nether Wastes](images/nether/nether_wastes.png) | Netherrack cavern terraces, exposed quartz/gold, gravel, mushrooms, fire, magma and lava; illumination fades into the cavern. |
-| [Basalt Deltas](images/nether/basalt_deltas.png) | Dense basalt columns, irregular floors, lava channels and an enclosed ceiling. The heavy gray fog and particles are the biome's ordinary rendering. |
-| [Crimson Forest](images/nether/crimson_forest.png) | Crimson nylium, stems/crowns, roots, hanging vines and a visible shroomlight, with a bastion in the background. |
-| [Soul Sand Valley](images/nether/soul_sand_valley.png) | Soul surfaces, ceiling-to-floor basalt pillars, fossils, soul fire and the normal blue-green fog. |
-| [Warped Forest](images/nether/warped_forest.png) | Warped nylium, fungi/crowns and sprouts beside a lava sea, with ceiling glowstone and a lava fall. |
-
-![Warped forest, glowstone and lava](images/nether/warped_forest.png)
+| Nether Wastes | Netherrack cavern terraces, exposed quartz/gold, gravel, mushrooms, fire, magma and lava; illumination fades into the cavern. |
+| Basalt Deltas | Dense basalt columns, irregular floors, lava channels and an enclosed ceiling. The heavy gray fog and particles are the biome's ordinary rendering. |
+| Crimson Forest | Crimson nylium, stems/crowns, roots, hanging vines and a visible shroomlight, with a bastion in the background. |
+| Soul Sand Valley | Soul surfaces, ceiling-to-floor basalt pillars, fossils, soul fire and the normal blue-green fog. |
+| Warped Forest | Warped nylium, fungi/crowns and sprouts beside a lava sea, with ceiling glowstone and a lava fall. |
 
 All captured camera positions report air and zero skylight. Lava, glowstone,
 shroomlights, fire and soul fire are visible in the collection. These ordinary
@@ -52,16 +54,14 @@ or night vision.
 
 | Scene | Inspected result |
 | --- | --- |
-| [Bastion](images/nether/bastion_remnant.png) | Ruined blackstone construction, connected walkways and lanterns; terrain surrounds the assembled pieces. |
-| [Fortress](images/nether/fortress.png) | Elevated Nether-brick bridges and supports across the cavern. Live spawner, loot, locate and progression checks are documented separately. |
-| [Fossil](images/nether/nether_fossil.png) | Exposed bone blocks rooted in the Soul Sand Valley floor, with more fossils beyond. |
-| [Ruined portal](images/nether/ruined_portal_nether.png) | Broken obsidian/crying-obsidian frame, chest, blackstone platform, netherrack/magma spread and adjacent lava. |
-| [Region boundary](images/nether/region_seam_x_minus_10240.png) | View east across X=-10240 from the adjacent saved region: continuous lava and cavern space in the sampled view. |
-
-![Bastion in generated terrain](images/nether/bastion_remnant.png)
+| Bastion | Ruined blackstone construction, connected walkways and lanterns; terrain surrounds the assembled pieces. |
+| Fortress | Elevated Nether-brick bridges and supports across the cavern. Live spawner, loot, locate and progression checks are documented separately. |
+| Fossil | Exposed bone blocks rooted in the Soul Sand Valley floor, with more fossils beyond. |
+| Ruined portal | Broken obsidian/crying-obsidian frame, chest, blackstone platform, netherrack/magma spread and adjacent lava. |
+| Region boundary | View east across X=-10240 from the adjacent saved region: continuous lava and cavern space in the sampled view. |
 
 The captured boundary is one sample. The
-[decoded saved-region section](images/nether/saved-region-seam.png) spans
+decoded saved-region section spans
 X=-10752 through -9729 at Z=-12032, including that boundary, bedrock, cavities,
 lava and fortress construction. It shows no abrupt region-aligned terrain break.
 This is not a promise that pre-Retina terrain will join newly generated terrain
@@ -69,13 +69,11 @@ without seams.
 
 ## Vertical bounds
 
-The [decorated terrain sections](images/nether/terrain-sections.png) show all five
+The decorated terrain sections show all five
 fixed-biome fixtures at seed 42, with structures disabled. The
-[full storage sections](images/nether/storage-sections.png) show the same samples
+full storage sections show the same samples
 through Y=255. Every sampled column retains floor bedrock at Y=0 and roof bedrock
 at Y=127, with caverns, lava and biome-specific surfaces below.
-
-![Five decorated fixed-biome terrain sections](images/nether/terrain-sections.png)
 
 The sampled space above the roof is air except for a red mushroom at
 (-199,128,256) in the Nether Wastes and Basalt Deltas fixtures. This is the
@@ -87,7 +85,7 @@ diamond edit at Y=200.
 ## Reproduction and limits
 
 Fabric and NeoForge each completed ten captures and normal save/shutdown. All
-twenty final images were inspected. The published images are the Fabric set;
+twenty final images were inspected. The formerly published images were the Fabric set;
 both sets' hashes, camera metadata and log warnings are in the
 [capture audit](benchmarks/nether-visual-2026-10-20.json). Original generation
 definitions and the saved Overworld/above-roof Nether edits remain intact.
