@@ -78,8 +78,8 @@ check.dependsOn 'regionPreparationTest'
 tasks.register('generationMetricsTest', JavaExec) {
     group = 'verification'
     description = 'Check rolling region timings, F3 formatting and packet transport without a native runtime.'
-    dependsOn 'gpuTestClasses'
-    classpath = sourceSets.gpuTest.runtimeClasspath
+    dependsOn 'compileGpuTestJava'
+    classpath = registryToolClasspath
     mainClass = 'art.arcane.retina.worldgen.GenerationMetricsTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '-XX:ActiveProcessorCount=2'
@@ -90,8 +90,8 @@ tasks.register('generationMetricsTest', JavaExec) {
 tasks.register('portalRegionPreparationTest', JavaExec) {
     group = 'verification'
     description = 'Check portal destination coverage at positive/negative region boundaries and maximum frame width.'
-    dependsOn 'gpuTestClasses'
-    classpath = sourceSets.gpuTest.runtimeClasspath
+    dependsOn 'compileGpuTestJava'
+    classpath = registryToolClasspath
     mainClass = 'art.arcane.retina.worldgen.PortalRegionPreparationTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     maxHeapSize = '128m'
@@ -416,8 +416,8 @@ tasks.register('biomeTest', JavaExec) {
 tasks.register('registryTest', JavaExec) {
     group = 'verification'
     description = 'Load actual Retina presets with pending registry references, as world creation does.'
-    dependsOn 'gpuTestClasses'
-    classpath = sourceSets.gpuTest.runtimeClasspath
+    dependsOn 'compileGpuTestJava'
+    classpath = registryToolClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeRegistryLoadingTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     if (providers.gradleProperty('testPack').isPresent()) args providers.gradleProperty('testPack').get()
@@ -427,8 +427,8 @@ check.dependsOn 'registryTest'
 tasks.register('worldDefinitionCompileTest', JavaExec) {
     group = 'verification'
     description = 'Compile complete vanilla, flat and datapack world definitions to structural NBT without a GPU.'
-    dependsOn 'gpuTestClasses'
-    classpath = sourceSets.gpuTest.runtimeClasspath
+    dependsOn 'compileGpuTestJava'
+    classpath = registryToolClasspath
     mainClass = 'art.arcane.retina.worldgen.WorldDefinitionCompileTest'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '-XX:ActiveProcessorCount=2'
@@ -721,8 +721,8 @@ tasks.register('shoreTest', JavaExec) {
     tasks.register(taskName, JavaExec) {
         group = 'verification'
         description = 'Export legacy JSON for unit-test shader and migration reference oracles.'
-        dependsOn 'gpuTestClasses', ':packageNative'
-        classpath = sourceSets.gpuTest.runtimeClasspath
+        dependsOn 'compileGpuTestJava'
+        classpath = registryToolClasspath
         mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
         systemProperty 'retina.qa.legacyProfile', 'true'
         jvmArgs '--enable-native-access=ALL-UNNAMED'
@@ -737,8 +737,8 @@ tasks.register('shoreTest', JavaExec) {
     tasks.register(taskName, JavaExec) {
         group = 'verification'
         description = 'Compile a seed-bound benchmark retina.dat through the shared world assembler.'
-        dependsOn 'gpuTestClasses'
-        classpath = sourceSets.gpuTest.runtimeClasspath
+        dependsOn 'compileGpuTestJava'
+        classpath = registryToolClasspath
         mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
         javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
         systemProperty 'retina.benchmark.definition', 'true'
@@ -795,8 +795,8 @@ def registryExportSupplement = tasks.register('registryExportSupplement', Zip) {
 tasks.register('regionBenchmarkProfile', JavaExec) {
     group = 'verification'
     description = 'Compile a saved vanilla or datapack definition for complete-region benchmarks.'
-    dependsOn 'gpuTestClasses'
-    classpath = sourceSets.gpuTest.runtimeClasspath
+    dependsOn 'compileGpuTestJava'
+    classpath = registryToolClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     workingDir rootProject.projectDir
@@ -822,8 +822,8 @@ tasks.register('regionDecodeBenchmark', JavaExec) {
         group = 'verification'
         description = rust ? 'Load the shared registry projection from retina.dat and query actual GPU terrain.'
                 : 'Export complete loaded registries while the Rust library is unavailable.'
-        dependsOn 'gpuTestClasses'
-        classpath = sourceSets.gpuTest.runtimeClasspath
+        dependsOn rust ? 'gpuTestClasses' : 'compileGpuTestJava'
+        classpath = rust ? sourceSets.gpuTest.runtimeClasspath : registryToolClasspath
         mainClass = 'art.arcane.retina.worldgen.RegistryProfileExportTest'
         javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
         jvmArgs '--enable-native-access=ALL-UNNAMED'
@@ -1225,8 +1225,8 @@ check.dependsOn 'worldCatalogBridgeTest'
         group = 'verification'
         description = fixtures ? 'Export a vanilla catalog and independent full-seed Java reference worlds.'
                 : 'Explicitly regenerate the bundled vanilla catalog using actual Minecraft registries.'
-        dependsOn 'gpuTestClasses'
-        classpath = sourceSets.gpuTest.runtimeClasspath
+        dependsOn 'compileGpuTestJava'
+        classpath = registryToolClasspath
         mainClass = 'art.arcane.retina.worldgen.VanillaCatalogExport'
         javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
         jvmArgs '-XX:ActiveProcessorCount=2'
@@ -1241,8 +1241,8 @@ check.dependsOn 'worldCatalogBridgeTest'
 tasks.register('repackWorldCatalog', JavaExec) {
     group = 'verification'
     description = 'Repack an existing V1 snapshot as independently compressed V2 variants and verify every payload.'
-    dependsOn 'gpuTestClasses'
-    classpath = sourceSets.gpuTest.runtimeClasspath
+    dependsOn 'compileGpuTestJava'
+    classpath = registryToolClasspath
     mainClass = 'art.arcane.retina.worldgen.WorldCatalogRepack'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '-XX:ActiveProcessorCount=2'

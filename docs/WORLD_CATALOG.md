@@ -156,3 +156,20 @@ every decoded variant against the input and updates the manifest version, byte
 count and hash. Use separate output directories for the binary and recompiled
 snapshots; their numerical content must remain distinct. Existing destination
 files are not overwritten. This operation does not change any world's `retina.dat`.
+
+
+### Java-only tool dependencies
+
+Catalog export (common and Fabric), catalog fixtures/repacking, registry loading
+and Java-only registry export checks, and benchmark definition/profile exporters
+use compiled Java classes, dependency JARs and source resources. They do not build
+or package Rust merely to load registries. No native-task exclusions are required.
+GPU checks, normal runtime resource processing and distributable JAR tasks retain
+their native dependencies. The Rust-enabled registry export check retains its
+normal runtime classpath.
+
+Release staging reads both Fabric/NeoForge catalog snapshots and the Bukkit
+catalog from the built JARs. It checks manifest versions, required variants,
+compressed sizes and SHA-256 hashes, alongside the existing six-native-library
+requirement. Run `python3 scripts/test-stage-release.py` for missing-resource and
+corruption regression checks.

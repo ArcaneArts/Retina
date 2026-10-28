@@ -13,7 +13,7 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 4. Cancel abandoned admissions | Merged: [PR #325](https://github.com/ArcaneArts/Retina/pull/325), `1ea0b77f` | Complete |
 | 5. Reuse concurrent Nether dependencies | Merged: [PR #326](https://github.com/ArcaneArts/Retina/pull/326), `456257d3` | Complete |
 | 6. Optimize material counting | Resolved: trials rejected; [PR #327](https://github.com/ArcaneArts/Retina/pull/327), `382a4e84` | No production optimization selected; evidence and boundary regression validated |
-| 7. Reduce catalog overhead | 7a merged [PR #328](https://github.com/ArcaneArts/Retina/pull/328), `841cc5b2`; 7b merged [PR #329](https://github.com/ArcaneArts/Retina/pull/329), `da267c93`; 7c pending | Repeated validation/reopening investigation |
+| 7. Reduce catalog overhead | 7a merged [PR #328](https://github.com/ArcaneArts/Retina/pull/328), `841cc5b2`; 7b merged [PR #329](https://github.com/ArcaneArts/Retina/pull/329), `da267c93`; 7c merged [PR #330](https://github.com/ArcaneArts/Retina/pull/330), `4276e9d0` | Complete; final integrated acceptance remains |
 | 8. Separate registry tooling/build inspection | Pending | Actual task execution and Fabric/NeoForge/Bukkit JAR inspection |
 | 9. Improve Bukkit chunk transfer | Pending | Phase/allocation profile, public API and lifecycle fidelity |
 | 10. Improve mixed-section installation | Pending | Actual server timing and every-block/biome comparisons |
@@ -969,3 +969,43 @@ It contains `candidate-identity.json`, immutable native image/source patch,
 `startup-abba/`, `startup-summary.json`, `all-variants/`, test/build logs,
 `acceptance.py`, `acceptance-report.json`, `jar-report.json`,
 `java-test-report.json`, retained `artifacts/`, and all `runtime/` fixtures/logs.
+
+
+## Cycle 8: Java registry tools and release catalog inspection
+
+Baseline dry-run evidence showed `buildNative`, `packageNative` and main resource
+processing ahead of Java-only catalog/registry tooling. GPU-test compilation now
+depends on main class directories instead of the entire main output. A shared
+Java-tool classpath uses compiled classes, dependency configurations and source
+resources; selected Java-only tasks depend on compilation rather than native
+resource processing. Genuine GPU/runtime classpaths and distributable JAR native
+packaging remain intact. The Rust-enabled registry export test remains native.
+
+Actual executions, with no native task exclusions, passed common/Fabric catalog
+exports, registry loading, world-definition compilation, metrics and portal
+coverage checks, V1-to-V2 repacking, Java-only registry export, and benchmark
+profile/definition export tasks. No native task executed and no native output
+directory existed afterward. Both newly exported snapshots and the repacked
+snapshot were byte-identical to the bundled assets. These are dependency and
+fidelity results, not wall-clock speedup claims from unmatched build timings.
+The full distribution/runtime dry-run still includes the host build, five foreign
+native builds, both packaging tasks and the Rust-enabled registry check.
+
+Release staging now inspects both actual mod catalog resources, reusing catalog
+integrity checks with Bukkit. Four regression tests passed, including missing
+either snapshot, same-size corruption in either payload and a manifest for the
+wrong Minecraft version. All three host JARs built and passed inspection using the updated release
+functions. Each contains the exact unchanged native image from cycle 7c; no QA
+exporter/repacker classes were included. Three real Fabric bundled-catalog tests
+passed with no skips. Actual full-release staging correctly rejected these
+host-only artifacts for missing foreign native libraries; it did not silently
+relax the existing six-library requirement. No fresh six-platform build is claimed.
+
+The remaining common catalog-fixture export and Fabric legacy-profile export also
+ran successfully without native tasks. Catalog fixtures contain independent Java
+reference definitions, retained outside Git. Production source and CI policy are
+unchanged; no user assets were overwritten.
+Evidence root: `/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle8/`;
+see task graphs, actual run logs, `java-only-evidence.json`, and
+`artifact-check-tests.log`. Exported files are outside Git; bundled assets were
+not regenerated in the checkout.

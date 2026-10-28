@@ -1,0 +1,8 @@
+// Java-only registry tools need classes and source resources, not generated native
+// resources. Genuine GPU/runtime tasks retain their normal runtimeClasspath.
+ext.registryToolClasspath = files(
+        sourceSets.main.output.classesDirs,
+        sourceSets.gpuTest.output.classesDirs,
+        sourceSets.main.resources.srcDirs,
+        sourceSets.gpuTest.resources.srcDirs) + sourceSets.main.compileClasspath +
+        configurations.runtimeClasspath + configurations.gpuTestRuntimeClasspath

@@ -21,7 +21,7 @@ sourceSets {
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
     gpuTest {
-        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        compileClasspath += sourceSets.main.output.classesDirs + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
 }
@@ -30,4 +30,5 @@ processResources { from rootProject.tasks.named('packageNative') }
 processResources.dependsOn ':packageNative'
 tasks.named('build') { dependsOn 'clientClasses' }
 
+apply from: rootProject.file('gradle/registry-tooling.gradle')
 apply from: rootProject.file('gradle/verification.gradle')

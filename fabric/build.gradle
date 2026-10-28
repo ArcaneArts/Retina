@@ -73,7 +73,7 @@ sourceSets.client {
 sourceSets {
     gpuTest {
         java.srcDir rootProject.file('common/src/gpuTest/java')
-        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        compileClasspath += sourceSets.main.output.classesDirs + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
     }
 }
@@ -115,11 +115,13 @@ processResources {
     filesMatching('fabric.mod.json') { expand(metadata) }
 }
 
+apply from: rootProject.file('gradle/registry-tooling.gradle')
+
 tasks.register('exportBenchmarkProfile', JavaExec) {
     group = 'verification'
     description = 'Export legacy JSON for explicit shader and migration reference oracles.'
-    dependsOn 'gpuTestClasses'
-    classpath = sourceSets.gpuTest.runtimeClasspath
+    dependsOn 'compileGpuTestJava'
+    classpath = registryToolClasspath
     mainClass = 'art.arcane.retina.worldgen.NativeProfileExport'
     systemProperty 'retina.qa.legacyProfile', 'true'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
@@ -132,8 +134,8 @@ tasks.register('exportBenchmarkProfile', JavaExec) {
 tasks.register('exportVanillaCatalog', JavaExec) {
     group = 'verification'
     description = 'Regenerate the vanilla snapshot using Minecraft binary classes (including exact double noise offsets).'
-    dependsOn 'gpuTestClasses'
-    classpath = sourceSets.gpuTest.runtimeClasspath
+    dependsOn 'compileGpuTestJava'
+    classpath = registryToolClasspath
     mainClass = 'art.arcane.retina.worldgen.VanillaCatalogExport'
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '-XX:ActiveProcessorCount=2'
