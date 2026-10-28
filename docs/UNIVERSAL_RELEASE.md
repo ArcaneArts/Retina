@@ -102,3 +102,19 @@ one another merely because another release advances.
 `python3 scripts/test-publish.py` exercises the actual Gradle task using disposable
 local Git repositories, including remote advancement, dirty work preservation,
 initial branch creation, no-op repeat, and rejected divergence.
+
+## Installed-loader acceptance
+
+`scripts/universal-loader-smoke.py` accepts an actual downloaded release JAR,
+Java 25, preinstalled Fabric/NeoForge servers, Fabric API, a Bukkit server, and
+`:bukkit:serverProbeJar`. Run it in disposable server directories. It creates and
+reopens a small world on each loader, checks automatic Retina activation and saved
+edits in all three dimensions, and checks the world definition remains unchanged.
+The Bukkit observer verifies the actual plugin code-source hash. All installed
+JAR hashes must match the release asset; native overrides are not used.
+
+The observer is a separate developer test artifact and is never a release asset.
+Commands, logs, definition hashes, and results are recorded under `--output`.
+Delete these disposable worlds after recording results; retain compact evidence.
+The mod checks use existing production QA hooks and stop the headless server after
+the bounded save check. No GUI or client settings are involved.
