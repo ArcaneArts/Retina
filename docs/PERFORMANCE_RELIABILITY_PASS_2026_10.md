@@ -11,8 +11,8 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 2. Persist outside shared locks | Merged: [PR #322](https://github.com/ArcaneArts/Retina/pull/322), `c4bd97d8` | Complete |
 | 3. Retire world GPU resources | Merged: [PR #324](https://github.com/ArcaneArts/Retina/pull/324), `9d674fb5` | Complete; integrated platform acceptance remains below |
 | 4. Cancel abandoned admissions | Merged: [PR #325](https://github.com/ArcaneArts/Retina/pull/325), `1ea0b77f` | Complete |
-| 5. Reuse concurrent Nether dependencies | Validated; PR pending | Merge delivery |
-| 6. Optimize material counting | Pending | Device and whole-region timing, exact terrain, backend scope |
+| 5. Reuse concurrent Nether dependencies | Merged: [PR #326](https://github.com/ArcaneArts/Retina/pull/326), `456257d3` | Complete |
+| 6. Optimize material counting | Resolved: trials rejected; PR pending | No production optimization selected; evidence and boundary regression validated |
 | 7. Reduce catalog overhead | Pending | Phase/RSS measurements, variant/seed fidelity, packaged assets |
 | 8. Separate registry tooling/build inspection | Pending | Actual task execution and Fabric/NeoForge/Bukkit JAR inspection |
 | 9. Improve Bukkit chunk transfer | Pending | Phase/allocation profile, public API and lifecycle fidelity |
@@ -500,3 +500,181 @@ for the overall pass. No uniform serial speedup, universal latency reduction or
 memory saving is claimed. Original prototype, trial patch, native images, full
 MCA outputs, commands and all measurements remain outside Git at the recorded
 evidence root. PR delivery remains pending.
+
+## Cycle 6: material counting (in progress)
+
+Current device characterization at `456257d3` confirms the historical target.
+The existing test-only worker-phase inventory sampled 212 root-zero GPU replies:
+median counting 2.817 ms, emission 0.0138 ms, and counting share 99.50% of their
+sum. These are overlapping device-stage observations, not total-generation
+shares. The observer validates all twenty complete region generations. Evidence:
+`/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle6/baseline-phases/`
+and `baseline-stage-summary.json`; the original baseline test binary is retained.
+
+The first trial skips vertical ranges that `material_voxel` guarantees are air:
+outside generation bounds and above both the column and its fluid surface. It
+preserves top/bottom air runs explicitly and retains normal per-voxel evaluation
+inside the remaining interval. Column noise was already hoisted and counted runs
+already retained; neither is presented as new work. Shared WGSL parsing and
+validation pass, as does the existing actual-GPU fit/overflow/interleaving test
+with retained-run budgets zero, one and thirty-two. A new real-GPU boundary test
+covers entirely out-of-generation requests above and below the range, including
+one-block heights, with all three retention budgets. Its result, production
+build and full terrain/performance acceptance are still pending. No speedup is
+claimed for this candidate.
+
+The new real-Metal boundary test passes: entirely out-of-generation requests on
+both sides, heights one and thirty-two, retention budgets zero/one/thirty-two,
+all produce valid single-air runs for every column (`cycle6/air-boundary-test.log`).
+The production library builds successfully and its identity is recorded in
+`cycle6/identity.json`. A matched candidate device-stage inventory is running;
+full production baseline/candidate ABBA generation is prepared but has not yet
+run. The candidate is not ready for merge.
+
+The candidate device inventory passes. Both samples contain 212 root-zero replies;
+median counting changes from 2.817 to 2.653 ms (about 5.8% lower), emission from
+0.0138 to 0.0132 ms. All twenty complete regions match the baseline, including
+20,480 full chunk-NBT payloads and membership. This is one diagnostic pair, not
+a whole-region speedup claim. `stage-comparison.json` and
+`phase-corpus-comparison.json` retain the comparison. Production ABBA runs are
+now active for Nether, Overworld, custom bounds and End, using saved definitions
+and the existing repository benchmark with full-output comparisons.
+
+### Air-range trial: not selected
+
+Production ABBA passes all 245,760 complete-NBT comparisons, but does not
+establish useful overall performance. Nether median batches are 9,007/9,010 ms
+(control/trial); Overworld is 3,657/3,755 ms. Custom and End runs drift strongly
+between surrounding controls, so their apparent changes are not accepted as
+speedup evidence. Raw samples are in `air-range-abba/` and
+`air-range-summary.json`. The shader change is removed; its patch and native
+image remain retained. The useful out-of-bounds GPU regression test remains.
+
+### Invocation-local surface values: new trial
+
+The existing X/Z dependency analysis can select pure surface subgraphs, excluding
+Y-dependent and material-context operations. The next candidate lazily retains
+those values within one material-column invocation. It scopes the cache to
+material count/emission scans, resets at their entry, bounds private storage to
+32 fields, and leaves other surface callers and larger/unsuitable programs on
+their original evaluator. It changes specialized execution only; interpreter
+behavior is unchanged. This targets repeated surface noise rather than the
+already-hoisted column noise or retained emission runs. Actual-profile WGSL
+validation is compiling; no performance or terrain-parity result is claimed.
+
+The invocation-local candidate passes actual-profile WGSL validation for Nether
+(eight fields), Overworld (twenty-six fields), custom and direct-stem fixtures.
+All 357 ordinary native tests pass (90 opt-in tests ignored). The actual Metal
+worker-phase probe passes, and all 20,480 complete chunk-NBT payloads and region
+memberships match the retained baseline exactly. Median root-zero material
+counting is 2.608 ms versus 2.817 ms in the earlier baseline (212 replies each).
+Concurrent compilation elsewhere on the machine makes this diagnostic pair
+unsuitable for a performance acceptance claim. Logs and the exact corpus
+comparison are retained under `cycle6/material-columns-*`. Production-library
+compilation and subsequent alternating whole-region comparisons remain pending.
+
+The production macOS ARM64 library now builds successfully. Its hash and source
+patch are retained in `cycle6/material-columns-identity.json`. The out-of-range
+material-run GPU regression also passes against the restored generic shader.
+Production ABBA comparison has started for Nether, Overworld, custom bounds and
+End, using five warmups and twenty measured regions per process, with complete
+NBT comparison. Results remain pending; this cycle is not ready for merge.
+
+### Invocation-local trial: first production comparison
+
+The sixteen-process ABBA matrix completes with 245,760 identical complete-NBT
+chunk comparisons across Nether, Overworld, custom Nether bounds and End.
+Control/trial median twenty-region batches are 11,080/10,824 ms (Nether),
+5,485/5,040 ms (Overworld), 10,586/10,753 ms (custom), and 1,432/1,428 ms (End).
+The Overworld candidate processes differ substantially (4,602 and 5,478 ms),
+and its generation RSS is 1,992–2,013 MB versus 1,780–1,810 MB for controls.
+These results are provisional, not acceptance: inspect the extra specialized
+graph/code footprint and repeat targeted measurements before selecting a final
+implementation. `material-columns-abba-summary.json` includes CPU, p95, maxima,
+material-stage timing and RSS for each process; original commands and outputs
+remain in `material-columns-abba/`. Other-project test CPU, Finder/FSEvents and
+GeForceNOW activity were observed; none was stopped or modified.
+
+Two focused synthetic tests now cover cross-biome X/Z reuse while excluding
+Y/material-context nodes, and empty/oversized-plan fallback including the
+thirty-two-field boundary. Their test build is in progress; results pending.
+
+The two focused synthetic cache tests pass. A follow-up candidate removes the
+reachable duplicate uncached surface dispatcher: all surface callers use the
+same generated graph, while its field helper reads/writes the local cache only
+during material-column scans. Other callers evaluate fresh values. The first
+candidate sources are retained in `material-columns-first.rs` and
+`specialize-first-material-columns.rs`; this is a compiled-code-footprint
+hypothesis, not an established explanation of the observed RSS difference.
+Focused tests are compiling for the revised candidate.
+
+The revised emitter also deduplicates identical generated surface graph bodies
+across biome programs, preserving each original program argument when dispatching.
+The first candidate had lost the original emitter's graph sharing. This source
+change is included with the unified evaluator in the next candidate; its
+focused test verifies both sharing and program identity. Full ordinary tests,
+four actual-profile WGSL validations, and the production build are running
+sequentially before any further timing work.
+
+The unified/deduplicated evaluator passes all 359 ordinary native tests (90
+opt-in tests ignored). All four actual-profile WGSL fixtures validate: Nether
+uses eight fields/five shared graphs, Overworld twenty-six/twenty-four, and
+custom/direct-stem two/one each. The production build is still running. Longer
+ABBA comparison is prepared in `cycle6/run_material_columns_dedup_abba.py` but
+has not started; runtime parity and performance acceptance remain required.
+
+The revised production library builds successfully; artifact/source identities
+are recorded in `material-columns-dedup-identity.json`. The sixty-region ABBA
+matrix is now starting. Its full NBT comparisons and timing/memory results are
+pending, so this candidate remains unaccepted and unmerged.
+
+The existing independent interpreter/specialized GPU oracle now has an opt-in
+material-column case. It primes a different biome at the same X/Z with changed
+Y/context, then compares all roots; alternating invocations prime another X/Z
+and disable caching before comparison to verify fresh non-material evaluation.
+This is test-only, has not run yet, and does not alter the production library
+being benchmarked. `cycle6/validate_material_column_parity.py` prepares ordinary
+tests and cold/cached oracle runs for Nether, Overworld and custom fixtures
+after the active timing matrix completes.
+
+### Selection decision
+
+Reject the invocation-local surface cache. The longer revised trial's Overworld
+candidates take 21,757/22,514 ms versus 13,321/20,553 ms for controls; both
+candidates are slower than both controls and retain the roughly 200 MiB extra
+generation-memory footprint. Nether candidates (27,824/27,949 ms) are bracketed
+by 29,489/25,647 ms controls, so they do not establish a whole-region benefit.
+Even though device material time can improve, the overall and memory evidence
+does not justify shipping either surface-cache variant. Custom/End comparison
+is still completing against immutable libraries and will be recorded separately.
+
+Production shader/emitter changes are removed. The useful generic all-air
+boundary regression remains. Candidate code, libraries, commands and outputs
+are retained outside Git, including `material-columns-final-trial.patch` and
+`material-columns-final-trial.rs`. The additional cross-biome GPU oracle was
+prepared but never run; it is retained only with the rejected experiment and
+is not claimed as validation. This resolves the investigated opportunities
+without asserting that material counting cannot be optimized in future.
+
+The longer matrix is complete: all 737,280 compared complete chunk-NBT payloads
+and memberships match. Custom control/trial median batches are 30,434/29,420 ms;
+End is 5,019/5,248 ms. Overworld generation RSS is 1,708/1,772 MiB for controls
+and 1,915/2,000 MiB for candidates. Timing drift limits causal claims, but these
+results do not meet whole-region/memory acceptance. The final summary is
+`cycle6/material-columns-dedup-summary.json`; all sixteen process outputs and
+artifact identities remain retained.
+
+Cycle 6 resolves as experimentally rejected optimization candidates, not an
+implemented speedup: air-range clipping, lazy per-column surface values, and
+the unified/deduplicated refinement were investigated with actual GPU execution
+and full terrain comparisons. No production evaluator or shader change ships.
+Only the all-air generation-boundary regression and this evidence ledger ship.
+The additional retained-run/interleaving coverage exercised during investigation
+also remains unchanged. Validation backend is Metal on Apple M4 Max only.
+Final ordinary suite and GPU boundary regression are rebuilding against the
+restored baseline before PR delivery.
+
+Final restored-baseline validation passes: 357 ordinary native tests, zero
+failures, 89 explicitly opt-in tests ignored. The new opt-in Metal air-boundary
+regression passes independently. `git diff --check` passes. Final logs are
+`cycle6/final-native-tests.log` and `cycle6/final-boundary-test.log`.
