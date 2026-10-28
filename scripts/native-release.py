@@ -33,7 +33,7 @@ def fingerprint(target):
     if target.endswith('darwin'):
         toolchain.update(clang=output('clang', '--version'), sdk=output('xcrun', '--show-sdk-version'))
     elif target.endswith('linux-gnu'):
-        toolchain.update(zig=output(sys.executable, '-m', 'ziglang', 'version'), zigbuild=output('cargo', 'zigbuild', '--version'))
+        toolchain.update(zig=output(sys.executable, '-m', 'ziglang', 'version'), zigbuild=output('cargo-zigbuild', '--version'))
     else:
         compiler = subprocess.run(['cl'], capture_output=True, text=True)
         toolchain['msvc'] = compiler.stdout + compiler.stderr
@@ -59,7 +59,11 @@ def build(target):
                target + ('.2.17' if target.endswith('linux-gnu') else ''),
                '--target-dir', str(ROOT / 'build/native-target')]
     if target.endswith('windows-msvc'):
-        command += ['--config', f'target.{target}.rustflags=["-C","target-feature=+crt-static"]']
+        # Git Bash can put its unrelated POSIX link.exe before MSVC's linker.
+        # Select the linker beside the actual MSVC compiler, also for build scripts.
+        linker = str(Path(shutil.which('cl')).with_name('link.exe'))
+        command += ['--config', f'target.{target}.rustflags=["-C","target-feature=+crt-static"]',
+                    '--config', f'target.{target}.linker={json.dumps(linker)}']
     subprocess.run(command, cwd=ROOT / 'native', check=True)
     _, library, manifest = paths(target)
     library.parent.mkdir(parents=True, exist_ok=True)
