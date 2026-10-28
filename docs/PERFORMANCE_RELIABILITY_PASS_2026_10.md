@@ -9,8 +9,8 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 |---|---|---|
 | 1. Buffer biome-cache serialization | Merged: [PR #321](https://github.com/ArcaneArts/Retina/pull/321), `ab0248f3` | Complete |
 | 2. Persist outside shared locks | Merged: [PR #322](https://github.com/ArcaneArts/Retina/pull/322), `c4bd97d8` | Complete |
-| 3. Retire world GPU resources | Validated; PR pending | Merge resource retirement cycle |
-| 4. Cancel abandoned admissions | Pending | Queue/close races, fairness, shutdown timing |
+| 3. Retire world GPU resources | Merged: [PR #324](https://github.com/ArcaneArts/Retina/pull/324), `9d674fb5` | Complete; integrated platform acceptance remains below |
+| 4. Cancel abandoned admissions | Validated; PR pending | Merge delivery |
 | 5. Reuse concurrent Nether dependencies | Pending | 1/2/4/8 callers, ordering, CPU/latency/memory, full NBT |
 | 6. Optimize material counting | Pending | Device and whole-region timing, exact terrain, backend scope |
 | 7. Reduce catalog overhead | Pending | Phase/RSS measurements, variant/seed fidelity, packaged assets |
@@ -251,3 +251,120 @@ Detailed process-level samples, native identities and complete MCA files are in
 `cycle3/region-abba/`; the serial driver is `cycle3/run_region_benchmark.py`.
 No other backend is claimed validated. Broad installed-platform validation
 remains part of final integrated acceptance.
+
+## Cycle 4: queued-work cancellation (in progress)
+
+The existing preview close path retires entries but leaves their admission
+tickets queued; those waiters then generate regions before shutdown can finish.
+The first implementation adds cancellation before a ticket is claimed, removes
+queued tickets, wakes waiters, and preserves claimed permits until their owner
+releases them. Preview closure cancels its tickets. Cancelled preparation now
+completes its future and releases its lease without incrementing native failure
+metrics; the final drain excludes expected cancellation from generation errors.
+
+`regionPreparationTest` and `compileJava` pass. Focused coverage includes
+pre-queue cancellation, promotion followed by cancellation, surviving requests,
+idempotent release/cancel and 200 cancellation/dispatch races. One observed
+queued cancellation completed in 0.117 ms while the active permit remained held;
+this is a scheduler observation, not a server shutdown benchmark. Evidence:
+`/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle4/initial-tests.log`.
+The unload observer now accepts explicit cancellation as an expected close result.
+Direct publication admission, individual background-task cancellation with shared
+foreground interest, and actual server unload/shutdown validation remain open.
+This cycle is not ready to merge.
+
+Direct publication requests now use an owner-scoped admission group. I/O-worker
+close stops new/queued admission before waiting for its serialized shutdown
+barrier, while claimed permits drain normally. Tests verify that closing one
+scope cancels its waiter and rejects new requests without freeing its running
+permit or affecting another world's request. Scheduler tests and common Java
+compilation pass (`cycle4/scope-tests.log`). The metrics test also passes: expected
+cancellation balances activity without counting terrain or failures
+(`cycle4/metrics-tests.log`). The existing Fabric dedicated unload scenario has
+been launched in the disposable `cycle4/fabric-unload/` world; its result is not
+yet recorded. Individual background-task/shared-interest cancellation remains
+unimplemented and required before this cycle can merge.
+
+Fabric dedicated unload and process-reopen runs both pass. Each lifetime closes
+storage with eight native jobs active, settles 19 request observers per tested
+dimension (Overworld/Nether), removes preview directories, records zero generation
+failures, and closes the saved-definition owner only after native work drains.
+The second lifetime verifies the fixture's saved edits. Logs and extracted QA
+events: `cycle4/fabric-unload-{1,2}.log` and corresponding `*-events.json`.
+`world-close-candidate.patch` and `world-close-identity.json` preserve the exact
+intermediate source/native identity. These runs establish orderly close/reopen
+behavior, not a measured reduction in unload latency; comparative cancellation
+counts/timings and shared background-task cancellation remain required.
+
+Shared preparation now tracks observer interest separately from publication
+ownership. Cancelling the last observer signals its preview admission; cancelling
+a background observer leaves a shared foreground request active. Capacity remains
+owned until an abandoned preparer actually stops, and already-enqueued reads keep
+their leases until completion. Preview entries count live interests separately
+from physical lease pins; a new caller waits for cancelled-entry cleanup before
+reusing its paths. The ahead pump cancels outstanding observers when stopped and
+does not report expected cancellation as a generation failure.
+
+Scheduler and compile checks pass (`cycle4/shared-tests.log`). The actual Metal
+preview integration test also passes (`cycle4/shared-preview-integration.log`):
+with every native permit held, abandoned preview admission disappears without
+generating terrain; a concurrent same-region replacement safely regenerates once;
+and shared foreground interest survives background cancellation and generates
+exactly once. Existing preview coalescing, eviction, promotion, player-edit
+preservation, active-close and failure-cleanup tests remain passing. NeoForge
+dedicated unload validation of this new candidate is running; no result claimed
+yet. Comparative unload/admission timing and final loader checks remain open.
+
+The first NeoForge dedicated shutdown run passes with eight native jobs active
+at storage close, both dimensions' observers settled, zero generation failures,
+preview cleanup and saved-definition release after drain. The process-reopen
+check is now running. Source identity and patch are retained in
+`cycle4/shared-cancellation-identity.json` and `shared-cancellation-candidate.patch`
+(with the new `RegionCancellation.java` stored alongside).
+
+NeoForge process reopening also passes: both saved edits survive, eight native
+jobs drain at shutdown, both preview directories are removed and no generation
+failures occur (`cycle4/neoforge-unload-2.log` and extracted events). Comparative
+cancellation timing and final loader checks of this completed implementation
+remain before PR submission.
+
+### Cycle 4 comparative shutdown evidence
+
+Four fresh Fabric processes ran baseline/candidate/candidate/baseline against
+seed-42 disposable worlds, using the same QA observer, JDK 25, Apple M4 Max/Metal,
+shipping concurrency settings, and unchanged cycle-3 production native library.
+At the first close callback, each run had eight running jobs and 24 queued
+admissions. Both controls completed 32 regions after closure began; both
+candidates completed only the eight already running, cancelling the 24 waiters.
+There were zero generation failures in all four runs.
+
+The maximum dimension callback-to-cleanup duration was 6,626/7,022 ms for the
+controls and 1,409/1,525 ms for candidates: medians 6,824 versus 1,467 ms.
+This measures this saturated shutdown workload, not total JVM shutdown or terrain
+throughput. There are only two samples per implementation; no p95 is claimed.
+Raw events, commands, logs and results are in `cycle4/unload-abba/` under the
+evidence root; `run_unload_abba.py` retains the serial driver.
+
+Initial End runs exposed a QA assumption, not a generation exception: the small
+workload could finish before shutdown, and the larger workload could drain after
+the loader unload callback but before storage closure. The observer now records
+both boundaries and still requires active generation at at least one of them.
+The End scenario queues a larger real workload; no generator delays or stubs are
+introduced. The external driver rejects any failed QA event and requires both
+lifecycle completion and final drain, rather than trusting exit status alone.
+Original failed attempts are retained alongside the corrected runs. Final End
+loader outcomes and PR delivery remain to be recorded.
+
+Final End acceptance passes for fresh creation and process reopening on both
+Fabric and NeoForge. Each run settles 131 observers, drains eight preview regions
+already running after the unload callback, removes its preview directory and
+records zero generation failures or failed QA events. Fabric observes overlap at
+loader unload; NeoForge observes it at both hooks. Saved-edit checks pass on
+reopening. Evidence: `cycle4/*-end-unload-boundary-{1,2}.log` and corresponding
+extracted event files, driven by `run_end_loaders_boundary.py`.
+
+The final lightweight scheduler/race tests and metrics tests pass
+(`cycle4/final-scheduler-tests.log`), as does `git diff --check`. Earlier actual
+Metal preview and Overworld/Nether loader acceptance remains applicable: the
+final changes only correct the opt-in End QA workload and overlap observation.
+No Rust or shader source changes occur in this cycle.

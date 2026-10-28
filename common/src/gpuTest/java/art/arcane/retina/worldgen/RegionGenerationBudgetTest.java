@@ -57,6 +57,98 @@ public final class RegionGenerationBudgetTest {
                 require(budget.queuedRequests() == 0, "promotion retains one admission ticket");
             }
         }
-        System.out.println("PASS: foreground priority, bounded background progress, virtual waiters and preview promotion");
+        cancellation();
+        ownerClosure();
+        System.out.println("PASS: foreground priority, bounded background progress, promotion, cancellation and permit races");
     }
+
+    private static void cancelled(CompletableFuture<Runnable> future) throws Exception {
+        try { future.get(2, TimeUnit.SECONDS); throw new AssertionError("cancelled ticket acquired capacity"); }
+        catch (java.util.concurrent.ExecutionException error) {
+            require(error.getCause() instanceof java.util.concurrent.CancellationException, "cancellation reaches waiter");
+        }
+    }
+
+    private static void cancellation() throws Exception {
+        try (var workers = Executors.newVirtualThreadPerTaskExecutor()) {
+            var budget = new RegionGenerationBudget(1);
+            var before = budget.request(false);
+            require(before.cancel(), "unsubmitted work cancels");
+            before.promote();
+            cancelled(CompletableFuture.supplyAsync(before::acquire, workers));
+            require(budget.queuedRequests() == 0, "pre-cancelled work never queues");
+
+            var running = budget.request(false);
+            var held = running.acquire();
+            var abandoned = budget.request(false);
+            var waiting = queue(workers, budget, abandoned, 1);
+            abandoned.promote();
+            var survivor = queue(workers, budget, budget.request(true), 2);
+            long start = System.nanoTime();
+            require(abandoned.cancel(), "queued work cancels after promotion");
+            cancelled(waiting);
+            long elapsed = System.nanoTime() - start;
+            require(!survivor.isDone(), "cancellation cannot release another owner's permit");
+            require(!running.cancel(), "claimed native work must drain");
+            require(!abandoned.cancel(), "repeated cancellation is harmless");
+            require(budget.queuedRequests() == 1, "only the surviving world stays queued");
+            held.run();
+            survivor.get(2, TimeUnit.SECONDS).run();
+            budget.acquire().run();
+            System.out.println("Queued cancellation while running permit remains held: " + elapsed / 1e6 + " ms");
+
+            for (int i = 0; i < 200; i++) {
+                var raceBudget = new RegionGenerationBudget(1);
+                var release = raceBudget.acquire();
+                var ticket = raceBudget.request(false);
+                var pending = queue(workers, raceBudget, ticket, 1);
+                var gate = new java.util.concurrent.CountDownLatch(1);
+                var cancel = CompletableFuture.supplyAsync(() -> {
+                    try { gate.await(); } catch (InterruptedException e) { throw new AssertionError(e); }
+                    return ticket.cancel();
+                }, workers);
+                var dispatch = CompletableFuture.runAsync(() -> {
+                    try { gate.await(); } catch (InterruptedException e) { throw new AssertionError(e); }
+                    release.run();
+                }, workers);
+                gate.countDown();
+                if (cancel.get(2, TimeUnit.SECONDS)) cancelled(pending);
+                else pending.get(2, TimeUnit.SECONDS).run();
+                dispatch.get(2, TimeUnit.SECONDS);
+                var next = CompletableFuture.supplyAsync(raceBudget::acquire, workers).get(2, TimeUnit.SECONDS);
+                var blocked = queue(workers, raceBudget, raceBudget.request(false), 1);
+                next.run(); next.run();
+                blocked.get(2, TimeUnit.SECONDS).run();
+                require(raceBudget.queuedRequests() == 0, "racing cancellation preserves exact capacity");
+            }
+        }
+    }
+
+
+    private static void ownerClosure() throws Exception {
+        try (var workers = Executors.newVirtualThreadPerTaskExecutor()) {
+            var budget = new RegionGenerationBudget(1);
+            var closing = budget.scope();
+            var surviving = budget.scope();
+            var running = closing.acquire(true);
+            var abandoned = CompletableFuture.supplyAsync(() -> closing.acquire(true), workers);
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+            while (budget.queuedRequests() != 1 && System.nanoTime() < deadline) Thread.sleep(1);
+            require(budget.queuedRequests() == 1, "closing owner's request reached admission");
+            var live = CompletableFuture.supplyAsync(() -> surviving.acquire(true), workers);
+            deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+            while (budget.queuedRequests() != 2 && System.nanoTime() < deadline) Thread.sleep(1);
+            require(budget.queuedRequests() == 2, "another world's request reached admission");
+            closing.close(); closing.close();
+            cancelled(abandoned);
+            require(!live.isDone(), "closing a scope does not release its running permit");
+            cancelled(CompletableFuture.supplyAsync(() -> closing.acquire(true), workers));
+            running.run(); running.run();
+            live.get(2, TimeUnit.SECONDS).run();
+            surviving.close();
+            require(budget.queuedRequests() == 0, "owner closure leaves no abandoned ticket");
+            budget.acquire().run();
+        }
+    }
+
 }

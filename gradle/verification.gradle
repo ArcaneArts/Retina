@@ -25,6 +25,7 @@ check.dependsOn 'configurationTest'
 def regionPreparationClasses = tasks.register('regionPreparationClasses', JavaCompile) {
     // Scheduling and lease ownership are independent of Minecraft and the native generator.
     source file('src/main/java/art/arcane/retina/worldgen/RegionPreparation.java'),
+            file('src/main/java/art/arcane/retina/worldgen/RegionCancellation.java'),
             file('src/main/java/art/arcane/retina/worldgen/RegionLoadScheduler.java'),
             file('src/main/java/art/arcane/retina/worldgen/RegionGenerationBudget.java'),
             file('src/main/java/art/arcane/retina/worldgen/RegionAheadPump.java'),

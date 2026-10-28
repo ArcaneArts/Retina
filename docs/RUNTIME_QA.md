@@ -542,12 +542,21 @@ in disposable saves.
 Require `nether_unload_in_flight`, `nether_unload_storage_close`, an actual
 `nether_unload_callback` and
 `nether_unload_cleaned` for each dimension, and `nether_unload_complete` for each
-server lifetime. Pending requests must finish successfully or report an explicit
-closed/closing result. The observer waits for actual preview-directory removal
+server lifetime. Generation must overlap at least one actual close boundary
+(loader unload or storage close); loader order may allow it to drain between
+those hooks. Reject any failed QA event even if the process exits successfully
+and emits the final drained event. Pending requests must finish successfully or report an explicit
+closed/closing or cancellation result. The observer waits for actual preview-directory removal
 and zero remaining generation or additional generation failures; reopening
 checks that the old directories remain absent. Require
 `nether_unload_server_drained` after all dimension storage closes. Integrated runs
 also require `minecraft_client_gameplay_reopen`.
+
+The unload observer records queued admission count, per-dimension close duration,
+and regions completed after closure begins. Queued work is cancelled; already
+claimed native calls drain normally. Cancelling an individual background observer
+preserves shared preparation needed by a foreground reader. Already-enqueued
+publication retains its lease until its I/O operation finishes.
 
 The server-stopped hook waits for native calls already running to finish before
 loader teardown. All dimension I/O queues close first, preventing another

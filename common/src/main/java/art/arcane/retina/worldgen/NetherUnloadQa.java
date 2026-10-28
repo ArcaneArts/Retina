@@ -35,6 +35,8 @@ public final class NetherUnloadQa {
         final long failures;
         final List<CompletableFuture<?>> requests = new ArrayList<>();
         boolean unloaded;
+        long closeStarted;
+        long previewsAtClose;
 
         Dimension(ServerLevel level) {
             this.level = level;
@@ -47,7 +49,8 @@ public final class NetherUnloadQa {
     private static final class Run {
         final List<Dimension> dimensions = new ArrayList<>();
         final CompletableFuture<Void> ready = new CompletableFuture<>(), completed = new CompletableFuture<>();
-        final AtomicInteger activeAtStorageClose = new AtomicInteger(), cleaned = new AtomicInteger();
+        final AtomicInteger activeAtStorageClose = new AtomicInteger(), activeAtUnload = new AtomicInteger(),
+                cleaned = new AtomicInteger();
         final long began = System.nanoTime();
         int pass;
     }
@@ -103,7 +106,8 @@ public final class NetherUnloadQa {
             Files.writeString(path, saved.toString());
             // Native preparation uses the same global budget for both dimensions.
             // Nothing holds or replaces the actual generator: shutdown races real work.
-            int regions = END_ENABLED ? 2 : RegionGenerationBudget.SHARED.admissionCapacity() + 2;
+            // End regions finish quickly; retain enough real work to overlap the initial save.
+            int regions = RegionGenerationBudget.SHARED.admissionCapacity() * (END_ENABLED ? 8 : 1) + 2;
             for (int i = 0; i < regions; i++) for (var dimension : run.dimensions) {
                 int region = 32 + run.pass * 64 + i;
                 var at = new ChunkPos(region * 32, -region * 32);
@@ -147,10 +151,14 @@ public final class NetherUnloadQa {
         for (var dimension : run.dimensions) if (dimension.level == level) {
             require(!dimension.unloaded, "one unload callback per dimension");
             dimension.unloaded = true;
+            dimension.closeStarted = System.nanoTime();
+            dimension.previewsAtClose = dimension.generator.metrics().snapshot().previewRegions();
             int active = dimension.generator.metrics().snapshot().inFlight();
+            run.activeAtUnload.addAndGet(active);
             event("nether_unload_callback", "\"dimension\":\"" + level.dimension().identifier()
                     + "\",\"native_in_flight\":" + active + ",\"pending\":"
-                    + dimension.requests.stream().filter(f -> !f.isDone()).count());
+                    + dimension.requests.stream().filter(f -> !f.isDone()).count()
+                    + ",\"queued_admissions\":" + RegionGenerationBudget.SHARED.queuedRequests());
             // This observer uses no server tasks and keeps the test JVM alive until
             // late native completion and lease cleanup have actually been inspected.
             Thread.ofPlatform().daemon(false).name("retina-unload-qa-" + level.dimension().identifier()).start(() -> {
@@ -160,8 +168,9 @@ public final class NetherUnloadQa {
                         Throwable failure = request.handle((value, error) -> error).get(3, TimeUnit.MINUTES);
                         while (failure instanceof java.util.concurrent.CompletionException) failure = failure.getCause();
                         if (failure != null) {
-                            require(failure instanceof IllegalStateException
-                                    && (failure.getMessage().contains("closed") || failure.getMessage().contains("closing")),
+                            require(failure instanceof java.util.concurrent.CancellationException
+                                    || (failure instanceof IllegalStateException
+                                    && (failure.getMessage().contains("closed") || failure.getMessage().contains("closing"))),
                                     "pending request fails only with an explicit close result: " + failure);
                             stopped++;
                         }
@@ -177,11 +186,17 @@ public final class NetherUnloadQa {
                     event("nether_unload_cleaned", "\"dimension\":\"" + level.dimension().identifier()
                             + "\",\"requests\":" + dimension.requests.size() + ",\"closed_results\":" + stopped
                             + ",\"generation_failures\":" + (metrics.failures() - dimension.failures)
+                            + ",\"close_ms\":" + (System.nanoTime() - dimension.closeStarted) / 1e6
+                            + ",\"completed_after_close\":" + (metrics.previewRegions() - dimension.previewsAtClose)
                             + ",\"qa_property\":" + Boolean.getBoolean("retina.qa"));
                     if (run.cleaned.incrementAndGet() == run.dimensions.size()) {
-                        require(run.activeAtStorageClose.get() > 0, "native generation was active when world storage closed");
+                        // Loader callbacks and storage closure occur in different orders. Work
+                        // may legitimately drain between the first close boundary and the second.
+                        require(run.activeAtStorageClose.get() > 0 || run.activeAtUnload.get() > 0,
+                                "generation was active at a world close boundary");
                         event("nether_unload_complete", "\"pass\":" + run.pass
-                                + ",\"active_at_storage_close_sum\":" + run.activeAtStorageClose.get());
+                                + ",\"active_at_storage_close_sum\":" + run.activeAtStorageClose.get()
+                                + ",\"active_at_unload_sum\":" + run.activeAtUnload.get());
                         run.completed.complete(null);
                         RUNS.remove(level.getServer(), run);
                     }

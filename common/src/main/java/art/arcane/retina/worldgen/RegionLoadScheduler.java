@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.function.BooleanSupplier;
+import java.util.function.BiFunction;
+import java.util.concurrent.CancellationException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -15,6 +17,7 @@ final class RegionLoadScheduler implements AutoCloseable {
         final CompletableFuture<AutoCloseable> prepared = new CompletableFuture<>();
         final CompletableFuture<Void> stopped = new CompletableFuture<>();
         final RegionPreparation owner;
+        final RegionCancellation cancellation = new RegionCancellation();
         int readers;
         volatile boolean foreground;
 
@@ -43,6 +46,12 @@ final class RegionLoadScheduler implements AutoCloseable {
     <T> CompletableFuture<T> load(long key, boolean foreground, BooleanSupplier needsPreparation,
                                 Function<BooleanSupplier, AutoCloseable> prepare, Runnable promote,
                                 Supplier<CompletableFuture<T>> read) {
+        return load(key, foreground, needsPreparation, (priority, cancellation) -> prepare.apply(priority), promote, read);
+    }
+
+    <T> CompletableFuture<T> load(long key, boolean foreground, BooleanSupplier needsPreparation,
+                                BiFunction<BooleanSupplier, RegionCancellation, AutoCloseable> prepare, Runnable promote,
+                                Supplier<CompletableFuture<T>> read) {
         Entry entry;
         boolean start = false;
         CompletableFuture<Void> wait = null;
@@ -59,6 +68,11 @@ final class RegionLoadScheduler implements AutoCloseable {
                     start = true;
                 }
             }
+            if (entry != null && entry.readers == 0 && !start) {
+                // An abandoned preparer still owns capacity until it has actually stopped.
+                wait = available;
+                entry = null;
+            }
             if (entry != null) {
                 entry.readers++;
                 if (foreground) entry.foreground = true;
@@ -66,7 +80,20 @@ final class RegionLoadScheduler implements AutoCloseable {
         }
         if (wait != null) {
             // Waiting requests consume no preparation worker and never fall back onto the I/O queue.
-            return wait.thenCompose(ignored -> load(key, foreground, needsPreparation, prepare, promote, read));
+            var observer = new CompletableFuture<T>();
+            wait.whenComplete((ignored, error) -> {
+                if (observer.isDone()) return;
+                if (error != null) { observer.completeExceptionally(error); return; }
+                CompletableFuture<T> admitted;
+                try { admitted = load(key, foreground, needsPreparation, prepare, promote, read); }
+                catch (Throwable failure) { observer.completeExceptionally(failure); return; }
+                observer.whenComplete((value, failure) -> { if (observer.isCancelled()) admitted.cancel(false); });
+                admitted.whenComplete((value, failure) -> {
+                    if (failure != null) observer.completeExceptionally(failure);
+                    else observer.complete(value);
+                });
+            });
+            return observer;
         }
         // Set the shared flag before promoting an already-created preview. The
         // preparer checks this flag under the preview entry lock, so promotion
@@ -74,7 +101,15 @@ final class RegionLoadScheduler implements AutoCloseable {
         if (foreground) promote.run();
         Entry shared = entry;
         var completion = new CompletableFuture<T>();
-        // Do not return this owner future: cancelling an observer must not skip lease cleanup.
+        var observer = completion.copy();
+        boolean[] enqueued = {false}; // Guarded by this scheduler, including cancellation callbacks.
+        observer.whenComplete((value, error) -> {
+            synchronized (this) {
+                if (observer.isCancelled() && !enqueued[0])
+                    completion.completeExceptionally(new CancellationException("Retina region observer cancelled"));
+            }
+        });
+        // Once publication is enqueued, its owner must drain even if its observer cancels.
         completion.whenComplete((value, error) -> finish(key, shared));
         shared.stopped.whenComplete((ignored, error) -> {
             if (error != null) completion.completeExceptionally(error);
@@ -82,6 +117,8 @@ final class RegionLoadScheduler implements AutoCloseable {
         shared.prepared.thenCompose(ignored -> {
             synchronized (this) {
                 if (closed) return CompletableFuture.<T>failedFuture(closedError());
+                if (completion.isDone()) return CompletableFuture.<T>failedFuture(new CancellationException("Retina region observer cancelled"));
+                enqueued[0] = true;
                 return read.get(); // Only enqueues a read; it must not wait for I/O here.
             }
         }).whenComplete((value, error) -> {
@@ -94,26 +131,32 @@ final class RegionLoadScheduler implements AutoCloseable {
                     try {
                         synchronized (this) {
                             if (closed) throw closedError();
+                            if (shared.cancellation.isCancelled()) throw new CancellationException("Retina region preparation abandoned");
                         }
-                        shared.prepared.complete(prepare.apply(() -> shared.foreground));
+                        shared.prepared.complete(prepare.apply(() -> shared.foreground, shared.cancellation));
                     } catch (Throwable error) { shared.prepared.completeExceptionally(error); }
                 });
             } catch (Throwable error) { shared.prepared.completeExceptionally(error); }
         }
-        return completion.copy();
+        return observer;
     }
 
     private void finish(long key, Entry entry) {
-        CompletableFuture<Void> signal = null;
         synchronized (this) {
             if (--entry.readers != 0) return;
-            if (entries.remove(key, entry)) {
-                signal = available;
-                available = new CompletableFuture<>();
-            }
         }
+        entry.cancellation.close();
         entry.owner.close();
-        if (signal != null) signal.complete(null);
+        entry.prepared.whenComplete((value, error) -> {
+            CompletableFuture<Void> signal = null;
+            synchronized (this) {
+                if (entries.remove(key, entry)) {
+                    signal = available;
+                    available = new CompletableFuture<>();
+                }
+            }
+            if (signal != null) signal.complete(null);
+        });
     }
 
     /** Called after the owning I/O queue is shut down; its abandoned reads must also release leases. */

@@ -21,6 +21,7 @@ final class RegionAheadPump implements AutoCloseable {
     // All remaining state is confined to the serial dispatcher.
     private Source source;
     private int inFlight;
+    private final java.util.List<CompletableFuture<?>> pending = new java.util.ArrayList<>();
     private long completed;
     private boolean exhausted;
     private boolean reported;
@@ -48,19 +49,27 @@ final class RegionAheadPump implements AutoCloseable {
                 if (stopped.get()) break;
                 var job = generate.apply(key);
                 inFlight++;
+                pending.add(job);
                 // Never recurse inline for already-generated regions, or scan a selection on the I/O queue.
                 job.whenComplete((value, error) -> dispatcher.execute(() -> {
                     inFlight--;
+                    pending.remove(job);
                     if (error == null) completed++;
-                    else fail(error);
+                    else if (!(stopped.get() && cancelled(error))) fail(error);
                     fill();
                 }));
             }
         } catch (Throwable error) { fail(error); }
+        if (stopped.get()) for (var job : java.util.List.copyOf(pending)) job.cancel(false);
         if (inFlight == 0 && (exhausted || stopped.get())) {
             reported = true;
             finished.accept(new Result(completed, stopped.get(), failure));
         }
+    }
+
+    private static boolean cancelled(Throwable error) {
+        while (error instanceof java.util.concurrent.CompletionException) error = error.getCause();
+        return error instanceof java.util.concurrent.CancellationException;
     }
 
     private void fail(Throwable error) {

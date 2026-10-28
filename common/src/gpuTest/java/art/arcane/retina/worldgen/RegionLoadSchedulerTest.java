@@ -155,8 +155,55 @@ public final class RegionLoadSchedulerTest {
             require(workers.awaitTermination(2, TimeUnit.SECONDS) && io.awaitTermination(2, TimeUnit.SECONDS), "workers terminated");
         }
         require(late.releases.get() == 1, "preparation completing after shutdown releases its late lease");
+        abandonedSharedPreparation();
         System.out.println("PASS: parallel region admission, ready-first reads, bounds, deduplication, cancellation, failures and shutdown");
     }
+    private static void abandonedSharedPreparation() throws Exception {
+        try (var workers = Executors.newVirtualThreadPerTaskExecutor()) {
+            var budget = new RegionGenerationBudget(1);
+            var held = budget.acquire();
+            var ticket = budget.request(false);
+            var entered = new CountDownLatch(1);
+            var stopped = new CountDownLatch(1);
+            var generated = new AtomicInteger();
+            try (var scheduler = scheduler(workers, 1)) {
+                var background = scheduler.load(42, false, () -> true, (priority, cancellation) -> {
+                    var detach = cancellation.onCancel(ticket::cancel);
+                    entered.countDown();
+                    try {
+                        var done = ticket.acquire();
+                        try { generated.incrementAndGet(); return new Lease(); }
+                        finally { done.run(); }
+                    } finally { detach.run(); stopped.countDown(); }
+                }, ticket::promote, () -> { throw new AssertionError("abandoned preparation published"); });
+                require(entered.await(2, TimeUnit.SECONDS), "preparation reached its ticket");
+                var foreground = scheduler.load(42, true, () -> true,
+                        (priority, cancellation) -> { throw new AssertionError("shared work must not duplicate"); },
+                        ticket::promote, () -> { throw new AssertionError("cancelled foreground published"); });
+                background.cancel(false);
+                require(!ticket.isCancelled(), "foreground interest preserves shared admission");
+                foreground.cancel(false);
+                require(stopped.await(2, TimeUnit.SECONDS), "last observer cancels a queued native admission");
+                require(ticket.isCancelled() && generated.get() == 0, "abandoned work never consumes native generation");
+                var replacement = scheduler.load(42, () -> true, Lease::new, () -> CompletableFuture.completedFuture(7));
+                require(replacement.get(2, TimeUnit.SECONDS) == 7, "same key can reopen after cancelled preparer stops");
+            } finally { held.run(); }
+        }
+        var tasks = new Tasks();
+        try (var scheduler = scheduler(tasks, 1)) {
+            var cancelled = scheduler.load(1, () -> true,
+                    () -> { throw new AssertionError("abandoned worker executed preparation"); },
+                    () -> CompletableFuture.completedFuture(1));
+            cancelled.cancel(false);
+            var next = scheduler.load(2, () -> true, Lease::new, () -> CompletableFuture.completedFuture(2));
+            require(tasks.queued.size() == 1, "cancelled executor tasks retain admission until observed stopped");
+            tasks.run(0);
+            require(tasks.queued.size() == 1, "stopping cancelled work admits exactly one replacement");
+            tasks.run(0);
+            require(next.join() == 2, "bounded cancellation makes progress");
+        }
+    }
+
     private static void await(CountDownLatch latch) {
         try { if (!latch.await(2, TimeUnit.SECONDS)) throw new AssertionError("test barrier timed out"); }
         catch (InterruptedException error) { Thread.currentThread().interrupt(); throw new AssertionError(error); }
