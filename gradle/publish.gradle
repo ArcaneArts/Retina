@@ -1,0 +1,47 @@
+import javax.inject.Inject
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.TaskAction
+import org.gradle.process.ExecOperations
+import org.gradle.work.DisableCachingByDefault
+
+@DisableCachingByDefault(because = 'Publishing must fetch and push actual remote Git refs every time')
+abstract class PromoteRetinaRelease extends DefaultTask {
+    @Internal abstract DirectoryProperty getRepository()
+    @Inject abstract ExecOperations getExecOperations()
+
+    @TaskAction
+    void promote() {
+        File directory = repository.get().asFile
+        execOperations.exec {
+            workingDir directory
+            commandLine 'git', 'fetch', '--prune', '--no-tags', 'origin',
+                    '+refs/heads/*:refs/remotes/origin/*'
+        }
+        def revision = new ByteArrayOutputStream()
+        execOperations.exec {
+            workingDir directory
+            commandLine 'git', 'rev-parse', '--verify', 'refs/remotes/origin/main^{commit}'
+            standardOutput = revision
+        }
+        String commit = revision.toString('UTF-8').trim()
+        logger.lifecycle("Promoting fetched origin/main {} to origin/release", commit)
+        execOperations.exec {
+            workingDir directory
+            // The server checks the actual remote ref. No force, checkout or reset.
+            commandLine 'git', 'push', 'origin', "${commit}:refs/heads/release"
+        }
+    }
+}
+
+tasks.register('publish', PromoteRetinaRelease) {
+    group = 'publishing'
+    description = 'Fetch origin/main and fast-forward origin/release, triggering the GitHub release build.'
+    repository = rootProject.layout.projectDirectory
+}
+tasks.register('releaseRetina') {
+    group = 'publishing'
+    description = 'Compatibility alias for the Git-only publish command.'
+    dependsOn 'publish'
+}
