@@ -6,6 +6,8 @@ import java.nio.file.*;
 import java.security.*;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -21,7 +23,11 @@ final class PersistentBiomeCache implements AutoCloseable {
     private final Logger log;
     private long hits, misses;
     private int restored;
-    private boolean dirty;
+    private long revision, persistedRevision;
+    private final CoalescedSave saves = new CoalescedSave(this::checkpoint);
+    private CompletableFuture<Void> closing;
+    private CompletionStage<Void> closedReceipt;
+    private record Snapshot(long revision, List<Map.Entry<BiomeTileCache.Tile, int[]>> tiles) { }
     record Statistics(long hits, long misses, int restored, int entries) { }
 
     static PersistentBiomeCache open(Path root, String dimension, int capacity, int paletteSize, Logger log) {
@@ -82,8 +88,9 @@ final class PersistentBiomeCache implements AutoCloseable {
         return result;
     }
     synchronized void put(BiomeTileCache.Tile tile, int[] biomes) {
+        if (closing != null) throw new IllegalStateException("Biome cache is closed");
         if (capacity == 0) return;
-        retain(tile, biomes); dirty = true;
+        retain(tile, biomes); revision++;
     }
     private void retain(BiomeTileCache.Tile tile, int[] biomes) {
         tiles.put(tile, biomes);
@@ -91,26 +98,55 @@ final class PersistentBiomeCache implements AutoCloseable {
     }
     synchronized Statistics statistics() { return new Statistics(hits, misses, restored, tiles.size()); }
 
-    @Override public synchronized void close() {
-        save(); tiles.clear(); dirty = false;
+    /** Save events only enqueue; explicit checkpoints and close can await completion. */
+    synchronized CompletionStage<Void> requestSave() {
+        return closing != null ? closedReceipt : saves.request();
     }
 
-    synchronized void save() {
-        if (!dirty || path == null) return;
+    void save() { requestSave().toCompletableFuture().join(); }
+
+    @Override public void close() {
+        CompletableFuture<Void> completion;
+        CompletionStage<Void> flush;
+        boolean owner;
+        synchronized (this) {
+            owner = closing == null;
+            if (owner) { closing = new CompletableFuture<>(); closedReceipt = closing.minimalCompletionStage(); }
+            completion = closing;
+            flush = owner ? saves.request() : null;
+        }
+        if (owner) {
+            try {
+                flush.toCompletableFuture().join();
+                synchronized (this) { tiles.clear(); }
+                completion.complete(null);
+            } catch (Throwable error) { completion.completeExceptionally(error); }
+        }
+        completion.join();
+    }
+
+    private void checkpoint() {
+        Snapshot snapshot;
+        synchronized (this) {
+            if (revision == persistedRevision || path == null) return;
+            var entries = new ArrayList<Map.Entry<BiomeTileCache.Tile, int[]>>(tiles.size());
+            tiles.forEach((key, value) -> entries.add(Map.entry(key, value.clone())));
+            snapshot = new Snapshot(revision, entries);
+        }
         Path temporary = null;
         try {
             Files.createDirectories(path.getParent());
             temporary = Files.createTempFile(path.getParent(), "biomes-", ".tmp");
             try (var output = new DataOutputStream(new BufferedOutputStream(new GZIPOutputStream(Files.newOutputStream(temporary)), 8192))) {
-                output.writeInt(MAGIC); output.write(definition); output.write(engine); output.writeUTF(dimension); output.writeInt(tiles.size());
-                for (var entry : tiles.entrySet()) {
+                output.writeInt(MAGIC); output.write(definition); output.write(engine); output.writeUTF(dimension); output.writeInt(snapshot.tiles().size());
+                for (var entry : snapshot.tiles()) {
                     var tile = entry.getKey(); output.writeInt(tile.x()); output.writeInt(tile.y()); output.writeInt(tile.z());
                     for (int biome : entry.getValue()) output.writeShort(biome);
                 }
             }
             try { Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (AtomicMoveNotSupportedException unsupported) { Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING); }
-            dirty = false;
+            synchronized (this) { persistedRevision = snapshot.revision(); }
         } catch (IOException error) { log.warning("Cannot save optional Retina biome cache " + path + ": " + error); }
         finally {
             if (temporary != null) try { Files.deleteIfExists(temporary); }

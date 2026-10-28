@@ -128,7 +128,7 @@ final class DimensionContext implements AutoCloseable {
     }
 
     private static long position(int x, int z) { return ((long) x << 32) | (z & 0xffffffffL); }
-    void save() { biomeTiles.save(); }
+    void save() { biomeTiles.requestSave(); }
     @Override public void close() {
         if (Boolean.getBoolean("retina.qa.biomeStats")) owner.log.info("RETINA_BIOME_STATS " + key
                 + " tiles=" + biomeTiles.statistics() + " disk=" + biomeTiles.diskStatistics() + " grids=" + biomeGrids.statistics()

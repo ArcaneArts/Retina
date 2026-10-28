@@ -127,6 +127,42 @@ class BiomeTileCacheTest {
         try (var saved = disk(output.resolve("biomes.dat"), (byte) 0, (byte) 0, DIMENSION, 2)) { assertEquals(1, saved.statistics().restored()); }
     }
 
+    @Test void failedCheckpointRemainsDirtyAndCanBeRetried() throws Exception {
+        Path parent = output.resolve("retry"); Files.writeString(parent, "occupied");
+        Path path = parent.resolve("biomes.dat");
+        var tile = new BiomeTileCache.Tile(-1, 2, 3); int[] values = new int[64]; Arrays.fill(values, 7);
+        try (var cache = disk(path, (byte) 0, (byte) 0, DIMENSION, 2)) {
+            cache.put(tile, values); cache.save();
+            Files.delete(parent); Files.createDirectory(parent);
+            cache.save();
+            try (var reopened = disk(path, (byte) 0, (byte) 0, DIMENSION, 2)) {
+                assertArrayEquals(values, reopened.get(tile));
+            }
+        }
+    }
+
+    @Test void asynchronousUpdatesAndConcurrentClosePreserveLatestRevision() throws Exception {
+        Path path = output.resolve("concurrent.dat");
+        var cache = disk(path, (byte) 0, (byte) 0, DIMENSION, 16);
+        var tile = new BiomeTileCache.Tile(0, 0, 0);
+        for (int i = 0; i < 2000; i++) {
+            int[] values = new int[64]; Arrays.fill(values, i % 16);
+            cache.put(tile, values); cache.requestSave();
+            assertArrayEquals(values, cache.get(tile));
+        }
+        try (var executor = java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var first = executor.submit(cache::close); var second = executor.submit(cache::close);
+            first.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            second.get(10, java.util.concurrent.TimeUnit.SECONDS);
+        }
+        assertThrows(IllegalStateException.class, () -> cache.put(tile, new int[64]));
+        assertEquals(0, cache.statistics().entries());
+        try (var reopened = disk(path, (byte) 0, (byte) 0, DIMENSION, 16)) {
+            int[] expected = new int[64]; Arrays.fill(expected, 1999 % 16);
+            assertArrayEquals(expected, reopened.get(tile));
+        }
+    }
+
     @Test @EnabledIfSystemProperty(named = "retina.native.path", matches = ".+")
     void cachedBiomesMatchIndependentNativeGridsAndReopenWithoutQueries() throws Exception {
         assertArrayEquals(java.security.MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(Path.of(System.getProperty("retina.native.path")))), NativeLibrary.imageDigest());
