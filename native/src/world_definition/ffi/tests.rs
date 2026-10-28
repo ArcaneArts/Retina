@@ -244,6 +244,7 @@ fn saved_file_generates_regions_and_keeps_active_dimension_leases_alive() {
     let copied =
         crate::region::publish_cached_region(&engine, request, &copied_path, &path).unwrap();
     assert_eq!(copied.generated, 1024);
+    assert!(!engine.timings.lock().unwrap().contains_key(&id), "cached publication must not resurrect retired diagnostics");
     let copied = std::fs::read(copied_path).unwrap();
     for slot in 0..1024 {
         assert_eq!(region_chunk(&copied, slot), region_chunk(&region, slot));

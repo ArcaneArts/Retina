@@ -16,7 +16,7 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 7. Reduce catalog overhead | 7a merged [PR #328](https://github.com/ArcaneArts/Retina/pull/328), `841cc5b2`; 7b merged [PR #329](https://github.com/ArcaneArts/Retina/pull/329), `da267c93`; 7c merged [PR #330](https://github.com/ArcaneArts/Retina/pull/330), `4276e9d0` | Complete; final integrated acceptance remains |
 | 8. Separate registry tooling/build inspection | Merged [PR #331](https://github.com/ArcaneArts/Retina/pull/331), `0121a1a1` | Complete; host-only artifacts verified, six-native release requirement retained |
 | 9. Improve Bukkit chunk transfer | Merged [PR #332](https://github.com/ArcaneArts/Retina/pull/332), `91fe6d9b` | Complete; memory/allocation improvement, no general throughput claim |
-| 10. Improve mixed-section installation | Validated; PR pending | Public-API x-run batching, exact output and measured adapter gains |
+| 10. Improve mixed-section installation | Merged [PR #333](https://github.com/ArcaneArts/Retina/pull/333), `6aabfcfd` | Complete; public-API x-run batching, exact output and measured adapter gains |
 | 11. Bound MCA publication buffering | Pending | Partial/preview/resume/failure/durability and memory evidence |
 | Integrated acceptance | Pending | Relevant Fabric/NeoForge/Bukkit/CLI paths in all dimensions |
 
@@ -1246,3 +1246,206 @@ The disposable QA command `retinaprobe transfer-reference-benchmark <captures>
 server's Bukkit/NBT types; both control and candidate use this path in paired
 runs. The observer also emits independent `RETINA_INSTALL_SAMPLE` records.
 Neither helper is part of the installable plugin.
+
+
+## Cycle 11: bounded MCA publication (in progress)
+
+The unchanged baseline was exercised through the production cached-publication
+FFI using real seed-42 region files retained from cycle 3: 7.2 MiB Overworld,
+4.6 MiB Nether and 4.0 MiB End. Cases cover empty destinations, half-missing
+headers with existing payloads/timestamps, and complete no-op regions, at one
+and four concurrent publishers. Two warmups and five measured trials per case
+all pass complete compressed-record comparisons and existing timestamp/no-op
+byte preservation. Initial single-process median wall times for Overworld are
+14.14/34.60 ms (empty, one/four callers), 14.10/36.40 ms (partial), and
+0.69/0.72 ms (complete). Peak process RSS is 451.2 MiB including Python, the
+engine and untimed correctness checks. These are baseline observations, not
+A/B improvement claims. All dimensions' raw timings and fixture/library hashes
+are retained in `cycle11/baseline-v2/`.
+
+The initial driver incorrectly used an unregistered profile zero, which the
+production library rejects. It was corrected to materialize/open the seed-42
+Bukkit definition, bind each dimension and obtain real requests. The failed
+attempt is retained separately. Inspection also found that cached publication
+was gated on a live generation profile despite an existing lifecycle test
+explicitly requiring publication after its profile retires. The candidate keeps
+request-shape validation while removing that unrelated profile dependency only
+for cached publication; real generation still validates its live profile.
+
+The candidate replaces whole-file destination/preview buffers with open-file
+readers, an 8 KiB header, 64 KiB buffered I/O and bounded copying. Cached records
+retain validated offsets/lengths rather than copied payloads. Existing file
+bytes, including unreferenced payloads and trailing bytes, are copied unchanged;
+new records are appended with the same sector layout. Generated records release
+their compressed buffers as they are written. Publication still uses a sibling
+temporary file, file sync, atomic rename and Unix parent-directory sync. Input
+handles are closed before rename. A temporary-file owner cleans up actual failures.
+
+Initial focused storage tests pass (three tests): partial payload/timestamp/tail
+preservation, cached promotion, truncation after validation, malformed records,
+external-record preservation/preview codec rejection and failed rename cleanup.
+A fourth test adds injected record-write failures and oversized record rejection;
+the final ordinary native suite and production build are running. Matched memory/
+latency comparisons, real generation parity, CLI resume/cancellation, retired-
+profile publication and integrated platform acceptance remain required. This
+cycle is not yet ready to merge.
+
+Evidence root: `/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle11/`.
+The retained `publication_probe.py` drives the real FFI and records timing,
+concurrency, source/output fidelity and process peak RSS. No benchmark stops or
+changes the user's applications.
+
+The initial production candidate builds successfully and the ordinary native suite
+passes 366 tests, with zero failures and 93 explicit opt-ins ignored. All four
+new storage tests pass. Its first complete FFI comparison also passes every
+compressed payload, preserved timestamp and no-op file comparison across the
+18 dimension/mode/concurrency combinations. Peak process RSS is 350.8 MiB versus
+451.2 MiB in the initial control. Overworld empty/partial/complete medians in ms
+(one/four callers) are 14.91/29.23, 14.88/37.33 and 0.70/0.74; Nether
+11.47/26.46, 12.80/32.72 and 0.46/0.53; End 12.10/22.57, 11.90/29.27 and
+0.43/0.43. These are single-process preliminary comparisons, not final matched
+latency acceptance. The immutable library, source identity and raw results are
+retained as `initial-libretina_worldgen.dylib`, `initial-source/` and
+`candidate-initial/` under the evidence root.
+
+Review found that permitting cached publication after retirement must also avoid
+recreating a retired timing entry. The current candidate holds the profile
+registry read guard through live timing lookup and otherwise uses local timings;
+file publication does not depend on a live profile. The existing explicit
+saved-world/lease lifecycle test now asserts that cached publication leaves
+retired diagnostics absent. The final ordinary suite and that opt-in lifecycle
+test are running; this follow-up is not yet in the measured initial library.
+
+### Cycle 11 first matched comparison
+
+The updated ordinary suite passes all 366 tests (93 explicit opt-ins ignored),
+and the existing saved-file/dimension-lease GPU lifecycle test passes on Metal:
+1,024 generated chunks, unchanged complete-region no-op, publication after profile
+retirement, and the new assertion that retired diagnostics remain absent. The
+updated production library builds and is retained as
+`cycle11/candidate-libretina_worldgen.dylib`, with source/hash evidence in
+`candidate-source/`.
+
+Four fresh production-FFI processes ran ABBA. All 18 cases per process pass full
+compressed-payload checks, preserved timestamps and complete-region byte identity.
+Peak process RSS in order is 391.7/313.4/324.0/439.8 MiB: both candidate runs are
+lower, about 23% lower when comparing the averages of process peaks. RSS includes
+Python/engine and untimed correctness checks. Complete-region latency stays
+approximately unchanged. Four-caller empty promotion improves in most samples
+(e.g. End 28.53/22.00/20.82/31.04 ms), but partial Overworld single-caller medians
+are 11.85/12.89/14.86/13.08 ms. This mixed latency result is not sufficient for
+final acceptance. Full tables, process activity and exact library identities are
+in `cycle11/abba/summary.json` and its sibling logs/reports.
+
+The next investigation is repeated source reads: buffered header-record validation
+can read much of a region before the later preservation/payload copy reads it
+again. Investigate bounded positional reads or another measured approach while
+preserving corruption handling and no-op performance. Do not claim this cycle
+complete from memory savings alone. Broader generated-region parity, publication
+failure coverage in hosts, CLI resume/cancellation and final platform acceptance
+remain outstanding.
+
+### Cycle 11 bounded output-buffer comparison
+
+A read-strategy microprobe compared whole-file reads, buffered relative seeks and
+five-byte positional reads against the real region fixtures. Positional reads
+reduced bytes transferred but slowed complete-region validation and saved only
+about 80 us on half-populated Overworld inputs. No reader change was adopted.
+The candidate instead uses a bounded 1 MiB output buffer, retaining 64 KiB input
+buffers. Sources and library SHA-256 are retained in `buffered-source/`.
+
+All four independent-process ABBA runs pass payload/timestamp/no-op fidelity.
+Process peaks in control/candidate/candidate/control order are
+504.9/343.4/358.8/498.3 MiB, including Python, engine and untimed validation.
+A separate same-process comparison alternated control/candidate ordering for ten
+measured trials after two warmups, with distinct production FFI addresses.
+Empty publication medians (control/candidate, ms; one/four callers) are
+Overworld 16.64/14.69 and 35.34/27.86; Nether 13.80/12.41 and 34.24/29.12;
+End 12.77/11.66 and 27.62/21.87. Partial publication gives
+15.57/14.37 and 47.81/48.69; 14.79/13.58 and 40.93/37.65;
+12.91/11.67 and 32.21/27.37 respectively. Complete no-op medians differ by
+approximately 3–29 us. This supports keeping the bounded candidate for remaining
+acceptance; it does not establish a terrain-generation throughput improvement.
+
+All eighteen paired cases pass complete compressed-payload, timestamp and no-op
+comparisons. Raw samples and summaries are in `paired-buffered/`, independent
+process results in `abba-buffered/`, and the read experiment in `read-probe.jsonl`.
+Final generated-region/CLI validation is still pending. The exact candidate's
+ordinary library and CLI tests and CLI build have been started. A retained
+`cli_acceptance.py` harness will compare decoded NBT against separately generated
+control regions, preserve an actual stone-to-glass palette edit, check partial
+completion/no-op/corruption handling, and interrupt/resume its own CLI process.
+
+The exact 1 MiB-buffer candidate passes all 366 ordinary native library tests
+(93 explicit opt-ins ignored) and all four CLI unit tests, including real lock
+conflict/release. See `cycle11/final-tests.log`. The CLI executable build and
+separate control-library generation of two regions per dimension are running;
+these are correctness fixtures, not concurrent performance measurements.
+
+### Cycle 11 generated regions and CLI recovery
+
+The exact CLI release build passes fresh-region decoded-NBT parity against the
+old production library in Overworld, Nether and End. Partial files with three
+missing slots preserve 1,021 existing records, including an actual Overworld
+stone-to-glass palette edit and its fixed timestamp. All 1,024 compressed records
+match the old library completing the identical partial input. Complete no-op runs
+preserve whole files byte-for-byte. Corrupt files remain unchanged after actual
+CLI failure. SIGTERM during the first active region returns cancellation status
+130 after publishing that region; resume preserves it and generates the next.
+No temporary files remain. Evidence: `cli-acceptance-v2/`, `cli-identity.json`,
+`generation-control/`, and the retained reference/acceptance Python drivers.
+
+The initial partial test compared missing chunks against a full-region reference
+and found Overworld slot 33 had different status/lighting/sections. Completing
+the identical partial input with the old library produces exactly the same bytes
+as the candidate; this is existing partial-generation behavior, not a publication
+regression. The failed first run is retained in `cli-acceptance/`; the corrected
+comparison does not weaken preservation checks for existing chunks.
+
+Final combined platform validation has started under the external
+`integrated-final/` evidence directory. Origin/main has advanced through PR #341
+with universal-distribution, release-tooling, documentation and license changes;
+there are no overlapping region implementation changes. Integrate that baseline
+before final delivery and verify its changed packaging path as well.
+
+Combined validation currently passes Java/catalog tests and six Fabric/NeoForge
+runtime scenarios. Each loader's bundled and direct-export profiles match exactly
+in all three dimensions; saved-definition bytes survive reopen unchanged. All 24
+Bukkit and three Fabric catalog tests pass without skips. Packaged host-native
+hashes match the measured candidate. The dedicated Bukkit lifecycle suite is
+still running.
+
+Inspection of the mod QA coverage found a final acceptance gap: End activation
+is asserted, but the persisted edit loop explicitly covers only Overworld and
+Nether. The final integration cycle must extend actual generation/edit/reopen
+coverage to End rather than treating activation alone as generation acceptance.
+
+### Cycle 11 acceptance
+
+The dedicated CraftBukkit suite passes against the measured native library,
+including terrain/biome parity, metadata and player-edit persistence, End,
+unload/reopen/disable, and five invalid-definition preservation cases. Full
+artifacts are retained in `integrated-final/bukkit-server-acceptance/`; all
+combined driver stages pass. End generation/edit persistence in the mod harness
+still requires the separately identified final integration expansion.
+
+An additional CLI matrix passes LZ4 decoded-NBT parity and byte-identical no-op
+publication for all three dimensions using the independent Python LZ4/xxhash
+reader. A real permission-denied temporary-file creation leaves the existing
+partial destination unchanged and no temporary files; after permissions are
+restored the same operation generates its three missing chunks and preserves
+1,021 others. See `cycle11/cli-extra/`, `cli_extra.py`, and `decoder-install.log`.
+The four focused storage tests additionally exercise truncated source reads,
+record-write errors, oversized records, malformed headers and failed rename.
+
+Accept bounded publication as a memory improvement with useful cached-promotion
+latency results, without claiming faster GPU generation. All source/library and
+CLI identities, successful and failed experiments, and raw comparisons remain
+outside Git. Platform runtime coverage is macOS ARM64/Metal and CraftBukkit 26.3;
+no foreign-backend runtime or complete six-native release rebuild is claimed.
+
+The cycle rebases cleanly onto `7589305` (PR #341). Fabric, NeoForge and Bukkit
+JAR tasks pass with the updated native staging/build configuration; see
+`cycle11/rebased-packaging.log`. Upstream now defines a universal distribution
+and its current release platform set; this cycle preserves those upstream rules
+rather than restoring the earlier six-native packaging policy.
