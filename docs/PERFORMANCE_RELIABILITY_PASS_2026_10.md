@@ -13,7 +13,7 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 4. Cancel abandoned admissions | Merged: [PR #325](https://github.com/ArcaneArts/Retina/pull/325), `1ea0b77f` | Complete |
 | 5. Reuse concurrent Nether dependencies | Merged: [PR #326](https://github.com/ArcaneArts/Retina/pull/326), `456257d3` | Complete |
 | 6. Optimize material counting | Resolved: trials rejected; [PR #327](https://github.com/ArcaneArts/Retina/pull/327), `382a4e84` | No production optimization selected; evidence and boundary regression validated |
-| 7. Reduce catalog overhead | 7a merged [PR #328](https://github.com/ArcaneArts/Retina/pull/328), `841cc5b2`; 7b pending | Phase/RSS measurements, variant/seed fidelity, packaged assets |
+| 7. Reduce catalog overhead | 7a merged [PR #328](https://github.com/ArcaneArts/Retina/pull/328), `841cc5b2`; 7b merged [PR #329](https://github.com/ArcaneArts/Retina/pull/329), `da267c93`; 7c pending | Repeated validation/reopening investigation |
 | 8. Separate registry tooling/build inspection | Pending | Actual task execution and Fabric/NeoForge/Bukkit JAR inspection |
 | 9. Improve Bukkit chunk transfer | Pending | Phase/allocation profile, public API and lifecycle fidelity |
 | 10. Improve mixed-section installation | Pending | Actual server timing and every-block/biome comparisons |
@@ -899,3 +899,73 @@ These correctness runs are not additional performance claims.
 
 Repeated validation/reopening remains measured but unchanged and requires
 follow-up before goal item 7 is closed.
+
+
+## Cycle 7c: reuse the definition loaded from the published file
+
+The additive `retina_create_world_definition` API replaces Java's
+materialize/discard/reopen sequence. Rust writes and syncs a temporary file,
+rewinds it and loads it through the ordinary `WorldDefinition` reader, then
+publishes that same file with the existing no-replace hard link. Only after
+publication succeeds is the parsed definition registered as a native owner.
+Java adopts the owner and closes it if adapter metadata retrieval fails. The
+legacy publication-only API, validated byte-returning materialization and ordinary
+saved-file open remain available. No registry-backed generation path or file
+format change is introduced.
+
+### Measurements
+
+Sixteen fresh-process ABBA runs used the immutable merged cycle-7b library as
+control, two warmups and ten measured iterations per process. Both snapshots used
+identical catalogs, seeds 0/-1/signed-64 minimum/maximum/123456789 and recorded
+native-library identities. Every one of the 144 comparisons matched complete
+decompressed NBT. Timings include actual-file validation, fsync and owner closure,
+but not Minecraft/GPU startup. Baseline uses publication plus reopen; candidate
+uses the combined API. Host: Apple M4 Max/macOS, with desktop activity present.
+
+| Snapshot / variant | Control medians (ms) | Candidate medians (ms) |
+|---|---:|---:|
+| Recompiled normal | 1651.7 / 1605.6 | 898.0 / 885.4 |
+| Binary normal | 1608.4 / 1622.0 | 895.4 / 887.5 |
+| Recompiled Bukkit | 111.6 / 114.0 | 80.6 / 80.5 |
+| Binary Bukkit | 108.1 / 108.8 | 78.3 / 76.4 |
+
+This is approximately 45% lower normal creation latency and 29% lower Bukkit
+creation latency relative to cycle 7b. RSS includes Python/comparison buffers and
+did not consistently decrease; no memory improvement is claimed for this cycle.
+A separate matrix matched all 50 complete compressed files byte-for-byte across
+two snapshots, five variants and five full-width seeds.
+
+### Validation and evidence
+
+The final ordinary native suite passed 362 tests, with 92 optional fixture/GPU
+probes ignored. New tests cover invalid gzip/schema cleanup before publication,
+competing creators with exactly one winner matching the saved file, null output,
+zeroed failed outputs and returned-handle closure. Existing malformed destination
+preservation remains covered.
+
+The strengthened JDK-only Java bridge passed comparisons of created/reopened
+metadata and all dimension profiles, variant flags and existing-file preservation.
+All three bundled vanilla tests and 22 Bukkit tests passed with zero skips.
+Host-only Fabric/NeoForge/Bukkit JAR inspection verified expected catalog counts,
+V2 manifest hashes/sizes, the exact measured native library and absence of
+exporter/repacker QA classes. No six-platform native rebuild is claimed.
+
+All six dedicated Fabric/NeoForge create/reopen/datapack runs passed, including
+End activation, save/player-edit/reopen observations and drained owner closure.
+Independent native reads confirmed exact full profiles in all three dimensions
+between bundled and neutral-datapack exports; only exporter metadata differed.
+The full CraftBukkit server acceptance suite also passed: all dimensions,
+creation/restart, persisted metadata, player edits and five invalid-input
+preservation cases. Its parity checks covered 12 chunks, 917,504 blocks and
+14,336 quart biomes. The report confirms the exact measured native image.
+Worlds, logs and reports are preserved under `craftbukkit-acceptance/`, with
+Java fixtures in `mod-fixtures/`. These runtime checks are correctness evidence,
+not additional performance claims.
+
+Evidence root:
+`/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle7/open/`.
+It contains `candidate-identity.json`, immutable native image/source patch,
+`startup-abba/`, `startup-summary.json`, `all-variants/`, test/build logs,
+`acceptance.py`, `acceptance-report.json`, `jar-report.json`,
+`java-test-report.json`, retained `artifacts/`, and all `runtime/` fixtures/logs.

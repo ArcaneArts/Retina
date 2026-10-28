@@ -55,6 +55,19 @@ public final class NativeWorldDefinition implements AutoCloseable {
         }
     }
 
+    /** Adopt a native owner, releasing it if adapter metadata cannot be loaded. */
+    static NativeWorldDefinition takeOwnership(long handle) {
+        if (handle == 0) throw new IllegalStateException("Missing created world definition handle");
+        try {
+            String metadata = readBytes((pointer,length) -> (int) Calls.METADATA.invokeExact(handle,pointer,length));
+            return new NativeWorldDefinition(handle,metadata);
+        } catch (Throwable error) {
+            try { check((int) Calls.CLOSE.invokeExact(handle)); }
+            catch (Throwable close) { error.addSuppressed(close); }
+            throw failure(error);
+        }
+    }
+
     public static NativeWorldDefinition open(Path path) {
         var definition = tryOpen(path);
         if (definition == null) throw new IllegalStateException("Missing Retina world definition: " + path);

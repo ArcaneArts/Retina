@@ -12,7 +12,7 @@ use serde::{
 use std::{
     collections::{BTreeMap, HashMap},
     fs::{self, File, OpenOptions},
-    io::{Read, Write},
+    io::{Read, Seek, Write},
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -91,18 +91,26 @@ impl WorldCatalog {
             .get(variant)
             .ok_or_else(|| format!("catalog has no variant {variant}"))?
             .clone();
-        Self::materialize_selected(selected, seed)
+        let bytes = Self::encode_selected(selected, seed)?;
+        WorldDefinition::from_gzip(bytes.as_slice())?;
+        Ok(bytes)
     }
 
     /// Consume a runtime selection so its potentially large template is not copied.
-    pub fn materialize_owned(mut self, variant: &str, seed: i64) -> Result<Vec<u8>, String> {
+    pub fn materialize_owned(self, variant: &str, seed: i64) -> Result<Vec<u8>, String> {
+        let bytes = self.encode_owned(variant, seed)?;
+        WorldDefinition::from_gzip(bytes.as_slice())?;
+        Ok(bytes)
+    }
+
+    fn encode_owned(mut self, variant: &str, seed: i64) -> Result<Vec<u8>, String> {
         self.validate_versions()?;
         let selected = self
             .variants
             .remove(variant)
             .ok_or_else(|| format!("catalog has no variant {variant}"))?;
         drop(self);
-        Self::materialize_selected(selected, seed)
+        Self::encode_selected(selected, seed)
     }
 
     fn validate_versions(&self) -> Result<(), String> {
@@ -115,7 +123,7 @@ impl WorldCatalog {
         Ok(())
     }
 
-    fn materialize_selected(selected: Variant, seed: i64) -> Result<Vec<u8>, String> {
+    fn encode_selected(selected: Variant, seed: i64) -> Result<Vec<u8>, String> {
         let mut template = selected.template;
         let root = compound_mut(&mut template)?;
         if root.contains_key("seed") {
@@ -189,8 +197,6 @@ impl WorldCatalog {
         bytes.truncate(size);
         drop(raw);
         drop(compressor);
-        // Validate the actual bytes with the sole production world loader.
-        WorldDefinition::from_gzip(bytes.as_slice())?;
         Ok(bytes)
     }
 
@@ -202,8 +208,14 @@ impl WorldCatalog {
         seed: i64,
         world_root: impl AsRef<Path>,
     ) -> Result<PathBuf, String> {
-        let bytes = self.materialize(variant, seed)?;
-        Self::publish_bytes(bytes, world_root.as_ref())
+        self.validate_versions()?;
+        let selected = self
+            .variants
+            .get(variant)
+            .ok_or_else(|| format!("catalog has no variant {variant}"))?
+            .clone();
+        let bytes = Self::encode_selected(selected, seed)?;
+        Self::publish_bytes(bytes, world_root.as_ref()).map(|(path, _)| path)
     }
 
     pub fn publish_owned(
@@ -212,11 +224,23 @@ impl WorldCatalog {
         seed: i64,
         world_root: impl AsRef<Path>,
     ) -> Result<PathBuf, String> {
-        let bytes = self.materialize_owned(variant, seed)?;
+        self.publish_open_owned(variant, seed, world_root)
+            .map(|(path, _)| path)
+    }
+
+    /// Parse the synced temporary file through the ordinary loader before publishing
+    /// that same file. The returned definition is file-backed input, not a template.
+    pub fn publish_open_owned(
+        self,
+        variant: &str,
+        seed: i64,
+        world_root: impl AsRef<Path>,
+    ) -> Result<(PathBuf, WorldDefinition), String> {
+        let bytes = self.encode_owned(variant, seed)?;
         Self::publish_bytes(bytes, world_root.as_ref())
     }
 
-    fn publish_bytes(bytes: Vec<u8>, root: &Path) -> Result<PathBuf, String> {
+    fn publish_bytes(bytes: Vec<u8>, root: &Path) -> Result<(PathBuf, WorldDefinition), String> {
         fs::create_dir_all(root).map_err(|e| format!("{}: {e}", root.display()))?;
         let destination = root.join("retina.dat");
         static NEXT: AtomicU64 = AtomicU64::new(0);
@@ -226,7 +250,12 @@ impl WorldCatalog {
                 std::process::id(),
                 NEXT.fetch_add(1, Ordering::Relaxed)
             ));
-            match OpenOptions::new().write(true).create_new(true).open(&path) {
+            match OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create_new(true)
+                .open(&path)
+            {
                 Ok(file) => break (path, file),
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
                 Err(error) => return Err(format!("{}: {error}", path.display())),
@@ -235,10 +264,13 @@ impl WorldCatalog {
         let result = (|| {
             file.write_all(&bytes).map_err(|e| e.to_string())?;
             file.sync_all().map_err(|e| e.to_string())?;
+            drop(bytes);
+            file.rewind().map_err(|e| e.to_string())?;
+            let definition = WorldDefinition::from_gzip(&mut file)?;
             drop(file);
             fs::hard_link(&temporary, &destination)
                 .map_err(|e| format!("{}: {e}", destination.display()))?;
-            Ok(destination)
+            Ok((destination, definition))
         })();
         let _ = fs::remove_file(temporary);
         result

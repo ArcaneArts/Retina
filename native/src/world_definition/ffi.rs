@@ -88,6 +88,24 @@ unsafe fn bytes(value: Vec<u8>, output: *mut *mut u8, length: *mut u64) -> Resul
     Ok(())
 }
 
+/// Publish ownership only after file loading has completed successfully.
+fn register(definition: WorldDefinition) -> Result<u64, String> {
+    let mut handles = HANDLES.lock().map_err(|_| "world handle lock poisoned")?;
+    let handle = handles
+        .next
+        .checked_add(1)
+        .ok_or("world handle space exhausted")?;
+    handles.next = handle;
+    handles.worlds.insert(
+        handle,
+        Arc::new(OpenWorld {
+            definition: Arc::new(definition),
+            session: OnceLock::new(),
+        }),
+    );
+    Ok(handle)
+}
+
 /// # Safety
 /// path is length readable UTF-8 bytes; output is a writable u64.
 /// A successful open of an absent file returns handle 0. Other errors fail.
@@ -108,19 +126,7 @@ pub unsafe extern "C" fn retina_open_world_definition(
         else {
             return Ok(());
         };
-        let mut handles = HANDLES.lock().map_err(|_| "world handle lock poisoned")?;
-        let handle = handles
-            .next
-            .checked_add(1)
-            .ok_or("world handle space exhausted")?;
-        handles.next = handle;
-        handles.worlds.insert(
-            handle,
-            Arc::new(OpenWorld {
-                definition: Arc::new(definition),
-                session: OnceLock::new(),
-            }),
-        );
+        let handle = register(definition)?;
         unsafe {
             *output = handle;
         }
@@ -134,15 +140,58 @@ pub unsafe extern "C" fn retina_open_world_definition(
 /// All strings are length-readable UTF-8 buffers for the duration of this call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_materialize_world_definition(
-    catalog: *const u8, catalog_length: u64,
-    variant: *const u8, variant_length: u64,
+    catalog: *const u8,
+    catalog_length: u64,
+    variant: *const u8,
+    variant_length: u64,
     seed: i64,
-    root: *const u8, root_length: u64,
+    root: *const u8,
+    root_length: u64,
 ) -> i32 {
     boundary(|| {
         let variant = unsafe { text(variant, variant_length) }?;
-        let source = super::catalog::WorldCatalog::read_selected(unsafe { text(catalog, catalog_length) }?, variant)?;
+        let source = super::catalog::WorldCatalog::read_selected(
+            unsafe { text(catalog, catalog_length) }?,
+            variant,
+        )?;
         source.publish_owned(variant, seed, unsafe { text(root, root_length) }?)?;
+        Ok(())
+    })
+}
+
+/// Create, validate from the synced file, publish without replacement, and open.
+/// # Safety
+/// All strings are length-readable UTF-8 buffers; output is a writable u64.
+/// On success, close the returned handle with retina_close_world_definition.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_create_world_definition(
+    catalog: *const u8,
+    catalog_length: u64,
+    variant: *const u8,
+    variant_length: u64,
+    seed: i64,
+    root: *const u8,
+    root_length: u64,
+    output: *mut u64,
+) -> i32 {
+    boundary(|| {
+        if output.is_null() {
+            return Err("null world definition handle output".into());
+        }
+        unsafe {
+            *output = 0;
+        }
+        let variant = unsafe { text(variant, variant_length) }?;
+        let source = super::catalog::WorldCatalog::read_selected(
+            unsafe { text(catalog, catalog_length) }?,
+            variant,
+        )?;
+        let (_, definition) =
+            source.publish_open_owned(variant, seed, unsafe { text(root, root_length) }?)?;
+        let handle = register(definition)?;
+        unsafe {
+            *output = handle;
+        }
         Ok(())
     })
 }

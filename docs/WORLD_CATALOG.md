@@ -14,14 +14,19 @@ for the mods' environment selection and the second runtime-precision snapshot.
 ## Publication and runtime
 
 `NativeCatalog.create(catalog, variant, seed, worldRoot)` calls the shared Rust
-materializer, which rebuilds derived values, validates complete output with
-`WorldDefinition`, writes high-compression gzip, flushes/syncs the temporary file,
-and atomically publishes `retina.dat` without replacing an existing destination.
+materializer, which rebuilds derived values, writes gzip, and flushes/syncs the
+temporary file. It rewinds that file and loads it through `WorldDefinition` before
+atomically publishing the same file as `retina.dat` without replacing an existing
+destination. Invalid output is removed without publishing it.
 Publication uses an actual same-filesystem hard link followed by temporary-file
 removal. A filesystem that cannot perform that operation reports its real error.
 No filename, timestamp or provenance guess substitutes for opening the input.
 
-The Java API then reopens the published file through `NativeWorldDefinition`.
+The combined `retina_create_world_definition` API returns a native handle for
+the definition loaded from that file. Java adopts it through
+`NativeWorldDefinition`, closing it if adapter metadata loading fails. This
+avoids validating and discarding a parsed definition only to parse it again.
+The legacy publication-only API remains available.
 Generation never uses a catalog-backed alternative profile. Reopening an
 existing world bypasses catalog materialization. Catalog upgrades do not rewrite
 existing snapshots, and a malformed present snapshot is preserved.

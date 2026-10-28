@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--count', type=int, default=10)
     parser.add_argument('--compare', type=Path)
     parser.add_argument('--compare-decoded', action='store_true', help='Compare every decompressed NBT byte when the gzip encoder differs')
+    parser.add_argument('--create-and-open', action='store_true', help='Use the combined file-backed creation API')
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=False)
     library = c.CDLL(str(args.library.resolve()))
@@ -31,6 +32,9 @@ def main():
     library.retina_open_world_definition.restype = c.c_int
     library.retina_close_world_definition.argtypes = [c.c_uint64]
     library.retina_close_world_definition.restype = c.c_int
+    if args.create_and_open:
+        library.retina_create_world_definition.argtypes = library.retina_materialize_world_definition.argtypes + [c.POINTER(c.c_uint64)]
+        library.retina_create_world_definition.restype = c.c_int
     library.retina_last_error.argtypes = [c.c_void_p, c.c_uint64]
 
     def check(code):
@@ -53,12 +57,16 @@ def main():
         handle = c.c_uint64()
         before = resource.getrusage(resource.RUSAGE_SELF)
         start = time.perf_counter()
-        check(library.retina_materialize_world_definition(source, len(source), variant, len(variant), seeds[index % len(seeds)], destination, len(destination)))
-        published = time.perf_counter()
         try:
-            check(library.retina_open_world_definition(path, len(path), c.byref(handle)))
+            if args.create_and_open:
+                check(library.retina_create_world_definition(source, len(source), variant, len(variant), seeds[index % len(seeds)], destination, len(destination), c.byref(handle)))
+                published = time.perf_counter()
+            else:
+                check(library.retina_materialize_world_definition(source, len(source), variant, len(variant), seeds[index % len(seeds)], destination, len(destination)))
+                published = time.perf_counter()
+                check(library.retina_open_world_definition(path, len(path), c.byref(handle)))
             if not handle.value:
-                raise AssertionError('Published definition was absent when reopened')
+                raise AssertionError('Published definition returned no owner')
             reopened = time.perf_counter()
         finally:
             if handle.value:
@@ -81,12 +89,12 @@ def main():
                             'total_ms': (closed-start)*1000,
                             'cpu_ms': ((after.ru_utime+after.ru_stime)-(before.ru_utime+before.ru_stime))*1000,
                             'peak_rss_bytes': peak, 'definition_sha256': actual_hash})
-    result = {'schema': 1, 'comparison': 'complete decompressed NBT bytes' if args.compare_decoded else 'complete gzip bytes', 'command': sys.argv, 'host': platform.platform(),
+    result = {'schema': 1, 'creation_api': 'combined' if args.create_and_open else 'publish-and-reopen', 'comparison': 'complete decompressed NBT bytes' if args.compare_decoded else 'complete gzip bytes', 'command': sys.argv, 'host': platform.platform(),
               'machine': platform.machine(), 'python': platform.python_version(),
               'library': str(args.library.resolve()), 'library_sha256': digest(args.library),
               'catalog': str(args.catalog.resolve()), 'catalog_sha256': digest(args.catalog),
               'variant': args.variant, 'warmups': args.warmups, 'samples': samples,
-              'scope': 'Production FFI publish (including validation/fsync), reopen and close. No GPU/Minecraft. RSS includes Python and native process high water; hashes/comparison occur outside timing.',
+              'scope': 'Production FFI creation (including file validation/fsync) and close; legacy mode also reopens. No GPU/Minecraft. RSS includes Python and native process high water; hashes/comparison occur outside timing.',
               'compared_definitions': args.warmups + args.count if args.compare else 0}
     (args.out / 'measurements.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps({'variant': args.variant, 'samples': len(samples), 'compared': result['compared_definitions']}))

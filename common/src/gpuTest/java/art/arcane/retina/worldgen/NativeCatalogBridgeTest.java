@@ -22,6 +22,11 @@ public final class NativeCatalogBridgeTest {
                     require(world.metadata().contains("\"generate_structures\":" + !variant.startsWith("normal-no-structures")), "variant flags");
                     require(world.metadata().contains("\"bonus_chest\":" + variant.endsWith("-bonus-chest")), "bonus chest flag");
                     require(world.metadata().contains("minecraft:the_end") && world.metadata().contains("minecraft:the_nether"), "complete logical world");
+                    try (var saved = NativeWorldDefinition.open(root.resolve("retina.dat"))) {
+                        require(world.metadata().equals(saved.metadata()), "created handle matches the published file");
+                        for (String dimension : new String[]{"minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"})
+                            require(world.diagnosticProfile(dimension).equals(saved.diagnosticProfile(dimension)), "file profile " + dimension);
+                    }
                 }
                 byte[] before = Files.readAllBytes(root.resolve("retina.dat"));
                 try { NativeCatalog.create(catalog, variant, seed + 1, root).close(); throw new AssertionError("Replaced existing definition"); }
