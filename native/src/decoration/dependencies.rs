@@ -1708,6 +1708,11 @@ pub(crate) fn generate(
         for root in 0..planner.roots.len() {
             #[cfg(test)]
             let trace = worker_phase_probe::Trace::start(&planner, root);
+            if root > 0 {
+                if let Some(reuse) = &mut planner.reuse {
+                    reuse.refresh(engine, &metrics.performance);
+                }
+            }
             // Return to the request's caller after each root. A waiting worker may
             // steal another root, but cannot inherit that request's remaining loop.
             let evaluated = dispatch_phase(pool, &metrics.performance, || -> Result<(), String> {
