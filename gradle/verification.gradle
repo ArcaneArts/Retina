@@ -1237,3 +1237,17 @@ check.dependsOn 'worldCatalogBridgeTest'
         if (fixtures) args '--fixtures'
     }
 }
+
+tasks.register('repackWorldCatalog', JavaExec) {
+    group = 'verification'
+    description = 'Repack an existing V1 snapshot as independently compressed V2 variants and verify every payload.'
+    dependsOn 'gpuTestClasses'
+    classpath = sourceSets.gpuTest.runtimeClasspath
+    mainClass = 'art.arcane.retina.worldgen.WorldCatalogRepack'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '1g'
+    workingDir rootProject.projectDir
+    args providers.gradleProperty('catalogInput').getOrElse("assets/world-definitions/${minecraft_version}/vanilla"),
+            providers.gradleProperty('catalogOutput').getOrElse('build/repacked-catalog')
+}

@@ -33,8 +33,14 @@ NBT widths, arrays, lists, floating-point values and embedded data remain typed.
 
 ## Schema and variants
 
-The catalog root has Int `catalog_version: 1`, Int `materialization_version: 1`,
-and Compound `variants`. Each named variant contains:
+New exports use Int `catalog_version: 2`, Int `materialization_version: 1`,
+and Compound `compressed_variants`. Each named value is a ByteArray containing
+an independently gzip-compressed unnamed NBT compound. The outer catalog remains
+gzip-compressed NBT. Runtime loading expands only the selected variant; unrelated
+variant payloads remain compressed. A malformed selected payload fails normally.
+
+Legacy V1 catalogs with Compound `variants` remain readable. Both containers
+use the same decoded variant schema. Each variant contains:
 
 - `template`: a complete world-definition envelope without `seed`; derived
   fields are absent rather than carrying values from a capture seed.
@@ -135,3 +141,13 @@ state content, accounting for palette-ID order; every remaining NBT field is
 compared directly. Catalog, current direct export and previous export passed on
 Metal / Apple M4 Max. This establishes Retina parity on that backend rather than
 new vanilla parity or cross-GPU determinism.
+
+## Repacking an existing snapshot
+
+`./gradlew :common:repackWorldCatalog -PcatalogInput=<existing-directory>
+-PcatalogOutput=<new-directory> --no-watch-fs` changes the container to V2 without
+loading Minecraft registries or recapturing generation data. The tool verifies
+every decoded variant against the input and updates the manifest version, byte
+count and hash. Use separate output directories for the binary and recompiled
+snapshots; their numerical content must remain distinct. Existing destination
+files are not overwritten. This operation does not change any world's `retina.dat`.

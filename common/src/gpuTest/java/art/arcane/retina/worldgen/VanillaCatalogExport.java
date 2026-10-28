@@ -35,11 +35,11 @@ public final class VanillaCatalogExport {
             CompoundTag catalog = WorldCatalogCompiler.compile(registry, stems, structures, packs);
             Path file = output.resolve(WorldCatalogCompiler.NAME);
             Files.deleteIfExists(file); // This explicit export owns this generated asset.
-            WorldDefinitionFile.writeNew(output, WorldCatalogCompiler.NAME, catalog);
+            WorldDefinitionFile.writeNew(output, WorldCatalogCompiler.NAME, WorldCatalogCompiler.pack(catalog));
             var manifest = new JsonObject();
             manifest.addProperty("minecraft_version", SharedConstants.getCurrentVersion().id());
             manifest.addProperty("data_version", SharedConstants.getCurrentVersion().dataVersion().version());
-            manifest.addProperty("catalog_version", 1); manifest.addProperty("materialization_version", 1);
+            manifest.addProperty("catalog_version", WorldCatalogCompiler.CONTAINER_VERSION); manifest.addProperty("materialization_version", 1);
             manifest.addProperty("generation_version", WorldDefinitionCompiler.GENERATION_VERSION);
             manifest.addProperty("exporter", WorldCatalogCompiler.EXPORTER);
             manifest.addProperty("environment", System.getProperty("retina.catalog.environment", "Retina mod-development registry exporter"));

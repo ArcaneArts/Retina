@@ -31,15 +31,17 @@ use live compilation. Loader name alone does not select the snapshot.
 
 | Source directory under `assets/world-definitions/26.3/` | JAR directory under `catalogs/26.3/` | Gzip bytes | SHA-256 |
 | --- | --- | ---: | --- |
-| `vanilla` | `vanilla-recompiled` | 5,274,690 | `1d36669962947ee6fce5ddfb7029d0fa06eda32647297227b8f9116bbb8dc150` |
-| `vanilla-binary` | `vanilla-binary` | 5,275,111 | `e357b33fa93c757a80e8aa122343fc899c357b9120961376036b2a9008046e63` |
+| `vanilla` | `vanilla-recompiled` | 4,085,653 | `d34080051d84bf4ca0c2e59d17c294fa22495fc592d212f4ed92d8e0bffc9f17` |
+| `vanilla-binary` | `vanilla-binary` | 4,088,819 | `5237034015aedda6ebd06288427bba5ac28f4a1bc72e0c3342bf4661644eb810` |
 
 Each asset has a readable provenance/limitations manifest. Both are below
 50 MiB and are ordinary Git assets. The original `normal`,
 `normal-no-structures` and `bukkit-api` variants in the recompiled asset are
 structurally identical to their previous versions; two bonus-chest variants
 were added. The Bukkit plugin continues to consume its existing snapshot and
-delivery policy. Native source, ABI and shaders did not change.
+delivery policy. V2 packing preserves every decoded variant while allowing the
+native loader to expand only the selected variant. The runtime ABI and shaders
+are unchanged; legacy V1 catalogs remain readable.
 
 Regenerate explicitly from the actual Minecraft runtimes:
 
@@ -48,12 +50,15 @@ Regenerate explicitly from the actual Minecraft runtimes:
 ./gradlew :fabric:exportVanillaCatalog --no-watch-fs
 ```
 
+V2 container validation and performance evidence are tracked in
+[the current performance ledger](PERFORMANCE_RELIABILITY_PASS_2026_10.md).
+
 Both accept `-PcatalogOutput=/absolute/output/directory` for independent
 reproducibility runs. Independent re-exports of both snapshots and their
 manifests were byte-identical to the committed inputs. Ordinary builds only
 package those assets.
 
-## Executed verification
+## Original V1 verification (2026-10-27)
 
 `BundledVanillaDefinitionTest` compares complete native metadata and every
 dimension's full diagnostic generation profile against independent live Java
