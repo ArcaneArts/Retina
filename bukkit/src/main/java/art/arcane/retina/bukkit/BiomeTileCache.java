@@ -42,5 +42,6 @@ final class BiomeTileCache implements AutoCloseable {
     GenerationCache.Statistics statistics() { return cache.statistics(); }
     PersistentBiomeCache.Statistics diskStatistics() { return persisted.statistics(); }
     void save() { persisted.save(); }
+    void requestSave() { persisted.requestSave(); }
     @Override public void close() { cache.close(); persisted.close(); }
 }

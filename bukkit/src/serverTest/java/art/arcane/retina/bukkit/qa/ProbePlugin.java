@@ -25,6 +25,7 @@ public final class ProbePlugin extends JavaPlugin {
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("retina.probe")) return true;
         try {
+            if (args.length != 0 && args[0].equals("save-benchmark")) { SaveProbe.run(this); return true; }
             if (args.length != 0 && args[0].equals("create-nether")) {
                 create("retina_probe_nether", Long.MAX_VALUE - 37, World.Environment.NETHER, "nether").getChunkAt(-1, -1);
                 getLogger().info("RETINA_PROBE_NETHER_PASS seed=" + (Long.MAX_VALUE - 37)); return true;
@@ -52,7 +53,9 @@ public final class ProbePlugin extends JavaPlugin {
             if (args.length != 0 && args[0].equals("disable-retina")) {
                 var retina = Objects.requireNonNull(getServer().getPluginManager().getPlugin("Retina"));
                 var definitions = definitions(retina).values().stream().toList();
-                getServer().getPluginManager().disablePlugin(retina);
+                if (args.length > 1 && args[1].equals("pending-save"))
+                    SaveProbe.withPending(this, Objects.requireNonNull(getServer().getWorld("world")), () -> getServer().getPluginManager().disablePlugin(retina));
+                else getServer().getPluginManager().disablePlugin(retina);
                 for (var definition : definitions) requireClosed(definition);
                 getLogger().info("RETINA_PROBE_DISABLE_PASS definitions=" + definitions.size()); return true;
             }
@@ -79,7 +82,11 @@ public final class ProbePlugin extends JavaPlugin {
                     int x = (i % 4 - 2) * 16, z = (i / 4 - 4) * 16;
                     work.add(executor.submit(() -> generator.getBaseHeight(world, new Random(0), x, z, HeightMap.WORLD_SURFACE)));
                 }
-                if (!getServer().unloadWorld("retina_probe_end", true)) throw new IllegalStateException("Could not unload the probe End");
+                Runnable unload = () -> {
+                    if (!getServer().unloadWorld("retina_probe_end", true)) throw new IllegalStateException("Could not unload the probe End");
+                };
+                if (args.length > 1 && args[1].equals("pending-save")) SaveProbe.withPending(this, world, unload);
+                else unload.run();
                 requireClosed(definition);
                 executor.shutdown();
                 if (!executor.awaitTermination(30, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("Native callbacks did not drain");

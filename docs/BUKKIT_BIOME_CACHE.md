@@ -14,7 +14,8 @@ retains 256 tiles by default. A separate LRU backing cache retains at most
 16,384 tiles per dimension, including restored tiles. `biome-disk-cache` sets a
 smaller capacity; `0` disables it. A full backing cache holds 4 MiB of raw integer
 IDs plus bounded array/map overhead. It releases its entries when the owner
-closes. No worker threads, native code or GPU shaders were added or changed.
+closes. Two shared daemon writers handle persistence; native code and GPU
+shaders are unchanged.
 Full 3D grids, fitted storage and single-biome behavior retain their existing
 paths.
 
@@ -26,15 +27,22 @@ hashed too. The payload contains integer tile coordinates and 64 unsigned-short
 local palette IDs per tile. Changing the tile encoding requires a format bump.
 Java-only updates can reuse a cache when both identities and its format match.
 
-World-save events and owner shutdown write changed caches through a temporary
-file and atomic replacement, with ordinary replacement when atomic moves are
-unsupported. A cache is published in memory only after its entire bounded
+World-save events enqueue changed caches without waiting for compression or disk
+I/O. Repeated events share one queued task per cache; only the two active writers
+copy snapshots. Each snapshot records its revision so concurrent updates remain
+dirty. Owner shutdown drains generation and waits for the final cache checkpoint
+before releasing native resources. Writes use a temporary file and atomic
+replacement, with ordinary replacement when atomic moves are unsupported. A cache is published in memory only after its entire bounded
 payload, palette IDs and gzip checksum pass. Mismatched identities or formats
 are ignored; payload corruption and I/O failures warn. All these cases retain
 normal native query behavior. Nothing replaces or modifies `retina.dat`.
 Deleting `retina-cache/` with the server stopped is safe. Large workloads can
 evict old answers; cold worlds, invalidated caches and missing tiles still pay
-for normal generation. A crash before a world save can lose newly cached work.
+for normal generation. A crash before an asynchronous checkpoint completes can lose newly cached work.
+This disposable cache does not control persistence of world/chunk data.
+
+The save-path measurements and concurrency validation are recorded in
+[the performance implementation ledger](PERFORMANCE_RELIABILITY_PASS_2026_10.md).
 
 ## Focused actual-server measurements
 
