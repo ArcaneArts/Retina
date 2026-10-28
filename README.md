@@ -599,3 +599,11 @@ errors propagate from the actual build.
 - `qa/`, `docs/`: fixtures, validation procedures and detailed implementation reports.
 
 Manual changes follow [the PR/worktree protocol](docs/MANUAL_CHANGE_PROTOCOL.md).
+
+## License
+
+Copyright (c) 2026 Arcane Arts.
+
+Retina is licensed under the GNU General Public License version 3 only
+(`GPL-3.0-only`). See [LICENSE](LICENSE) for the full terms. Third-party components
+retain their respective licenses and notices.
