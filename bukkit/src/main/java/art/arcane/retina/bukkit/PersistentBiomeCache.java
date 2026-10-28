@@ -101,7 +101,7 @@ final class PersistentBiomeCache implements AutoCloseable {
         try {
             Files.createDirectories(path.getParent());
             temporary = Files.createTempFile(path.getParent(), "biomes-", ".tmp");
-            try (var output = new DataOutputStream(new GZIPOutputStream(Files.newOutputStream(temporary)))) {
+            try (var output = new DataOutputStream(new BufferedOutputStream(new GZIPOutputStream(Files.newOutputStream(temporary)), 8192))) {
                 output.writeInt(MAGIC); output.write(definition); output.write(engine); output.writeUTF(dimension); output.writeInt(tiles.size());
                 for (var entry : tiles.entrySet()) {
                     var tile = entry.getKey(); output.writeInt(tile.x()); output.writeInt(tile.y()); output.writeInt(tile.z());
