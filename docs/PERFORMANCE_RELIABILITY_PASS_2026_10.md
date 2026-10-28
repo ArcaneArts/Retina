@@ -9,7 +9,7 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 |---|---|---|
 | 1. Buffer biome-cache serialization | Merged: [PR #321](https://github.com/ArcaneArts/Retina/pull/321), `ab0248f3` | Complete |
 | 2. Persist outside shared locks | Merged: [PR #322](https://github.com/ArcaneArts/Retina/pull/322), `c4bd97d8` | Complete |
-| 3. Retire world GPU resources | In progress | Resource census, safe retirement, lifecycle/memory plateau |
+| 3. Retire world GPU resources | Validated; PR pending | Merge resource retirement cycle |
 | 4. Cancel abandoned admissions | Pending | Queue/close races, fairness, shutdown timing |
 | 5. Reuse concurrent Nether dependencies | Pending | 1/2/4/8 callers, ordering, CPU/latency/memory, full NBT |
 | 6. Optimize material counting | Pending | Device and whole-region timing, exact terrain, backend scope |
@@ -144,6 +144,9 @@ The retained Python drivers document complete launch/clone/command sequences.
 
 ## Cycle 3a: world-close resource characterization
 
+Merged as [PR #323](https://github.com/ArcaneArts/Retina/pull/323), `ba64632a`.
+Cycle 3b implements retirement in its own worktree.
+
 The explicit ignored `closed_world_resource_inventory` GPU test binds the actual
 vanilla catalog at seed 42 twelve times on one engine. Each cycle queries an
 Overworld chunk's columns, drops the session while retaining a dimension lease,
@@ -173,3 +176,78 @@ CPU cache entries after their owners/jobs drain. Shared compiler/interpreter
 reuse must remain bounded, partial-binding failure must clean up, and tests must
 cover multiple live worlds, in-flight leases, reopening and memory stabilization.
 This characterization is not acceptance of resource retirement.
+
+### Cycle 3b initial retirement evidence (unmerged)
+
+The initial implementation removes registrations and per-profile CPU/GPU state
+after the last world lease releases, using a GPU-worker drain barrier. Diagnostic
+reads no longer recreate retired timing entries. The native test crate compiles.
+The twelve-cycle interpreter probe passes (1.75 seconds): each close leaves zero
+registrations and timing entries, and only the three shared default profile
+buffers totaling 944 bytes, versus 39 buffers / 13,357,184 bytes at the final
+baseline cycle. Candidate RSS rises from 583,824 to 585,152 KiB in this short run;
+this is not evidence of a proportional physical-memory saving.
+
+Evidence, exact uncommitted implementation patch, binary and hashes are retained
+in `cycle3/candidate-initial/` beneath the evidence root above. This is preliminary
+interpreter-path evidence only. Bounded compiler/interpreter reuse, multiple live
+worlds, partial initialization, concurrent generation, auxiliary-resource coverage
+and full generation parity remain required before merging this cycle.
+
+The next candidate bounds each shared pipeline cache to eight recently used
+strong references, with exact-key weak lookup preserving sharing for live world
+owners. Evicted compilation jobs hold weak ownership and are skipped when no
+owner remains. Two cache eviction/ownership tests pass. The native crate compiles,
+and both explicit Metal lifecycle tests pass (2.22 seconds): repeated closure,
+lease-held generation after host-owner release, unaffected generation in a second
+world with another seed, decoded-definition survival, and cleanup after exhausting
+profile handles partway through binding. Artifacts and source identities are in
+`cycle3/candidate-cache/`. Full chunk parity, specialized compilation lifecycle,
+auxiliary-resource coverage and broader native tests remain pending.
+
+After making the FFI timing/performance snapshots non-creating as well, the full
+ordinary native suite passed: 355 passed, zero failed, 86 explicitly ignored
+(2.86 seconds after compilation). Log: `cycle3/native-suite.log`. This does not
+substitute for the remaining opt-in GPU and complete generation acceptance.
+
+Full generation checks now pass on Metal. Eighteen complete chunk NBT captures
+(two locations in each dimension, reopening in interpreter/automatic/specialized
+modes) match the retained baseline library byte-for-byte. Three full-region
+reopen cycles cover all dimensions: all 9,216 decompressed chunk records match
+the baseline exactly, without normalizing metadata. Lighting allocates six
+world-owned buffers and releases all six on every close; feature/provider world
+buffers also return to zero. Shared compiler entries stay at two across cycles.
+The full-region test passed in 4.44 seconds; this is correctness evidence, not
+a matched throughput claim. Existing rejected-specialization GPU coverage also
+passes. Evidence: `cycle3/full-chunk-{baseline,candidate}/`,
+`cycle3/full-region-{baseline,candidate}/`, both `*-comparison.json` files and
+the retained ctypes drivers. Production-library build and matched performance
+acceptance are still pending before this cycle's PR.
+
+### Cycle 3b production validation
+
+The production macOS ARM64 library builds successfully. Bukkit tests against
+that exact image pass all 22 tests with zero failures/skips, including native
+chunk/biome parity and world reopening. Native image SHA-256: `329573fdbe9c2f740439ac797222293c66788219400bb9086692618f31e384a8`.
+
+Four fresh ctypes host processes ran baseline/candidate/candidate/baseline. Each
+kept one world open, with two warmup and four measured full regions per dimension
+(eight measurements per implementation/dimension). The native call includes
+region generation and publication; parsing, binding and output comparison are
+outside that timer. Seed 42, automatic execution, zlib, shipping thread defaults,
+Apple M4 Max/Metal. All 55,296 compared decompressed chunk records are identical.
+
+| Dimension | Baseline median ms | Candidate median ms |
+|---|---:|---:|
+| Overworld | 182.324 | 183.125 |
+| Nether | 518.124 | 524.093 |
+| End | 89.737 | 91.551 |
+
+These are memory-lifecycle changes, not a throughput improvement. Median shifts
+are +0.4%, +1.2% and +2.0%; the first candidate run matches or improves its
+adjacent control while both later runs slow down. The small sample and host
+variation do not establish a systematic throughput regression or a speedup.
+Detailed process-level samples, native identities and complete MCA files are in
+`cycle3/region-abba/`; the serial driver is `cycle3/run_region_benchmark.py`.
+No other backend is claimed validated. Broad installed-platform validation
+remains part of final integrated acceptance.

@@ -43,31 +43,25 @@ impl WorldSession {
         compression: Compression,
         execution: Option<ProgramExecution>,
     ) -> Result<Arc<Self>, String> {
-        let mut dimensions = BTreeMap::new();
-        let mut profiles = Vec::new();
-        for (key, dimension) in definition.dimensions() {
+        // Construct the owner first so partial registration failure also retires IDs.
+        let mut session = Self { engine, definition, _runtime_profiles: Vec::new(),
+            dimensions: BTreeMap::new(), compression, execution };
+        for (key, dimension) in session.definition.dimensions() {
             if dimension.unsupported_reason().is_some() {
                 continue;
             }
             let profile = dispatch_profile(dimension.profile()?, execution);
-            let id = engine.register_world_profile(
+            let id = session.engine.register_world_profile(
                 &profile,
                 compression,
-                definition.data_version(),
+                session.definition.data_version(),
                 dimension.parameters().storage_bounds(),
-                super::residency::GenerationInputs::new(definition.seed() as u64, dimension.parameters()),
+                super::residency::GenerationInputs::new(session.definition.seed() as u64, dimension.parameters()),
             )?;
-            dimensions.insert(key.clone(), id);
-            profiles.push(profile);
+            session.dimensions.insert(key.clone(), id);
+            session._runtime_profiles.push(profile);
         }
-        Ok(Arc::new(Self {
-            engine,
-            definition,
-            _runtime_profiles: profiles,
-            dimensions,
-            compression,
-            execution,
-        }))
+        Ok(Arc::new(session))
     }
 
     pub fn definition(&self) -> &Arc<WorldDefinition> {
@@ -94,6 +88,14 @@ impl WorldSession {
             key: key.into(),
             profile,
         })
+    }
+}
+
+impl Drop for WorldSession {
+    fn drop(&mut self) {
+        // Dimension leases retain this session for the complete operation.
+        // Low-level host requests retain their existing drain-before-close contract.
+        self.engine.retire_world_profiles(self.dimensions.values().copied().collect());
     }
 }
 

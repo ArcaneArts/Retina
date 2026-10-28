@@ -83,15 +83,16 @@ pub(crate) struct Gpu {
     wide_profiles: std::collections::HashSet<u32>,
     wide_interpreter: Option<std::sync::Arc<crate::specialize::Pipelines>>,
     interpreter_reuse_plans: HashMap<u32, crate::specialize::interpreter_reuse::Plan>,
-    interpolation_interpreters: HashMap<
+    interpolation_interpreters: crate::specialize::reuse_cache::Cache<
         (
             usize,
             usize,
             bool,
             crate::specialize::interpreter_reuse::Plan,
         ),
-        std::sync::Arc<crate::specialize::Pipelines>,
+        crate::specialize::Pipelines,
     >,
+    interpreter_profiles: HashMap<u32, std::sync::Arc<crate::specialize::Pipelines>>,
     interpolation_plans: HashMap<u32, std::sync::Arc<crate::program::interpolation::CachePlan>>,
     cached_density_plans: HashMap<u32, crate::program::composition::CachedDensity>,
     cached_node_plans: HashMap<u32, crate::program::composition::CachedDensity>,
@@ -143,6 +144,21 @@ struct CaveBuffers {
 }
 
 impl Gpu {
+    pub(crate) fn retire(&mut self, ids: &[u32]) {
+        self.profiles.retain(|id, _| !ids.contains(id));
+        self.cave_profiles.retain(|id, _| !ids.contains(id));
+        self.specialized.retain(|id, _| !ids.contains(id));
+        self.interpreter_reuse_plans.retain(|id, _| !ids.contains(id));
+        self.interpolation_plans.retain(|id, _| !ids.contains(id));
+        self.cached_density_plans.retain(|id, _| !ids.contains(id));
+        self.cached_node_plans.retain(|id, _| !ids.contains(id));
+        self.sparse_lake_plans.retain(|id, _| !ids.contains(id));
+        self.wide_profiles.retain(|id| !ids.contains(id));
+        self.interpreter_profiles.retain(|id, _| !ids.contains(id));
+        self.interpolation_interpreters.prune();
+        self.compiler.prune();
+    }
+
     pub(crate) fn decoration_counts(&self) -> crate::decoration::counts::gpu::Gpu {
         crate::decoration::counts::gpu::Gpu::new(self.device.clone(), self.queue.clone())
     }
@@ -457,7 +473,8 @@ impl Gpu {
             wide_profiles: std::collections::HashSet::new(),
             wide_interpreter: None,
             interpreter_reuse_plans: HashMap::new(),
-            interpolation_interpreters: HashMap::new(),
+            interpolation_interpreters: crate::specialize::reuse_cache::Cache::new(8),
+            interpreter_profiles: HashMap::new(),
             interpolation_plans: HashMap::new(),
             cached_density_plans: HashMap::new(),
             cached_node_plans: HashMap::new(),
@@ -744,7 +761,9 @@ impl Gpu {
                 reuse
             };
             let key = (capacity, depth, composition, reuse);
-            if !self.interpolation_interpreters.contains_key(&key) {
+            let pipelines = if let Some(pipelines) = self.interpolation_interpreters.get(&key) {
+                pipelines
+            } else {
                 let source =
                     crate::program::interpreter_source_density(capacity, depth, composition);
                 let preloaded = if capacity == crate::program::COMPACT_VALUES
@@ -778,10 +797,12 @@ impl Gpu {
                         self.interpreter_dispatch && capacity == crate::program::COMPACT_VALUES,
                     )?
                 };
-                self.interpolation_interpreters
-                    .insert(key, std::sync::Arc::new(pipelines));
-            }
-            self.interpolation_interpreters.get(&key).cloned()
+                let pipelines = std::sync::Arc::new(pipelines);
+                self.interpolation_interpreters.insert(key, pipelines.clone());
+                pipelines
+            };
+            self.interpreter_profiles.insert(profile_id, pipelines.clone());
+            Some(pipelines)
         } else {
             self.wide_interpreter
                 .as_ref()
@@ -3040,6 +3061,12 @@ impl Gpu {
         }
         *self.pipeline.gpu_buffer_probe.latest.lock().unwrap() = Some(serde_json::json!({
             "flights":0,"completed":self.pipeline.snapshot().completed,
+            "world_owners":{"specialized":self.specialized.len(), "interpreters":self.interpreter_profiles.len(),
+                "reuse_plans":self.interpreter_reuse_plans.len(), "interpolation_plans":self.interpolation_plans.len(),
+                "density_plans":self.cached_density_plans.len(), "node_plans":self.cached_node_plans.len(),
+                "lake_plans":self.sparse_lake_plans.len(), "wide_profiles":self.wide_profiles.len()},
+            "shared_compiler":self.compiler.cache_inventory(),
+            "shared_interpreters":self.interpolation_interpreters.inventory(),
             "inventory":out.value(),"readback_slots":self.readback_pool.len(),
             "material_slots":self.material_pool.len(),"retained_slots":self.retained_pool.len(),
         }));

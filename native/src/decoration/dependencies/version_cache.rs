@@ -170,6 +170,11 @@ impl Default for Cache {
     }
 }
 impl Cache {
+    pub(crate) fn retire(&mut self, ids: &[u32]) {
+        self.entries.retain(|entry| !ids.contains(&entry.context.profile));
+        self.bytes = self.entries.iter().map(|entry| entry.bytes).sum();
+    }
+
     #[cfg(test)]
     pub(crate) fn retention_probe(&self) -> serde_json::Value {
         let entries: Vec<_> = self.entries.iter().map(|saved| serde_json::json!({

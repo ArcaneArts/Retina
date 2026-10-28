@@ -24,6 +24,11 @@ impl Default for LiveTiles {
     fn default() -> Self { Self::new(512) }
 }
 impl LiveTiles {
+    pub(crate) fn retire(&mut self, ids: &[u32]) {
+        self.entries.retain(|(key, _), _| !ids.contains(&key.profile));
+        self.order.retain(|(key, _)| !ids.contains(&key.profile));
+    }
+
     fn new(limit: usize) -> Self {
         Self { entries: HashMap::new(), order: Default::default(), limit }
     }
