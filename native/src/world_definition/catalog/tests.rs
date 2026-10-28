@@ -395,3 +395,70 @@ fn repacked_catalog_preserves_every_variant_and_seed() {
         }
     }
 }
+
+#[test]
+fn publication_loads_file_and_cleans_invalid_input_before_linking() {
+    let root = scratch();
+    assert!(WorldCatalog::publish_bytes(b"not gzip".to_vec(), &root).is_err());
+    assert_eq!(fs::read_dir(&root).unwrap().count(), 0);
+    let mut invalid = catalog();
+    compound_mut(&mut invalid.variants.get_mut("normal").unwrap().template)
+        .unwrap().insert("format_version".into(), Value::Int(999));
+    assert!(invalid.publish_open_owned("normal", 4, &root).is_err());
+    assert_eq!(fs::read_dir(&root).unwrap().count(), 0);
+    let (path, loaded) = catalog().publish_open_owned("normal", i64::MIN, &root).unwrap();
+    let reopened = WorldDefinition::read(&path).unwrap();
+    assert_eq!(loaded.fingerprint(), reopened.fingerprint());
+    assert_eq!(loaded.seed(), i64::MIN);
+    assert_eq!(loaded.diagnostic_profile("minecraft:overworld").unwrap(),
+        reopened.diagnostic_profile("minecraft:overworld").unwrap());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn concurrent_publication_returns_only_the_winning_file_definition() {
+    let root = scratch();
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(2));
+    let jobs: Vec<_> = [17, 29].into_iter().map(|seed| {
+        let root = root.clone(); let barrier = barrier.clone();
+        std::thread::spawn(move || {
+            barrier.wait();
+            catalog().publish_open_owned("normal", seed, root)
+        })
+    }).collect();
+    let results: Vec<_> = jobs.into_iter().map(|job| job.join().unwrap()).collect();
+    assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+    let (_, winner) = results.into_iter().find_map(Result::ok).unwrap();
+    let saved = WorldDefinition::read(root.join("retina.dat")).unwrap();
+    assert_eq!(winner.seed(), saved.seed());
+    assert_eq!(winner.fingerprint(), saved.fingerprint());
+    assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn create_ffi_returns_owned_handle_and_zeroes_failed_output() {
+    use crate::world_definition::ffi::{retina_create_world_definition, retina_close_world_definition};
+    let root = scratch();
+    let path = root.join("catalog.dat");
+    let mut gzip = GzEncoder::new(Vec::new(), Compression::fast());
+    gzip.write_all(&fastnbt::to_bytes(&catalog()).unwrap()).unwrap();
+    fs::write(&path, gzip.finish().unwrap()).unwrap();
+    let path = path.to_str().unwrap().as_bytes();
+    let destination = root.join("world");
+    let destination = destination.to_str().unwrap().as_bytes();
+    let call = |output| unsafe {
+        retina_create_world_definition(path.as_ptr(), path.len() as u64,
+            b"normal".as_ptr(), 6, -1, destination.as_ptr(), destination.len() as u64, output)
+    };
+    assert_ne!(call(std::ptr::null_mut()), 0);
+    let mut handle = 123;
+    assert_eq!(call(&mut handle), 0);
+    assert_ne!(handle, 0);
+    let mut failed = 123;
+    assert_ne!(call(&mut failed), 0);
+    assert_eq!(failed, 0);
+    assert_eq!(retina_close_world_definition(handle), 0);
+    assert_eq!(WorldDefinition::read(root.join("world/retina.dat")).unwrap().seed(), -1);
+    fs::remove_dir_all(root).unwrap();
+}

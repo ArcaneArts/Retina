@@ -10,9 +10,9 @@ import static java.lang.foreign.ValueLayout.*;
 public final class NativeCatalog {
     private NativeCatalog() { }
     private static final class Calls {
-        static final MethodHandle MATERIALIZE = Linker.nativeLinker().downcallHandle(
-                NativeLibrary.symbols().findOrThrow("retina_materialize_world_definition"),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_LONG, ADDRESS, JAVA_LONG));
+        static final MethodHandle CREATE = Linker.nativeLinker().downcallHandle(
+                NativeLibrary.symbols().findOrThrow("retina_create_world_definition"),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
     }
 
     public static NativeWorldDefinition create(Path catalog, String variant, long seed, Path worldRoot) {
@@ -22,11 +22,12 @@ public final class NativeCatalog {
             byte[] source = catalog.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
             byte[] choice = variant.getBytes(StandardCharsets.UTF_8);
             byte[] destination = worldRoot.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
-            NativeWorldDefinition.check((int) Calls.MATERIALIZE.invokeExact(
+            var output = arena.allocate(JAVA_LONG);
+            NativeWorldDefinition.check((int) Calls.CREATE.invokeExact(
                     arena.allocateFrom(JAVA_BYTE, source), (long) source.length,
                     arena.allocateFrom(JAVA_BYTE, choice), (long) choice.length, seed,
-                    arena.allocateFrom(JAVA_BYTE, destination), (long) destination.length));
+                    arena.allocateFrom(JAVA_BYTE, destination), (long) destination.length, output));
+            return NativeWorldDefinition.takeOwnership(output.get(JAVA_LONG, 0));
         } catch (Throwable error) { throw NativeWorldDefinition.failure(error); }
-        return NativeWorldDefinition.open(worldRoot.resolve("retina.dat"));
     }
 }
