@@ -11,6 +11,7 @@ import java.util.Map;
 
 /** Compiles static generation rules and explicit seed recipes, never an executable world. */
 final class WorldCatalogCompiler {
+    static final int CONTAINER_VERSION = 2;
     static final String NAME = "retina-catalog.dat";
     static final String EXPORTER = "Retina vanilla catalog compiler 1";
     private static final String[] BAND_MATERIALS = {
@@ -107,6 +108,28 @@ final class WorldCatalogCompiler {
         variants.put("bukkit-api", bukkit);
         catalog.put("variants", variants);
         return catalog;
+    }
+
+    /** Each payload is independently compressed so readers need decode only one. */
+    static CompoundTag pack(CompoundTag catalog) throws java.io.IOException {
+        if (catalog.getIntOr("catalog_version", 0) != 1
+                || catalog.getIntOr("materialization_version", 0) != 1)
+            throw new IllegalArgumentException("Expected decoded catalog version 1/1");
+        var packed = new CompoundTag();
+        packed.putInt("catalog_version", CONTAINER_VERSION);
+        packed.putInt("materialization_version", 1);
+        var variants = new CompoundTag();
+        for (String name : catalog.getCompoundOrEmpty("variants").keySet()) {
+            var bytes = new java.io.ByteArrayOutputStream();
+            try (var gzip = new java.util.zip.GZIPOutputStream(bytes) {
+                { def.setLevel(java.util.zip.Deflater.BEST_COMPRESSION); }
+            }; var output = new java.io.DataOutputStream(gzip)) {
+                NbtIo.writeUnnamedTag(catalog.getCompoundOrEmpty("variants").getCompoundOrEmpty(name), output);
+            }
+            variants.putByteArray(name, bytes.toByteArray());
+        }
+        packed.put("compressed_variants", variants);
+        return packed;
     }
 
     private static boolean requiresScheduledTick(Tag value) {

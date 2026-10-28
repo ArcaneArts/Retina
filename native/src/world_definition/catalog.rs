@@ -73,12 +73,12 @@ fn required_mut<'a>(fields: &'a mut Compound, name: &str) -> Result<&'a mut Valu
 
 impl WorldCatalog {
     pub fn read(path: impl AsRef<Path>) -> Result<Self, String> {
-        let path = path.as_ref();
-        let mut bytes = Vec::new();
-        GzDecoder::new(File::open(path).map_err(|e| format!("{}: {e}", path.display()))?)
-            .read_to_end(&mut bytes)
-            .map_err(|e| format!("{}: catalog gzip: {e}", path.display()))?;
-        fastnbt::from_bytes(&bytes).map_err(|e| format!("{}: catalog NBT: {e}", path.display()))
+        encoding::read(path.as_ref(), None)
+    }
+
+    /// Runtime selection avoids decoding unrelated V2 variant payloads.
+    pub fn read_selected(path: impl AsRef<Path>, variant: &str) -> Result<Self, String> {
+        encoding::read(path.as_ref(), Some(variant))
     }
 
     /// Returns complete validated gzip NBT. The caller still publishes/reopens it.
@@ -272,3 +272,8 @@ impl Serialize for Canonical<'_> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(all(test, unix))]
+mod loading_probe;
+
+mod encoding;

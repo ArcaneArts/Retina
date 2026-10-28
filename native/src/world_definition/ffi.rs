@@ -140,8 +140,9 @@ pub unsafe extern "C" fn retina_materialize_world_definition(
     root: *const u8, root_length: u64,
 ) -> i32 {
     boundary(|| {
-        let source = super::catalog::WorldCatalog::read(unsafe { text(catalog, catalog_length) }?)?;
-        source.publish(unsafe { text(variant, variant_length) }?, seed, unsafe { text(root, root_length) }?)?;
+        let variant = unsafe { text(variant, variant_length) }?;
+        let source = super::catalog::WorldCatalog::read_selected(unsafe { text(catalog, catalog_length) }?, variant)?;
+        source.publish(variant, seed, unsafe { text(root, root_length) }?)?;
         Ok(())
     })
 }

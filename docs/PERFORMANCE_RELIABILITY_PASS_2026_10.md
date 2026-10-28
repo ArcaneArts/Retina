@@ -12,8 +12,8 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 3. Retire world GPU resources | Merged: [PR #324](https://github.com/ArcaneArts/Retina/pull/324), `9d674fb5` | Complete; integrated platform acceptance remains below |
 | 4. Cancel abandoned admissions | Merged: [PR #325](https://github.com/ArcaneArts/Retina/pull/325), `1ea0b77f` | Complete |
 | 5. Reuse concurrent Nether dependencies | Merged: [PR #326](https://github.com/ArcaneArts/Retina/pull/326), `456257d3` | Complete |
-| 6. Optimize material counting | Resolved: trials rejected; PR pending | No production optimization selected; evidence and boundary regression validated |
-| 7. Reduce catalog overhead | Pending | Phase/RSS measurements, variant/seed fidelity, packaged assets |
+| 6. Optimize material counting | Resolved: trials rejected; [PR #327](https://github.com/ArcaneArts/Retina/pull/327), `382a4e84` | No production optimization selected; evidence and boundary regression validated |
+| 7. Reduce catalog overhead | 7a selective decoding validated; 7b materialization pending | Phase/RSS measurements, variant/seed fidelity, packaged assets |
 | 8. Separate registry tooling/build inspection | Pending | Actual task execution and Fabric/NeoForge/Bukkit JAR inspection |
 | 9. Improve Bukkit chunk transfer | Pending | Phase/allocation profile, public API and lifecycle fidelity |
 | 10. Improve mixed-section installation | Pending | Actual server timing and every-block/biome comparisons |
@@ -678,3 +678,130 @@ Final restored-baseline validation passes: 357 ordinary native tests, zero
 failures, 89 explicitly opt-in tests ignored. The new opt-in Metal air-boundary
 regression passes independently. `git diff --check` passes. Final logs are
 `cycle6/final-native-tests.log` and `cycle6/final-boundary-test.log`.
+
+## Cycle 7: catalog loading and materialization (in progress)
+
+An opt-in native inventory separately measures catalog decompression, full
+variant parsing, selected-template cloning, canonical encoding, compression,
+production validation, reopening, and inclusive materialization. Stage probes
+are independent operations and must not be summed with the inclusive timer.
+Each of four fresh processes uses two warmups and ten samples, varying seeds
+across zero, minus one and both signed-width extremes. Both recompiled and
+binary bundled snapshots are retained unchanged as baseline inputs.
+
+Both catalogs expand to 37,808,508 bytes. Median decompression is 42–44 ms and
+full parsing 104–117 ms. Normal-variant cloning is 18–20 ms, encoding 37 ms,
+compression 353–355 ms, validation 686–698 ms and reopening 682–689 ms; inclusive
+materialization is 1,113–1,133 ms. Bukkit variants are smaller: cloning 5 ms,
+encoding 8–9 ms, compression 32–35 ms, validation/reopening 30–33 ms and inclusive
+materialization 83–90 ms. Probe peak RSS is roughly 663–1,041 MiB and includes
+probe-only intermediates; it is explicitly not production startup RSS.
+
+Evidence: `/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle7/`,
+including `baseline-catalogs.json`, `baseline-phase-summary.json`, immutable
+`baseline-probe-tests`, four inventory JSON files/logs and retained V1 catalogs.
+The probe confirms identical canonical encoding/recompression and successful
+production reopening for every sample. No GPU is initialized by this probe.
+
+The first implementation adds a V2 container with independently gzip-compressed
+variant NBT payloads, selected before decoding. V1 remains readable, and the
+materialized world-definition and seed-recipe formats are unchanged. The runtime
+FFI now selects its variant during loading. Focused tests cover exact materialized
+bytes across full-width seeds, legacy loading, missing variants, and a corrupt
+unselected payload that must remain undecoded. Tests are compiling. Java export,
+packaged assets, format documentation, production startup/memory comparisons,
+all-variant fidelity and installed-platform acceptance remain pending. Larger
+normal-world compression and repeated validation costs remain separate work
+within this cycle; selective decoding alone does not resolve those costs.
+
+The initial four catalog unit tests pass (two existing opt-in integration tests
+remain ignored). Java compilation passes. The Java exporter now packs V2
+containers, and `:common:repackWorldCatalog` successfully repackages both existing
+registry snapshots into separate evidence directories. It rereads every packed
+variant through Minecraft NBT and compares it with its original compound; all
+variants match in both snapshots. No registry recapture or production asset
+replacement has occurred yet. Gradle used `-x :packageNative -PretinaHostOnly
+--no-watch-fs`; registry-tool dependency narrowing is still cycle 8 work.
+
+A native full-definition comparison is now compiling/running: all five variants
+in both snapshots, each with seeds zero, minus one, signed minimum/maximum and
+123456789, must materialize byte-identical gzip world definitions. The candidate
+production library will build after those checks. Raw logs are retained under
+`cycle7/`; exporter fidelity, runtime measurements and packaged/platform
+acceptance remain incomplete.
+
+Native V1/V2 comparison passes all fifty complete world-definition checks
+(two snapshots × five variants × five full-width seeds), including byte-identical
+gzip output after production validation. Four ordinary catalog tests also pass.
+The verified V2 assets and their manifests now replace the bundled V1 containers;
+the originals remain in the evidence directory. Recompiled/binary V2 sizes are
+4,085,653/4,088,819 bytes, with separate hashes and preserved snapshot content.
+The production library is compiling. A new reusable FFI startup benchmark
+measures real publication, reopening, close, CPU cost and process peak RSS;
+comparison and hashing occur outside the timed interval. No startup speedup
+is claimed until its matched runs complete.
+
+The selective-decoding production library builds successfully and is retained
+as `cycle7/selective-libretina_worldgen.dylib` with source/artifact identities.
+Sixteen fresh-process ABBA startup runs are active (normal/Bukkit variants of
+both snapshots, two warmups and ten measured creations per process). The
+baseline uses the immutable cycle-5 library, whose production code is unchanged
+by cycle 6; candidate output is compared byte-for-byte with each baseline world.
+Results, JVM/platform packaging checks and additional materialization work
+remain pending.
+
+### Selective container measurements and Java integration
+
+The sixteen-process startup ABBA matrix passes 144 byte-exact complete-file
+comparisons. Recompiled normal-world median process times are 2,009/2,008 ms
+for controls and 1,913/1,911 ms for candidates; binary normal is 2,005/2,021
+versus 1,885/1,931 ms. Bukkit recompiled is 288/309 versus 141/141 ms, and binary
+is 290/305 versus 139/142 ms. These include actual native publication, validation,
+fsync, reopening and close; no GPU or JVM is initialized. Normal process peak
+RSS falls from roughly 1,039–1,061 to 773–784 MiB; Bukkit from 637–643 to 184 MiB.
+These are process high-water measurements, not device-memory estimates.
+`cycle7/startup-summary.json` and all commands/raw process samples are retained.
+
+The JDK native catalog bridge, three Fabric bundled-definition tests and all
+22 Bukkit tests pass with zero skips/failures. Host-only Fabric, NeoForge and
+Bukkit JARs build successfully. Actual ZIP inspection verifies exact V2 catalog
+bytes, manifest hashes/versions and the candidate macOS ARM64 native image in
+each; exporter/repack QA classes are absent. This is not a six-platform release
+build. JARs and inspection results are retained in `cycle7/artifacts/` and
+`jar-report.json`. The first Gradle invocation used the unavailable `remapJar`
+task and failed before execution; the corrected actual `:fabric:jar` build
+passed (`java-tests-jars-corrected.log`).
+
+Actual dedicated Fabric/NeoForge fresh-world, saved-file restart and datapack
+fallback acceptance is running in disposable `cycle7/runtime/` worlds, with
+the live compiler or materializer deliberately disabled for the relevant case.
+Bukkit dedicated-server acceptance and final native suite remain pending.
+
+All six dedicated mod-server cases pass: Fabric and NeoForge fresh vanilla
+creation with the compiler disabled, restart with both compiler/materializer
+disabled, and a real neutral datapack with materialization disabled. End
+activation, saved player edits, orderly drain/close and byte-identical saved
+definitions on reopen pass. Independent native reads compare all three full
+dimension profiles between cached and live-exported worlds exactly on both
+loaders; only exporter provenance differs. Results and commands are retained
+in `cycle7/runtime/`. The ordinary native suite passes 359 tests, with 91
+explicit opt-ins ignored and zero failures. Dedicated CraftBukkit acceptance
+is now running; this selective-container delivery is not yet ready to merge.
+
+### Cycle 7a acceptance
+
+Dedicated CraftBukkit acceptance passes, including normal creation/restart,
+imported-world and metadata paths and preservation/rejection of malformed,
+missing-material, missing-biome, seed-mismatched and unsupported-metadata
+definitions. The real Gradle server suite completed successfully in 2m 3s.
+Its full worlds/logs/reports are preserved under `cycle7/craftbukkit-acceptance/`;
+independent Java-exported fixtures are retained under `cycle7/mod-fixtures/`.
+
+Accept the V2 independently compressed variant container as cycle 7a. It preserves
+all fifty full-definition reference cases, 144 FFI startup comparisons, saved
+world authority, both runtime snapshots and all Java/platform checks described
+above, while lowering actual startup time and peak process memory. No generation
+algorithm changes. Host runtime coverage is macOS ARM64/Metal; foreign native
+images are not claimed built or executed in this cycle. Full-goal integrated
+acceptance remains pending. Cycle 7b will address the measured template copying,
+compression and repeated validation costs separately; cycle 7 is not yet closed.

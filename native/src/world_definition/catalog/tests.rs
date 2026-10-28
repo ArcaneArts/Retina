@@ -322,3 +322,71 @@ fn materialized_catalog_preserves_previous_generation() {
     }
     println!("CATALOG_GPU_PASS {count} complete semantic chunks: catalog/direct/previous export");
 }
+
+#[test]
+fn independently_compressed_variants_preserve_materialized_bytes() {
+    let source = catalog();
+    let root = scratch();
+    let mut packed = BTreeMap::new();
+    for (name, variant) in &source.variants {
+        let mut gzip = GzEncoder::new(Vec::new(), Compression::best());
+        gzip.write_all(&fastnbt::to_bytes(variant).unwrap()).unwrap();
+        packed.insert(name.clone(), Value::ByteArray(fastnbt::ByteArray::new(
+            gzip.finish().unwrap().into_iter().map(|b| b as i8).collect(),
+        )));
+    }
+    // A corrupt unselected payload must not be decompressed. Selecting it or
+    // asking for every variant must still report the real decoding failure.
+    packed.insert("broken".into(), Value::ByteArray(fastnbt::ByteArray::new(vec![1, 2, 3])));
+    let container = Value::Compound(HashMap::from([
+        ("catalog_version".into(), Value::Int(2)),
+        ("materialization_version".into(), Value::Int(1)),
+        ("compressed_variants".into(), Value::Compound(packed.into_iter().collect())),
+    ]));
+    let path = root.join("catalog.dat");
+    let mut gzip = GzEncoder::new(Vec::new(), Compression::best());
+    gzip.write_all(&fastnbt::to_bytes(&container).unwrap()).unwrap();
+    fs::write(&path, gzip.finish().unwrap()).unwrap();
+    let selected = WorldCatalog::read_selected(&path, "normal").unwrap();
+    assert_eq!(selected.variants.len(), 1);
+    for seed in [0, -1, i64::MIN, i64::MAX, 123456789] {
+        assert_eq!(source.materialize("normal", seed).unwrap(), selected.materialize("normal", seed).unwrap());
+    }
+    assert!(WorldCatalog::read_selected(&path, "broken").err().unwrap().contains("gzip"));
+    assert!(WorldCatalog::read_selected(&path, "missing").err().unwrap().contains("no variant"));
+    assert!(WorldCatalog::read(&path).is_err());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn legacy_container_selection_remains_compatible() {
+    let source = catalog();
+    let root = scratch();
+    let path = root.join("catalog.dat");
+    let mut gzip = GzEncoder::new(Vec::new(), Compression::best());
+    gzip.write_all(&fastnbt::to_bytes(&source).unwrap()).unwrap();
+    fs::write(&path, gzip.finish().unwrap()).unwrap();
+    let selected = WorldCatalog::read_selected(&path, "normal").unwrap();
+    assert_eq!(source.materialize("normal", -1).unwrap(), selected.materialize("normal", -1).unwrap());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+#[ignore = "requires RETINA_CATALOG_V1 and RETINA_CATALOG_V2"]
+fn repacked_catalog_preserves_every_variant_and_seed() {
+    let old = WorldCatalog::read(std::env::var("RETINA_CATALOG_V1").unwrap()).unwrap();
+    let new_path = std::env::var("RETINA_CATALOG_V2").unwrap();
+    let all = WorldCatalog::read(&new_path).unwrap();
+    assert_eq!(old.variants.keys().collect::<Vec<_>>(), all.variants.keys().collect::<Vec<_>>());
+    drop(all);
+    for name in old.variants.keys() {
+        let selected = WorldCatalog::read_selected(&new_path, name).unwrap();
+        assert_eq!(selected.variants.len(), 1);
+        for seed in [0, -1, i64::MIN, i64::MAX, 123456789] {
+            let expected = old.materialize(name, seed).unwrap();
+            let actual = selected.materialize(name, seed).unwrap();
+            assert_eq!(expected, actual, "changed complete definition: {name}/{seed}");
+            println!("CATALOG_CONTAINER_EXACT {name}/{seed} {} bytes", actual.len());
+        }
+    }
+}

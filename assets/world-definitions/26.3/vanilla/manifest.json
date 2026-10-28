@@ -1,7 +1,7 @@
 {
   "minecraft_version": "26.3",
   "data_version": 5023,
-  "catalog_version": 1,
+  "catalog_version": 2,
   "materialization_version": 1,
   "generation_version": 1,
   "exporter": "Retina vanilla catalog compiler 1",
@@ -11,8 +11,8 @@
     "vanilla"
   ],
   "asset": "retina-catalog.dat",
-  "compressed_bytes": 5274690,
-  "sha256": "1d36669962947ee6fce5ddfb7029d0fa06eda32647297227b8f9116bbb8dc150",
+  "compressed_bytes": 4085653,
+  "sha256": "d34080051d84bf4ca0c2e59d17c294fa22495fc592d212f4ed92d8e0bffc9f17",
   "variants": {
     "bukkit-api": {
       "generate_structures": false,
