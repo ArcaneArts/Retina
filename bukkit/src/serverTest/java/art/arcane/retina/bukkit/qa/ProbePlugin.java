@@ -25,6 +25,9 @@ public final class ProbePlugin extends JavaPlugin {
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("retina.probe")) return true;
         try {
+            if (args.length == 2 && args[0].equals("universal-smoke")) {
+                UniversalSmoke.run(this, args[1].equals("reopen")); return true;
+            }
             if (args.length == 3 && args[0].equals("transfer-reference-benchmark")) { TransferProbe.runReference(this, Path.of(args[1]), Path.of(args[2])); return true; }
             if (args.length == 2 && args[0].equals("transfer-live-benchmark")) { TransferProbe.run(this, Path.of(args[1]), true); return true; }
             if (args.length == 2 && args[0].equals("transfer-benchmark")) { TransferProbe.run(this, Path.of(args[1]), false); return true; }
