@@ -8,6 +8,28 @@ from pathlib import Path
 from zipfile import ZipFile
 
 
+def inspect_catalog(archive: ZipFile, directory: str, minecraft: str) -> None:
+    manifest = json.loads(archive.read(directory + 'manifest.json'))
+    catalog = archive.read(directory + 'retina-catalog.dat')
+    expected = {'minecraft_version': minecraft, 'catalog_version': 2,
+                'materialization_version': 1, 'generation_version': 1,
+                'asset': 'retina-catalog.dat'}
+    for key, value in expected.items():
+        if manifest.get(key) != value:
+            raise ValueError(f'{directory}manifest {key}: {manifest.get(key)!r}, expected {value!r}')
+    if len(catalog) != manifest['compressed_bytes'] or hashlib.sha256(catalog).hexdigest() != manifest['sha256']:
+        raise ValueError(f'{directory}catalog bytes differ from the packaged manifest')
+    required = {'bukkit-api', 'normal', 'normal-bonus-chest',
+                'normal-no-structures', 'normal-no-structures-bonus-chest'}
+    if not required.issubset(manifest['variants']):
+        raise ValueError(f'{directory}manifest is missing supported catalog variants')
+
+
+def inspect_mod_catalogs(archive: ZipFile, minecraft: str) -> None:
+    for snapshot in ('vanilla-recompiled', 'vanilla-binary'):
+        inspect_catalog(archive, f'catalogs/{minecraft}/{snapshot}/', minecraft)
+
+
 def inspect_bukkit(archive: ZipFile, minecraft: str, version: str) -> None:
     descriptor = dict(line.split(':', 1) for line in archive.read('plugin.yml').decode().splitlines()
                       if line and not line.startswith((' ', '#')) and ':' in line)
@@ -24,11 +46,7 @@ def inspect_bukkit(archive: ZipFile, minecraft: str, version: str) -> None:
                 'art/arcane/retina/internal/kyori/adventure/nbt/BinaryTagIO.class']
     for name in required:
         if not archive.read(name): raise ValueError(f'Empty plugin resource {name}')
-    directory = f'catalogs/{minecraft}/'
-    manifest = json.loads(archive.read(directory + 'manifest.json'))
-    catalog = archive.read(directory + 'retina-catalog.dat')
-    if len(catalog) != manifest['compressed_bytes'] or hashlib.sha256(catalog).hexdigest() != manifest['sha256']:
-        raise ValueError('Bundled catalog bytes differ from the packaged manifest')
+    inspect_catalog(archive, f'catalogs/{minecraft}/', minecraft)
     forbidden = ('net/minecraft/', 'org/bukkit/', 'org/spigotmc/', 'net/fabricmc/', 'net/neoforged/',
                  'com/google/gson/', 'net/kyori/')
     for name in archive.namelist():
@@ -54,6 +72,7 @@ def stage(minecraft: str, version: str) -> None:
                     if not archive.read(member):
                         raise ValueError(f'{jar}: empty native library {member}')
             if loader == 'bukkit': inspect_bukkit(archive, minecraft, version)
+            else: inspect_mod_catalogs(archive, minecraft)
         shutil.copy2(jar, destination / jar.name)
         print(f'Staged {jar.name} with all six native libraries')
 
