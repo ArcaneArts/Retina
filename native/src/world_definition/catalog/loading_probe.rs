@@ -9,6 +9,71 @@ fn timed<T>(f: impl FnOnce() -> T) -> (T, f64) {
     (result, start.elapsed().as_secs_f64() * 1000.0)
 }
 
+/// Compression-only comparison on the exact canonical bytes of a real definition.
+/// Compressor construction and output allocation are included; verification is not.
+#[test]
+#[ignore = "requires RETINA_COMPRESSION_INPUT and RETINA_COMPRESSION_OUTPUT"]
+fn definition_compression_inventory() {
+    let input = PathBuf::from(std::env::var_os("RETINA_COMPRESSION_INPUT").unwrap());
+    let output = PathBuf::from(std::env::var_os("RETINA_COMPRESSION_OUTPUT").unwrap());
+    let original = fs::read(&input).unwrap();
+    let mut raw = Vec::new();
+    GzDecoder::new(original.as_slice())
+        .read_to_end(&mut raw)
+        .unwrap();
+    let expected_seed = WorldDefinition::from_gzip(original.as_slice())
+        .unwrap()
+        .seed();
+    let mut samples = Vec::new();
+    // Reverse every other sweep to avoid consistently favoring a later candidate.
+    for round in 0..12 {
+        let mut levels = vec![0, 1, 3, 6, 9, 12];
+        if round % 2 == 1 {
+            levels.reverse();
+        }
+        for level in levels {
+            let (compressed, elapsed_ms) = timed(|| {
+                if level == 0 {
+                    let mut encoder = GzEncoder::new(Vec::new(), Compression::best());
+                    encoder.write_all(&raw).unwrap();
+                    encoder.finish().unwrap()
+                } else {
+                    let mut encoder = libdeflater::Compressor::new(
+                        libdeflater::CompressionLvl::new(level).unwrap(),
+                    );
+                    let mut bytes = vec![0; encoder.gzip_compress_bound(raw.len())];
+                    let size = encoder.gzip_compress(&raw, &mut bytes).unwrap();
+                    bytes.truncate(size);
+                    bytes
+                }
+            });
+            let mut decoded = Vec::new();
+            GzDecoder::new(compressed.as_slice())
+                .read_to_end(&mut decoded)
+                .unwrap();
+            assert_eq!(decoded, raw, "level {level}, round {round}");
+            if round == 0 {
+                assert_eq!(
+                    WorldDefinition::from_gzip(compressed.as_slice())
+                        .unwrap()
+                        .seed(),
+                    expected_seed
+                );
+            }
+            if round >= 2 {
+                samples.push(serde_json::json!({"round":round,"level":level,
+                    "compressor":if level == 0 {"flate2-best"} else {"libdeflate"},
+                    "elapsed_ms":elapsed_ms,"compressed_bytes":compressed.len()}));
+            }
+        }
+    }
+    fs::write(output, serde_json::to_vec_pretty(&serde_json::json!({
+        "input":input,"expanded_bytes":raw.len(),"warmup_sweeps":2,
+        "scope":"compression only, including compressor and output allocation; exact decompressed bytes checked for every sample",
+        "samples":samples
+    })).unwrap()).unwrap();
+}
+
 #[test]
 #[ignore = "requires RETINA_CATALOG_PROBE_INPUT and RETINA_CATALOG_PROBE_OUTPUT"]
 fn catalog_loading_inventory() {
@@ -21,7 +86,9 @@ fn catalog_loading_inventory() {
     for index in 0..12 {
         let (raw, decompress_ms) = timed(|| {
             let mut raw = Vec::new();
-            GzDecoder::new(compressed.as_slice()).read_to_end(&mut raw).unwrap();
+            GzDecoder::new(compressed.as_slice())
+                .read_to_end(&mut raw)
+                .unwrap();
             raw
         });
         let expanded_bytes = raw.len();
@@ -33,7 +100,9 @@ fn catalog_loading_inventory() {
         let seed = [0, -1, i64::MIN + 17, i64::MAX - 11][index % 4];
         let (bytes, materialize_ms) = timed(|| catalog.materialize(&variant, seed).unwrap());
         let mut nbt = Vec::new();
-        GzDecoder::new(bytes.as_slice()).read_to_end(&mut nbt).unwrap();
+        GzDecoder::new(bytes.as_slice())
+            .read_to_end(&mut nbt)
+            .unwrap();
         let value: Value = fastnbt::from_bytes(&nbt).unwrap();
         let (encoded, encode_ms) = timed(|| fastnbt::to_bytes(&Canonical(&value)).unwrap());
         assert_eq!(encoded, nbt);
@@ -43,10 +112,14 @@ fn catalog_loading_inventory() {
             gzip.write_all(&encoded).unwrap();
             gzip.finish().unwrap()
         });
-        assert_eq!(recompressed, bytes);
+        let mut decoded = Vec::new();
+        GzDecoder::new(recompressed.as_slice()).read_to_end(&mut decoded).unwrap();
+        assert_eq!(decoded, encoded);
+        drop(decoded);
         drop(encoded);
         drop(nbt);
-        let (definition, validate_ms) = timed(|| WorldDefinition::from_gzip(bytes.as_slice()).unwrap());
+        let (definition, validate_ms) =
+            timed(|| WorldDefinition::from_gzip(bytes.as_slice()).unwrap());
         assert_eq!(definition.seed(), seed);
         drop(definition);
         let path = output.join("retina.dat");
@@ -55,14 +128,20 @@ fn catalog_loading_inventory() {
         assert_eq!(reopened.seed(), seed);
         drop(reopened);
         let mut usage = std::mem::MaybeUninit::<libc::rusage>::uninit();
-        assert_eq!(unsafe { libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()) }, 0);
+        assert_eq!(
+            unsafe { libc::getrusage(libc::RUSAGE_SELF, usage.as_mut_ptr()) },
+            0
+        );
         let usage = unsafe { usage.assume_init() };
-        let peak_rss_bytes = usage.ru_maxrss as u64 * if cfg!(target_os = "macos") { 1 } else { 1024 };
+        let peak_rss_bytes =
+            usage.ru_maxrss as u64 * if cfg!(target_os = "macos") { 1 } else { 1024 };
         if index >= 2 {
-            samples.push(serde_json::json!({"seed":seed,"expanded_bytes":expanded_bytes,
+            samples.push(
+                serde_json::json!({"seed":seed,"expanded_bytes":expanded_bytes,
                 "decompress_ms":decompress_ms,"parse_ms":parse_ms,"clone_ms":clone_ms,
                 "materialize_ms":materialize_ms,"encode_ms":encode_ms,"compress_ms":compress_ms,
-                "validate_ms":validate_ms,"reopen_ms":reopen_ms,"peak_rss_bytes":peak_rss_bytes}));
+                "validate_ms":validate_ms,"reopen_ms":reopen_ms,"peak_rss_bytes":peak_rss_bytes}),
+            );
         }
     }
     fs::write(output.join("inventory.json"), serde_json::to_vec_pretty(&serde_json::json!({
