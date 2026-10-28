@@ -93,3 +93,18 @@ tasks.register('transferInventory', JavaExec) {
             providers.gradleProperty('retinaTransferDefinition').getOrElse(''),
             providers.gradleProperty('retinaTransferOutput').getOrElse('build/transfer-inventory')
 }
+
+// Internal shaded payload for universal assembly; not an installable plugin.
+tasks.register('universalRuntime', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar) {
+    dependsOn tasks.named('compileJava')
+    archiveClassifier = 'universal-runtime'
+    destinationDirectory = layout.buildDirectory.dir('intermediates')
+    from tasks.named('compileJava').flatMap { it.destinationDirectory }
+    configurations = [project.configurations.runtimeClasspath]
+    exclude 'art/arcane/retina/core/**'
+    relocate 'com.google.gson', 'art.arcane.retina.internal.gson'
+    relocate 'net.kyori', 'art.arcane.retina.internal.kyori'
+    mergeServiceFiles()
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

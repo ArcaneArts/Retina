@@ -1,0 +1,66 @@
+plugins {
+    id 'java-library'
+    id 'com.gradleup.shadow' version '9.6.1'
+}
+apply from: rootProject.file('gradle/java-toolchain.gradle')
+['core', 'fabric', 'neoforge', 'bukkit'].each { evaluationDependsOn(":" + it) }
+repositories { mavenCentral() }
+configurations { shadedLibraries }
+dependencies {
+    shadedLibraries 'com.electronwill.night-config:core:3.9.0'
+    shadedLibraries 'com.electronwill.night-config:toml:3.9.0'
+    shadedLibraries 'org.snakeyaml:snakeyaml-engine:2.10'
+}
+base { archivesName = "retina-${minecraft_version}" }
+def inputsByName = [
+    core: project(':core').tasks.named('compileJava').flatMap { it.destinationDirectory },
+    fabric: project(':fabric').tasks.named('compileJava').flatMap { it.destinationDirectory },
+    fabricClient: project(':fabric').tasks.named('compileClientJava').flatMap { it.destinationDirectory },
+    neoforge: project(':neoforge').tasks.named('compileJava').flatMap { it.destinationDirectory },
+    bukkit: project(':bukkit').tasks.named('universalRuntime').flatMap { it.archiveFile }
+]
+def merged = layout.buildDirectory.dir('merged-runtime')
+def mergeRuntime = tasks.register('mergeRuntime', Exec) {
+    inputs.files(inputsByName.values()).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.file('scripts/merge-universal.py'))
+    outputs.dir(merged)
+    outputs.cacheIf { true }
+    commandLine(['python3', rootProject.file('scripts/merge-universal.py'), merged.get().asFile] +
+            inputsByName.collect { name, source -> "${name}=${source.get().asFile}" })
+}
+processResources {
+    def metadata = [version: project.version, minecraft_version: minecraft_version,
+                    loader_version: loader_version, neoforge_version: neoforge_version]
+    inputs.properties(metadata)
+    from rootProject.file('common/src/main/resources')
+    from rootProject.file('common/src/client/resources')
+    from rootProject.file('fabric/src/main/resources')
+    from rootProject.file('neoforge/src/main/resources')
+    from rootProject.file('bukkit/src/main/resources')
+    filesMatching(['fabric.mod.json', 'META-INF/neoforge.mods.toml', 'plugin.yml']) { expand(metadata) }
+    ['vanilla': 'vanilla-recompiled', 'vanilla-binary': 'vanilla-binary'].each { source, snapshot ->
+        from(rootProject.file("assets/world-definitions/${minecraft_version}/${source}")) {
+            into "catalogs/${minecraft_version}/${snapshot}"
+        }
+    }
+    from(rootProject.file("assets/world-definitions/${minecraft_version}/vanilla")) {
+        into "catalogs/${minecraft_version}"
+    }
+}
+tasks.named('jar') { enabled = false }
+tasks.named('shadowJar') {
+    archiveClassifier = ''
+    configurations = [project.configurations.shadedLibraries]
+    from mergeRuntime
+    from rootProject.tasks.named('packageNative')
+    from rootProject.tasks.named('packageCrossNatives')
+    from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
+    exclude 'module-info.class', 'META-INF/versions/**/module-info.class'
+    relocate 'com.electronwill.nightconfig', 'art.arcane.retina.internal.nightconfig'
+    relocate 'org.snakeyaml.engine', 'art.arcane.retina.internal.snakeyaml'
+    mergeServiceFiles()
+    manifest { attributes('Implementation-Version': project.version, 'Automatic-Module-Name': 'art.arcane.retina') }
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+tasks.named('assemble') { dependsOn 'shadowJar' }

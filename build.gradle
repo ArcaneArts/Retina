@@ -51,3 +51,9 @@ tasks.register('exportFabricBenchmarkProfile') {
     group = 'verification'
     dependsOn ':fabric:exportBenchmarkProfile'
 }
+
+tasks.register('universalJar') {
+    group = 'build'
+    description = 'Assemble the single installable Fabric, NeoForge and Bukkit JAR.'
+    dependsOn ':universal:shadowJar'
+}
