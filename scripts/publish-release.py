@@ -29,6 +29,12 @@ def api(path, missing=False, pages=False):
     return [entry for page in data for entry in page] if pages else data
 
 
+def release_for_tag(tag):
+    # The tag endpoint excludes drafts, even for their authenticated creator.
+    return next((release for release in api('releases?per_page=100', pages=True)
+                 if release['tag_name'] == tag), None)
+
+
 def release_count(tag):
     # Recognize current and historical Retina version schemes during migration.
     if re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', tag) or re.fullmatch(r'v0\.[0-9]+', tag):
@@ -124,7 +130,7 @@ def publish():
     contents = jar.read_bytes()
     sha256 = hashlib.sha256(contents).hexdigest()
     tag = 'v' + info['version']
-    existing = api('releases/tags/' + tag, missing=True)
+    existing = release_for_tag(tag)
     source = tag_commit(tag)
     if source is not None and source != info['commit']:
         raise ValueError(f'{tag} already points to a different commit')
@@ -156,7 +162,7 @@ def publish():
             run('gh', 'release', 'edit', tag, '--repo', REPO,
                 '--title', f'Retina {info["version"]}', '--notes-file', str(notes))
         run('gh', 'release', 'upload', tag, str(jar), '--repo', REPO, '--clobber')
-        draft = api('releases/tags/' + tag)
+        draft = release_for_tag(tag)
         if [asset['name'] for asset in draft['assets']] != [jar.name]:
             raise ValueError('Draft has unexpected assets; refusing to publish an incomplete distribution')
         run('gh', 'release', 'edit', tag, '--repo', REPO, '--draft=false', '--latest=false')

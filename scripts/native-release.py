@@ -24,6 +24,16 @@ def output(*command):
     return subprocess.check_output(command, cwd=ROOT, text=True).strip()
 
 
+def build_environment(environment):
+    # Windows normalizes environment names to uppercase in Python.
+    prefixes = ('CARGO_ENCODED_RUSTFLAGS', 'RUSTFLAGS', 'CFLAGS', 'CXXFLAGS',
+                'MACOSX_DEPLOYMENT_TARGET', 'SDKROOT', 'CC_', 'CXX_', 'IMAGE')
+    names = ('CC', 'CXX', 'AR', 'VCTOOLSVERSION', 'WINDOWSSDKVERSION',
+             'INCLUDE', 'LIB', 'LIBPATH')
+    return {key.upper(): value for key, value in environment.items()
+            if key.upper().startswith(prefixes) or key.upper() in names}
+
+
 def fingerprint(target):
     files = [ROOT / 'native/Cargo.toml', ROOT / 'native/Cargo.lock', Path(__file__).resolve()]
     files += [p for directory in ('native/src', '.cargo') for p in (ROOT / directory).rglob('*') if p.is_file()]
@@ -37,10 +47,7 @@ def fingerprint(target):
     else:
         compiler = subprocess.run(['cl'], capture_output=True, text=True)
         toolchain['msvc'] = compiler.stdout + compiler.stderr
-    flags = {key: value for key, value in os.environ.items()
-             if key.startswith(('CARGO_ENCODED_RUSTFLAGS', 'RUSTFLAGS', 'CFLAGS', 'CXXFLAGS',
-                                'MACOSX_DEPLOYMENT_TARGET', 'SDKROOT', 'CC_', 'CXX_', 'Image'))
-             or key in ('CC', 'CXX', 'AR', 'VCToolsVersion', 'WindowsSDKVersion')}
+    flags = build_environment(os.environ)
     # Paths in an SDKROOT are toolchain inputs on this host, not checkout paths.
     inputs = {'target': target, 'toolchain': toolchain, 'environment': flags,
               'files': {p.relative_to(ROOT).as_posix(): digest(p.read_bytes()) for p in sorted(files)}}

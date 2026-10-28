@@ -14,6 +14,23 @@ spec.loader.exec_module(publisher)
 
 
 class ReleaseTest(unittest.TestCase):
+    def test_draft_lookup_uses_authenticated_release_listing(self):
+        draft = {'tag_name': 'v1.1.450', 'draft': True, 'id': 123}
+        with patch.object(publisher, 'api', return_value=[draft]) as api:
+            self.assertEqual(publisher.release_for_tag('v1.1.450'), draft)
+            self.assertIsNone(publisher.release_for_tag('v1.1.449'))
+            api.assert_called_with('releases?per_page=100', pages=True)
+
+    def test_windows_native_environment_and_commit_independence(self):
+        spec = importlib.util.spec_from_file_location('native_release', Path(__file__).with_name('native-release.py'))
+        native = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(native)
+        fields = {'VCTOOLSVERSION': '14.44', 'WINDOWSSDKVERSION': '10.0.26100',
+                  'IMAGEVERSION': '20261026', 'LIB': 'sdk/lib', 'INCLUDE': 'sdk/include'}
+        self.assertEqual(native.build_environment({**fields, 'GITHUB_SHA': 'first'}), fields)
+        self.assertEqual(native.build_environment({**fields, 'GITHUB_SHA': 'next'}), fields)
+        self.assertEqual(native.build_environment({'VCToolsVersion': '14.44'}), {'VCTOOLSVERSION': '14.44'})
+
     def test_major_minor_and_real_commit_count(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
