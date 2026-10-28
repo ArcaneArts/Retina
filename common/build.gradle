@@ -5,7 +5,13 @@ plugins {
 apply from: rootProject.file('gradle/java-conventions.gradle')
 evaluationDependsOn(':core')
 
-neoForge { neoFormVersion = neo_form_version }
+neoForge {
+    enable {
+        neoFormVersion = neo_form_version
+        // This runtime exports the exact recompiled snapshot, including in CI.
+        disableRecompilation = false
+    }
+}
 repositories {
     maven { url = 'https://maven.fabricmc.net/' }
 }

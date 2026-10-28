@@ -41,7 +41,10 @@ Minecraft version, and execution options. Its relative output argument makes the
 Gradle build-cache entry reusable across checkouts. The generated catalog and
 manifest are restored together. A cache miss executes the exporter normally;
 committed catalog assets are not a release fallback. Binary/recompiled snapshots
-remain separate to preserve their exact noise offsets.
+remain separate to preserve their exact noise offsets. Common's NeoForm runtime
+explicitly enables recompilation, including when `CI=true`; ModDevGradle otherwise
+skips it by default in CI. Export manifests record the actual observed RNG snapshot,
+and final JAR inspection checks it against each catalog's resource location.
 
 ## Native release jobs and caching
 
