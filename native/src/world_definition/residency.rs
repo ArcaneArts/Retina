@@ -2,11 +2,12 @@
 //! Slots never change meaning or reuse IDs, so old cache entries cannot alias
 //! the next opened world. Legacy registration exists only in unit-test migration oracles.
 use crate::{ChunkRequest, profile::WorldProfile, region::codec::Compression};
-use std::sync::{Arc, Weak};
+use std::{collections::BTreeMap, sync::{Arc, Weak}};
 
 #[derive(Default)]
 pub(crate) struct Profiles {
-    entries: Vec<Entry>,
+    entries: BTreeMap<u32, Entry>,
+    next_id: u32,
 }
 
 struct Entry {
@@ -73,17 +74,23 @@ impl Entry {
 
 impl Profiles {
     #[cfg(test)]
+    pub(super) fn leave_one_handle_for_failure_test(&mut self) {
+        assert!(self.entries.is_empty());
+        self.next_id = u32::MAX - 1;
+    }
+
+    #[cfg(test)]
     pub fn len(&self) -> usize {
         self.entries.len()
     }
 
     #[cfg(test)]
     pub fn legacy(&mut self, profile: Arc<WorldProfile>) -> Result<u32, String> {
-        if let Some(index) = self.entries.iter().position(|entry| {
+        if let Some((&id, _)) = self.entries.iter().find(|(_, entry)| {
             matches!(&entry.owner,
             Owner::Legacy(p) if p.encoded == profile.encoded)
         }) {
-            return Ok(index as u32 + 1);
+            return Ok(id);
         }
         self.insert(Entry {
             compression: profile.mca_compression,
@@ -112,20 +119,18 @@ impl Profiles {
     }
 
     fn insert(&mut self, entry: Entry) -> Result<u32, String> {
-        let id = self
-            .entries
-            .len()
-            .checked_add(1)
-            .and_then(|n| u32::try_from(n).ok())
-            .ok_or("native profile handle space exhausted")?;
-        self.entries.push(entry);
+        let id = self.next_id.checked_add(1).ok_or("native profile handle space exhausted")?;
+        self.next_id = id;
+        self.entries.insert(id, entry);
         Ok(id)
     }
 
+    pub fn retire(&mut self, ids: &[u32]) {
+        for id in ids { self.entries.remove(id); }
+    }
+
     fn entry(&self, id: u32) -> Result<&Entry, String> {
-        id.checked_sub(1)
-            .and_then(|id| self.entries.get(id as usize))
-            .ok_or_else(|| "unknown world profile".into())
+        self.entries.get(&id).ok_or_else(|| "unknown or closed world profile".into())
     }
 
     pub fn validate_request(&self, request: &ChunkRequest) -> Result<(), String> {

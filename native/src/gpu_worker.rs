@@ -1,5 +1,5 @@
 //! One GPU owner with bounded submissions and independent readback slots.
-use crate::{BATCH_WAIT, COLUMNS, GpuRequest, Job, MAX_BATCH, gpu, pipeline, timings};
+use crate::{BATCH_WAIT, COLUMNS, GpuRequest, GpuCommand, Job, MAX_BATCH, gpu, pipeline, timings};
 use std::{
     collections::VecDeque,
     panic::{AssertUnwindSafe, catch_unwind},
@@ -74,7 +74,7 @@ fn advance(gpu: &mut gpu::Gpu, flights: &mut VecDeque<(Vec<Job>, gpu::PendingSam
     }
 }
 pub(crate) fn run(
-    receiver: mpsc::Receiver<Job>,
+    receiver: mpsc::Receiver<GpuCommand>,
     ready: mpsc::SyncSender<
         Result<
             (
@@ -160,6 +160,16 @@ pub(crate) fn run(
             }
             break;
         };
+        let first = match first {
+            GpuCommand::Generate(job) => job,
+            GpuCommand::Retire(ids, reply) => {
+                while !flights.is_empty() { advance(&mut gpu, &mut flights); }
+                gpu.retire(&ids);
+                #[cfg(test)] gpu.publish_buffer_census();
+                let _ = reply.send(());
+                continue;
+            }
+        };
         let profile = first.requests[0].reserved;
         let tile = first.tile_side;
         let mode = first.probe_mode;
@@ -172,18 +182,19 @@ pub(crate) fn run(
         let deadline = Instant::now() + BATCH_WAIT;
         while count < MAX_BATCH {
             match receiver.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
-                Ok(job) => {
+                Ok(GpuCommand::Generate(job)) => {
                     if job.tile_side != 0
                         || job.probe_mode != mode
                         || job.requests[0].reserved != profile
                         || count + job.requests.len() > MAX_BATCH
                     {
-                        queued = Some(job);
+                        queued = Some(GpuCommand::Generate(job));
                         break;
                     }
                     count += job.requests.len();
                     batch.push(job);
                 }
+                Ok(command) => { queued = Some(command); break; }
                 Err(_) => break,
             }
         }
@@ -273,7 +284,7 @@ mod tests {
                 .unwrap();
             let (reply, result) = mpsc::channel();
             for x in [-33, 4095] {
-                send.send(Job {
+                send.send(GpuCommand::Generate(Job {
                     requests: vec![crate::ChunkRequest {
                         seed: 123456789,
                         chunk_x: x,
@@ -295,7 +306,7 @@ mod tests {
                     queued: Instant::now(),
                     queue_nanos: 0,
                     timings: times.clone(),
-                })
+                }))
                 .unwrap();
             }
             drop(send);

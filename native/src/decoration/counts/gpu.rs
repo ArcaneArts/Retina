@@ -48,6 +48,11 @@ pub(crate) struct ResultSamples {
     pub device_nanos: Option<u64>,
 }
 impl Gpu {
+    pub(crate) fn retire(&mut self, ids: &[u32]) {
+        self.profiles.retain(|id, _| !ids.contains(id));
+        self.provider_profiles.retain(|id, _| !ids.contains(id));
+    }
+
     pub(crate) fn new(device: wgpu::Device, queue: wgpu::Queue) -> Self {
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Retina sparse feature counts"),

@@ -1,7 +1,7 @@
 //! Read-only point queries. No region, decoration, block assembly or NBT path.
 use crate::gpu::GpuSample;
 use crate::profile::Column;
-use crate::{CacheKey, ChunkRequest, Job, TerrainEngine, boundary, shared_engine};
+use crate::{GpuCommand, CacheKey, ChunkRequest, Job, TerrainEngine, boundary, shared_engine};
 use std::collections::{HashMap, VecDeque};
 use std::sync::mpsc;
 use std::time::Instant;
@@ -32,6 +32,11 @@ pub(crate) struct Cache {
     order: VecDeque<Key>,
 }
 impl Cache {
+    pub(crate) fn retire(&mut self, ids: &[u32]) {
+        self.entries.retain(|key, _| !ids.contains(&key.request.profile));
+        self.order.retain(|key| !ids.contains(&key.request.profile));
+    }
+
     #[cfg(test)]
     pub(crate) fn retention_probe(&self) -> serde_json::Value {
         serde_json::json!({"entries":self.entries.len(),"order":self.order.len(),
@@ -149,7 +154,7 @@ impl TerrainEngine {
                 });
                 let (reply, receiver) = mpsc::channel();
                 self.sender
-                    .send(Job {
+                    .send(GpuCommand::Generate(Job {
                         requests,
                         profile,
                         tile_side: 0,
@@ -165,7 +170,7 @@ impl TerrainEngine {
                         queued: Instant::now(),
                         queue_nanos: 0,
                         timings: self.timings(request.reserved),
-                    })
+                    }))
                     .map_err(|_| "GPU worker stopped")?;
                 let GpuSample { columns, .. } = receiver
                     .recv()

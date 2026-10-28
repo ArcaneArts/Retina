@@ -51,6 +51,10 @@ pub(crate) struct Metrics {
     profiles: Mutex<HashMap<u32, Arc<ProfileCounters>>>,
 }
 impl Metrics {
+    pub(crate) fn retire(&self, ids: &[u32]) {
+        self.profiles.lock().unwrap_or_else(|e| e.into_inner()).retain(|id, _| !ids.contains(id));
+    }
+
     fn profile(&self, id: u32) -> Arc<ProfileCounters> {
         self.profiles
             .lock()
@@ -72,7 +76,10 @@ impl Metrics {
         p.readback.fetch_add(readback, Ordering::Relaxed);
     }
     pub fn program_snapshot(&self, id: u32) -> ProgramSnapshot {
-        let p = self.profile(id);
+        let p = self.profiles.lock().unwrap_or_else(|e| e.into_inner()).get(&id).cloned();
+        let Some(p) = p else {
+            return ProgramSnapshot { version: 1, ..Default::default() };
+        };
         let mut snapshot = p
             .shader
             .lock()

@@ -3,7 +3,7 @@
 use crate::program::{Instruction, Program, RegistryProgram};
 use std::collections::HashMap;
 use std::fmt::Write;
-use std::sync::{Arc, Condvar, Mutex, mpsc};
+use std::sync::{Arc, Condvar, Mutex, Weak, mpsc};
 use std::time::Instant;
 mod aquifer_columns;
 #[cfg(test)]
@@ -11,6 +11,7 @@ mod compile_probe;
 mod interpreter_dispatch;
 pub(crate) mod interpreter_reuse;
 mod material_dispatch;
+pub(crate) mod reuse_cache;
 
 #[derive(Clone, Copy, Default, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -586,7 +587,7 @@ impl State {
 struct Job {
     interpreter: Option<interpreter_reuse::Plan>,
     program: String,
-    state: Arc<State>,
+    state: Weak<State>,
     horizontal_fields: u32,
     material_layers: bool,
     aquifers: u8,
@@ -601,11 +602,15 @@ pub(crate) struct Compiler {
     sender: mpsc::Sender<Job>,
     // Exact generated source is the fingerprint key; HashMap also checks key
     // equality, so a hash collision cannot reuse an unrelated graph pipeline.
-    cache: HashMap<(String, bool), Arc<State>>,
+    cache: reuse_cache::Cache<(String, bool), State>,
     material_dispatch: bool,
     specialized_interpolation: bool,
 }
 impl Compiler {
+    pub(crate) fn prune(&mut self) { self.cache.prune(); }
+    #[cfg(test)]
+    pub(crate) fn cache_inventory(&self) -> serde_json::Value { self.cache.inventory() }
+
     pub fn new(
         device: &wgpu::Device,
         world: &wgpu::BindGroupLayout,
@@ -621,6 +626,8 @@ impl Compiler {
             .name("retina-shader-compiler".into())
             .spawn(move || {
                 while let Ok(job) = receiver.recv() {
+                    // Evicted jobs with no live world do not keep compiling after close.
+                    let Some(state) = job.state.upgrade() else { continue; };
                     let start = Instant::now();
                     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                         if let Some(reuse) = job.interpreter {
@@ -657,7 +664,7 @@ impl Compiler {
                     if let Err(error) = &result {
                         eprintln!("Retina keeps the GPU interpreter: {error}");
                     }
-                    job.state.progress.nanos.store(
+                    state.progress.nanos.store(
                         start.elapsed().as_nanos().min(u64::MAX as u128) as u64,
                         std::sync::atomic::Ordering::Relaxed,
                     );
@@ -666,19 +673,19 @@ impl Compiler {
                     } else {
                         3
                     };
-                    *job.state.result.lock().unwrap_or_else(|e| e.into_inner()) =
+                    *state.result.lock().unwrap_or_else(|e| e.into_inner()) =
                         Some(result.map(Arc::new));
-                    job.state
+                    state
                         .progress
                         .status
                         .store(status, std::sync::atomic::Ordering::Release);
-                    job.state.done.notify_all();
+                    state.done.notify_all();
                 }
             })
             .map_err(|e| format!("cannot start GPU shader compiler: {e}"))?;
         Ok(Self {
             sender,
-            cache: HashMap::new(),
+            cache: reuse_cache::Cache::new(8),
             material_dispatch,
             specialized_interpolation,
         })
@@ -709,7 +716,7 @@ impl Compiler {
             .send(Job {
                 interpreter: Some(interpreter_reuse::Plan::density_preload(composition)),
                 program: source,
-                state: state.clone(),
+                state: Arc::downgrade(&state),
                 horizontal_fields: 0,
                 material_layers: true,
                 aquifers: 2,
@@ -813,7 +820,7 @@ impl Compiler {
             .send(Job {
                 interpreter: None,
                 program: key.0.clone(),
-                state: state.clone(),
+                state: Arc::downgrade(&state),
                 horizontal_fields,
                 material_layers: program.material_layers,
                 aquifers: program

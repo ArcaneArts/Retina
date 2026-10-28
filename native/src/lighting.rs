@@ -160,6 +160,11 @@ pub(crate) struct ResultLight {
     palettes: Option<(usize, palettes::Layout)>,
 }
 impl Gpu {
+    pub(crate) fn retire(&mut self, ids: &[u32]) {
+        self.profiles.retain(|id, _| !ids.contains(id));
+        self.bind_groups.retain(|id, _| !ids.contains(id));
+    }
+
     pub(crate) fn new(device: wgpu::Device, queue: wgpu::Queue, backend: &str) -> Self {
         Self {
             device,

@@ -130,6 +130,14 @@ pub struct Cache {
     meta_order: VecDeque<CacheKey>,
 }
 impl Cache {
+    pub(crate) fn retire(&mut self, ids: &[u32]) {
+        self.entries.retain(|(key, _), _| !ids.contains(&key.profile));
+        self.active.retain(|(key, _), _| !ids.contains(&key.profile));
+        self.order.retain(|(key, _)| !ids.contains(&key.profile));
+        self.metadata.retain(|key, _| !ids.contains(&key.profile));
+        self.meta_order.retain(|key| !ids.contains(&key.profile));
+    }
+
     #[cfg(test)]
     pub(crate) fn retention_probe(&self) -> serde_json::Value {
         let outside_cells: usize = self.entries.values()

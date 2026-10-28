@@ -158,10 +158,15 @@ struct Job {
     timings: Arc<timings::Timings>,
 }
 
+enum GpuCommand {
+    Generate(Job),
+    Retire(Vec<u32>, mpsc::Sender<()>),
+}
+
 /// Concurrent callers enqueue work; one persistent device batches GPU submissions.
 /// Each caller assembles its own chunk in Rust after its GPU result arrives.
 pub struct TerrainEngine {
-    sender: mpsc::SyncSender<Job>,
+    sender: mpsc::SyncSender<GpuCommand>,
     backend: String,
     profiles: RwLock<world_definition::residency::Profiles>,
     cache: Mutex<ColumnCache>,
@@ -232,7 +237,7 @@ impl TerrainEngine {
         if !(1..=2).contains(&depth) {
             return Err("GPU pipeline depth must be 1 or 2".into());
         }
-        let (sender, receiver) = mpsc::sync_channel::<Job>(256);
+        let (sender, receiver) = mpsc::sync_channel::<GpuCommand>(256);
         let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
         let pipeline = Arc::new(pipeline::Metrics::default());
         let metrics = pipeline.clone();
@@ -267,6 +272,34 @@ impl TerrainEngine {
         })
     }
 
+    fn retire_world_profiles(&self, ids: Vec<u32>) {
+        if ids.is_empty() { return; }
+        self.profiles.write().unwrap_or_else(|e| e.into_inner()).retire(&ids);
+        // The worker drains submitted commands before releasing profile bindings.
+        let (reply, done) = mpsc::channel();
+        if self.sender.send(GpuCommand::Retire(ids.clone(), reply)).is_ok() {
+            let _ = done.recv(); // A stopped worker has already dropped its GPU owners.
+        }
+        for cache in [&self.cache, &self.height_cache] {
+            let mut cache = cache.lock().unwrap_or_else(|e| e.into_inner());
+            cache.entries.retain(|key, _| !ids.contains(&key.profile));
+            cache.order.retain(|key| !ids.contains(&key.profile));
+        }
+        {
+            let mut cache = self.caves.lock().unwrap_or_else(|e| e.into_inner());
+            cache.entries.retain(|key, _| !ids.contains(&key.profile));
+            cache.order.retain(|key| !ids.contains(&key.profile));
+            cache.live_tiles.retire(&ids);
+        }
+        self.query_cache.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
+        self.dependency_versions.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
+        self.structures.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
+        self.feature_gpu.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
+        self.light_gpu.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
+        self.timings.lock().unwrap_or_else(|e| e.into_inner()).retain(|id, _| !ids.contains(id));
+        self.pipeline.retire(&ids);
+    }
+
     pub fn pipeline_snapshot(&self) -> pipeline::Snapshot {
         self.pipeline.snapshot()
     }
@@ -279,9 +312,14 @@ impl TerrainEngine {
             .or_default()
             .clone()
     }
+    fn timing_snapshot(&self, profile: u32) -> timings::Snapshot {
+        let timings = self.timings.lock().unwrap_or_else(|e| e.into_inner()).get(&profile).cloned();
+        timings.unwrap_or_default().snapshot()
+    }
     /// Opt-in diagnostics shared by native benchmark tools and the Java bridge.
     pub fn performance_snapshot(&self, profile: u32) -> serde_json::Value {
-        self.timings(profile).performance.snapshot()
+        let timings = self.timings.lock().unwrap_or_else(|e| e.into_inner()).get(&profile).cloned();
+        timings.unwrap_or_default().performance.snapshot()
     }
 
     pub fn backend(&self) -> &str {
@@ -1344,7 +1382,7 @@ impl TerrainEngine {
         #[cfg(test)]
         let observer_at = [requests[0].chunk_x, requests[0].chunk_z];
         self.sender
-            .send(Job {
+            .send(GpuCommand::Generate(Job {
                 requests,
                 profile,
                 tile_side,
@@ -1356,7 +1394,7 @@ impl TerrainEngine {
                 queued: Instant::now(),
                 queue_nanos: 0,
                 timings: self.timings(timing_profile),
-            })
+            }))
             .map_err(|_| "GPU worker stopped".to_string())?;
         #[cfg(test)]
         let span = decoration::dependencies::worker_phase_probe::TerrainSpan::start(
@@ -1573,7 +1611,7 @@ pub unsafe extern "C" fn retina_timing_snapshot(
         let engine = shared_engine()?;
         engine.profile(profile)?;
         unsafe {
-            *output = engine.timings(profile).snapshot();
+            *output = engine.timing_snapshot(profile);
         }
         Ok(())
     })
@@ -1592,7 +1630,7 @@ pub unsafe extern "C" fn retina_performance_snapshot(
         }
         let engine = shared_engine()?;
         engine.profile(profile)?;
-        let bytes = serde_json::to_vec(&engine.timings(profile).performance.snapshot())
+        let bytes = serde_json::to_vec(&engine.performance_snapshot(profile))
             .map_err(|e| e.to_string())?
             .into_boxed_slice();
         unsafe {
