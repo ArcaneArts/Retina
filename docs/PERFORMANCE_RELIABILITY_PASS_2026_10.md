@@ -15,8 +15,8 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 6. Optimize material counting | Resolved: trials rejected; [PR #327](https://github.com/ArcaneArts/Retina/pull/327), `382a4e84` | No production optimization selected; evidence and boundary regression validated |
 | 7. Reduce catalog overhead | 7a merged [PR #328](https://github.com/ArcaneArts/Retina/pull/328), `841cc5b2`; 7b merged [PR #329](https://github.com/ArcaneArts/Retina/pull/329), `da267c93`; 7c merged [PR #330](https://github.com/ArcaneArts/Retina/pull/330), `4276e9d0` | Complete; final integrated acceptance remains |
 | 8. Separate registry tooling/build inspection | Merged [PR #331](https://github.com/ArcaneArts/Retina/pull/331), `0121a1a1` | Complete; host-only artifacts verified, six-native release requirement retained |
-| 9. Improve Bukkit chunk transfer | Validated; PR pending | Memory/allocation improvement; no general throughput claim |
-| 10. Improve mixed-section installation | Pending | Actual server timing and every-block/biome comparisons |
+| 9. Improve Bukkit chunk transfer | Merged [PR #332](https://github.com/ArcaneArts/Retina/pull/332), `91fe6d9b` | Complete; memory/allocation improvement, no general throughput claim |
+| 10. Improve mixed-section installation | Validated; PR pending | Public-API x-run batching, exact output and measured adapter gains |
 | 11. Bound MCA publication buffering | Pending | Partial/preview/resume/failure/durability and memory evidence |
 | Integrated acceptance | Pending | Relevant Fabric/NeoForge/Bukkit/CLI paths in all dimensions |
 
@@ -1153,3 +1153,96 @@ These commands belong only to the disposable server-test plugin. The native
 ignored test `native_chunk_encoding_inventory` takes `RETINA_TRANSFER_DEFINITION`
 and `RETINA_TRANSFER_OUTPUT`; its output directory must be new. All benchmark
 comparisons and heap instrumentation drivers are preserved in the evidence root.
+
+
+## Cycle 10: mixed-section installation (in progress)
+
+The first candidate groups identical packed palette indices within each x row,
+using public `setRegion` for runs and `setBlock` for singleton cells. Runs never
+cross row boundaries, and the existing whole-section uniform path is unchanged.
+A 17-state regression covers five-bit padded words, negative section height,
+row boundaries and exactly one write to every cell. All 24 Bukkit tests pass
+without skips. Native code/library are unchanged.
+
+On nine captured real chunks, API calls fall from 36,879–53,259 to 5,437–9,105
+in Overworld, from 32,776 to 3,637–4,295 in Nether, and from 8,206/12,301 to
+546/826 in the two mixed End chunks. The uniform End chunk remains 16 calls.
+The call-count probe verifies unchanged total written volume; actual server
+captures compare every block, biome and height.
+
+Four independent CraftBukkit processes ran ABBA using identical saved worlds and
+fixed native captures. Installation-only median us: Overworld controls 1674/1696
+versus candidates 1496/1630; Nether 1286/1206 versus 1016/1191; End 902/893 versus
+890/1093. Installation allocations fall from 929,392 to 74,800 bytes in Overworld,
+841,616 to 49,648 in Nether, and 216,928 to 20,368 in End. Full-transfer results
+also improve for Overworld/Nether but the second End candidate run slows down.
+The unchanged uniform End path also slows (808/818 versus 843/1087 us), suggesting
+host variation; this alone is not sufficient to dismiss a regression. Steam and
+FSEvents CPU activity was present. A same-process alternating comparison is now
+running to investigate, isolating only each version's snapshot classes while
+sharing Bukkit/NBT dependencies. No candidate is accepted yet.
+
+Evidence root: `/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle10/`;
+see `calls/`, `server-transfer-abba/`, raw samples and retained JARs, and the
+Python/Java reproduction drivers. The server-only probe now separately measures
+ChunkData allocation/installation, and supports loading a reference snapshot
+implementation from a supplied JAR without loading another plugin.
+
+The same-process ABBA test passed exact parity and gave installation medians
+(control/candidate/candidate/control, us): Overworld 1568/1343/1347/1609,
+Nether 1115/904/917/1138, End 785/785/787/818. Full transfer medians were
+1652/1537/1444/1689, 1164/953/962/1190, and 803/822/815/847 respectively.
+This supports useful Overworld/Nether gains without a consistent End regression.
+The full CraftBukkit suite also passed: 917,504 blocks, 14,336 quart biomes,
+metadata persistence, player edits, unload/reopen/disable and invalid-input cases.
+Logs/worlds are retained in `cycle10/server-acceptance/`.
+
+A synthetic 17-state alternating fixture exercises no useful adjacent runs.
+Its installation ABBA medians were 4175/5025/4798/5296 us, and full transfer
+4999/5931/5084/5496 us. Host variation is substantial and these samples do not
+resolve overhead conclusively. Inspection also found duplicate decoding at short
+run boundaries in the first candidate. A second candidate decodes each index
+once and flushes runs at state transitions or row ends. Repeated real-fixture
+and fragmented-fixture comparisons are running; final acceptance remains open.
+The synthetic fixture, driver and first results are retained separately under
+`fragmented-fixture/`, `fragmented-server/` and their reproduction sources.
+
+### Cycle 10 single-pass candidate
+
+The final scan decodes each index once, flushing a run when its palette index
+changes or its row ends. The same-process ABBA comparison passes every native
+fixture's block/biome/height digest. Installation medians (control/candidate/
+candidate/control, us): Overworld 1610/1384/1398/1587, Nether 1165/938/943/1183,
+End 885/808/811/867. This is approximately 13%, 20% and 8% lower installation
+latency on these sampled chunks. Full transfer medians are 1716/1453/1517/1645,
+1203/983/980/1222 and 909/826/838/892 respectively. These are public-API adapter
+measurements, not GPU speedups, new-world throughput or server TPS claims.
+
+The no-run 17-state synthetic fixture also matches exactly. Its installation
+medians are 3100/3157/3099/3102 us and transfer medians 3274/3263/3204/3282 us.
+This does not show a meaningful systematic fragmented-palette regression. The
+ordinary suite passes all 24 Bukkit tests without skips. The exact final JAR's
+full dedicated lifecycle suite is running before acceptance/merge. Evidence,
+immutable JARs and parity/samples are in `paired-server-v2/` and
+`fragmented-server-v2/`; the candidate source and identity are retained outside
+Git alongside the earlier rejected/investigated measurements. Native binaries,
+NBT ABI and metadata handling remain unchanged.
+
+### Cycle 10 acceptance
+
+The full dedicated CraftBukkit suite passes against the exact SHA-256-identical
+JAR measured in the final paired comparison (2m 18s). It preserves 917,504 blocks,
+14,336 quart biomes, three player edits, persisted End crystals and metadata,
+creation/restart/import, unload/reopen/disable and all five invalid-definition
+preservation cases. Final worlds/logs/report are retained under
+`cycle10/server-acceptance-v2/`; test XML is retained in `test-results/`.
+Actual JAR inspection confirms no QA classes ship. Accept the single-pass x-run
+implementation on this evidence. Host coverage is macOS ARM64/CraftBukkit 26.3;
+no foreign-platform runtime or six-native release build is claimed. Broader final
+integrated platform acceptance remains a separate goal requirement.
+
+The disposable QA command `retinaprobe transfer-reference-benchmark <captures>
+<reference-jar>` loads only the reference snapshot classes and shares the running
+server's Bukkit/NBT types; both control and candidate use this path in paired
+runs. The observer also emits independent `RETINA_INSTALL_SAMPLE` records.
+Neither helper is part of the installable plugin.
