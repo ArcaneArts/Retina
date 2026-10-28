@@ -25,6 +25,8 @@ public final class ProbePlugin extends JavaPlugin {
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("retina.probe")) return true;
         try {
+            if (args.length == 2 && args[0].equals("transfer-live-benchmark")) { TransferProbe.run(this, Path.of(args[1]), true); return true; }
+            if (args.length == 2 && args[0].equals("transfer-benchmark")) { TransferProbe.run(this, Path.of(args[1]), false); return true; }
             if (args.length != 0 && args[0].equals("save-benchmark")) { SaveProbe.run(this); return true; }
             if (args.length != 0 && args[0].equals("create-nether")) {
                 create("retina_probe_nether", Long.MAX_VALUE - 37, World.Environment.NETHER, "nether").getChunkAt(-1, -1);

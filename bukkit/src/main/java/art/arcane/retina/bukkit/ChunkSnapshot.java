@@ -11,15 +11,23 @@ import java.util.function.Function;
 
 /** Native chunk NBT decoded with a regular Java library; no Minecraft classes. */
 final class ChunkSnapshot {
-    record Section(int y, String[] states, long[] blocks, String[] biomes, long[] biomeData) { }
+    record Section(int y, String[] states, LongArrayBinaryTag blocks, String[] biomes, LongArrayBinaryTag biomeData) { }
+    private static final LongArrayBinaryTag EMPTY_DATA = LongArrayBinaryTag.longArrayBinaryTag();
     final CompoundBinaryTag root;
     private final Map<Integer, Section> sections;
     private final int minimum, height;
 
     ChunkSnapshot(byte[] bytes, int minimum, int height) {
-        this.minimum = minimum; this.height = height;
-        try { root = BinaryTagIO.unlimitedReader().read(new ByteArrayInputStream(bytes), BinaryTagIO.Compression.NONE); }
+        this(read(bytes), minimum, height);
+    }
+
+    private static CompoundBinaryTag read(byte[] bytes) {
+        try { return BinaryTagIO.unlimitedReader().read(new ByteArrayInputStream(bytes), BinaryTagIO.Compression.NONE); }
         catch (IOException error) { throw new IllegalStateException("Invalid native chunk NBT", error); }
+    }
+
+    ChunkSnapshot(CompoundBinaryTag root, int minimum, int height) {
+        this.minimum = minimum; this.height = height; this.root = root;
         var decoded = new HashMap<Integer, Section>();
         for (var raw : root.getList("sections", BinaryTagTypes.COMPOUND)) {
             var section = (CompoundBinaryTag) raw;
@@ -38,8 +46,8 @@ final class ChunkSnapshot {
             var biomeNames = new String[biomePalette.size()];
             for (int i = 0; i < biomeNames.length; i++) biomeNames[i] = biomePalette.getString(i);
             int y = section.getByte("Y") * 16;
-            decoded.put(y, new Section(y, names, blocks.getLongArray("data", new long[0]), biomeNames,
-                    biomes.getLongArray("data", new long[0])));
+            decoded.put(y, new Section(y, names, packedData(blocks, "data"), biomeNames,
+                    packedData(biomes, "data")));
         }
         sections = Map.copyOf(decoded);
     }
@@ -79,12 +87,17 @@ final class ChunkSnapshot {
     int height(HeightMap type, int x, int z) {
         var maps = root.getCompound("Heightmaps");
         if (!maps.contains(type.name())) throw new IllegalStateException("Saved chunk lacks heightmap " + type);
-        return minimum + packed(maps.getLongArray(type.name()), (z & 15) * 16 + (x & 15), 32 - Integer.numberOfLeadingZeros(height));
+        return minimum + packed(packedData(maps, type.name()), (z & 15) * 16 + (x & 15), 32 - Integer.numberOfLeadingZeros(height));
     }
 
     private static int bits(int count, int minimum) { return Math.max(minimum, 32 - Integer.numberOfLeadingZeros(count - 1)); }
-    private static int packed(long[] data, int index, int bits) {
+    // The root already owns these immutable words; value()/getLongArray() would copy them.
+    private static LongArrayBinaryTag packedData(CompoundBinaryTag parent, String key) {
+        return parent.get(key) instanceof LongArrayBinaryTag data ? data : EMPTY_DATA;
+    }
+
+    private static int packed(LongArrayBinaryTag data, int index, int bits) {
         int per = 64 / bits;
-        return (int) ((data[index / per] >>> ((index % per) * bits)) & ((1L << bits) - 1));
+        return (int) ((data.get(index / per) >>> ((index % per) * bits)) & ((1L << bits) - 1));
     }
 }

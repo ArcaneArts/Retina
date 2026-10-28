@@ -24,6 +24,8 @@ static ASSEMBLERS: OnceLock<Result<rayon::ThreadPool, String>> = OnceLock::new()
 mod material_cache;
 pub mod codec;
 mod geometry;
+#[cfg(test)]
+mod transfer_probe;
 use codec::{Encoder, Record};
 
 #[repr(C)]

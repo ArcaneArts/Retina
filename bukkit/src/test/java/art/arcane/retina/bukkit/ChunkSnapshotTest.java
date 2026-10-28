@@ -31,6 +31,26 @@ class ChunkSnapshotTest {
         assertEquals("minecraft:forest", chunk.biome(-16, -64, -16));
     }
 
+    @Test void heightmapsPreservePaddedWordsAndNegativeStorageMinimum() {
+        int minimum = -64, height = 384, bits = 9, perWord = 64 / bits;
+        long[] words = new long[(256 + perWord - 1) / perWord];
+        for (int i = 0; i < 256; i++)
+            words[i / perWord] |= (long) ((i * 37) % (height + 1)) << ((i % perWord) * bits);
+        var maps = net.kyori.adventure.nbt.CompoundBinaryTag.builder();
+        for (var type : org.bukkit.HeightMap.values()) maps.putLongArray(type.name(), words);
+        var root = net.kyori.adventure.nbt.CompoundBinaryTag.builder().put("Heightmaps", maps.build()).build();
+        var snapshot = new ChunkSnapshot(root, minimum, height);
+        for (var type : org.bukkit.HeightMap.values()) {
+            for (int i = 0; i < 256; i++)
+                assertEquals(minimum + (i * 37) % (height + 1),
+                        snapshot.height(type, (i & 15) - 16, (i >>> 4) + 16));
+        }
+        assertSame(root, snapshot.root); // Metadata remains available without reconstruction.
+        var absent = new ChunkSnapshot(net.kyori.adventure.nbt.CompoundBinaryTag.empty(), minimum, height);
+        assertThrows(IllegalStateException.class,
+                () -> absent.height(org.bukkit.HeightMap.WORLD_SURFACE, 0, 0));
+    }
+
     @Test @EnabledIfSystemProperty(named = "retina.native.path", matches = ".+")
     void apiCatalogExecutesWithoutUnavailableTickOrStructureMetadata() {
         var delivery = new MetadataDelivery(java.util.logging.Logger.getAnonymousLogger(), false);

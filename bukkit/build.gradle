@@ -79,3 +79,17 @@ test {
         systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     systemProperty 'retina.test.catalog', rootProject.file("assets/world-definitions/${minecraft_version}/vanilla/retina-catalog.dat").absolutePath
 }
+
+tasks.register('transferInventory', JavaExec) {
+    group = 'verification'
+    description = 'Opt-in allocation and stage inventory of actual native chunk output.'
+    dependsOn 'testClasses'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'art.arcane.retina.bukkit.TransferInventory'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs '--enable-native-access=ALL-UNNAMED', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '1g'
+    args providers.gradleProperty('retinaNativePath').getOrElse(''),
+            providers.gradleProperty('retinaTransferDefinition').getOrElse(''),
+            providers.gradleProperty('retinaTransferOutput').getOrElse('build/transfer-inventory')
+}
