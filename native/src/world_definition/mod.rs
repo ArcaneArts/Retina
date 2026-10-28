@@ -322,3 +322,5 @@ mod tests;
 mod procedural_tests;
 #[cfg(test)]
 mod embedded_nbt_tests;
+#[cfg(test)]
+mod retirement_probe;

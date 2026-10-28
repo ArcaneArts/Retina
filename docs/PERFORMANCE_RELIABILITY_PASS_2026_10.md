@@ -8,8 +8,8 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | Goal item | Status | Acceptance still needed |
 |---|---|---|
 | 1. Buffer biome-cache serialization | Merged: [PR #321](https://github.com/ArcaneArts/Retina/pull/321), `ab0248f3` | Complete |
-| 2. Persist outside shared locks | Implemented; acceptance passed, PR pending | Merge |
-| 3. Retire world GPU resources | Pending | Resource census, safe retirement, lifecycle/memory plateau |
+| 2. Persist outside shared locks | Merged: [PR #322](https://github.com/ArcaneArts/Retina/pull/322), `c4bd97d8` | Complete |
+| 3. Retire world GPU resources | In progress | Resource census, safe retirement, lifecycle/memory plateau |
 | 4. Cancel abandoned admissions | Pending | Queue/close races, fairness, shutdown timing |
 | 5. Reuse concurrent Nether dependencies | Pending | 1/2/4/8 callers, ordering, CPU/latency/memory, full NBT |
 | 6. Optimize material counting | Pending | Device and whole-region timing, exact terrain, backend scope |
@@ -141,3 +141,35 @@ JSON, logs, world copies, original artifacts and unit-test XML are retained.
 are `retinaprobe save-benchmark`, `retinaprobe reopen-end pending-save`, and
 `retinaprobe disable-retina pending-save`; use only disposable test worlds.
 The retained Python drivers document complete launch/clone/command sequences.
+
+## Cycle 3a: world-close resource characterization
+
+The explicit ignored `closed_world_resource_inventory` GPU test binds the actual
+vanilla catalog at seed 42 twelve times on one engine. Each cycle queries an
+Overworld chunk's columns, drops the session while retaining a dimension lease,
+verifies identical columns and a live profile, then releases the lease and
+verifies that stale profile access fails. IDs never repeat. The existing GPU
+buffer census records logical owners after completed submissions; this does not
+estimate physical device residency. No production code changes in this subcycle.
+
+Actual Metal baseline at `c4bd97d8`: registration slots rise from 3 to 36, timing
+entries from 1 to 12, and logical profile buffers from 6 to 39. Their bytes rise
+from 1,113,964 to 13,357,184: exactly 1,113,020 additional bytes per reopening,
+including a constant shared default profile. These remain after world closure.
+RSS stays approximately 574–575 MiB in this short run; a proportional physical
+memory increase is not established. Interpreter mode isolates profile ownership
+from per-profile specialized shader compilation. The explicit GPU test passed
+and the entire native test crate compiled; the unrelated full suite was not run.
+
+Evidence and the immutable baseline test binary are retained in
+`/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle3/baseline/`.
+`identity.json` records source base, binary hash, backend and exact invocation;
+`inventory.json` contains all twelve logical buffer inventories and RSS samples.
+The VM-map report records actual process memory after the final close.
+
+Cycle 3 remains incomplete. The implementation must retire registration entries,
+GPU profile buffers/plans, feature-count and lighting profiles, diagnostics and
+CPU cache entries after their owners/jobs drain. Shared compiler/interpreter
+reuse must remain bounded, partial-binding failure must clean up, and tests must
+cover multiple live worlds, in-flight leases, reopening and memory stabilization.
+This characterization is not acceptance of resource retirement.
