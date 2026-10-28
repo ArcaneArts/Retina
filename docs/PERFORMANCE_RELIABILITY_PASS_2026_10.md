@@ -10,8 +10,8 @@ baseline: `24a1ad4` (Fabric/NeoForge bundled vanilla catalogs).
 | 1. Buffer biome-cache serialization | Merged: [PR #321](https://github.com/ArcaneArts/Retina/pull/321), `ab0248f3` | Complete |
 | 2. Persist outside shared locks | Merged: [PR #322](https://github.com/ArcaneArts/Retina/pull/322), `c4bd97d8` | Complete |
 | 3. Retire world GPU resources | Merged: [PR #324](https://github.com/ArcaneArts/Retina/pull/324), `9d674fb5` | Complete; integrated platform acceptance remains below |
-| 4. Cancel abandoned admissions | Validated; PR pending | Merge delivery |
-| 5. Reuse concurrent Nether dependencies | Pending | 1/2/4/8 callers, ordering, CPU/latency/memory, full NBT |
+| 4. Cancel abandoned admissions | Merged: [PR #325](https://github.com/ArcaneArts/Retina/pull/325), `1ea0b77f` | Complete |
+| 5. Reuse concurrent Nether dependencies | Validated; PR pending | Merge delivery |
 | 6. Optimize material counting | Pending | Device and whole-region timing, exact terrain, backend scope |
 | 7. Reduce catalog overhead | Pending | Phase/RSS measurements, variant/seed fidelity, packaged assets |
 | 8. Separate registry tooling/build inspection | Pending | Actual task execution and Fabric/NeoForge/Bukkit JAR inspection |
@@ -368,3 +368,135 @@ The final lightweight scheduler/race tests and metrics tests pass
 Metal preview and Overworld/Nether loader acceptance remains applicable: the
 final changes only correct the opt-in End QA workload and overlap observation.
 No Rust or shader source changes occur in this cycle.
+
+## Cycle 5: concurrent dependency reuse (in progress)
+
+The cycle-202 investigation and prototype `de51a97` remain relevant on current
+main: a fresh region captures completed neighbor snapshots once, before feature
+roots execute. A trial applies the prototype to `1ea0b77f`, refreshing only
+between joined roots in both planner paths. It tries the cache lock without
+waiting, adds only completed snapshots with matching context and root count,
+retains existing owners, and bounds captured snapshots to eight / 512 MiB.
+No partial planner state is published or shared and dependency misses retain the
+original recursive path. This is an experimental candidate, not an accepted
+optimization or measured gain.
+
+The initial validation compiles the native cache unit tests, including late
+neighbor capture, owner lifetime, context/root/neighborhood filtering and capture
+bounds. A saved-definition-backed driver is prepared for adjacent-region batches
+at 1/2/4/8 callers. It records whole-process CPU, wall time, individual call
+latencies, peak RSS and existing dependency counters; outside the timing interval
+it hashes every decompressed chunk payload, including metadata. Evidence lives
+at `/Users/cyberpwn/.cache/retina/performance-pass-20261028/cycle5/`.
+Build/test results and comparative generation acceptance remain pending.
+
+The release-mode cache unit suite passes all ten tests, including both new refresh
+tests and existing exact-before-root, missing-state, context and retention checks
+(`cycle5/refresh-unit.log`). Production-library compilation is in progress;
+no generation or speedup acceptance is claimed yet.
+
+The production macOS ARM64 library builds successfully (`refresh-build.log`).
+The serial driver has started the 1/2/4/8-caller diagnostic ABBA matrix against
+the retained cycle-3 native baseline; source/native identities and the exact
+trial patch are retained in `cycle5/identity.json` and `refresh-candidate.patch`.
+Results remain unaccepted until complete payload comparisons and measurements
+are inspected. Ordinary runs without diagnostic counters and the broader
+seed/order/bounds corpus are still required.
+
+Initial diagnostic ABBA completes at 1/2/4/8 callers (eight measured regions per
+process). Every full decompressed chunk payload matches its control: 98,304
+compared chunk instances across the twelve non-reference runs. At two callers,
+mean dependency-column builds fall from 13,194,357 to 12,387,740 (about 6.1%);
+at four/eight callers the reduction is about 1.9%/1.6%. Serial work counters are
+identical. These counts establish some avoided work, not an accepted speedup.
+Wall times vary substantially (one four-caller control takes 10.74 seconds, the
+other 4.34 seconds), alongside observed FSEvents and Node CPU activity. The
+ordinary matrix now uses the repository benchmark harness, explicit shader-ready
+observation, five warmups and twenty measured regions with diagnostics disabled.
+Custom-bound fixtures preserve encoded NBT except explicitly recorded numeric
+fields; their acceptance still requires the real native loader and generation.
+
+The first ordinary ABBA matrix completes: all sixteen processes reach shader
+status 4, and all fifteen comparisons against the first serial control preserve
+complete NBT and region membership (307,200 measured chunk instances). Each
+process uses five warmup regions and twenty measured regions, seed 42, zlib and
+lighting enabled, automatic execution, shipping worker settings, Apple M4 Max /
+Metal. The existing repository harness records CPU, latency and RSS scopes.
+
+| Callers | Control / trial median batch ms | CPU/region change |
+|---|---:|---:|
+| 1 | 9281 / 9199 | -5.0% |
+| 2 | 5937 / 5755 | -1.8% |
+| 4 | 5707 / 5572 | +1.7% |
+| 8 | 6951 / 6302 | -6.6% |
+
+These preliminary medians do not establish a repeatable gain. In particular the
+eight-caller control batches vary from 6,106 to 7,797 ms, and serial counters in
+the separate diagnostic run show no avoided work despite timing differences.
+Four-caller CPU cost rises slightly even though batch time falls slightly. Raw
+samples, individual latency distributions, memory high-water marks and source/
+library identities remain in `cycle5/ordinary-matrix/`; aggregate values are in
+`ordinary-summary.json`. A second timing pass is required before acceptance.
+
+The correctness corpus is now running second-seed and custom-bound Nether,
+Overworld and End cases at all four caller counts and forward/reverse/shuffled
+orders, each compared with a serial baseline's complete chunk payloads. The
+custom fixture is synthetic: native terrain bounds 16..112, storage bounds
+0..256, sea level 40; its exact NBT field edits are retained separately. This
+validates bound-sensitive reuse, not a claim of Minecraft datapack parity.
+
+The complete correctness corpus passes: 52 processes cover second-seed Nether,
+custom-bound Nether, Overworld and End. For each case, all candidate runs at
+1/2/4/8 callers and all three request orders match the serial control's complete
+NBT and membership, totaling 393,216 compared chunks. End uses ordinary warmup
+because its separate GPU path reports program status 0; an initial baseline
+attempt with the generic shader-ready option stopped at the harness check and
+is retained. No End generation failure occurred. Other cases reached status 4.
+Evidence is in `cycle5/correctness-corpus/` and `cycle5/end-corpus/`, including
+individual commands, logs, immutable measurements and MCA files.
+
+The ordinary native test binary passes all 357 tests; 88 explicitly opt-in tests
+remain ignored (`cycle5/native-suite.log`). The repeat ordinary ABBA matrix is
+running before the performance acceptance decision. No executable generator code or
+compiled native image has changed during these measurements; only the module
+description was corrected to describe refresh.
+
+The ordinary repeat passes all 307,200 complete-NBT comparisons and reaches
+shader status 4 in all sixteen processes. Repeat control/trial median batches
+are 9,032/8,870 ms (one caller), 5,939/5,772 ms (two), 4,503/4,385 ms (four), and
+4,402/4,152 ms (eight). CPU/region falls about 2.1%, 1.7%, 1.9% and 4.3%.
+Serial work counters remain identical, so serial timing differences are not
+attributed to avoided dependencies. At two callers, the repeat's per-process
+p95 is 743/695 ms for controls and 750/779 ms for trials, despite better batch
+throughput. A longer two-caller ABBA sample is running to resolve that tail
+latency concern before acceptance.
+
+Memory results are high-water observations, not proof of physical residency or a
+memory saving. First-pass eight-caller trials peaked at 7,066–7,447 MiB versus
+6,585–6,962 MiB for controls; repeat trials peaked at 6,804–6,994 MiB versus
+6,890–7,023 MiB. Captured snapshot owners remain bounded to eight / 512 MiB per
+active job, but refreshing can pin additional completed owners until that job
+finishes. Raw distributions and both pass summaries are retained in
+`cycle5/acceptance-summary.json` and each process's `measurements.json`.
+
+### Cycle 5 acceptance
+
+The extended two-caller ABBA check (five warmups and sixty measured regions per
+process) resolves the tail concern on this workload. Median batch time falls
+from 17,679 to 16,361 ms (7.5%); median CPU cost falls from 1,733 to 1,677 ms per
+region (3.2%). The two controls have p95 777/780 ms and maxima 886/879 ms; the
+trials have p95 720/700 ms and maxima 837/805 ms. Peak RSS is 3,497–3,555 MiB for
+controls and 3,493–3,503 MiB for trials. All 184,320 compared chunk instances are
+identical, including metadata. Evidence: `cycle5/two-caller-tail/` and
+`run_two_caller_tail.py`.
+
+Accept bounded refresh between joined roots. It reduces demonstrated duplicate
+work and improves whole-batch throughput in both ordinary matrices and the
+longer targeted check. The change does not wait for unfinished neighbors, share
+partial decoration, alter feature ordering or expand the existing per-job pinning
+limit. Ten cache tests and the full 357-test ordinary native suite pass. Actual
+GPU coverage is Metal only; platform integration remains part of final acceptance
+for the overall pass. No uniform serial speedup, universal latency reduction or
+memory saving is claimed. Original prototype, trial patch, native images, full
+MCA outputs, commands and all measurements remain outside Git at the recorded
+evidence root. PR delivery remains pending.

@@ -59,6 +59,11 @@ impl super::Steps for Sequence<'_, '_> {
             }
             self.trace.as_ref().unwrap().mark("dispatch_enter");
         }
+        if root > 0 {
+            if let Some(reuse) = &mut self.planner.reuse {
+                reuse.refresh(self.planner.engine, &self.planner.metrics.performance);
+            }
+        }
         let request = self.planner.request;
         self.anchors = self.planner.roots[root].bounds.writers_area(
             [request.chunk_x * 16, request.chunk_z * 16],

@@ -1,4 +1,4 @@
-//! Bounded completed interior states, captured once for a neighboring job.
+//! Bounded completed interior states, captured and refreshed between joined roots.
 use super::{ColumnCell, ColumnRuns, ColumnState, Map, Metrics, Perf, Versions};
 #[cfg(test)]
 use super::height_use_probe;
@@ -315,6 +315,33 @@ pub(super) fn capture(
     })
 }
 impl Reuse {
+    // Called only between joined roots. Keep existing owners and add newly
+    // published neighbors without waiting for active jobs or growing the bounds.
+    pub(super) fn refresh(&mut self, engine: &TerrainEngine, metrics: &Metrics) {
+        let started = metrics.start();
+        if let Ok(cache) = engine.dependency_versions.try_lock() {
+            metrics.add(Perf::version_cache_captured_regions, self.capture_more(&cache) as u64);
+        }
+        metrics.elapsed(Perf::version_cache_capture_nanos, started);
+    }
+
+    fn capture_more(&mut self, cache: &Cache) -> usize {
+        let before = self.captured.len();
+        let mut bytes: usize = self.captured.iter().map(|v| v.bytes).sum();
+        for saved in cache.entries.iter().rev() {
+            if self.captured.len() >= MAX_ENTRIES { break; }
+            if saved.context != self.context || saved.roots != self.roots
+                || !near(saved.region, self.region)
+                || self.captured.iter().any(|old| old.region == saved.region)
+                || saved.bytes > MAX_BYTES.saturating_sub(bytes)
+            {
+                continue;
+            }
+            bytes += saved.bytes;
+            self.captured.push(saved.clone());
+        }
+        self.captured.len() - before
+    }
     pub(super) fn column(&self, before: usize, x: i32, z: i32) -> Option<Arc<ColumnState>> {
         if before > self.roots {
             return None;
@@ -404,6 +431,62 @@ fn retained_bytes(snapshot: &Snapshot) -> usize {
 mod tests {
     use super::super::{ColumnCell, ColumnVersion};
     use super::*;
+    #[test]
+    fn refresh_adds_late_neighbors_without_replacing_or_losing_existing_owners() {
+        let first = snapshot(0, 42);
+        let weak = Arc::downgrade(&first);
+        let mut reuse = Reuse { context: first.context, region: [0, 0], roots: 8, captured: vec![first.clone()] };
+        let mut cache = Cache::default();
+        drop(cache.insert(snapshot(32, 42)));
+        drop(cache.insert(snapshot(0, 42)));
+        assert!(reuse.column(0, 512, 0).is_none());
+        assert_eq!(reuse.capture_more(&cache), 1);
+        assert!(reuse.column(0, 512, 0).is_some());
+        assert!(Arc::ptr_eq(&reuse.captured[0], &first));
+        assert_eq!(reuse.capture_more(&cache), 0);
+        drop(cache); drop(first);
+        assert!(weak.upgrade().is_some());
+        let state = reuse.column(0, 0, 0).unwrap();
+        drop(reuse);
+        assert!(weak.upgrade().is_none());
+        assert_eq!(state.expand(16), vec![0; 16]);
+    }
+
+    #[test]
+    fn refresh_filters_context_roots_neighborhood_and_keeps_capture_bounds() {
+        let first = snapshot(0, 42);
+        let mut reuse = Reuse { context: first.context, region: [0, 0], roots: 8, captured: vec![first] };
+        let mut cache = Cache::default();
+        for r in [ChunkRequest { seed: 43, ..request(32, 0) },
+                  ChunkRequest { reserved: 2, ..request(32, 0) },
+                  ChunkRequest { min_y: -16, ..request(32, 0) },
+                  ChunkRequest { height: 32, ..request(32, 0) }] {
+            let mut value = snapshot(32, 42);
+            Arc::get_mut(&mut value).unwrap().context = context(r);
+            drop(cache.insert(value));
+        }
+        let mut wrong_roots = snapshot(-32, 42);
+        Arc::get_mut(&mut wrong_roots).unwrap().roots = 7;
+        drop(cache.insert(wrong_roots));
+        drop(cache.insert(snapshot(64, 42)));
+        assert_eq!(reuse.capture_more(&cache), 0);
+        let mut oversized = snapshot(32, 42);
+        Arc::get_mut(&mut oversized).unwrap().bytes = MAX_BYTES;
+        drop(cache.insert(oversized));
+        assert_eq!(reuse.capture_more(&cache), 0);
+        assert_eq!(reuse.captured.len(), 1);
+        // Fill the neighborhood with distinct owners; only eight may be pinned.
+        let mut cache = Cache::default();
+        for (x, z) in [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)] {
+            let mut value = snapshot(x * 32, 42);
+            Arc::get_mut(&mut value).unwrap().region = [x, z];
+            drop(cache.insert(value));
+        }
+        assert_eq!(reuse.capture_more(&cache), 7);
+        assert_eq!(reuse.captured.len(), MAX_ENTRIES);
+        assert_eq!(reuse.capture_more(&cache), 0);
+        assert!(reuse.captured.iter().map(|v| v.bytes).sum::<usize>() <= MAX_BYTES);
+    }
     #[test]
     fn exterior_backing_counts_toward_the_existing_global_budget() {
         let mut value = match Arc::try_unwrap(snapshot(0, 42)) {
