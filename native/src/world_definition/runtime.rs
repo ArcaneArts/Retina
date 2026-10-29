@@ -50,6 +50,7 @@ impl WorldSession {
             if dimension.unsupported_reason().is_some() {
                 continue;
             }
+            let _stage = crate::startup::Stage::new(format!("register dimension profile {key}"));
             let profile = dispatch_profile(dimension.profile()?, execution);
             let id = session.engine.register_world_profile(
                 &profile,

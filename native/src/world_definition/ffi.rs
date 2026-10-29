@@ -262,6 +262,7 @@ unsafe fn bind_dimension(
     }
     let world = world(handle)?;
     let key = unsafe { text(key, length) }?;
+    let _stage = crate::startup::Stage::new(format!("bind dimension {key} world_handle={handle}"));
     world.definition.dimension(key)?.profile()?;
     let compression = match compression {
         2 => Compression::Zlib,

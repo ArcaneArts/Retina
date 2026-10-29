@@ -166,10 +166,13 @@ impl Gpu {
         crate::geology::raster_gpu::Gpu::new(self.device.clone(), self.queue.clone())
     }
     pub(crate) fn new(metrics: std::sync::Arc<crate::pipeline::Metrics>) -> Result<Self, String> {
+        let _instance_stage = crate::startup::Stage::new("GPU instance creation (Metal/Vulkan/DX12)");
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::METAL | wgpu::Backends::VULKAN | wgpu::Backends::DX12,
             ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
+        drop(_instance_stage);
+        let _adapter_stage = crate::startup::Stage::new("GPU adapter selection (high performance)");
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::HighPerformance,
             compatible_surface: None,
@@ -177,7 +180,9 @@ impl Gpu {
             apply_limit_buckets: false,
         }))
         .map_err(|e| format!("cannot create a GPU compute adapter: {e}"))?;
+        drop(_adapter_stage);
         let info = adapter.get_info();
+        crate::startup::message(format_args!("Selected adapter: backend={:?} name={} type={:?} vendor={:#x} device={:#x} driver={} driver_info={}", info.backend, info.name, info.device_type, info.vendor, info.device, info.driver, info.driver_info));
         let backend = format!("{:?}: {}", info.backend, info.name);
         // Matched Metal measurements favor the compact density/climate stages.
         // Keep the prior default on unmeasured backends; diagnostics can select
@@ -240,6 +245,7 @@ impl Gpu {
                     && adapter.limits().max_immediate_size >= 4
             }
         };
+        let _device_stage = crate::startup::Stage::new("GPU device creation");
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Retina terrain device"),
             required_features: (adapter.features() & wgpu::Features::TIMESTAMP_QUERY)
@@ -261,7 +267,9 @@ impl Gpu {
             ..Default::default()
         }))
         .map_err(|e| format!("cannot create the GPU compute device: {e}"))?;
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        drop(_device_stage);
+        crate::startup::message(format_args!("Dispatch: specialized_terrain={specialized_terrain} specialized_interpolation={specialized_interpolation} interpreter_columns={interpreter_columns} interpreter_dispatch={interpreter_dispatch} material_dispatch={material_dispatch}"));
+        let shader = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
             label: Some("Retina GPU biomes and simplex"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
@@ -297,7 +305,7 @@ impl Gpu {
             immediate_size: 0,
         });
         let pipeline = |entry| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
                 label: Some(entry),
                 layout: Some(&pipeline_layout),
                 module: &shader,
@@ -306,7 +314,7 @@ impl Gpu {
                 cache: None,
             })
         };
-        let cave_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let cave_shader = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
             label: Some("Retina GPU cave fields and mask"),
             source: wgpu::ShaderSource::Wgsl(
                 format!(
@@ -343,7 +351,7 @@ impl Gpu {
             immediate_size: 0,
         });
         let cave_pipeline = |entry| {
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
                 label: Some(entry),
                 layout: Some(&cave_pipeline_layout),
                 module: &cave_shader,
@@ -367,7 +375,7 @@ impl Gpu {
         let biome_queries_pipeline = pipeline("biome_queries");
         let climate_pipeline = pipeline("climate_nodes");
         let underground_queries_pipeline =
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
                 label: Some("Retina sparse underground biomes"),
                 layout: Some(&cave_pipeline_layout),
                 module: &cave_shader,

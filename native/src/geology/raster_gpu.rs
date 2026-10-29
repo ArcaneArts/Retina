@@ -89,7 +89,7 @@ impl Gpu {
                 })
                 .collect::<Vec<_>>(),
         });
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
             label: Some("Retina guarded ore masks"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../ore.wgsl").into()),
         });
@@ -98,7 +98,7 @@ impl Gpu {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        let pipeline = crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
             label: Some("Retina ore masks"),
             layout: Some(&pipeline_layout),
             module: &shader,

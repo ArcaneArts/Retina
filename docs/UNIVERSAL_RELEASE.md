@@ -168,3 +168,26 @@ failures exit 1. Signal exits retain the JVM/platform's signal exit status.
 checks real native generation, reopening/preservation, output locks and graceful
 cancellation in a disposable world (at most four generated regions), then removes
 that world. Release jobs also launch `java -jar ... --help` on all three platforms.
+
+## Startup diagnostics
+
+Startup logging is enabled by default in all hosts, including release JARs.
+Prism's console captures the native stderr lines prefixed `[Retina startup]`;
+mod adapter/storage messages also use the normal Minecraft logger. No Java debug
+commands, environment variables or debug setting are required.
+
+Native stages have a numbered `BEGIN` and `END` with elapsed seconds and thread
+name. Logs identify instance creation, adapter selection (backend, device and
+driver), device creation, individual shader modules and compute pipelines,
+world-profile registration, and the first terrain query/region operation. Lazy
+world-pipeline and lighting compilation is logged too, so progress remains
+visible after Minecraft announces spawn selection. `END` means the call exited;
+errors still follow the existing error path, and panic exits say `UNWIND`.
+
+While stages remain active, an independent reporter prints their `WAIT` messages
+every ten seconds with elapsed time. These indicate an unfinished operation, not
+an ETA or proof that the driver is making progress. The reporter stops when no
+stages remain; it never times out, cancels or changes the actual operation. Shader
+sources, seed-dependent profile contents and per-chunk steady-state activity are
+not dumped. A stalled startup can be reported by copying the last startup lines
+from the launcher console, including the selected adapter and unfinished stages.

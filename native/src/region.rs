@@ -227,6 +227,9 @@ fn generate_region_inner(
     cached: Option<&Path>,
     detail: Option<&mut timings::Snapshot>,
 ) -> Result<RegionReport, String> {
+    static FIRST_REGION: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    let _first_region = FIRST_REGION.swap(false, std::sync::atomic::Ordering::Relaxed).then(||
+        crate::startup::Stage::new(format!("first region generation profile={} region={},{} cached={}", request.reserved, request.chunk_x.div_euclid(32), request.chunk_z.div_euclid(32), cached.is_some())));
     // Cached records are opaque publication inputs and need no live generation profile.
     if cached.is_some() { request.validate()?; } else { engine.validate_request(&request)?; }
     let cache_materials = output.is_some();
