@@ -71,7 +71,9 @@ tasks.named('shadowJar') {
     relocate 'com.electronwill.nightconfig', 'art.arcane.retina.internal.nightconfig'
     relocate 'org.snakeyaml.engine', 'art.arcane.retina.internal.snakeyaml'
     mergeServiceFiles()
-    manifest { attributes('Implementation-Version': project.version, 'Automatic-Module-Name': 'art.arcane.retina') }
+    manifest { attributes('Implementation-Version': project.version, 'Automatic-Module-Name': 'art.arcane.retina',
+            'Main-Class': 'art.arcane.retina.core.RetinaCli',
+            'Enable-Native-Access': 'ALL-UNNAMED', 'Retina-Minecraft-Version': minecraft_version) }
     preserveFileTimestamps = false
     reproducibleFileOrder = true
 }

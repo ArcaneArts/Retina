@@ -6,3 +6,10 @@ base { archivesName = 'retina-core' }
 tasks.named('jar') {
     manifest { attributes('Implementation-Version': project.version) }
 }
+
+tasks.register('cliTest', JavaExec) {
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'art.arcane.retina.core.RetinaCliTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+}

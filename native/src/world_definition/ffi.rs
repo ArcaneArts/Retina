@@ -321,6 +321,26 @@ pub unsafe extern "C" fn retina_world_dimension_chunk(
     })
 }
 
+/// Generate one world-bound region without passing blocks through the host.
+/// # Safety
+/// key/path are readable UTF-8 buffers; report is a writable aligned RegionReport.
+/// The caller exclusively owns destination region-file I/O for the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_world_dimension_region(
+    handle: u64, key: *const u8, length: u64, x: i32, z: i32,
+    path: *const u8, path_length: u64, report: *mut crate::region::RegionReport,
+) -> i32 {
+    boundary(|| {
+        if report.is_null() { return Err("null dimension region report".into()); }
+        let owner = world(handle)?;
+        let dimension = owner.session()?.dimension(unsafe { text(key, length) }?)?;
+        let destination = std::path::Path::new(unsafe { text(path, path_length) }?);
+        let result = dimension.generate_region(x, z, destination)?;
+        unsafe { *report = result; }
+        Ok(())
+    })
+}
+
 /// # Safety
 /// key is length readable UTF-8 bytes; output and size are writable. Free with retina_free_bytes.
 #[unsafe(no_mangle)]
