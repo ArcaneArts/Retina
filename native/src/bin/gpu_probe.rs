@@ -11,7 +11,7 @@ fn worker(backend: &str, definition: Option<PathBuf>) -> Result<(), String> {
     eprintln!("Retina standalone GPU probe; source={}; backend={backend}; no JVM or Minecraft process",
         option_env!("GITHUB_SHA").unwrap_or("local build"));
     let engine = Arc::new(TerrainEngine::new()?);
-    eprintln!("Initial pipelines ready: {}", engine.backend());
+    eprintln!("GPU engine ready: {}; selected pipelines compile on demand", engine.backend());
     if let Some(path) = definition {
         eprintln!("Loading definition {} (read-only)", path.display());
         let definition = Arc::new(WorldDefinition::read(&path)?);
@@ -20,7 +20,11 @@ fn worker(backend: &str, definition: Option<PathBuf>) -> Result<(), String> {
         let chunk = dimension.generate_chunk(-3, -3)?;
         eprintln!("Overworld chunk -3,-3 generated in memory: {} NBT bytes", chunk.len());
     } else {
-        eprintln!("No retina.dat supplied: tested initial pipelines only. Drop retina.dat onto this executable to test world pipelines too.");
+        let heights = engine.sample_heights(retina_worldgen::ChunkRequest {
+            seed: 123456789, chunk_x: -3, chunk_z: -3, min_y: -64, height: 384,
+            base_height: 64.0, amplitude: 48.0, frequency: 0.008, reserved: 0,
+        })?;
+        eprintln!("Procedural terrain query completed: {} columns. Drop retina.dat onto this executable to test world-specific pipelines too.", heights.len());
     }
     eprintln!("GPU probe PASS");
     Ok(())
