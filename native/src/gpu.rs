@@ -99,6 +99,7 @@ pub(crate) struct Gpu {
     sparse_lake_plans: HashMap<u32, crate::program::lake_sparse::Plan>,
     interpolation_cache: bool,
     specialized_terrain: bool,
+    defer_specialization: bool,
     specialized_interpolation: bool,
     interpreter_dispatch: bool,
     preloaded_interpreters: HashMap<bool, std::sync::Arc<crate::specialize::State>>,
@@ -166,9 +167,10 @@ impl Gpu {
         crate::geology::raster_gpu::Gpu::new(self.device.clone(), self.queue.clone())
     }
     pub(crate) fn new(metrics: std::sync::Arc<crate::pipeline::Metrics>) -> Result<Self, String> {
-        let _instance_stage = crate::startup::Stage::new("GPU instance creation (Metal/Vulkan/DX12)");
+        let backends = crate::gpu_backend::selected()?;
+        let _instance_stage = crate::startup::Stage::new(format!("GPU instance creation requested={backends:?}"));
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::METAL | wgpu::Backends::VULKAN | wgpu::Backends::DX12,
+            backends,
             ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
         drop(_instance_stage);
@@ -489,6 +491,11 @@ impl Gpu {
             sparse_lake_plans: HashMap::new(),
             interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
             specialized_terrain,
+            defer_specialization: match std::env::var("RETINA_DEFER_SPECIALIZATION").as_deref() {
+                Ok("0") => false,
+                Ok("1") => true,
+                _ => info.backend == wgpu::Backend::Vulkan,
+            },
             specialized_interpolation,
             interpreter_dispatch,
             preloaded_interpreters: HashMap::new(),
@@ -632,6 +639,36 @@ impl Gpu {
         self.submit_for_world(requests, profile, timings, requests[0].profile)
     }
 
+    fn request_specialization(&mut self, profile_id: u32, profile: &WorldProfile) -> Result<(), String> {
+        let Some(program) = profile.registry_program.as_ref() else { return Ok(()); };
+        if profile.program_execution == crate::specialize::Execution::Interpreter
+            || self.specialized.contains_key(&profile_id) { return Ok(()); }
+        match self.compiler.request(
+            program,
+            self.specialized_terrain,
+            program.density_composition,
+            self.cached_density_masks,
+            self.lake_point_cache,
+            self.lake_primed_corners,
+            self.lake_sparse_fields,
+            self.aquifer_columns,
+        ) {
+            Ok(state) => {
+                self.pipeline.shader(profile_id, state.progress.clone());
+                self.specialized.insert(profile_id, state);
+            }
+            Err(error) => {
+                if profile.program_execution
+                    == crate::specialize::Execution::Specialized
+                {
+                    return Err(error);
+                }
+                eprintln!("Retina keeps the GPU interpreter: {error}");
+            }
+        }
+        Ok(())
+    }
+
     pub(crate) fn submit_for_world(
         &mut self,
         requests: &[GpuRequest],
@@ -678,30 +715,10 @@ impl Gpu {
                 if program.scratch_values() > crate::program::COMPACT_VALUES {
                     self.wide_profiles.insert(profile_id);
                 }
-                if profile.unwrap().program_execution != crate::specialize::Execution::Interpreter {
-                    match self.compiler.request(
-                        program,
-                        self.specialized_terrain,
-                        program.density_composition,
-                        self.cached_density_masks,
-                        self.lake_point_cache,
-                        self.lake_primed_corners,
-                        self.lake_sparse_fields,
-                        self.aquifer_columns,
-                    ) {
-                        Ok(state) => {
-                            self.pipeline.shader(profile_id, state.progress.clone());
-                            self.specialized.insert(profile_id, state);
-                        }
-                        Err(error) => {
-                            if profile.unwrap().program_execution
-                                == crate::specialize::Execution::Specialized
-                            {
-                                return Err(error);
-                            }
-                            eprintln!("Retina keeps the GPU interpreter: {error}");
-                        }
-                    }
+                if !self.defer_specialization
+                    || profile.unwrap().program_execution == crate::specialize::Execution::Specialized
+                {
+                    self.request_specialization(profile_id, profile.unwrap())?;
                 }
             }
         }
@@ -817,6 +834,20 @@ impl Gpu {
                 .filter(|_| self.wide_profiles.contains(&profile_id))
                 .cloned()
         };
+        // On Vulkan, finish the usable fallback before starting the background
+        // optimizer. This avoids competing driver compiles during first use.
+        // Forced specialization still starts immediately and waits as requested.
+        if self.defer_specialization {
+            if let Some(profile) = profile {
+                if profile.registry_program.is_some()
+                    && !self.specialized.contains_key(&profile_id)
+                    && profile.program_execution == crate::specialize::Execution::Auto
+                {
+                    crate::startup::message(format_args!("Fallback pipelines ready for profile={profile_id}; starting background specialization"));
+                    self.request_specialization(profile_id, profile)?;
+                }
+            }
+        }
         let selected = specialized.as_deref().or(interpreted.as_deref());
         // Terrain input and climate passes may use the compact interpreter while
         // materials/caves retain specialization. Both use the same resident
