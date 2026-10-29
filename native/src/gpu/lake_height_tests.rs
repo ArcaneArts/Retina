@@ -17,6 +17,16 @@ fn function(source: &str, name: &str) -> String {
 #[test]
 #[ignore = "requires a real GPU"]
 fn cached_lake_heights_match_general_query() {
+    compare_heights(false);
+}
+
+#[test]
+#[ignore = "requires a real GPU"]
+fn compact_height_scan_matches_general_query() {
+    compare_heights(true);
+}
+
+fn compare_heights(compact: bool) {
     let gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
     // Each invocation owns its samples. Vary composition, clipped/empty bounds,
     // fractional X/Z, negative origins, non-aligned ceilings and density signs.
@@ -67,6 +77,16 @@ fn run_program(id:u32,point:vec3<f32>,r:Request,ctx:vec4<f32>)->array<f32,6>{ret
     for name in ["surface_layer", "density_surface_height", "lake_surface_layer", "lake_surface_height"] {
         source.push_str(&function(include_str!("../program.wgsl"), name));
         source.push('\n');
+    }
+    if compact {
+        source.push_str(&function(include_str!("../program/compact_calls.wgsl"), "density_surface_height")
+            .replace("fn density_surface_height(", "fn compact_surface_height("));
+        // Exercise both the ordinary lattice and lake-probe reductions, with
+        // aligned/clipped/empty bounds and composition selected by the fixture.
+        let probe = "select(0u,0xffffffffu,(id.x&8u)!=0u)";
+        source = source.replace(
+            "density_surface_height(point,r,0u),lake_surface_height(point,r,0u)",
+            &format!("density_surface_height(point,r,{probe}),compact_surface_height(point,r,{probe})"));
     }
     let module = gpu.device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("lake height parity"), source: wgpu::ShaderSource::Wgsl(source.into()),

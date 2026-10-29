@@ -2480,6 +2480,8 @@ mod aquifer_columns_tests;
 #[cfg(test)]
 mod column_interpreter_tests;
 #[cfg(test)]
+mod compact_call_tests;
+#[cfg(test)]
 mod lake_sparse_tests;
 #[cfg(test)]
 mod lake_height_tests;
