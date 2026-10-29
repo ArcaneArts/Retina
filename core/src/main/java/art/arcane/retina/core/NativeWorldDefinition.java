@@ -113,6 +113,31 @@ public final class NativeWorldDefinition implements AutoCloseable {
         } catch (Throwable error) { throw failure(error); }
     }
 
+    public record RegionResult(long generated, long preserved, long bytes) { }
+
+    private static final class RegionCall {
+        static final MethodHandle GENERATE = Calls.call("retina_world_dimension_region",
+                FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT,
+                        ADDRESS, JAVA_LONG, ADDRESS));
+    }
+
+    /** Region coordinates; Rust owns the saved settings and preserves existing records.
+     * The caller must exclusively own destination file I/O and drain calls before close. */
+    public RegionResult generateRegion(String key, int x, int z, Path destination) {
+        long opened;
+        synchronized (this) { ensureOpen(); opened = handle; }
+        try (var arena = Arena.ofConfined()) {
+            byte[] dimension = key.getBytes(StandardCharsets.UTF_8);
+            byte[] path = destination.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
+            var report = arena.allocate(40, Long.BYTES);
+            check((int) RegionCall.GENERATE.invokeExact(opened,
+                    arena.allocateFrom(JAVA_BYTE, dimension), (long) dimension.length, x, z,
+                    arena.allocateFrom(JAVA_BYTE, path), (long) path.length, report));
+            return new RegionResult(Integer.toUnsignedLong(report.get(JAVA_INT, 0)),
+                    Integer.toUnsignedLong(report.get(JAVA_INT, 4)), report.get(JAVA_LONG, 32));
+        } catch (Throwable error) { throw failure(error); }
+    }
+
     /** Generate storage-shaped uncompressed chunk NBT using the loaded world. */
     public byte[] chunk(String key,int x,int z) {
         long opened;

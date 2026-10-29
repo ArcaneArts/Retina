@@ -121,3 +121,50 @@ Commands, logs, definition hashes, and results are recorded under `--output`.
 Delete these disposable worlds after recording results; retain compact evidence.
 The mod checks use existing production QA hooks and stop the headless server after
 the bounded save check. No GUI or client settings are involved.
+
+## Executable headless JAR
+
+The same universal JAR is also a Java 25 CLI. Its manifest enables native access;
+no Minecraft installation, mod loader or GUI is needed. Loaders still select their
+normal entry points. The native GPU engine does the batch region generation and
+file publication; Java does not transfer individual blocks.
+
+```sh
+java -jar retina-26.3-<version>.jar --help
+java -jar retina-26.3-<version>.jar init --world ./world --seed 12345
+java -jar retina-26.3-<version>.jar inspect --world ./world
+java -jar retina-26.3-<version>.jar generate --world ./world \
+  --dimension minecraft:the_end --region-radius 0
+# Or create and generate in one command (only for a new definition):
+java -jar retina-26.3-<version>.jar generate --world ./new-world --seed 12345 \
+  --dimension minecraft:overworld --region-min=-1,0 --region-max=0,1
+```
+
+Bounds are inclusive region coordinates; a radius N selects a square of
+(2N+1)² regions centered at 0,0. Each region is 32×32 chunks. Overworld output goes
+to `region/`, Nether to `DIM-1/region/`, End to `DIM1/region/`, and custom dimensions
+to `dimensions/<namespace>/<path>/region/`. `--compression zlib|lz4` controls new
+records. Existing records are preserved byte-for-byte.
+
+The default catalog snapshot is `vanilla-binary`. Creation also accepts
+`--snapshot vanilla-recompiled`, `--catalog FILE`, and `--variant` for the catalog's
+normal/structures/bonus-chest/Bukkit variants. A saved definition always wins:
+resuming requires omitting creation options, so a different seed is never silently
+accepted. `--definition FILE` can use an existing external definition with the
+chosen output world; that definition must match existing output chunks.
+
+Use offline worlds. The Java CLI holds Minecraft's actual `session.lock` while
+writing, preventing another Java server or Java CLI from opening that world.
+Do not concurrently run the standalone Rust CLI against the same output; its
+separate locking protocol is unchanged. The command writes generation data and
+MCA files, not `level.dat`, player data, or a fully initialized playable save.
+GPU generation requires a supported device/driver; init and inspect are CPU-only.
+Ctrl-C/SIGTERM requests stopping after the active region and closes the definition.
+Progress goes to stderr, final JSON to stdout; argument errors exit 2 and operation
+failures exit 1. Signal exits retain the JVM/platform's signal exit status.
+
+`./gradlew :core:cliTest` checks parsing, bounds and dimension paths without a GPU.
+`scripts/test-universal-cli.py --jar <actual-jar> --java <java25> --output <logs>`
+checks real native generation, reopening/preservation, output locks and graceful
+cancellation in a disposable world (at most four generated regions), then removes
+that world. Release jobs also launch `java -jar ... --help` on all three platforms.

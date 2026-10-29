@@ -157,7 +157,9 @@ jobs:
           name: universal-${{ github.sha }}
           path: dist
       - name: Load packaged library and materialize/reopen both catalog snapshots
-        run: java --enable-native-access=ALL-UNNAMED -cp "dist/retina-${{ needs.assemble.outputs.minecraft }}-${{ needs.assemble.outputs.version }}.jar" scripts/UniversalNativeSmoke.java '${{ needs.assemble.outputs.minecraft }}'
+        run: |
+          java -jar "dist/retina-${{ needs.assemble.outputs.minecraft }}-${{ needs.assemble.outputs.version }}.jar" --help
+          java --enable-native-access=ALL-UNNAMED -cp "dist/retina-${{ needs.assemble.outputs.minecraft }}-${{ needs.assemble.outputs.version }}.jar" scripts/UniversalNativeSmoke.java '${{ needs.assemble.outputs.minecraft }}'
 
   publish:
     name: Publish universal release

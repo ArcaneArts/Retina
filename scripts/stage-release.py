@@ -64,6 +64,11 @@ def stage(minecraft: str, version: str) -> None:
         'x86_64-unknown-linux-gnu': ('linux-x86_64', 'libretina_worldgen.so'),
     }
     with ZipFile(jar) as archive:
+        manifest = archive.read('META-INF/MANIFEST.MF').decode().replace('\r\n ', '').replace('\n ', '')
+        for attribute in ['Main-Class: art.arcane.retina.core.RetinaCli',
+                          'Enable-Native-Access: ALL-UNNAMED', f'Retina-Minecraft-Version: {minecraft}']:
+            if attribute not in manifest: raise ValueError(f'Missing CLI manifest attribute: {attribute}')
+        if not archive.read('art/arcane/retina/core/RetinaCli.class'): raise ValueError('Missing CLI entry point')
         names = archive.namelist()
         if len(names) != len(set(names)): raise ValueError('Duplicate ZIP members')
         expected_natives = set()
