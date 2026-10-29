@@ -326,6 +326,8 @@ mod tests {
             .as_ref()
             .expect("actual WGSL must parse for reuse");
         assert_eq!(dependencies.len(), WORLD.len() + CAVE.len());
+        let lake = WORLD.iter().position(|entry| *entry == "lake_nodes").unwrap();
+        assert_eq!(dependencies[lake], vec![Root::Composition], "lake reduction must not reach registry evaluators");
         assert!(
             !dependencies.iter().flatten().any(|r| *r == Root::All),
             "unresolved shader dispatch: {dependencies:?}"
@@ -345,6 +347,7 @@ mod tests {
             "biome_queries",
             "lake_candidates",
             "climate_nodes",
+            "lake_nodes",
         ] {
             assert!(plan.world_reuses(entry), "{entry}: {dependencies:?}");
         }
@@ -363,7 +366,6 @@ mod tests {
             "density_nodes",
             "surface_columns",
             "lake_density",
-            "lake_nodes",
             "interpolation_nodes_1",
         ] {
             assert!(!plan.world_reuses(entry), "{entry}");

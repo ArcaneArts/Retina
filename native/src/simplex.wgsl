@@ -364,7 +364,7 @@ fn lake_nodes(@builtin(global_invocation_id) id:vec3<u32>) {
     var height=r.max_y;
     for(var p=0u;p<5u;p++) {
         let probe=id.x*5u+p;
-        height=min(height,i32(floor(density_surface_height(lake_probe_point(probe,r),r,probe))));
+        height=min(height,i32(floor(lake_surface_height(lake_probe_point(probe,r),r,probe))));
     }
     surface_nodes[at+1u]=f32(height-2);
 }
