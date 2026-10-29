@@ -29,7 +29,14 @@ crate-type = ["cdylib", "rlib"]
 name = "retina"
 path = "src/cli/main.rs"
 
+[[bin]]
+name = "retina-gpu-probe"
+path = "src/bin/gpu_probe.rs"
+
 [dependencies]
+profiling = { version = "=1.0.18", features = ["profile-with-tracing"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["registry", "std"] }
 bytemuck = { version = "1", features = ["derive"] }
 pollster = "0.4"
 flate2 = "1"
@@ -54,6 +61,9 @@ mimalloc = { version = "=0.1.52", optional = true, default-features = false, fea
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 mimalloc = { version = "=0.1.52", optional = true, default-features = false, features = ["local_dynamic_tls"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [dev-dependencies]
 libc = "0.2"

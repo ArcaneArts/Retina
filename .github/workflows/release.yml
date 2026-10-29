@@ -60,7 +60,7 @@ jobs:
           path: build/release-native/${{ matrix.target }}
           key: retina-native-v1-${{ matrix.target }}-${{ steps.inputs.outputs.key }}
       - name: Restore Cargo compilation work
-        if: steps.native-cache.outputs.cache-hit != 'true'
+        if: steps.native-cache.outputs.cache-hit != 'true' || runner.os == 'Windows'
         uses: actions/cache@v4
         with:
           path: |
@@ -73,6 +73,16 @@ jobs:
       - name: Build native library
         if: steps.native-cache.outputs.cache-hit != 'true'
         run: python scripts/native-release.py build '${{ matrix.target }}'
+      - name: Build standalone Windows GPU probe
+        if: runner.os == 'Windows'
+        run: python scripts/build-gpu-probe.py
+      - uses: actions/upload-artifact@v7
+        if: runner.os == 'Windows'
+        with:
+          name: gpu-probe-${{ github.sha }}
+          path: build/gpu-probe/retina-gpu-probe-windows-x64.exe
+          if-no-files-found: error
+          retention-days: 14
       - name: Verify actual native bytes and inputs
         run: python scripts/native-release.py verify '${{ matrix.target }}'
       - uses: actions/upload-artifact@v7
@@ -182,6 +192,10 @@ jobs:
       - uses: actions/download-artifact@v7
         with:
           name: universal-${{ github.sha }}
+          path: dist
+      - uses: actions/download-artifact@v7
+        with:
+          name: gpu-probe-${{ github.sha }}
           path: dist
       - name: Publish immutable artifact with PR and direct-commit notes
         run: python3 scripts/publish-release.py
