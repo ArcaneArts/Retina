@@ -62,6 +62,10 @@ mimalloc = { version = "=0.1.52", optional = true, default-features = false, fea
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 mimalloc = { version = "=0.1.52", optional = true, default-features = false, features = ["local_dynamic_tls"] }
 
+# Bundle DXC into the Windows x64 library; no compiler DLL installation is needed.
+[target.'cfg(all(windows, target_arch = "x86_64"))'.dependencies]
+wgpu = { version = "=30.0.1", default-features = false, features = ["static-dxc"] }
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }
 

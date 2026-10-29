@@ -56,7 +56,8 @@ if (!suppliedNatives.isPresent() && !providers.gradleProperty('retinaHostOnly').
                         cFlags: arch == 'aarch64' ? '-DLIBDEFLATE_ASSEMBLER_DOES_NOT_SUPPORT_SHA3' : ''])
             }
             crossNativeTargets.add([name: "Windows${label}", triple: "${arch}-pc-windows-msvc",
-                    platform: "windows-${arch}", library: 'retina_worldgen.dll', cargo: ['xwin', 'build'], staticCrt: true])
+                    platform: "windows-${arch}", library: 'retina_worldgen.dll',
+                    cargo: arch == 'x86_64' ? ['xwin', 'build', '--xwin-include-atl'] : ['xwin', 'build'], staticCrt: true])
         }
     }
 }
