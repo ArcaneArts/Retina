@@ -126,17 +126,66 @@ pub(crate) fn pipeline(
     device: &wgpu::Device,
     descriptor: &wgpu::ComputePipelineDescriptor<'_>,
 ) -> wgpu::ComputePipeline {
+    compute_pipeline(device, descriptor, false)
+}
+
+pub(crate) fn interpreter_pipeline(
+    device: &wgpu::Device,
+    descriptor: &wgpu::ComputePipelineDescriptor<'_>,
+) -> wgpu::ComputePipeline {
+    compute_pipeline(device, descriptor, true)
+}
+
+fn compute_pipeline(
+    device: &wgpu::Device,
+    descriptor: &wgpu::ComputePipelineDescriptor<'_>,
+    interpreter: bool,
+) -> wgpu::ComputePipeline {
+    #[cfg(any(not(target_vendor = "apple"), test))]
+    use wgpu::hal::vulkan::diagnostics::{with_compute_compilation, ComputeCompilation};
+    #[cfg(any(not(target_vendor = "apple"), test))]
+    let policy = if interpreter {
+        ComputeCompilation::Interpreter { fast_compile: match std::env::var("RETINA_VULKAN_FAST_COMPILE").as_deref() {
+            Ok("0") => Some(false),
+            Ok("1") => Some(true),
+            _ => None,
+        } }
+    } else { ComputeCompilation::Optimized };
     let stage = Stage::new(format!(
-        "compute pipeline {} entry={}",
+        "compute pipeline {} entry={} interpreter={interpreter}",
         descriptor.label.unwrap_or("unnamed"),
         descriptor.entry_point.unwrap_or("auto")
     ));
-    driver::observe(&stage, descriptor.entry_point.unwrap_or("auto"), || device.create_compute_pipeline(descriptor))
+    driver::observe(&stage, descriptor.entry_point.unwrap_or("auto"), || {
+        #[cfg(any(not(target_vendor = "apple"), test))]
+        { with_compute_compilation(policy, || device.create_compute_pipeline(descriptor)) }
+        #[cfg(all(target_vendor = "apple", not(test)))]
+        { device.create_compute_pipeline(descriptor) }
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn vulkan_policy_is_scoped_to_interpreter_device_and_thread() {
+        use wgpu::hal::vulkan::diagnostics::{compute_flags, with_compute_compilation, ComputeCompilation::*};
+        assert_eq!(compute_flags(0x10de), 0);
+        with_compute_compilation(Interpreter { fast_compile: None }, || {
+            assert_eq!(compute_flags(0x10de), u32::from(cfg!(windows)));
+            assert_eq!(compute_flags(0x1002), 0);
+        });
+        with_compute_compilation(Interpreter { fast_compile: Some(true) }, || {
+            assert_eq!(compute_flags(0x10de), 1);
+            with_compute_compilation(Optimized, || assert_eq!(compute_flags(0x10de), 0));
+            assert_eq!(compute_flags(0x10de), 1);
+            std::thread::spawn(|| assert_eq!(compute_flags(0x10de), 0)).join().unwrap();
+            with_compute_compilation(Interpreter { fast_compile: Some(false) }, || assert_eq!(compute_flags(0x10de), 0));
+            assert_eq!(compute_flags(0x10de), 1);
+        });
+        let _ = std::panic::catch_unwind(|| with_compute_compilation(Interpreter { fast_compile: Some(true) }, || panic!("scope test")));
+        assert_eq!(compute_flags(0x10de), 0);
+    }
     #[test]
     fn stalled_operation_reports_and_monitor_exits_after_completion() {
         let shared = Arc::new((Mutex::new(State::default()), Condvar::new()));

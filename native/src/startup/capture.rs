@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{collections::BTreeMap, fs, path::Path, time::{SystemTime, UNIX_EPOCH}};
+mod vulkan;
 
 pub(crate) fn now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64
@@ -15,6 +16,8 @@ pub(crate) fn sha256(bytes: &[u8]) -> String { format!("{:x}", Sha256::digest(by
 pub(crate) struct Adapter {
     pub name: String,
     pub driver: String,
+    #[serde(default)]
+    pub driver_info: String,
     pub vendor: u32,
     pub device: u32,
 }
@@ -26,6 +29,10 @@ pub(crate) struct FileInfo {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Manifest {
     pub schema: u32,
+    #[serde(default = "dx12_backend")]
+    pub backend: String,
+    #[serde(default)]
+    pub pipeline_flags: Option<u32>,
     pub pipeline_id: u64,
     pub entry: String,
     pub adapter: Adapter,
@@ -37,6 +44,7 @@ pub(crate) struct Manifest {
     pub files: BTreeMap<String, FileInfo>,
     pub error: Option<String>,
 }
+fn dx12_backend() -> String { "dx12".into() }
 
 pub(crate) fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let temporary = path.with_extension("tmp");
@@ -65,7 +73,7 @@ impl Manifest {
 fn begin(directory: &Path, id: u64, entry: String, adapter: Adapter, root: &[u8]) -> Result<(), String> {
     fs::create_dir_all(directory).map_err(|e| e.to_string())?;
     let mut manifest = Manifest {
-        schema: 1, pipeline_id: id, entry, adapter,
+        schema: 1, backend: dx12_backend(), pipeline_flags: None, pipeline_id: id, entry, adapter,
         compiler: "wgpu-hal 30.0.1 / bundled mach-dxcompiler-rs 0.1.7+2026.10.26-141dd7f.1".into(),
         arguments: None, phase: String::new(), updated_unix_ms: 0, events: Vec::new(),
         files: BTreeMap::new(), error: None,
@@ -110,7 +118,7 @@ mod windows {
             let directory = std::env::current_dir().map_err(|e| e.to_string())?.join(base)
                 .join(format!("dx12-{}-{}", now(), std::process::id()));
             fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-            let adapter = Adapter { name: info.name.clone(), driver: info.driver.clone(), vendor: info.vendor, device: info.device };
+            let adapter = Adapter { name: info.name.clone(), driver: info.driver.clone(), driver_info: info.driver_info.clone(), vendor: info.vendor, device: info.device };
             let _ = SESSION.set(Session { directory: directory.clone(), adapter });
             if diagnostics::set_observer(observe) {
                 crate::startup::message(format_args!("Exact DX12 shader capture: {} (inputs saved before compiler/driver calls)", directory.display()));
@@ -141,7 +149,10 @@ mod windows {
 
 pub(crate) fn install(info: &wgpu::AdapterInfo) {
     #[cfg(all(windows, target_arch = "x86_64"))]
-    windows::install(info);
+    {
+        windows::install(info);
+        vulkan::install(info);
+    }
     #[cfg(not(all(windows, target_arch = "x86_64")))]
     let _ = info;
 }
@@ -152,7 +163,7 @@ mod tests {
     #[test]
     fn capture_survives_interruption_before_driver_and_preserves_exact_bytes() {
         let path = std::env::temp_dir().join(format!("retina-capture-test-{}-{}", now(), std::process::id()));
-        let adapter = Adapter { name: "test".into(), driver: "test".into(), vendor: 1, device: 2 };
+        let adapter = Adapter { name: "test".into(), driver: "test".into(), driver_info: "test".into(), vendor: 1, device: 2 };
         let args = vec!["label with spaces".into(), "-E".into(), "surface_columns".into(), "-T".into(), "cs_6_7".into()];
         begin(&path, 50, "surface_columns".into(), adapter, &[1, 2, 3]).unwrap();
         input(&path, "// exact CRLF\r\nshader", &args).unwrap();
@@ -169,6 +180,16 @@ mod tests {
         assert_eq!(Manifest::read(&path).unwrap().error.as_deref(), Some("actual driver failure"));
         finish(&path, None).unwrap();
         assert_eq!(Manifest::read(&path).unwrap().phase, "complete");
+        // Previously saved DX12 cases predate the shared backend/flags fields.
+        let mut old: serde_json::Value = serde_json::from_slice(&fs::read(path.join("case.json")).unwrap()).unwrap();
+        old.as_object_mut().unwrap().remove("backend");
+        old.as_object_mut().unwrap().remove("pipeline_flags");
+        old["adapter"].as_object_mut().unwrap().remove("driver_info");
+        fs::write(path.join("case.json"), serde_json::to_vec(&old).unwrap()).unwrap();
+        let restored = Manifest::read(&path).unwrap();
+        assert_eq!(restored.backend, "dx12");
+        assert_eq!(restored.pipeline_flags, None);
+        assert_eq!(restored.adapter.driver_info, "");
         fs::remove_dir_all(path).unwrap();
         assert!(!case_name(2, "../../bad:name").contains('/'));
     }

@@ -1015,8 +1015,9 @@ fn compile_program(
                     let entry_name = *entry;
                     #[cfg(test)]
                     let entry_start = Instant::now();
+                    let create = if specialized { crate::startup::pipeline } else { crate::startup::interpreter_pipeline };
                     let pipeline =
-                        crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
+                        create(&device, &wgpu::ComputePipelineDescriptor {
                             label: Some(entry),
                             layout: Some(&layout),
                             module: &module,

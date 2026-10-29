@@ -1,5 +1,50 @@
 # Windows startup diagnostics
 
+The subsequent RTX 4090 / NVIDIA 617.14 Vulkan report initialized the engine in
+0.435 seconds. Emitting SPIR-V took roughly 1 ms, but `vkCreateComputePipelines`
+for the world interpreter's `main` took 67.288 seconds (67.172 seconds of calling
+thread CPU). `lake_candidates` and `lake_density` then took 23.746 and 12.609
+seconds in the driver. Background specialization had not started. This localizes
+the delay to driver compilation of required interpreter pipelines, independently
+of DXC, eager initialization, and concurrent specialized compilation. It does
+not identify which optimizer pass is responsible or establish a GPU execution
+performance ratio between Metal and Vulkan.
+
+## Vulkan interpreter compilation policy
+
+Windows NVIDIA Vulkan now requests `VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT`
+for generic interpreter pipelines, including the demand-created base fallbacks.
+Specialized pipelines keep normal optimization. Other vendors/platforms retain
+their previous default; Metal and DX12 compilation are unchanged. The Vulkan
+flag permits a compilation/runtime tradeoff; it does not guarantee faster
+compilation, and interpreter generation throughput must also be measured.
+Shader code, output semantics, bounds checks, and validation are unchanged.
+
+This tests a whole-pipeline compilation policy, rather than changing individual
+shader operations. Startup still compiles the selected interpreter entries
+synchronously. A fast result would implicate driver optimization of the generic
+interpreter; it would not establish which internal optimization is expensive.
+`RETINA_VULKAN_FAST_COMPILE=0` restores previous interpreter flags for an A/B run;
+`1` forces the fast policy on any Vulkan device. Each call uses a thread-local
+scope, so a background specialized compilation cannot inherit the fast policy.
+
+Keep Vulkan for this build (`-Dretina.gpuBackend=vulkan`). The log reports the
+actual flags at the driver boundary, e.g. `optimization_disabled=true` for the
+interpreter and `false` for specialization. If the same driver phase exceeds
+90 seconds, stop and send the complete log and the newest directory under
+`retina-diagnostics/vulkan-<time>-<pid>/`. Its absolute location is logged.
+
+Each pipeline directory saves `shader.spv` from the exact Naga output passed to
+Vulkan, plus `case.json` with entrypoint, adapter/driver version, byte length,
+SHA-256, effective pipeline flags, and phase timestamps. SPIR-V is saved before
+shader-module creation and flags before `vkCreateComputePipelines`, preserving
+evidence if either call hangs. These are shader inspection captures, not complete
+standalone Vulkan replay cases (pipeline layouts are not serialized). The existing
+probe's replay menu remains DX12-only. Capture errors never prevent generation;
+`RETINA_SHADER_CAPTURE=0` and `RETINA_SHADER_CAPTURE_DIR` apply to both backends.
+
+## Earlier DX12 report and startup scheduling
+
 The 1.1.434 RTX 3060 / DX12 report completed engine initialization in 299.347
 seconds, then spent another 270.679 seconds compiling the world interpreter's
 `main` pipeline. Of that second operation, 24.631 seconds were in DXC and 246.042
@@ -73,10 +118,10 @@ are logged and do not prevent generation. `RETINA_SHADER_CAPTURE=0` disables
 capture; `RETINA_SHADER_CAPTURE_DIR` changes the parent directory. Captures stay
 on disk until deleted and are never uploaded automatically.
 
-For this diagnostic build, keep `-Dretina.gpuBackend=dx12`. After a driver phase
+For a DX12 capture, use `-Dretina.gpuBackend=dx12`. After a driver phase
 has run for 90 seconds, send the launcher log and a ZIP of the newest capture
-directory. No Java debug tools are needed. The capture build intentionally keeps
-production shader generation and compiler optimization settings unchanged.
+directory. No Java debug tools are needed. The DX12 path keeps production shader
+generation and compiler optimization settings unchanged.
 
 Drag a captured `case.json` or its containing directory onto the Windows
 `retina-gpu-probe-windows-x64.exe`. The menu runs one isolated child process:
@@ -113,4 +158,5 @@ Capture uses an observer in the pinned wgpu-hal source, not a parallel Naga
 translation that might differ from the real input. See
 [`RETINA_PATCH.md`](../native/vendor/wgpu-hal/RETINA_PATCH.md) for the upstream
 archive checksum and exact patch scope. Gradle tracks those sources as native
-build inputs. Other backends keep their existing code paths.
+build inputs. The scoped Vulkan changes are described above; Metal keeps its
+existing code path.

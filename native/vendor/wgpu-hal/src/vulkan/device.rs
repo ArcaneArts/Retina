@@ -782,6 +782,12 @@ impl super::Device {
                     naga::back::spv::write_vec(&module, &info, options, Some(&pipeline_options))
                 }
                 .map_err(|e| crate::PipelineError::Linkage(stage_flags, format!("{e}")))?;
+                if naga_stage == naga::ShaderStage::Compute {
+                    super::diagnostics::emit(super::diagnostics::Event::Spirv {
+                        words: &spv,
+                        entry: stage.entry_point,
+                    });
+                }
                 self.create_shader_module_impl(&spv, &None)?
             }
         };
@@ -2238,8 +2244,12 @@ impl crate::Device for super::Device {
             &desc.layout.binding_map,
         )?;
 
+        let flags = vk::PipelineCreateFlags::from_raw(
+            super::diagnostics::compute_flags(self.shared.vendor_id),
+        );
         let vk_infos = [{
             vk::ComputePipelineCreateInfo::default()
+                .flags(flags)
                 .layout(desc.layout.raw)
                 .stage(compiled.create_info)
         }];
@@ -2249,23 +2259,28 @@ impl crate::Device for super::Device {
             .map(|it| it.raw)
             .unwrap_or(vk::PipelineCache::null());
 
-        let mut raw_vec = {
+        super::diagnostics::emit(super::diagnostics::Event::ComputeStart { flags: flags.as_raw() });
+        let result = {
             profiling::scope!("vkCreateComputePipelines");
             unsafe {
                 self.shared
                     .raw
                     .create_compute_pipelines(pipeline_cache, &vk_infos, None)
                     .map_err(|(_, e)| super::map_pipeline_err(e))
-            }?
+            }
         };
+
+        // The module is no longer needed after the call, including on failure.
+        if let Some(raw_module) = compiled.temp_raw_module {
+            unsafe { self.shared.raw.destroy_shader_module(raw_module, None) };
+        }
+        let error = result.as_ref().err().map(|error| format!("{error:?}"));
+        super::diagnostics::emit(super::diagnostics::Event::ComputeEnd { error: error.as_deref() });
+        let mut raw_vec = result?;
 
         let raw = raw_vec.pop().unwrap();
         if let Some(label) = desc.label {
             unsafe { self.shared.set_object_name(raw, label) };
-        }
-
-        if let Some(raw_module) = compiled.temp_raw_module {
-            unsafe { self.shared.raw.destroy_shader_module(raw_module, None) };
         }
 
         self.counters.compute_pipelines.add(1);
