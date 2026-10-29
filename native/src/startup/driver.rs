@@ -1,6 +1,7 @@
 //! Observe existing wgpu-hal profiler scopes, without patching the driver path.
 use super::Stage;
 use std::sync::LazyLock;
+use std::cell::RefCell;
 use tracing::{Dispatch, Subscriber, span::{Attributes, Id}};
 use tracing_subscriber::{Layer, layer::Context, registry::LookupSpan, prelude::*};
 
@@ -10,10 +11,21 @@ fn relevant(name: &str) -> bool {
         | "vkCreateComputePipelines" | "ID3D12Device::CreateComputePipelineState")
 }
 struct DriverStages;
+thread_local! {
+    static PIPELINE: RefCell<Option<(u64, String)>> = const { RefCell::new(None) };
+}
+struct PipelineContext(Option<(u64, String)>);
+impl Drop for PipelineContext {
+    fn drop(&mut self) {
+        PIPELINE.with(|context| *context.borrow_mut() = self.0.take());
+    }
+}
 impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for DriverStages {
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         if let Some(span) = ctx.span(id) {
-            span.extensions_mut().insert(Stage::new(format!("driver phase {}", attrs.metadata().name())));
+            let pipeline = PIPELINE.with_borrow(|context| context.as_ref()
+                .map(|(id, label)| format!(" pipeline_id=#{id} {label}")).unwrap_or_default());
+            span.extensions_mut().insert(Stage::new(format!("driver phase {}{pipeline}", attrs.metadata().name())));
         }
     }
 }
@@ -23,7 +35,9 @@ static DISPATCH: LazyLock<Dispatch> = LazyLock::new(|| Dispatch::new(
     ))
 ));
 
-pub(super) fn observe<T>(operation: impl FnOnce() -> T) -> T {
+pub(super) fn observe<T>(stage: &Stage, entry: &str, operation: impl FnOnce() -> T) -> T {
+    let _context = PipelineContext(PIPELINE.with(|context|
+        context.replace(Some((stage.id, format!("entry={entry}"))))));
     // Thread-local only while inside the real synchronous pipeline operation.
     // Do not install/replace the host's global tracing subscriber.
     tracing::dispatcher::with_default(&DISPATCH, operation)
@@ -34,19 +48,22 @@ mod tests {
     use super::*;
     #[test]
     fn driver_spans_are_tracked_and_released_including_unwind() {
-        observe(|| {
+        let pipeline = Stage::new("test pipeline");
+        observe(&pipeline, "test_entry", || {
             let span = tracing::info_span!("Fxc::D3DCompile");
             let entered = span.enter();
             assert!(super::super::STATE.0.lock().unwrap().active.values()
-                .any(|(label, _, _)| label.contains("driver phase Fxc::D3DCompile")));
+                .any(|(label, _, _)| label.contains("driver phase Fxc::D3DCompile")
+                    && label.contains(&format!("pipeline_id=#{} entry=test_entry", pipeline.id))));
             drop(entered);
         });
-        let _ = std::panic::catch_unwind(|| observe(|| {
+        let _ = std::panic::catch_unwind(|| observe(&pipeline, "unwind_entry", || {
             let _span = tracing::info_span!("vkCreateComputePipelines").entered();
             panic!("diagnostic unwind");
         }));
         assert!(!super::super::STATE.0.lock().unwrap().active.values()
             .any(|(label, _, _)| label.contains("driver phase")));
         assert!(!relevant("unrelated frame event"));
+        assert!(PIPELINE.with_borrow(|context| context.is_none()));
     }
 }

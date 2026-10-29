@@ -148,6 +148,7 @@ tradeoff and validation commands.
 `debug` enables extra startup and per-region generation diagnostics in the log.
 Normal lifecycle/registry summaries, compatibility reports, warnings, errors and
 explicitly enabled QA checkpoints remain available with debug off.
+Native compiler progress is always logged; see [Windows startup diagnostics](docs/WINDOWS_STARTUP.md).
 `f3_overlay` controls Retina's F3 information on the local modded client. Servers
 ignore this display preference and continue supplying telemetry to clients.
 

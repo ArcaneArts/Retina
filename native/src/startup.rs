@@ -60,7 +60,7 @@ impl Stage {
 impl Drop for Stage {
     fn drop(&mut self) {
         let mut state = STATE.0.lock().unwrap_or_else(|e| e.into_inner());
-        state.active.remove(&self.id);
+        let cpu = state.active.remove(&self.id).map(|(_, _, cpu)| cpu);
         if state.active.is_empty() {
             STATE.1.notify_all();
         }
@@ -71,10 +71,11 @@ impl Drop for Stage {
             "END"
         };
         message(format_args!(
-            "{outcome} #{} {} elapsed={:.3}s",
+            "{outcome} #{} {} elapsed={:.3}s{}",
             self.id,
             self.label,
-            self.started.elapsed().as_secs_f64()
+            self.started.elapsed().as_secs_f64(),
+            cpu.map(|cpu| cpu.report()).unwrap_or_default()
         ));
     }
 }
@@ -124,12 +125,12 @@ pub(crate) fn pipeline(
     device: &wgpu::Device,
     descriptor: &wgpu::ComputePipelineDescriptor<'_>,
 ) -> wgpu::ComputePipeline {
-    let _stage = Stage::new(format!(
+    let stage = Stage::new(format!(
         "compute pipeline {} entry={}",
         descriptor.label.unwrap_or("unnamed"),
         descriptor.entry_point.unwrap_or("auto")
     ));
-    driver::observe(|| device.create_compute_pipeline(descriptor))
+    driver::observe(&stage, descriptor.entry_point.unwrap_or("auto"), || device.create_compute_pipeline(descriptor))
 }
 
 #[cfg(test)]

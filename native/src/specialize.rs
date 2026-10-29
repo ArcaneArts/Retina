@@ -519,14 +519,14 @@ impl Pipelines {
             dispatch: self.dispatches.get(entry).copied(),
         }
     }
-    pub fn world_or<'a>(&'a self, entry: &str, base: &'a wgpu::ComputePipeline) -> Selected<'a> {
+    pub fn world_or<'a>(&'a self, entry: &str, base: impl Into<Selected<'a>>) -> Selected<'a> {
         if self.reuse.is_some_and(|p| p.world_reuses(entry)) {
             base.into()
         } else {
             self.world_selected(entry)
         }
     }
-    pub fn cave_or<'a>(&'a self, entry: &str, base: &'a wgpu::ComputePipeline) -> Selected<'a> {
+    pub fn cave_or<'a>(&'a self, entry: &str, base: impl Into<Selected<'a>>) -> Selected<'a> {
         if self.reuse.is_some_and(|p| p.cave_reuses(entry)) {
             base.into()
         } else {
@@ -974,6 +974,10 @@ fn compile_program(
             } else {
                 entries.to_vec()
             };
+            crate::startup::message(format_args!(
+                "Pipeline workload specialized={specialized} source_bytes={} entries={} [{}]",
+                source.len(), compiled_entries.len(), compiled_entries.join(", ")
+            ));
             #[cfg(test)]
             let source = probe.source(source, &compiled_entries);
             #[cfg(test)]

@@ -1,4 +1,6 @@
 use crate::timings;
+mod base_pipeline;
+use base_pipeline::BasePipeline;
 #[cfg(test)]
 pub(crate) mod host_phase_probe;
 use crate::{
@@ -34,31 +36,31 @@ const SURFACE_METADATA_FLOATS: usize = 8 * if 20000 > MAX_BATCH * 25 {
 pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
-    sites_pipeline: wgpu::ComputePipeline,
-    biome_queries_pipeline: wgpu::ComputePipeline,
-    underground_queries_pipeline: wgpu::ComputePipeline,
-    climate_pipeline: wgpu::ComputePipeline,
-    cave_nodes_pipeline: wgpu::ComputePipeline,
-    cave_exterior_pipeline: wgpu::ComputePipeline,
-    cave_mask_pipeline: wgpu::ComputePipeline,
-    aquifer_surface_pipeline: wgpu::ComputePipeline,
-    aquifer_centers_pipeline: wgpu::ComputePipeline,
-    aquifer_barrier_pipeline: wgpu::ComputePipeline,
-    aquifer_mask_pipeline: wgpu::ComputePipeline,
-    material_counts_pipeline: wgpu::ComputePipeline,
-    material_prefix_blocks_pipeline: wgpu::ComputePipeline,
-    material_prefix_total_pipeline: wgpu::ComputePipeline,
-    material_emit_pipeline: wgpu::ComputePipeline,
+    sites_pipeline: BasePipeline,
+    biome_queries_pipeline: BasePipeline,
+    underground_queries_pipeline: BasePipeline,
+    climate_pipeline: BasePipeline,
+    cave_nodes_pipeline: BasePipeline,
+    cave_exterior_pipeline: BasePipeline,
+    cave_mask_pipeline: BasePipeline,
+    aquifer_surface_pipeline: BasePipeline,
+    aquifer_centers_pipeline: BasePipeline,
+    aquifer_barrier_pipeline: BasePipeline,
+    aquifer_mask_pipeline: BasePipeline,
+    material_counts_pipeline: BasePipeline,
+    material_prefix_blocks_pipeline: BasePipeline,
+    material_prefix_total_pipeline: BasePipeline,
+    material_emit_pipeline: BasePipeline,
     cave_layout: wgpu::BindGroupLayout,
     cave_profiles: HashMap<u32, wgpu::Buffer>,
     cave_buffers: Option<CaveBuffers>,
-    columns_pipeline: wgpu::ComputePipeline,
-    height_pipeline: wgpu::ComputePipeline,
-    density_pipeline: wgpu::ComputePipeline,
-    lake_pipeline: wgpu::ComputePipeline,
-    lake_candidates_pipeline: wgpu::ComputePipeline,
-    lake_density_pipeline: wgpu::ComputePipeline,
-    surface_pipeline: wgpu::ComputePipeline,
+    columns_pipeline: BasePipeline,
+    height_pipeline: BasePipeline,
+    density_pipeline: BasePipeline,
+    lake_pipeline: BasePipeline,
+    lake_candidates_pipeline: BasePipeline,
+    lake_density_pipeline: BasePipeline,
+    surface_pipeline: BasePipeline,
     height_nodes: wgpu::Buffer,
     layout: wgpu::BindGroupLayout,
     profiles: HashMap<u32, (wgpu::Buffer, wgpu::Buffer, wgpu::Buffer, wgpu::BindGroup)>,
@@ -303,8 +305,19 @@ impl Gpu {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
+        let eager_pipelines = match std::env::var("RETINA_EAGER_PIPELINES").as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => !matches!(info.backend, wgpu::Backend::Vulkan | wgpu::Backend::Dx12),
+        };
+        let defer_specialization = match std::env::var("RETINA_DEFER_SPECIALIZATION").as_deref() {
+            Ok("0") => false,
+            Ok("1") => true,
+            _ => matches!(info.backend, wgpu::Backend::Vulkan | wgpu::Backend::Dx12),
+        };
+        crate::startup::message(format_args!("Pipeline policy: eager_base={eager_pipelines} defer_specialization={defer_specialization}; deferred base pipelines compile once, only if selected"));
         let pipeline = |entry| {
-            crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
+            BasePipeline::new(&device, eager_pipelines, &wgpu::ComputePipelineDescriptor {
                 label: Some(entry),
                 layout: Some(&pipeline_layout),
                 module: &shader,
@@ -350,7 +363,7 @@ impl Gpu {
             immediate_size: 0,
         });
         let cave_pipeline = |entry| {
-            crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
+            BasePipeline::new(&device, eager_pipelines, &wgpu::ComputePipelineDescriptor {
                 label: Some(entry),
                 layout: Some(&cave_pipeline_layout),
                 module: &cave_shader,
@@ -374,7 +387,7 @@ impl Gpu {
         let biome_queries_pipeline = pipeline("biome_queries");
         let climate_pipeline = pipeline("climate_nodes");
         let underground_queries_pipeline =
-            crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
+            BasePipeline::new(&device, eager_pipelines, &wgpu::ComputePipelineDescriptor {
                 label: Some("Retina sparse underground biomes"),
                 layout: Some(&cave_pipeline_layout),
                 module: &cave_shader,
@@ -488,11 +501,7 @@ impl Gpu {
             sparse_lake_plans: HashMap::new(),
             interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
             specialized_terrain,
-            defer_specialization: match std::env::var("RETINA_DEFER_SPECIALIZATION").as_deref() {
-                Ok("0") => false,
-                Ok("1") => true,
-                _ => info.backend == wgpu::Backend::Vulkan,
-            },
+            defer_specialization,
             specialized_interpolation,
             interpreter_dispatch,
             preloaded_interpreters: HashMap::new(),
@@ -831,20 +840,6 @@ impl Gpu {
                 .filter(|_| self.wide_profiles.contains(&profile_id))
                 .cloned()
         };
-        // On Vulkan, finish the usable fallback before starting the background
-        // optimizer. This avoids competing driver compiles during first use.
-        // Forced specialization still starts immediately and waits as requested.
-        if self.defer_specialization {
-            if let Some(profile) = profile {
-                if profile.registry_program.is_some()
-                    && !self.specialized.contains_key(&profile_id)
-                    && profile.program_execution == crate::specialize::Execution::Auto
-                {
-                    crate::startup::message(format_args!("Fallback pipelines ready for profile={profile_id}; starting background specialization"));
-                    self.request_specialization(profile_id, profile)?;
-                }
-            }
-        }
         let selected = specialized.as_deref().or(interpreted.as_deref());
         // Terrain input and climate passes may use the compact interpreter while
         // materials/caves retain specialization. Both use the same resident
@@ -855,12 +850,12 @@ impl Gpu {
             interpreted.as_deref()
         };
         let world_pipeline = |entry, fallback| {
-            selected.map_or(crate::specialize::Selected::from(fallback), |p| {
+            selected.map_or_else(|| crate::specialize::Selected::from(fallback), |p| {
                 p.world_or(entry, fallback)
             })
         };
         let terrain_pipeline = |entry, fallback| {
-            terrain.map_or(crate::specialize::Selected::from(fallback), |p| {
+            terrain.map_or_else(|| crate::specialize::Selected::from(fallback), |p| {
                 p.world_or(entry, fallback)
             })
         };
@@ -1073,7 +1068,7 @@ impl Gpu {
             } else {
                 cached_masks
             };
-            selected.map_or(crate::specialize::Selected::from(fallback), |p| {
+            selected.map_or_else(|| crate::specialize::Selected::from(fallback), |p| {
                 if cached {
                     p.cached_cave(entry)
                         .map(crate::specialize::Selected::from)
@@ -1752,7 +1747,7 @@ impl Gpu {
                 ] {
                     let mut pass =
                         encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
-                    pass.set_pipeline(pipeline);
+                    pass.set_pipeline(pipeline.get());
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups(groups, 1, 1);
                 }
@@ -1804,6 +1799,20 @@ impl Gpu {
         if let Some(t) = &slot.timestamps {
             encoder.resolve_query_set(&t.queries, 0..measured.len() as u32 * 2, &t.resolve, 0);
             encoder.copy_buffer_to_buffer(&t.resolve, 0, &t.readback, 0, query_bytes);
+        }
+        // Finish every selected pipeline, including deferred base fallbacks,
+        // before the background optimizer can compete for the driver/compiler.
+        // Forced specialization still starts immediately and waits as requested.
+        if self.defer_specialization {
+            if let Some(profile) = profile {
+                if profile.registry_program.is_some()
+                    && !self.specialized.contains_key(&profile_id)
+                    && profile.program_execution == crate::specialize::Execution::Auto
+                {
+                    crate::startup::message(format_args!("Fallback pipelines ready for profile={profile_id}; starting background specialization"));
+                    self.request_specialization(profile_id, profile)?;
+                }
+            }
         }
         let submission = self.queue.submit([encoder.finish()]);
         // Procedural worlds share shader/buffer slot zero but retain distinct diagnostics.
