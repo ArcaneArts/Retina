@@ -36,6 +36,7 @@ mod features;
 pub mod flat;
 pub mod geology;
 mod gpu;
+mod gpu_backend;
 mod gpu_worker;
 mod startup;
 pub mod lighting;

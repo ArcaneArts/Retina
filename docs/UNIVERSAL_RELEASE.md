@@ -191,3 +191,28 @@ stages remain; it never times out, cancels or changes the actual operation. Shad
 sources, seed-dependent profile contents and per-chunk steady-state activity are
 not dumped. A stalled startup can be reported by copying the last startup lines
 from the launcher console, including the selected adapter and unfinished stages.
+
+### Selecting the compute backend
+
+Retina bundles Metal, Vulkan and DirectX 12 support. To test a particular backend
+in Prism, add one JVM argument to the instance's Java settings:
+
+```text
+-Dretina.gpuBackend=dx12
+```
+
+Use `vulkan`, `metal`, or `auto` in place of `dx12` for those choices; remove the
+argument to restore automatic selection. This works in Fabric, NeoForge, Bukkit,
+and the executable JAR. Native CLI users can set `RETINA_GPU_BACKEND=dx12`.
+An explicit JVM property takes precedence over that environment variable.
+The startup log reports the requested backend and actual selected adapter.
+An explicitly requested backend is attempted directly and reports adapter/device
+creation errors if unavailable; Retina does not silently choose another backend.
+OpenGL/OpenGL ES is not compiled into this distribution.
+
+On Vulkan, automatic execution prepares its fallback pipelines before enqueueing
+specialized compilation for that profile. Explicit interpreter/specialized modes
+retain their meanings. `RETINA_DEFER_SPECIALIZATION=0` restores overlapping
+compilation for comparison; `1` enables fallback-first scheduling on other
+backends for validation. This ordering does not guarantee faster driver compilation
+and does not create a persistent disk shader cache.

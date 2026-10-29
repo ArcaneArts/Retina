@@ -6,6 +6,12 @@ import java.util.*;
 /** JDK-only parser checks; real packaged-native checks live in the process harness. */
 public final class RetinaCliTest {
     public static void main(String[] args) {
+        if (NativeLibrary.backendCode(" DX12 ") != 2
+                || NativeLibrary.backendCode("Vulkan") != 1
+                || NativeLibrary.backendCode("metal") != 3
+                || NativeLibrary.backendCode("auto") != 0) throw new AssertionError("Backend selection");
+        bad(() -> NativeLibrary.backendCode("gles"));
+        bad(() -> NativeLibrary.backendCode(""));
         equal(RetinaCli.bounds(Map.of("region-radius", "0")), new int[]{0,0,0,0});
         equal(RetinaCli.bounds(Map.of("region-min", "-2,1", "region-max", "0,3")), new int[]{-2,1,0,3});
         equal(RetinaCli.bounds(Map.of("region-min", "-67108864,-67108864", "region-max", "67108863,67108863")),
