@@ -880,6 +880,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "wgpu",
+ "wgpu-hal",
  "windows-sys",
  "xxhash-rust",
 ]

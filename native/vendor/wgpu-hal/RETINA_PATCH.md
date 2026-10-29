@@ -22,7 +22,15 @@ Only these upstream source files are changed:
   mutable and the production compiler arguments, driver descriptor, and shader
   generation remain unchanged.
 
-All Metal, Vulkan, Naga translation and GPU execution code is unmodified.
+- `src/vulkan/mod.rs`, `src/vulkan/diagnostics.rs` (new): export a thread-local,
+  unwind-safe compute compilation policy and read-only SPIR-V/driver observers.
+- `src/vulkan/device.rs`: observe the exact emitted compute SPIR-V before shader
+  module creation; apply `VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT` to explicitly
+  marked interpreter pipelines on Windows NVIDIA devices by default. Capture the
+  effective flags before the real driver call and report its result. Release the
+  temporary shader module on driver errors as well as success.
+
+Metal, DX12 optimization, Naga translation and GPU dispatch code are unchanged.
 Retina owns file persistence in `native/src/startup/capture.rs`; the backend has
 no filesystem policy. When capture is disabled, root-signature copies and
 argument conversion are skipped. Removing this patch requires removing the
@@ -31,3 +39,11 @@ capture/replay integration before returning Cargo to the registry package.
 The replay driver helper creates and releases a root signature and compute
 pipeline. It submits no GPU work. DXC optimization changes are restricted to
 explicit standalone replay modes, never applied during normal generation.
+
+Vulkan policy is scoped around each synchronous wgpu pipeline call. It does not
+depend on thread names, shader labels, or a process-global environment mutation.
+Unmarked/specialized pipelines keep upstream flags. The effective device vendor
+is checked at the Vulkan call, not inferred from another device. An explicit
+`RETINA_VULKAN_FAST_COMPILE=0/1` override in Retina controls interpreter policy
+for comparison. The flag may trade runtime throughput for compilation time; it
+is not a time bound and does not disable validation or shader safety checks.

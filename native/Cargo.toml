@@ -70,6 +70,8 @@ wgpu = { version = "=30.0.1", default-features = false, features = ["static-dxc"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [dev-dependencies]
+# Exercise the real scoped Vulkan policy on the Metal development host too.
+wgpu-hal = { version = "=30.0.1", default-features = false, features = ["vulkan"] }
 libc = "0.2"
 serde_json = { version = "1", features = ["raw_value"] }
 
@@ -87,6 +89,6 @@ codegen-units = 2
 [profile.dev.build-override]
 codegen-units = 2
 
-# Pinned upstream backend with opt-in, observational DX12 capture/replay hooks.
+# Pinned backend with exact shader capture and scoped Vulkan interpreter policy.
 [patch.crates-io]
 wgpu-hal = { path = "vendor/wgpu-hal" }

@@ -28,7 +28,7 @@ impl BasePipeline {
     }
 
     pub fn get(&self) -> &wgpu::ComputePipeline {
-        self.compiled.get_or_init(|| crate::startup::pipeline(&self.device, &wgpu::ComputePipelineDescriptor {
+        self.compiled.get_or_init(|| crate::startup::interpreter_pipeline(&self.device, &wgpu::ComputePipelineDescriptor {
             label: Some(&self.label),
             layout: Some(&self.layout),
             module: &self.module,

@@ -27,6 +27,7 @@ Otherwise, we manage a pool of `VkFence` objects behind each `hal::Fence`.
 mod adapter;
 mod command;
 pub mod conv;
+pub mod diagnostics;
 mod descriptor;
 mod device;
 mod drm;

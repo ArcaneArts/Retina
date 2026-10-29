@@ -38,6 +38,7 @@ mod windows {
             path.parent().ok_or("case.json has no directory")?
         } else { path };
         let manifest = Manifest::read(directory)?;
+        if manifest.backend != "dx12" { return Err("This probe's replay modes require a DX12 capture; Vulkan shader captures are for SPIR-V inspection".into()); }
         if manifest.schema != 1 { return Err(format!("Unsupported capture schema {}", manifest.schema)); }
         let output = directory.join(format!("replay-{mode}-{}-{}", capture::now(), std::process::id()));
         fs::create_dir_all(&output).map_err(|e| e.to_string())?;
