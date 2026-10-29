@@ -2444,6 +2444,8 @@ mod column_interpreter_tests;
 #[cfg(test)]
 mod lake_sparse_tests;
 #[cfg(test)]
+mod lake_height_tests;
+#[cfg(test)]
 mod material_continuation_tests;
 
 #[cfg(test)]

@@ -238,6 +238,63 @@ fn surface_layer(cell:vec2<i32>,t:vec2<f32>,layer:u32,r:Request,probe:u32)->f32 
     let at=lake_probe_offset(r)+(probe*density_layers(r)+layer)*4u;
     return mix(mix(surface_nodes[at],surface_nodes[at+1u],t.x),mix(surface_nodes[at+2u],surface_nodes[at+3u],t.x),t.y);
 }
+// Lake probes are populated by lake_density before lake_nodes runs. Keep
+// this reduction separate from general height queries: even an unreachable
+// fallback pulls the full density interpreter into some driver compilers.
+fn lake_surface_layer(t:vec2<f32>,layer:u32,r:Request,probe:u32)->f32 {
+    let at=lake_probe_offset(r)+(probe*density_layers(r)+layer)*4u;
+    return mix(mix(surface_nodes[at],surface_nodes[at+1u],t.x),mix(surface_nodes[at+2u],surface_nodes[at+3u],t.x),t.y);
+}
+fn lake_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
+    let min_y=generation_min(r);let max_y=generation_max(r);
+    if max_y<=min_y {return empty_surface(r);}
+    if density_composed(r) {
+        var height=empty_surface(r);
+        for(var layer=0u;layer<density_layers(r);layer++) {
+            height=max(height,surface_nodes[lake_probe_offset(r)+(probe*density_layers(r)+layer)*4u]);
+        }
+        return height;
+    }
+    if min_y!=r.min_y || max_y!=r.max_y {
+        let origin=density_origin(r);
+        let local=(point-vec2<f32>(origin.xz))/f32(r.density_step_xz);
+        let t=fract(local);
+        for(var y=max_y-1;y>=min_y;y--) {
+            let local_y=clamp((f32(y)-f32(origin.y))/f32(r.density_step_y),0.0,f32(density_layers(r)-1u));
+            let layer=min(u32(floor(local_y)),density_layers(r)-2u);
+            let value=mix(lake_surface_layer(t,layer,r,probe),lake_surface_layer(t,layer+1u,r,probe),local_y-f32(layer));
+            if value>0.0 {return f32(y+1);}
+        }
+        return empty_surface(r);
+    }
+    // Interpolate densities before locating the highest solid interval. Blending
+    // corner heights instead loses density gradients and creates planar shelves.
+    let origin=density_origin(r);
+    let local=(point-vec2<f32>(origin.xz))/f32(r.density_step_xz);
+    let cell=vec2<i32>(floor(local));let t=fract(local);
+    var layer=density_layers(r)-1u;
+    var upper=lake_surface_layer(t,layer,r,probe);
+    var upper_y=f32(origin.y)+f32(layer)*f32(r.density_step_y);
+    if upper_y>f32(r.max_y) {
+        let lower=lake_surface_layer(t,layer-1u,r,probe);
+        let lower_y=upper_y-f32(r.density_step_y);
+        upper=mix(lower,upper,(f32(r.max_y)-lower_y)/f32(r.density_step_y));
+        upper_y=f32(r.max_y);
+    }
+    if upper>0.0 {return f32(r.max_y);}
+    while layer>0u {
+        layer-=1u;
+        let lower=lake_surface_layer(t,layer,r,probe);
+        if lower>0.0 {
+            let y=f32(origin.y)+f32(layer)*f32(r.density_step_y);
+            let crossing=y+(upper_y-y)*lower/max(lower-upper,0.000001);
+            return clamp(crossing+1.0,f32(r.min_y+1),f32(r.max_y));
+        }
+        upper=lower;
+        upper_y=f32(origin.y)+f32(layer)*f32(r.density_step_y);
+    }
+    return empty_surface(r);
+}
 fn density_surface_height(point:vec2<f32>,r:Request,probe:u32)->f32 {
     let min_y=generation_min(r);let max_y=generation_max(r);
     if max_y<=min_y {return empty_surface(r);}
