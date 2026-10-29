@@ -20,29 +20,38 @@ fn worker(backend: &str, definition: Option<PathBuf>) -> Result<(), String> {
         let chunk = dimension.generate_chunk(-3, -3)?;
         eprintln!("Overworld chunk -3,-3 generated in memory: {} NBT bytes", chunk.len());
     } else {
-        let heights = engine.sample_heights(retina_worldgen::ChunkRequest {
-            seed: 123456789, chunk_x: -3, chunk_z: -3, min_y: -64, height: 384,
-            base_height: 64.0, amplitude: 48.0, frequency: 0.008, reserved: 0,
-        })?;
-        eprintln!("Procedural terrain query completed: {} columns. Drop retina.dat onto this executable to test world-specific pipelines too.", heights.len());
+        eprintln!("Device initialization passed. Drop retina.dat onto this executable to test world-specific pipeline compilation and terrain generation.");
     }
     eprintln!("GPU probe PASS");
     Ok(())
 }
 fn interactive(definition: Option<PathBuf>) -> Result<bool, Box<dyn std::error::Error>> {
-    println!("Retina GPU probe (no Java required)\n1: Vulkan\n2: DirectX 12\n3: Metal\nEnter: automatic");
-    print!("Backend: "); io::stdout().flush()?;
-    let mut choice = String::new(); io::stdin().read_line(&mut choice)?;
-    let backend = match choice.trim() { "1" => "vulkan", "2" => "dx12", "3" => "metal", "" => "auto",
-        _ => return Err("Choose 1, 2, 3, or Enter".into()) };
+    let replay = definition.as_ref().is_some_and(|p| p.is_dir() || p.extension().is_some_and(|e| e == "json"));
+    let mut arguments: Vec<std::ffi::OsString> = Vec::new();
+    let label;
+    if replay {
+        println!("Retina shader replay (no Java or Minecraft)\n1: Captured DXIL -> NVIDIA/other DX12 driver only\n2: HLSL -> DXC, original compiler settings\n3: HLSL -> DXC, optimization disabled\n4: Optimization disabled, then DX12 driver\nEnter: driver only");
+        print!("Mode: "); io::stdout().flush()?;
+        let mut choice = String::new(); io::stdin().read_line(&mut choice)?;
+        label = match choice.trim() { "" | "1" => "driver", "2" => "dxc", "3" => "dxc-no-opt", "4" => "no-opt-driver",
+            _ => return Err("Choose 1, 2, 3, 4, or Enter".into()) };
+        arguments.extend(["--replay".into(), definition.unwrap().into_os_string(), label.into()]);
+    } else {
+        println!("Retina GPU probe (no Java required)\n1: Vulkan\n2: DirectX 12\n3: Metal\nEnter: automatic");
+        print!("Backend: "); io::stdout().flush()?;
+        let mut choice = String::new(); io::stdin().read_line(&mut choice)?;
+        label = match choice.trim() { "1" => "vulkan", "2" => "dx12", "3" => "metal", "" => "auto",
+            _ => return Err("Choose 1, 2, 3, or Enter".into()) };
+        arguments.extend(["--worker".into(), label.into()]);
+        if let Some(path) = definition { arguments.push(path.into_os_string()); }
+    }
     let executable = std::env::current_exe()?;
     let directory = executable.parent().ok_or("cannot locate executable directory")?;
     let stamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
-    let log = directory.join(format!("retina-gpu-probe-{backend}-{stamp}-{}.log", std::process::id()));
+    let log = directory.join(format!("retina-gpu-probe-{label}-{stamp}-{}.log", std::process::id()));
     let file = OpenOptions::new().write(true).create_new(true).open(&log)?;
     let mut command = Command::new(&executable);
-    command.args(["--worker", backend]);
-    if let Some(path) = definition { command.arg(path); }
+    command.args(arguments);
     println!("Log: {}\nThe log updates while the probe is running. Ctrl+C stops the probe.", log.display());
     let mut child = command.stdout(Stdio::from(file.try_clone()?)).stderr(Stdio::from(file)).spawn()?;
     let cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -65,7 +74,16 @@ fn main() -> ExitCode {
     let first = args.next();
     if first.as_deref() == Some(std::ffi::OsStr::new("--help")) {
         println!("Double-click and select a backend. Drop retina.dat onto the executable to also generate one Overworld chunk in memory. Logs are written beside the executable. No world files are modified.\nAutomation: retina-gpu-probe --worker <auto|vulkan|dx12|metal> [retina.dat]");
+        println!("Drop a captured case.json (or its containing folder) onto the executable to replay only that shader. Replay modes compare the captured DXIL driver call, original DXC, and DXC with optimization disabled.\nAutomation: retina-gpu-probe --replay <case.json> <driver|dxc|dxc-no-opt|no-opt-driver>");
         return ExitCode::SUCCESS;
+    }
+    if first.as_deref() == Some(std::ffi::OsStr::new("--replay")) {
+        let path = args.next().map(PathBuf::from).unwrap_or_default();
+        let mode = args.next().unwrap_or_else(|| "driver".into()).to_string_lossy().into_owned();
+        return match retina_worldgen::shader_replay::run(&path, &mode) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => { eprintln!("Shader replay FAILED: {error}"); ExitCode::FAILURE }
+        };
     }
     if first.as_deref() == Some(std::ffi::OsStr::new("--worker")) {
         let backend = args.next().unwrap_or_default().to_string_lossy().into_owned();

@@ -8,7 +8,8 @@ use tracing_subscriber::{Layer, layer::Context, registry::LookupSpan, prelude::*
 fn relevant(name: &str) -> bool {
     matches!(name, "naga::spv::write_vec" | "naga::back::hlsl::write"
         | "compile_fxc" | "Fxc::D3DCompile" | "compile_dxc"
-        | "vkCreateComputePipelines" | "ID3D12Device::CreateComputePipelineState")
+        | "vkCreateComputePipelines" | "ID3D12Device::CreateComputePipelineState"
+        | "ID3D12Device::CreateRootSignature")
 }
 struct DriverStages;
 thread_local! {
@@ -24,7 +25,7 @@ impl<S: Subscriber + for<'a> LookupSpan<'a>> Layer<S> for DriverStages {
     fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
         if let Some(span) = ctx.span(id) {
             let pipeline = PIPELINE.with_borrow(|context| context.as_ref()
-                .map(|(id, label)| format!(" pipeline_id=#{id} {label}")).unwrap_or_default());
+                .map(|(id, label)| format!(" pipeline_id=#{id} entry={label}")).unwrap_or_default());
             span.extensions_mut().insert(Stage::new(format!("driver phase {}{pipeline}", attrs.metadata().name())));
         }
     }
@@ -35,9 +36,14 @@ static DISPATCH: LazyLock<Dispatch> = LazyLock::new(|| Dispatch::new(
     ))
 ));
 
-pub(super) fn observe<T>(stage: &Stage, entry: &str, operation: impl FnOnce() -> T) -> T {
+#[cfg(all(windows, target_arch = "x86_64"))]
+pub(super) fn pipeline_context() -> Option<(u64, String)> {
+    PIPELINE.with_borrow(Clone::clone)
+}
+
+pub(crate) fn observe<T>(stage: &Stage, entry: &str, operation: impl FnOnce() -> T) -> T {
     let _context = PipelineContext(PIPELINE.with(|context|
-        context.replace(Some((stage.id, format!("entry={entry}"))))));
+        context.replace(Some((stage.id, entry.to_owned())))));
     // Thread-local only while inside the real synchronous pipeline operation.
     // Do not install/replace the host's global tracing subscriber.
     tracing::dispatcher::with_default(&DISPATCH, operation)

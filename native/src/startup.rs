@@ -1,6 +1,7 @@
 //! Always-on, bounded startup diagnostics. Logging never gates GPU operations.
 mod cpu;
-mod driver;
+pub(crate) mod capture;
+pub(crate) mod driver;
 use std::{
     collections::BTreeMap,
     io::Write,

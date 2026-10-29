@@ -246,6 +246,7 @@ impl Gpu {
                     && adapter.limits().max_immediate_size >= 4
             }
         };
+        crate::startup::capture::install(&info);
         let _device_stage = crate::startup::Stage::new("GPU device creation");
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Retina terrain device"),

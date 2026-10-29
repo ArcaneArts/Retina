@@ -12,7 +12,7 @@ def cargoExecutable = providers.gradleProperty('cargoExecutable').orElse('cargo'
 // Start the native compiler/tests at lower priority on POSIX hosts directly.
 def nativeCargoCommand = nativeOs == 'windows' ? [cargoExecutable] : ['nice', '-n', '10', cargoExecutable]
 def nativeInputs = fileTree(nativeDirectory) {
-    include 'Cargo.toml', 'Cargo.lock', 'src/**'
+    include 'Cargo.toml', 'Cargo.lock', 'src/**', 'vendor/**'
 }
 def nativeCompilerConfig = layout.projectDirectory.file('.cargo/config.toml')
 

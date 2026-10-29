@@ -2622,3 +2622,6 @@ mod tests {
 
 #[cfg(test)]
 mod gpu_buffer_probe;
+
+/// Standalone replay of captured DX12 compiler/driver inputs.
+pub mod shader_replay;
