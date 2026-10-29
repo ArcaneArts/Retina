@@ -916,6 +916,7 @@ fn compile_program(
     material_dispatch: bool,
     specialized_interpolation: bool,
 ) -> Result<Pipelines, String> {
+    let _startup = crate::startup::Stage::new(format!("compile world pipelines specialized={specialized} terrain={terrain} program_bytes={}", program.len()));
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     #[cfg(test)]
     let probe = compile_probe::Probe::new(specialized);
@@ -979,7 +980,7 @@ fn compile_program(
             let bytes = source.len();
             #[cfg(test)]
             let module_start = Instant::now();
-            let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            let module = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
                 label: Some("Retina specialized registry graphs"),
                 source: wgpu::ShaderSource::Wgsl(
                     (if specialized {
@@ -1011,7 +1012,7 @@ fn compile_program(
                     #[cfg(test)]
                     let entry_start = Instant::now();
                     let pipeline =
-                        device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                        crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
                             label: Some(entry),
                             layout: Some(&layout),
                             module: &module,

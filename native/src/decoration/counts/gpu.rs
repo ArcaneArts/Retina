@@ -71,7 +71,7 @@ impl Gpu {
                 })
                 .collect::<Vec<_>>(),
         });
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
             label: Some("Retina registered placement counts"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../../decoration_counts.wgsl").into()),
         });
@@ -80,7 +80,7 @@ impl Gpu {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+        let pipeline = crate::startup::pipeline(&device, &wgpu::ComputePipelineDescriptor {
             label: Some("Retina sparse feature counts"),
             layout: Some(&pipeline_layout),
             module: &shader,
@@ -274,7 +274,7 @@ impl Gpu {
                     bind_group_layouts: &[Some(&self.layout)],
                     immediate_size: 0,
                 });
-            self.provider_pipeline = Some(self.device.create_compute_pipeline(
+            self.provider_pipeline = Some(crate::startup::pipeline(&self.device,
                 &wgpu::ComputePipelineDescriptor {
                     label: Some("Retina sparse provider noise"),
                     layout: Some(&layout),

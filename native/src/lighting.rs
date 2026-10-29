@@ -215,9 +215,7 @@ impl Gpu {
                     })
                     .collect::<Vec<_>>(),
             });
-        let module = self
-            .device
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
+        let module = crate::startup::shader(&self.device, wgpu::ShaderModuleDescriptor {
                 label: Some("Retina packed GPU lighting"),
                 source: wgpu::ShaderSource::Wgsl(include_str!("lighting.wgsl").into()),
             });
@@ -229,8 +227,7 @@ impl Gpu {
                 immediate_size: 0,
             });
         let pipeline = |entry| {
-            self.device
-                .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            crate::startup::pipeline(&self.device, &wgpu::ComputePipelineDescriptor {
                     label: Some(entry),
                     layout: Some(&pipeline_layout),
                     module: &module,

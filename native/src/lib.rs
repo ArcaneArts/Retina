@@ -37,6 +37,7 @@ pub mod flat;
 pub mod geology;
 mod gpu;
 mod gpu_worker;
+mod startup;
 pub mod lighting;
 pub mod pipeline;
 pub mod profile;
@@ -234,6 +235,8 @@ impl TerrainEngine {
     }
     /// One-slot mode supports matched diagnostics; normal generation uses two.
     pub fn with_pipeline_depth(depth: usize) -> Result<Self, String> {
+        let _startup = startup::Stage::new("native engine initialization");
+        startup::message(format_args!("Host: os={} arch={} pipeline_depth={depth}", std::env::consts::OS, std::env::consts::ARCH));
         if !(1..=2).contains(&depth) {
             return Err("GPU pipeline depth must be 1 or 2".into());
         }
@@ -245,7 +248,11 @@ impl TerrainEngine {
             .name("retina-gpu".into())
             .spawn(move || gpu_worker::run(receiver, ready_sender, metrics, depth))
             .map_err(|e| e.to_string())?;
-        let (backend, ores, counts) = ready_receiver.recv().map_err(|e| e.to_string())??;
+        let (backend, ores, counts) = {
+            let _wait = startup::Stage::new("waiting for GPU worker readiness");
+            ready_receiver.recv().map_err(|e| e.to_string())??
+        };
+        startup::message(format_args!("GPU worker ready: {backend}"));
         let (device, queue) = ores.shared_device();
         let vine_gpu = Mutex::new(decoration::vine_gpu::Gpu::new(
             device.clone(),
@@ -1368,6 +1375,9 @@ impl TerrainEngine {
         probe_mode: u32,
         probe_y: Vec<i32>,
     ) -> Result<gpu::GpuSample, String> {
+        static FIRST_QUERY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+        let _first_query = FIRST_QUERY.swap(false, std::sync::atomic::Ordering::Relaxed).then(||
+            startup::Stage::new(format!("first terrain query profile={} chunk={},{} mode={probe_mode}", requests[0].reserved, requests[0].chunk_x, requests[0].chunk_z)));
         let profile = self.profile(requests[0].reserved)?;
         if let Some(end) = profile.as_deref().and_then(|p| p.end.as_ref()) {
             let metrics = self.timings(requests[0].reserved);
