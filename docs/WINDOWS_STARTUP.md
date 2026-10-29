@@ -1,5 +1,44 @@
 # Windows startup diagnostics
 
+## Shared interpreter call sites
+
+The 1.1.437 RTX 4090 Vulkan report confirms `flags=0x1` /
+`optimization_disabled=true`, yet `surface_columns` remains inside the driver
+after 182 seconds with almost as much calling-thread CPU time. Earlier entries
+finish in milliseconds in that run. Those timings may include driver cache hits;
+they do not establish that disabling optimization fixed cold compilation.
+
+The executable interpreter now consolidates repeated sampling calls in
+`density_layer`, `registered_density`, `density_surface_height`, and nested
+interpolation helpers. Each sampling loop has one call site to its heavy callee.
+The previous surface scan had separate top-layer, clipped-top, and lower-layer
+calls; the new loop carries the previous sample forward while preserving the
+same height-crossing calculation. Cache misses and out-of-range field evaluation
+remain supported. The original WGSL remains the reference for parity tests.
+
+For the depth-one interpreter, a Naga call-graph traversal counts **69 → 10**
+interpreter-body instances reachable through repeated static call sites from
+`surface_columns`; depth two changes **161 → 15**. These counts assume full
+inlining and include branches a compiler might eliminate. They are evidence of
+reduced source call-site multiplication, not measured driver machine-code size
+or a predicted Windows compilation speedup. The rewrite applies to shared
+generic helpers across entrypoints/backends; specialized graph source is unchanged.
+
+Validation includes Naga parsing/validation of world and cave variants, compact
+and wide register capacities, nested interpolation and composed density. The
+ignored `compact_sampling_matches_reference_world_generation` GPU test compares
+original and compact interpreter outputs for Overworld/Nether fixtures, including
+negative/large coordinates, clipped bounds, thin vertical ranges and material
+data. End terrain uses its separate generator and remains covered by native End
+fixture tests. `compact_height_scan_matches_general_query` exercises synthetic
+surface/probe samples, clipped/empty bounds and composition on a real GPU.
+
+Keep Vulkan and collect the same complete log and newest Vulkan capture directory
+if startup is still blocked. The previous optimization override remains available;
+this pass changes the interpreter call graph rather than adding another driver flag.
+
+## Earlier Vulkan report
+
 The subsequent RTX 4090 / NVIDIA 617.14 Vulkan report initialized the engine in
 0.435 seconds. Emitting SPIR-V took roughly 1 ms, but `vkCreateComputePipelines`
 for the world interpreter's `main` took 67.288 seconds (67.172 seconds of calling

@@ -1,6 +1,7 @@
 //! Resident bytecode for registered density functions and surface predicates.
 use serde::Deserialize;
 mod column_interpreter;
+mod compact_calls;
 pub(crate) use column_interpreter::FLAG as COLUMN_INTERPRETER_FLAG;
 pub(crate) mod composition;
 pub(crate) mod interpolation;
@@ -96,6 +97,9 @@ pub(crate) fn interpreter_source_density(
     depth: usize,
     composition: bool,
 ) -> String {
+    compact_calls::source(interpreter_reference_source(capacity, depth, composition), depth)
+}
+pub(crate) fn interpreter_reference_source(capacity: usize, depth: usize, composition: bool) -> String {
     let source = include_str!("program.wgsl");
     let start = source.find("fn run_program(").unwrap();
     let end = source.find("fn density_floor_div(").unwrap();
