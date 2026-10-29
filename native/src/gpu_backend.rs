@@ -40,6 +40,24 @@ pub(crate) fn selected() -> Result<wgpu::Backends, String> {
     }).clone()
 }
 
+pub(crate) fn instance_descriptor(backends: wgpu::Backends) -> wgpu::InstanceDescriptor {
+    let descriptor = wgpu::InstanceDescriptor {
+        backends,
+        ..wgpu::InstanceDescriptor::new_without_display_handle()
+    };
+    #[cfg(all(windows, target_arch = "x86_64"))]
+    {
+        let mut descriptor = descriptor;
+        descriptor.backend_options.dx12.shader_compiler = wgpu::Dx12Compiler::StaticDxc;
+        if backends.contains(wgpu::Backends::DX12) {
+            crate::startup::message("DX12 shader compiler: bundled static DXC (FXC fallback disabled)");
+        }
+        descriptor
+    }
+    #[cfg(not(all(windows, target_arch = "x86_64")))]
+    descriptor
+}
+
 /// Configure before GPU initialization. 0=auto, 1=Vulkan, 2=DX12, 3=Metal.
 #[unsafe(no_mangle)]
 pub extern "C" fn retina_configure_gpu_backend(code: u32) -> i32 {
@@ -49,6 +67,13 @@ pub extern "C" fn retina_configure_gpu_backend(code: u32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn instance_preserves_backend_selection() {
+        let descriptor = instance_descriptor(wgpu::Backends::VULKAN);
+        assert_eq!(descriptor.backends, wgpu::Backends::VULKAN);
+        #[cfg(all(windows, target_arch = "x86_64"))]
+        assert!(matches!(descriptor.backend_options.dx12.shader_compiler, wgpu::Dx12Compiler::StaticDxc));
+    }
     #[test]
     fn explicit_backends_do_not_silently_fall_back() {
         assert_eq!(parse(" DX12 ").unwrap(), wgpu::Backends::DX12);

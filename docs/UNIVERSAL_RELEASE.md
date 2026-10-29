@@ -246,3 +246,19 @@ onto the executable. It reads the definition and generates Overworld chunk
 For automated testing, `--worker <auto|vulkan|dx12|metal> [retina.dat]` runs directly
 with output on stdout/stderr and no prompt. The probe is diagnostic, not a startup
 speed fix; its Windows GPU result still needs to be compared with the mod's log.
+
+### Bundled Windows x64 DXC
+
+Windows x64 builds link DXC statically and explicitly select it for DX12. This
+avoids falling back to the system FXC compiler, which the reported RTX 3060 log
+showed consuming 87 seconds of calling-thread CPU time in a 90-second pipeline
+creation wait. No extra compiler DLLs need to be installed or copied by players.
+The log reports `DX12 shader compiler: bundled static DXC` and the inner compiler
+phase should be `compile_dxc`. Keep `-Dretina.gpuBackend=dx12` for the comparison.
+Vulkan, Metal, shader arithmetic, and optimization settings are unchanged. This
+addresses the observed DX12 compiler path; it does not establish the cause of the
+separate Vulkan delay. Windows runtime performance still needs to be measured.
+
+The Mac Windows-x64 cross-build includes ATL for DXC's static library. If an older
+cargo-xwin SDK cache produces an actual `atls.lib` linker error, refresh it with
+`cargo xwin cache xwin --xwin-include-atl --update`, then rerun the build.

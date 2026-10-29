@@ -169,10 +169,7 @@ impl Gpu {
     pub(crate) fn new(metrics: std::sync::Arc<crate::pipeline::Metrics>) -> Result<Self, String> {
         let backends = crate::gpu_backend::selected()?;
         let _instance_stage = crate::startup::Stage::new(format!("GPU instance creation requested={backends:?}"));
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends,
-            ..wgpu::InstanceDescriptor::new_without_display_handle()
-        });
+        let instance = wgpu::Instance::new(crate::gpu_backend::instance_descriptor(backends));
         drop(_instance_stage);
         let _adapter_stage = crate::startup::Stage::new("GPU adapter selection (high performance)");
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
