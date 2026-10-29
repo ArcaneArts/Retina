@@ -37,6 +37,7 @@ pub mod flat;
 pub mod geology;
 mod gpu;
 mod gpu_backend;
+pub use gpu_backend::retina_configure_gpu_backend;
 mod gpu_worker;
 mod startup;
 pub mod lighting;

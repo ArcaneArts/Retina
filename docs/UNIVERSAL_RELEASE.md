@@ -216,3 +216,33 @@ retain their meanings. `RETINA_DEFER_SPECIALIZATION=0` restores overlapping
 compilation for comparison; `1` enables fallback-first scheduling on other
 backends for validation. This ordering does not guarantee faster driver compilation
 and does not create a persistent disk shader cache.
+
+### Windows pipeline diagnostics and standalone probe
+
+Pipeline creation now reports wgpu's internal phases using its existing profiler
+hooks: SPIR-V emission, HLSL emission, FXC/DXC compilation, and Vulkan/DX12 driver
+pipeline creation. These are real nested operations; shader code and compiler
+options are unchanged. If a wait occurs between instrumented phases, the enclosing
+pipeline stage remains visible. The observer is thread-local to pipeline creation
+and does not replace a host application's global tracing subscriber.
+
+On Windows, `WAIT` lines include `thread_id` and cumulative `thread_cpu_ms` since
+that stage began. This measures the calling thread's kernel plus user CPU time;
+it does not count work delegated to internal compiler/driver worker threads. A
+flat counter is evidence that this thread is not consuming CPU, not proof of a
+deadlock. Counter lookup failures print `unavailable` and never stop generation.
+No threads are suspended, stack dumps collected, or shader source printed.
+
+Releases also contain `retina-gpu-probe-windows-x64.exe`. Download it to a writable
+folder, double-click, and choose Vulkan or DirectX 12. It launches a native child
+process running the same Retina engine without Java/Minecraft. A uniquely named
+log beside the executable updates while the probe runs. Ctrl+C stops the child;
+the window remains open after a completed or failed test. No debugger is required.
+
+Double-clicking alone exercises initial pipelines (including `cave_nodes`). To
+also reproduce world-specific pipeline creation, drag a world's `retina.dat`
+onto the executable. It reads the definition and generates Overworld chunk
+`-3,-3` in memory; it does not write chunks or change the source world.
+For automated testing, `--worker <auto|vulkan|dx12|metal> [retina.dat]` runs directly
+with output on stdout/stderr and no prompt. The probe is diagnostic, not a startup
+speed fix; its Windows GPU result still needs to be compared with the mod's log.

@@ -1,4 +1,6 @@
 //! Always-on, bounded startup diagnostics. Logging never gates GPU operations.
+mod cpu;
+mod driver;
 use std::{
     collections::BTreeMap,
     io::Write,
@@ -9,7 +11,7 @@ use std::{
 #[derive(Default)]
 struct State {
     next: u64,
-    active: BTreeMap<u64, (String, Instant)>,
+    active: BTreeMap<u64, (String, Instant, cpu::Probe)>,
     monitoring: bool,
 }
 type Shared = (Mutex<State>, Condvar);
@@ -37,7 +39,7 @@ impl Stage {
         let mut state = STATE.0.lock().unwrap_or_else(|e| e.into_inner());
         state.next += 1;
         let id = state.next;
-        state.active.insert(id, (label.clone(), started));
+        state.active.insert(id, (label.clone(), started, cpu::Probe::current()));
         let launch = !state.monitoring;
         state.monitoring = true;
         drop(state);
@@ -92,10 +94,10 @@ fn monitor(shared: Arc<Shared>, interval: Duration, mut emit: impl FnMut(String)
             let lines: Vec<_> = state
                 .active
                 .iter()
-                .map(|(id, (label, began))| {
+                .map(|(id, (label, began, cpu))| {
                     format!(
-                        "WAIT #{id} {label} elapsed={:.1}s (operation still running)",
-                        began.elapsed().as_secs_f64()
+                        "WAIT #{id} {label} elapsed={:.1}s{} (operation still running)",
+                        began.elapsed().as_secs_f64(), cpu.report()
                     )
                 })
                 .collect();
@@ -127,7 +129,7 @@ pub(crate) fn pipeline(
         descriptor.label.unwrap_or("unnamed"),
         descriptor.entry_point.unwrap_or("auto")
     ));
-    device.create_compute_pipeline(descriptor)
+    driver::observe(|| device.create_compute_pipeline(descriptor))
 }
 
 #[cfg(test)]
@@ -141,7 +143,7 @@ mod tests {
             .lock()
             .unwrap()
             .active
-            .insert(7, ("blocked driver call".into(), Instant::now()));
+            .insert(7, ("blocked driver call".into(), Instant::now(), cpu::Probe::current()));
         let (send, receive) = std::sync::mpsc::channel();
         let worker_state = shared.clone();
         let worker = std::thread::spawn(move || {

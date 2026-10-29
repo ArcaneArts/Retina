@@ -119,6 +119,16 @@ def reconcile_latest():
     raise RuntimeError('Concurrent release publication is still changing latest; rerun to reconcile')
 
 
+def verify_published_assets(tag, assets, expected):
+    if sorted(asset['name'] for asset in assets) != sorted(expected):
+        raise ValueError('Published release does not contain exactly the expected JAR and GPU probe')
+    with tempfile.TemporaryDirectory(prefix='retina-release-verify-') as directory:
+        for name, data in expected.items():
+            run('gh', 'release', 'download', tag, '--repo', REPO, '--pattern', name, '--dir', directory)
+            if (Path(directory) / name).read_bytes() != data:
+                raise ValueError('Rerun differs from the published artifact; refusing to replace it')
+
+
 def publish():
     info = metadata()
     if not REPO:
@@ -127,7 +137,9 @@ def publish():
     if info['commit'] != os.environ['GITHUB_SHA']:
         raise ValueError('Checkout does not match the triggering commit')
     jar = Path('dist') / f'retina-{info["minecraft"]}-{info["version"]}.jar'
-    contents = jar.read_bytes()
+    probe = Path('dist/retina-gpu-probe-windows-x64.exe')
+    expected = {path.name: path.read_bytes() for path in (jar, probe)}
+    contents = expected[jar.name]
     sha256 = hashlib.sha256(contents).hexdigest()
     tag = 'v' + info['version']
     existing = release_for_tag(tag)
@@ -137,13 +149,7 @@ def publish():
     if existing and not existing['draft']:
         if source != info['commit']:
             raise ValueError('Published release tag does not match the build')
-        assets = existing['assets']
-        if [asset['name'] for asset in assets] != [jar.name]:
-            raise ValueError('Published release does not contain exactly the expected universal asset')
-        with tempfile.TemporaryDirectory(prefix='retina-release-verify-') as directory:
-            run('gh', 'release', 'download', tag, '--repo', REPO, '--pattern', jar.name, '--dir', directory)
-            if (Path(directory) / jar.name).read_bytes() != contents:
-                raise ValueError('Rerun differs from the published artifact; refusing to replace it')
+        verify_published_assets(tag, existing['assets'], expected)
         print(f'Existing release verified: {tag} {sha256}')
         reconcile_latest()
         return
@@ -153,6 +159,10 @@ def publish():
             raise ValueError('Draft release targets a different commit')
     run('git', 'fetch', '--tags', 'origin')
     body = release_notes(info, tag, sha256, jar)
+    body += ('\nStandalone Windows GPU diagnostic: double-click `retina-gpu-probe-windows-x64.exe`, '
+             'choose Vulkan or DX12, and collect the log beside it. No Java required. '
+             'Drop `retina.dat` onto it to also test world pipelines without modifying the world.\n'
+             f'\n`{probe.name}` SHA-256: `{hashlib.sha256(expected[probe.name]).hexdigest()}`\n')
     with tempfile.TemporaryDirectory(prefix='retina-release-notes-') as directory:
         notes = Path(directory) / 'notes.md'; notes.write_text(body)
         if not existing:
@@ -161,9 +171,9 @@ def publish():
         else:
             run('gh', 'release', 'edit', tag, '--repo', REPO,
                 '--title', f'Retina {info["version"]}', '--notes-file', str(notes))
-        run('gh', 'release', 'upload', tag, str(jar), '--repo', REPO, '--clobber')
+        run('gh', 'release', 'upload', tag, str(jar), str(probe), '--repo', REPO, '--clobber')
         draft = release_for_tag(tag)
-        if [asset['name'] for asset in draft['assets']] != [jar.name]:
+        if sorted(asset['name'] for asset in draft['assets']) != sorted(expected):
             raise ValueError('Draft has unexpected assets; refusing to publish an incomplete distribution')
         run('gh', 'release', 'edit', tag, '--repo', REPO, '--draft=false', '--latest=false')
     if tag_commit(tag) != info['commit']:

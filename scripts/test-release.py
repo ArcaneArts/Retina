@@ -14,6 +14,25 @@ spec.loader.exec_module(publisher)
 
 
 class ReleaseTest(unittest.TestCase):
+    def test_rerun_verifies_both_jar_and_probe_bytes(self):
+        expected = {'retina.jar': b'jar', 'probe.exe': b'executable'}
+        assets = [{'name': name} for name in reversed(expected)]
+        def download(*args):
+            name = args[args.index('--pattern') + 1]
+            directory = args[args.index('--dir') + 1]
+            (Path(directory) / name).write_bytes(expected[name])
+        with patch.object(publisher, 'run', side_effect=download) as calls:
+            publisher.verify_published_assets('v1.1.1', assets, expected)
+            self.assertEqual(calls.call_count, 2)
+        with self.assertRaises(ValueError):
+            publisher.verify_published_assets('v1.1.1', assets[:1], expected)
+        def corrupt_probe(*args):
+            download(*args)
+            if args[args.index('--pattern') + 1] == 'probe.exe':
+                (Path(args[args.index('--dir') + 1]) / 'probe.exe').write_bytes(b'changed')
+        with patch.object(publisher, 'run', side_effect=corrupt_probe), self.assertRaises(ValueError):
+            publisher.verify_published_assets('v1.1.1', assets, expected)
+
     def test_draft_lookup_uses_authenticated_release_listing(self):
         draft = {'tag_name': 'v1.1.450', 'draft': True, 'id': 123}
         with patch.object(publisher, 'api', return_value=[draft]) as api:
