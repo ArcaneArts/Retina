@@ -171,10 +171,11 @@ that world. Release jobs also launch `java -jar ... --help` on all three platfor
 
 ## Startup diagnostics
 
-Startup logging is enabled by default in all hosts, including release JARs.
-Prism's console captures the native stderr lines prefixed `[Retina startup]`;
-mod adapter/storage messages also use the normal Minecraft logger. No Java debug
-commands, environment variables or debug setting are required.
+Concise preparation progress is enabled by default. Set `debug = true` in the
+mod configuration, or `debug: true` in Bukkit configuration, and restart for the
+detailed stages described below. Prism's console captures native stderr lines
+prefixed `[Retina startup]`; mod adapter/storage messages also use the normal
+Minecraft logger. No Java debugging tools are required.
 
 Native stages have a numbered `BEGIN` and `END` with elapsed seconds and thread
 name. Logs identify instance creation, adapter selection (backend, device and
@@ -233,8 +234,10 @@ flat counter is evidence that this thread is not consuming CPU, not proof of a
 deadlock. Counter lookup failures print `unavailable` and never stop generation.
 No threads are suspended, stack dumps collected, or shader source printed.
 
-Releases also contain `retina-gpu-probe-windows-x64.exe`. Download it to a writable
-folder, double-click, and choose Vulkan or DirectX 12. It launches a native child
+The developer probe is not included in regular releases. Build it on Windows
+with `python scripts/build-gpu-probe.py` and the MSVC toolchain, then place
+`retina-gpu-probe-windows-x64.exe` in a writable folder, double-click, and choose
+Vulkan or DirectX 12. It launches a native child
 process running the same Retina engine without Java/Minecraft. A uniquely named
 log beside the executable updates while the probe runs. Ctrl+C stops the child;
 the window remains open after a completed or failed test. No debugger is required.
