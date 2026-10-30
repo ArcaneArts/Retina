@@ -243,6 +243,10 @@ has run for 90 seconds, send the launcher log and a ZIP of the newest capture
 directory. No Java debug tools are needed. The DX12 path keeps production shader
 generation and compiler optimization settings unchanged.
 
+The GPU probe is a developer tool and is not included in regular GitHub releases.
+On a Windows development machine with the MSVC toolchain available, build it with
+`python scripts/build-gpu-probe.py`.
+
 Drag a captured `case.json` or its containing directory onto the Windows
 `retina-gpu-probe-windows-x64.exe`. The menu runs one isolated child process:
 

@@ -14,8 +14,8 @@ spec.loader.exec_module(publisher)
 
 
 class ReleaseTest(unittest.TestCase):
-    def test_rerun_verifies_both_jar_and_probe_bytes(self):
-        expected = {'retina.jar': b'jar', 'probe.exe': b'executable'}
+    def test_rerun_verifies_exactly_one_jar_and_its_bytes(self):
+        expected = {'retina.jar': b'jar'}
         assets = [{'name': name} for name in reversed(expected)]
         def download(*args):
             name = args[args.index('--pattern') + 1]
@@ -23,14 +23,16 @@ class ReleaseTest(unittest.TestCase):
             (Path(directory) / name).write_bytes(expected[name])
         with patch.object(publisher, 'run', side_effect=download) as calls:
             publisher.verify_published_assets('v1.1.1', assets, expected)
-            self.assertEqual(calls.call_count, 2)
+            self.assertEqual(calls.call_count, 1)
         with self.assertRaises(ValueError):
-            publisher.verify_published_assets('v1.1.1', assets[:1], expected)
-        def corrupt_probe(*args):
+            publisher.verify_published_assets('v1.1.1', [], expected)
+        with self.assertRaises(ValueError):
+            publisher.verify_published_assets('v1.1.1', assets + [{'name': 'probe.exe'}], expected)
+        def corrupt_jar(*args):
             download(*args)
-            if args[args.index('--pattern') + 1] == 'probe.exe':
-                (Path(args[args.index('--dir') + 1]) / 'probe.exe').write_bytes(b'changed')
-        with patch.object(publisher, 'run', side_effect=corrupt_probe), self.assertRaises(ValueError):
+            if args[args.index('--pattern') + 1] == 'retina.jar':
+                (Path(args[args.index('--dir') + 1]) / 'retina.jar').write_bytes(b'changed')
+        with patch.object(publisher, 'run', side_effect=corrupt_jar), self.assertRaises(ValueError):
             publisher.verify_published_assets('v1.1.1', assets, expected)
 
     def test_draft_lookup_uses_authenticated_release_listing(self):
