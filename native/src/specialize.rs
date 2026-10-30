@@ -597,6 +597,8 @@ struct Job {
     lake_point_cache: bool,
     material_dispatch: bool,
     specialized_interpolation: bool,
+    #[cfg(test)]
+    reference_specialization: bool,
 }
 pub(crate) struct Compiler {
     sender: mpsc::Sender<Job>,
@@ -605,6 +607,8 @@ pub(crate) struct Compiler {
     cache: reuse_cache::Cache<(String, bool), State>,
     material_dispatch: bool,
     specialized_interpolation: bool,
+    #[cfg(test)]
+    pub(crate) reference_specialization: bool,
 }
 impl Compiler {
     pub(crate) fn prune(&mut self) { self.cache.prune(); }
@@ -617,6 +621,7 @@ impl Compiler {
         cave: &wgpu::BindGroupLayout,
         material_dispatch: bool,
         specialized_interpolation: bool,
+        device_failure: impl Fn() -> Option<String> + Send + 'static,
     ) -> Result<Self, String> {
         let device = device.clone();
         let world = world.clone();
@@ -630,6 +635,7 @@ impl Compiler {
                     let Some(state) = job.state.upgrade() else { continue; };
                     let start = Instant::now();
                     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        if let Some(error) = device_failure() { return Err(error); }
                         if let Some(reuse) = job.interpreter {
                             compile_interpreter(
                                 &device,
@@ -657,12 +663,18 @@ impl Compiler {
                                 false,
                                 job.material_dispatch,
                                 job.specialized_interpolation,
+                                #[cfg(test)]
+                                !job.reference_specialization,
                             )
                         }
                     }))
                     .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
                     if let Err(error) = &result {
-                        eprintln!("Retina keeps the GPU interpreter: {error}");
+                        if device_failure().is_some() {
+                            eprintln!("Retina stops shader compilation after device failure: {error}");
+                        } else {
+                            eprintln!("Retina keeps the GPU interpreter: {error}");
+                        }
                     }
                     state.progress.nanos.store(
                         start.elapsed().as_nanos().min(u64::MAX as u128) as u64,
@@ -688,6 +700,8 @@ impl Compiler {
             cache: reuse_cache::Cache::new(8),
             material_dispatch,
             specialized_interpolation,
+            #[cfg(test)]
+            reference_specialization: false,
         })
     }
     /// Prepare a profile-independent fallback after device startup, overlapping
@@ -726,6 +740,8 @@ impl Compiler {
                 lake_point_cache: false,
                 material_dispatch: false,
                 specialized_interpolation: false,
+                #[cfg(test)]
+                reference_specialization: false,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         Ok(state)
@@ -833,6 +849,8 @@ impl Compiler {
                 lake_point_cache,
                 material_dispatch: self.material_dispatch,
                 specialized_interpolation: self.specialized_interpolation,
+                #[cfg(test)]
+                reference_specialization: self.reference_specialization,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
         self.cache.insert(key, state.clone());
@@ -867,6 +885,8 @@ pub(crate) fn compile(
         false,
         false,
         false,
+        #[cfg(test)]
+        true,
     )
 }
 
@@ -895,6 +915,8 @@ pub(crate) fn compile_interpreter(
         shared_dispatch,
         false,
         false,
+        #[cfg(test)]
+        true,
     )
 }
 
@@ -915,6 +937,7 @@ fn compile_program(
     shared_dispatch: bool,
     material_dispatch: bool,
     specialized_interpolation: bool,
+    #[cfg(test)] outline_specialized: bool,
 ) -> Result<Pipelines, String> {
     let _startup = crate::startup::Stage::new(format!("compile world pipelines specialized={specialized} terrain={terrain} program_bytes={}", program.len()));
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
@@ -974,6 +997,12 @@ fn compile_program(
             } else {
                 entries.to_vec()
             };
+            let source = if specialized {
+                let source = static_calls(&source);
+                #[cfg(not(test))]
+                let outline_specialized = true;
+                if outline_specialized { crate::program::outline::specialized(source) } else { source }
+            } else { source };
             let _jobs = crate::startup::PipelineBatch::new(
                 if specialized { "specialized registry" } else { "interpreter registry" },
                 compiled_entries.len(),
@@ -990,14 +1019,7 @@ fn compile_program(
             let module_start = Instant::now();
             let module = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
                 label: Some("Retina specialized registry graphs"),
-                source: wgpu::ShaderSource::Wgsl(
-                    (if specialized {
-                        static_calls(&source)
-                    } else {
-                        source
-                    })
-                    .into(),
-                ),
+                source: wgpu::ShaderSource::Wgsl(source.into()),
             });
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Retina specialized registry graphs"),

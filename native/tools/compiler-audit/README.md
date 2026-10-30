@@ -26,6 +26,9 @@ spirv-val --target-env vulkan1.1 /tmp/retina-shaders/0000-retina_world_dispatch.
 The tool writes `.hlsl`, `.spv`, and `.dxil` next to its input and reports
 compilation duration, artifact sizes, and retained function counts. It uses the
 production HLSL/SPIR-V boundary transforms and DXC validates the resulting DXIL.
+HLSL may retain unused function definitions that SPIR-V omits for a selected
+entry, so the two reported boundary counts need not match. Captures are written
+after constant-call selection and outlining, exactly as passed to Naga.
 The optional `spirv-val` command uses Khronos SPIRV-Tools. Nothing is executed on
 a GPU by this audit. Captures may contain world-definition data; keep them local.
 

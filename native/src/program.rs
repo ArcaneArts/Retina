@@ -2,7 +2,7 @@
 use serde::Deserialize;
 mod column_interpreter;
 mod compact_calls;
-mod outline;
+pub(crate) mod outline;
 pub(crate) use column_interpreter::FLAG as COLUMN_INTERPRETER_FLAG;
 pub(crate) mod composition;
 pub(crate) mod interpolation;
