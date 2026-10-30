@@ -127,7 +127,7 @@ mod windows {
             }
             Ok::<_, String>(())
         })();
-        if let Err(error) = result { crate::startup::message(format_args!("Shader capture unavailable; generation continues: {error}")); }
+        if let Err(error) = result { crate::startup::info(format_args!("Shader capture unavailable; generation continues: {error}")); }
     }
     fn observe(event: Event<'_>) {
         let Some(session) = SESSION.get() else { return; };
@@ -140,7 +140,7 @@ mod windows {
             Event::ComputeEnd { error } => finish(&directory, error),
         };
         if let Err(error) = result {
-            crate::startup::message(format_args!("Capture incomplete at {}; generation continues: {error}", directory.display()));
+            crate::startup::info(format_args!("Capture incomplete at {}; generation continues: {error}", directory.display()));
         } else if matches!(event, Event::ComputeInput { .. }) {
             crate::startup::message(format_args!("DX12 replay case saved before driver call: {}", directory.join("case.json").display()));
         }
@@ -148,6 +148,7 @@ mod windows {
 }
 
 pub(crate) fn install(info: &wgpu::AdapterInfo) {
+    if !super::debug_enabled() && std::env::var("RETINA_SHADER_CAPTURE").as_deref() != Ok("1") { return; }
     #[cfg(all(windows, target_arch = "x86_64"))]
     {
         windows::install(info);

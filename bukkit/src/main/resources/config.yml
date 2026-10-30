@@ -1,5 +1,7 @@
 # Allowed GPU backends (DirectX 12). All false leaves generator selection to Bukkit.
 # Restart the server after changes.
+# Detailed startup/driver diagnostics. Preparation progress remains visible.
+debug: false
 allow_directx: true
 allow_metal: true
 allow_vulkan: true

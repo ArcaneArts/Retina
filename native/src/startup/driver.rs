@@ -42,6 +42,7 @@ pub(super) fn pipeline_context() -> Option<(u64, String)> {
 }
 
 pub(crate) fn observe<T>(stage: &Stage, entry: &str, operation: impl FnOnce() -> T) -> T {
+    if !super::debug_enabled() && !cfg!(test) { return operation(); }
     let _context = PipelineContext(PIPELINE.with(|context|
         context.replace(Some((stage.id, entry.to_owned())))));
     // Thread-local only while inside the real synchronous pipeline operation.

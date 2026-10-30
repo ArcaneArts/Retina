@@ -255,7 +255,7 @@ impl TerrainEngine {
             let _wait = startup::Stage::new("waiting for GPU worker readiness");
             ready_receiver.recv().map_err(|e| e.to_string())??
         };
-        startup::message(format_args!("GPU worker ready: {backend}"));
+        startup::info(format_args!("GPU worker ready: {backend}"));
         let (device, queue) = ores.shared_device();
         let vine_gpu = Mutex::new(decoration::vine_gpu::Gpu::new(
             device.clone(),

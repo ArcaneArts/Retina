@@ -79,7 +79,7 @@ final class StructureProfile {
         if(out.portals!=null)result.add("portals",out.portals);
         finishMaterials(result,materials);
         long reserved=out.definitions.asList().stream().map(JsonElement::getAsJsonObject).filter(d->d.has("unimplemented")).count();
-        Retina.LOGGER.info("Exported registered structures: {} executable definitions, {} reserved definitions, {} pools, {} templates, {} placement sets; omissions {}",
+        Retina.debug("Exported registered structures: {} executable definitions, {} reserved definitions, {} pools, {} templates, {} placement sets; omissions {}",
                 out.definitions.size()-reserved,reserved,out.pools.size(),out.templates.size(),out.sets.size(),out.omitted);
         return result;
     }

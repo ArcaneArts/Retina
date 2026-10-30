@@ -26,7 +26,7 @@ impl Health {
     }
     pub fn fail(&self, error: String, log: bool) -> String {
         if self.error.set(error).is_ok() && log {
-            crate::startup::message(self.error.get().unwrap());
+            crate::startup::info(self.error.get().unwrap());
         }
         self.error.get().unwrap().clone()
     }

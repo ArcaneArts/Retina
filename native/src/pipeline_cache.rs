@@ -34,7 +34,7 @@ impl Cache {
                 None
             }
             Err(error) => {
-                crate::startup::message(format_args!("Pipeline cache ignored: {error}; compiling normally"));
+                crate::startup::info(format_args!("Pipeline cache ignored: {error}; compiling normally"));
                 None
             }
         };
@@ -52,7 +52,7 @@ impl Cache {
         match write(&self.path, &data) {
             Ok(()) => crate::startup::message(format_args!("Pipeline cache saved bytes={} path={}", data.len(), self.path.display())),
             Err(error) if !self.warned.swap(true, Ordering::Relaxed) =>
-                crate::startup::message(format_args!("Pipeline cache could not be saved: {error}; generation continues")),
+                crate::startup::info(format_args!("Pipeline cache could not be saved: {error}; generation continues")),
             Err(_) => {},
         }
     }

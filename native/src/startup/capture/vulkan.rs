@@ -44,7 +44,7 @@ mod windows {
             crate::startup::message(format_args!("Exact Vulkan shader capture: {} (SPIR-V saved before driver calls)", directory.display()));
             Ok::<_, String>(())
         })();
-        if let Err(error) = result { crate::startup::message(format_args!("Shader capture unavailable; generation continues: {error}")); }
+        if let Err(error) = result { crate::startup::info(format_args!("Shader capture unavailable; generation continues: {error}")); }
     }
     fn observe(event: Event<'_>) {
         let Some(session) = SESSION.get() else { return; };
@@ -59,7 +59,7 @@ mod windows {
             Event::ComputeEnd { error } => finish(&directory, error),
         };
         if let Err(error) = result {
-            crate::startup::message(format_args!("Capture incomplete at {}; generation continues: {error}", directory.display()));
+            crate::startup::info(format_args!("Capture incomplete at {}; generation continues: {error}", directory.display()));
         } else if matches!(event, Event::ComputeStart { .. }) {
             crate::startup::message(format_args!("Vulkan shader case saved before driver call: {}", directory.join("case.json").display()));
         }

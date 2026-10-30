@@ -144,7 +144,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         profile.addProperty("biome_scale",spacing);
         profile.add("noises",noises);
         profile.add("weirdness_noise",climateNoises.get(4));
-        Retina.LOGGER.info("GPU climate site scale {} blocks; registered climate channels {}",spacing,noises);
+        Retina.debug("GPU climate site scale {} blocks; registered climate channels {}",spacing,noises);
         var nativeDisks=java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<net.minecraft.world.level.levelgen.placement.PlacedFeature,Boolean>());
         profile.add("decorations", DecorationProfile.export(registry, nativeBiomes, biomes, materials, profile, nativeDisks));
         profile.add("registry_program", RegistryGpuProgram.export(registry, settings, nativeBiomes, materials, minY, height, source.scale(), nativeDisks, densityComposition, ceiling));
@@ -172,7 +172,7 @@ public record TerrainProfileData(int seaLevel, BlockState[] materials, List<Hold
         for (var state : materials.keySet()) palette.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow());
         profile.add("materials", palette);
         String json = profile.toString();
-        Retina.LOGGER.info("Prepared registry profile: {} biomes, {} materials, {} climate targets",biomes.size(),materials.size(),targets.size());
+        Retina.debug("Prepared registry profile: {} biomes, {} materials, {} climate targets",biomes.size(),materials.size(),targets.size());
         return new TerrainProfileData(sea, materials.keySet().toArray(BlockState[]::new), nativeBiomes, json);
     }
 

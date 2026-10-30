@@ -149,7 +149,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
 
     static RetinaChunkGenerator fromDefinition(WorldDefinitionContext.Dimension saved, HolderLookup.Provider registry) {
         long started = System.nanoTime();
-        Retina.LOGGER.info("[Retina startup] BEGIN dimension adapter {}", saved.key());
+        Retina.debug("[Retina startup] BEGIN dimension adapter {}", saved.key());
         var p = saved.parameters();
         var result = new RetinaChunkGenerator(new RetinaBiomeSource(saved.biomes(registry), 128F, .55F),
                 p.get("min_y").getAsInt(), p.get("height").getAsInt(), p.get("base_height").getAsFloat(),
@@ -163,7 +163,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
                 com.google.gson.JsonParser.parseString(result.profile.json()).getAsJsonObject());
         result.savedStructureSets = new SavedStructureSets(registry,
                 com.google.gson.JsonParser.parseString(result.profile.json()).getAsJsonObject());
-        Retina.LOGGER.info("[Retina startup] END dimension adapter {} elapsed={} ms native_profile={} mode={}",
+        Retina.debug("[Retina startup] END dimension adapter {} elapsed={} ms native_profile={} mode={}",
                 saved.key(), (System.nanoTime() - started) / 1_000_000, result.profile.nativeId(), result.mode);
         return result;
     }
@@ -210,7 +210,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
     /** Attach runtime storage after the world-level coordinator has loaded retina.dat. */
     public void bindWorld(PalettedContainerFactory factory) {
         long started = System.nanoTime();
-        Retina.LOGGER.info("[Retina startup] BEGIN dimension storage {}", worldDimension.identifier());
+        Retina.debug("[Retina startup] BEGIN dimension storage {}", worldDimension.identifier());
         var saved = generationDefinition();
         closePreviews();
         closed = false;
@@ -225,7 +225,7 @@ public final class RetinaChunkGenerator extends ChunkGenerator {
         biomes.bindQueries(query::biomes);
         metrics.startNativeTimings(NativeTerrain.instance().timings(profile.nativeId()));
         if (regionMode()) previews = new TemporaryRegions(request(0, 0), regionBiome(), profile, metrics, TemporaryRegions.MAX_REGIONS, Math.min(TemporaryRegions.MAX_REGIONS,16), worldDimension);
-        Retina.LOGGER.info("[Retina startup] END dimension storage {} elapsed={} ms", worldDimension.identifier(), (System.nanoTime() - started) / 1_000_000);
+        Retina.debug("[Retina startup] END dimension storage {} elapsed={} ms", worldDimension.identifier(), (System.nanoTime() - started) / 1_000_000);
     }
 
     private WorldDefinitionContext.Dimension generationDefinition() {

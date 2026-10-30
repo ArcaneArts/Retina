@@ -305,3 +305,15 @@ actual `vkCreateComputePipelines` timings. Run the same world twice without chan
 the JAR, driver, backend or cache directory to measure reuse. For diagnostics,
 `RETINA_PIPELINE_CACHE=0` disables this cache and `RETINA_PIPELINE_CACHE_DIR` selects
 a different directory. DX12 and Metal caching behavior is unchanged.
+
+## Diagnostic logging setting
+
+`debug` defaults to `false` in Retina's TOML/YAML configuration and Bukkit's
+`config.yml`. Set `debug = true` (TOML) or `debug: true` (YAML), then restart
+Minecraft/server, to enable detailed startup stages, driver phases, CPU timings,
+registry export details and shader capture. With debug off, definition preparation
+and GPU readiness still log, and long native preparation operations report one
+aggregate pipeline-progress line every ten seconds. Pipeline totals can grow as
+work is discovered; they are not a percentage of overall world loading. Warnings
+and errors remain visible. Explicit `RETINA_SHADER_CAPTURE=1` still enables capture
+without verbose logging. Changing debug does not change shader compilation policy.
