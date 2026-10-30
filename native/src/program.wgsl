@@ -49,18 +49,20 @@ fn interpolation_cached_step(at:u32,info:u32)->vec3<i32> {
     return vec3<i32>(x,y,x);
 }
 fn interpolation_cached_corner(field:u32,point:vec3<f32>,r:Request)->vec2<f32> {
-    if r.density_side==0u || (r.padding&(1u<<27u))==0u {return vec2<f32>(0.0);}
+    if (r.padding&(1u<<27u))==0u {return vec2<f32>(0.0);}
     let at=r.density_offset-bytecode[13]*8u+field*8u;
     let size=vec3<u32>(bitcast<u32>(surface_nodes[at+4u]),bitcast<u32>(surface_nodes[at+5u]),bitcast<u32>(surface_nodes[at+6u]));
     if any(size==vec3<u32>(0u)) {return vec2<f32>(0.0);}
     let origin=vec3<i32>(bitcast<i32>(surface_nodes[at+1u]),bitcast<i32>(surface_nodes[at+2u]),bitcast<i32>(surface_nodes[at+3u]));
     let info=bytecode[12]+field*4u;
     let step=interpolation_cached_step(at,info);
-    let local=(point-vec3<f32>(origin))/vec3<f32>(step);let cell=vec3<i32>(local);
+    var query=point;
+    if size.y==1u {query.y=f32(origin.y);}
+    let local=(query-vec3<f32>(origin))/vec3<f32>(step);let cell=vec3<i32>(local);
     if any(local!=vec3<f32>(cell)) || any(cell<vec3<i32>(0)) || any(cell>=vec3<i32>(size)) {return vec2<f32>(0.0);}
     // Floating conversion can merge integers far from origin. Require the exact
     // queried f32 corner, rather than trusting subtraction/grid alignment alone.
-    if any(point!=vec3<f32>(origin+cell*step)) {return vec2<f32>(0.0);}
+    if any(query!=vec3<f32>(origin+cell*step)) {return vec2<f32>(0.0);}
     let index=(u32(cell.y)*size.z+u32(cell.z))*size.x+u32(cell.x);
     return vec2<f32>(surface_nodes[bitcast<u32>(surface_nodes[at])+index],1.0);
 }

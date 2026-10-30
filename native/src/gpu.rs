@@ -87,7 +87,7 @@ pub(crate) struct Gpu {
     pub(crate) backend: String,
     compiler: crate::specialize::Compiler,
     specialized: HashMap<u32, std::sync::Arc<crate::specialize::State>>,
-    wide_profiles: std::collections::HashSet<u32>,
+    wide_profiles: std::collections::HashMap<u32, usize>,
     wide_interpreter: Option<std::sync::Arc<crate::specialize::Pipelines>>,
     interpreter_reuse_plans: HashMap<u32, crate::specialize::interpreter_reuse::Plan>,
     interpolation_interpreters: crate::specialize::reuse_cache::Cache<
@@ -162,7 +162,7 @@ impl Gpu {
         self.cached_density_plans.retain(|id, _| !ids.contains(id));
         self.cached_node_plans.retain(|id, _| !ids.contains(id));
         self.sparse_lake_plans.retain(|id, _| !ids.contains(id));
-        self.wide_profiles.retain(|id| !ids.contains(id));
+        self.wide_profiles.retain(|id, _| !ids.contains(id));
         self.interpreter_profiles.retain(|id, _| !ids.contains(id));
         self.interpolation_interpreters.prune();
         self.compiler.prune();
@@ -450,7 +450,7 @@ impl Gpu {
             driver_cache,
             compiler,
             specialized: HashMap::new(),
-            wide_profiles: std::collections::HashSet::new(),
+            wide_profiles: std::collections::HashMap::new(),
             wide_interpreter: None,
             interpreter_reuse_plans: HashMap::new(),
             interpolation_interpreters: crate::specialize::reuse_cache::Cache::new(8),
@@ -677,7 +677,7 @@ impl Gpu {
                     self.sparse_lake_plans.insert(profile_id, plan);
                 }
                 if program.scratch_values() > crate::program::COMPACT_VALUES {
-                    self.wide_profiles.insert(profile_id);
+                    self.wide_profiles.insert(profile_id, program.interpreter_capacity());
                 }
                 if !self.defer_specialization
                     || profile.unwrap().program_execution == crate::specialize::Execution::Specialized
@@ -704,9 +704,12 @@ impl Gpu {
         let composition = profile
             .and_then(|p| p.registry_program.as_ref())
             .is_some_and(|p| p.density_composition);
+        let capacity = self.wide_profiles.get(&profile_id).copied()
+            .unwrap_or(crate::program::COMPACT_VALUES);
         if depth == 0
+            && capacity == 1024
             && needs_interpreter
-            && self.wide_profiles.contains(&profile_id)
+            && self.wide_profiles.contains_key(&profile_id)
             && self.wide_interpreter.is_none()
         {
             self.wide_interpreter =
@@ -720,12 +723,7 @@ impl Gpu {
                     self.driver_cache.as_deref(),
                 )?));
         }
-        let interpreted = if needs_interpreter && (depth > 0 || composition) {
-            let capacity = if self.wide_profiles.contains(&profile_id) {
-                1024
-            } else {
-                crate::program::COMPACT_VALUES
-            };
+        let interpreted = if needs_interpreter && (depth > 0 || composition || capacity > 1024) {
             // Profiles and execution/layout options are immutable on this GPU.
             // Resolve graph dependencies once, including for frequent sparse
             // biome/structure probes, rather than scanning every material DAG.
@@ -797,7 +795,7 @@ impl Gpu {
         } else {
             self.wide_interpreter
                 .as_ref()
-                .filter(|_| self.wide_profiles.contains(&profile_id))
+                .filter(|_| capacity == 1024)
                 .cloned()
         };
         let selected = specialized.as_deref().or(interpreted.as_deref());
@@ -955,6 +953,27 @@ impl Gpu {
                     interpolation_depth = plan.depth;
                 }
             }
+            self.ensure_surface_lattice(floats * 4);
+        } else if let (Some(program), Some(plan)) = (
+            profile.and_then(|p| p.registry_program.as_ref()),
+            interpolation_plan.filter(|p| p.depth > 0),
+        ) {
+            // Direct height programs can contain nested interpolation too. They
+            // need field caches even though they have no density/surface lattice.
+            let limit = self.device.limits().max_buffer_size
+                .min(self.device.limits().max_storage_buffer_binding_size as u64) / 4;
+            let max_samples = u64::from(self.device.limits().max_compute_workgroups_per_dimension) * 64;
+            let mut floats = SURFACE_METADATA_FLOATS as u64;
+            for request in &mut gpu_requests {
+                let address = floats;
+                floats += (program.interpolations.len() * crate::program::interpolation::CACHE_WORDS) as u64;
+                request.density_offset = u32::try_from(floats).map_err(|_| "GPU interpolation address exceeds u32")?;
+                let (header, dispatch) = plan.layout(program, request, guard, &mut floats, limit, max_samples)?;
+                if dispatch > 0 { request.padding |= crate::program::interpolation::CACHE_FLAG; }
+                interpolation_headers.push((address, header));
+                interpolation_dispatch = interpolation_dispatch.max(dispatch);
+            }
+            if interpolation_dispatch > 0 { interpolation_depth = plan.depth; }
             self.ensure_surface_lattice(floats * 4);
         }
         // A submission selects one complete sampler. Partial optional capacity
@@ -1264,40 +1283,40 @@ impl Gpu {
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(density_dispatch.0.div_ceil(64), requests.len() as u32, 1);
         }
-        if density_program.is_some() {
-            for level in 1..=interpolation_depth {
-                let mut writes = if horizontal_fields == 0 && level == 1 {
-                    timestamp_writes(timings::HEIGHT)
-                } else {
-                    None
-                };
-                if let Some(ref mut w) = writes {
-                    w.end_of_pass_write_index = None;
-                }
-                let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-                    label: Some("Retina resident registered interpolation fields"),
-                    timestamp_writes: writes,
-                });
-                let entry = format!("interpolation_nodes_{level}");
-                let fields = if self.specialized_interpolation {
-                    specialized.as_deref().or(terrain)
-                } else {
-                    terrain
-                };
-                fields.unwrap().world_selected(&entry).bind(&mut pass);
-                pass.set_bind_group(0, group, &[]);
-                pass.dispatch_workgroups(
-                    interpolation_dispatch.div_ceil(64),
-                    profile
-                        .unwrap()
-                        .registry_program
-                        .as_ref()
-                        .unwrap()
-                        .interpolations
-                        .len() as u32,
-                    requests.len() as u32,
-                );
+        for level in 1..=interpolation_depth {
+            let mut writes = if density_program.is_some() && horizontal_fields == 0 && level == 1 {
+                timestamp_writes(timings::HEIGHT)
+            } else {
+                None
+            };
+            if let Some(ref mut w) = writes {
+                w.end_of_pass_write_index = None;
             }
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("Retina resident registered interpolation fields"),
+                timestamp_writes: writes,
+            });
+            let entry = format!("interpolation_nodes_{level}");
+            let fields = if self.specialized_interpolation {
+                specialized.as_deref().or(terrain)
+            } else {
+                terrain
+            };
+            fields.unwrap().world_selected(&entry).bind(&mut pass);
+            pass.set_bind_group(0, group, &[]);
+            pass.dispatch_workgroups(
+                interpolation_dispatch.div_ceil(64),
+                profile
+                    .unwrap()
+                    .registry_program
+                    .as_ref()
+                    .unwrap()
+                    .interpolations
+                    .len() as u32,
+                requests.len() as u32,
+            );
+        }
+        if density_program.is_some() {
             let mut writes = if horizontal_fields > 0 {
                 None
             } else if interpolation_depth > 0 {
@@ -1984,7 +2003,6 @@ impl Gpu {
             mapping,
             query,
             size,
-            submitted: Instant::now(),
             // Keep every input alive and isolated until this dispatch finishes.
             _inputs: job,
             _growth_input: growth_input,
@@ -2092,11 +2110,10 @@ impl Gpu {
     }
     pub(crate) fn ready(&self, pending: &mut PendingSample) -> Result<bool, String> {
         self.poll(wgpu::PollType::Poll)?;
-        let ready = pending.ready();
-        if !ready && pending.stage_start().elapsed() > Duration::from_secs(30) {
-            return Err("GPU mapping timed out".into());
-        }
-        Ok(ready)
+        // A pending callback is not a device failure. Large datapack graphs can
+        // legitimately outlive a fixed wall-clock deadline; poll() still reports
+        // actual device loss and mapping errors are checked on completion.
+        Ok(pending.ready())
     }
     /// Synchronous adapter for focused diagnostics. The production worker uses
     /// advance() so a material submission yields to other pending jobs.
@@ -2404,7 +2421,6 @@ struct MaterialReadback {
     mapping: Mapping,
     query: Option<Mapping>,
     size: u64,
-    submitted: Instant,
     _inputs: MaterialPending,
     _growth_input: Option<wgpu::Buffer>,
     columns: Vec<Column>,
@@ -2436,12 +2452,6 @@ impl PendingSample {
         match &self.stage {
             PendingStage::Terrain(p) => &p.submission,
             PendingStage::Materials(p) => &p.submission,
-        }
-    }
-    fn stage_start(&self) -> Instant {
-        match &self.stage {
-            PendingStage::Terrain(_) => self.wait_start,
-            PendingStage::Materials(p) => p.submitted,
         }
     }
 }
@@ -2642,7 +2652,7 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
             );
         }
         let mut reference = crate::program::interpreter_body(
-            1024,
+            registry.all_programs().map(|p| p.nodes.len()).max().unwrap_or(1),
             registry.interpolation_depth(),
             "run_reference",
             false,
@@ -2651,7 +2661,7 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
             // The original bounds implementation samples the independent
             // interpreter and bypasses both caches. Check endpoints bit for bit,
             // then sample every graph with the newly primed production cache.
-            let mut bound_reference = crate::program::density_bounds_source(1024);
+            let mut bound_reference = crate::program::density_bounds_source(registry.interpreter_capacity());
             for symbol in [
                 "density_composed",
                 "bounds_unknown",
@@ -2700,11 +2710,7 @@ columns[at+2u]=Column(i32(mismatches),0u,0u);
         }
         let mut program_source = if interpreted {
             kernel = kernel.replace("var actual:array<f32,6>;switch program{case 0u:{actual=run_climate(point,r,context);}case 1u:{actual=run_surface_density(point,r,context);}case 2u:{actual=run_final_density(point,r,context);}default:{actual=run_program(program,point,r,context);}}", "let actual=run_program(program,point,r,context);");
-            let capacity = if registry.scratch_values() <= crate::program::COMPACT_VALUES {
-                crate::program::COMPACT_VALUES
-            } else {
-                1024
-            };
+            let capacity = registry.interpreter_capacity();
             crate::program::interpreter_source_depth(capacity, registry.interpolation_depth())
         } else {
             // Production aquifer stages use direct calls and deliberately stay

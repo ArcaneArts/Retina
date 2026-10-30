@@ -98,7 +98,10 @@ pub(crate) fn interpreter_source_density(
     depth: usize,
     composition: bool,
 ) -> String {
-    outline::source(compact_calls::source(interpreter_reference_source(capacity, depth, composition), depth), depth)
+    let source = outline::source(compact_calls::source(interpreter_reference_source(capacity, depth, composition), depth), depth);
+    if capacity > 1024 || depth > 2 {
+        source.replace("retina_noinline_", "retina_noinline_large_")
+    } else { source }
 }
 pub(crate) fn interpreter_reference_source(capacity: usize, depth: usize, composition: bool) -> String {
     let source = include_str!("program.wgsl");
@@ -161,7 +164,9 @@ fn interpreter_body_impl(
         original
     };
     if !compact {
-        return interpolation::interpreter(body, depth, prefix);
+        let body = body.replace("var values:array<f32,1024>;",
+            &format!("var values:array<f32,{capacity}>;"));
+        return interpolation::interpreter(&body, depth, prefix);
     }
     let mut mapped = String::new();
     let mut at = 0;
@@ -273,6 +278,13 @@ impl RegistryProgram {
             .max()
             .unwrap_or(0)
     }
+    pub(crate) fn interpreter_capacity(&self) -> usize {
+        match self.scratch_values() {
+            0..=COMPACT_VALUES => COMPACT_VALUES,
+            65..=1024 => 1024,
+            count => count,
+        }
+    }
     pub fn enclosed(&self) -> bool {
         self.generation.as_ref().is_some_and(|g| g.ceiling)
     }
@@ -318,7 +330,6 @@ impl RegistryProgram {
         }
         for (pid, program) in self.all_programs().enumerate() {
             if program.nodes.is_empty()
-                || program.nodes.len() > 1024
                 || program.roots.len() > 6
                 || program
                     .roots
@@ -526,14 +537,50 @@ mod tests {
     #[test]
     fn long_chain_reuses_scratch_without_a_graph_length_limit() {
         let mut nodes = vec![n(0, 0, 0, 0)];
-        nodes.extend((1..1024).map(|i| n(4, i - 1, i - 1, 0)));
+        nodes.extend((1..4096).map(|i| n(4, i - 1, i - 1, 0)));
         let mut program = Program {
             nodes,
-            roots: vec![1023],
+            roots: vec![4095],
         };
         assert_eq!(verify(&program, &[]), 3);
-        program.roots = vec![1023; 6];
+        program.roots = vec![4095; 6];
         assert_eq!(verify(&program, &[]), 2);
+    }
+    fn registry_with(program: Program) -> RegistryProgram {
+        serde_json::from_value(serde_json::json!({
+            "programs": [
+                {"nodes": [{"op":0,"a":0,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]},
+                {"nodes": [{"op":0,"a":0,"b":0,"c":0,"p":[0,0,0,0]}],"roots":[0]},
+                {"nodes": program.nodes.iter().map(|n| serde_json::json!({"op":n.op,"a":n.a,"b":n.b,"c":n.c,"p":n.p})).collect::<Vec<_>>(), "roots":program.roots}
+            ],
+            "noises":[{"frequency":1,"amplitude":1,"salt":0,"coefficients":[1]}],
+            "points":[], "surface":[0,1,1]
+        })).unwrap()
+    }
+    #[test]
+    fn interpreter_capacity_tracks_live_values_instead_of_instruction_count() {
+        let mut nodes = vec![n(0, 0, 0, 0)];
+        nodes.extend((1..4096).map(|i| n(4, i - 1, i - 1, 0)));
+        let registry = registry_with(Program {nodes, roots:vec![4095]});
+        registry.validate(0).unwrap();
+        assert_eq!(registry.scratch_values(), 3);
+        assert_eq!(registry.interpreter_capacity(), COMPACT_VALUES);
+        let mut nodes = vec![n(0, 0, 0, 0); 1024];
+        nodes.extend((0..1024).map(|i| n(4, i, i, 0)));
+        let registry = registry_with(Program {nodes, roots:vec![2047]});
+        registry.validate(0).unwrap();
+        assert_eq!(registry.scratch_values(), 1025);
+        assert_eq!(registry.interpreter_capacity(), 1025);
+    }
+    #[test]
+    #[ignore = "requires real Java-exported datapack program via RETINA_TEST_PROGRAM"]
+    fn actual_large_datapack_program_validates() {
+        let path = std::env::var("RETINA_TEST_PROGRAM").unwrap();
+        let registry: RegistryProgram = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+        let extra = if registry.aquifer.as_ref().is_some_and(|a| a.enabled) {5} else {0};
+        registry.validate(registry.programs.len() - 3 - extra).unwrap();
+        println!("actual pack: max nodes={}, scratch={}", registry.all_programs().map(|p| p.nodes.len()).max().unwrap(), registry.scratch_values());
+        assert!(registry.all_programs().any(|p| p.nodes.len() > 1024));
     }
     #[test]
     fn wide_programs_keep_all_their_inputs() {

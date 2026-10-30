@@ -215,7 +215,8 @@ final class RegistryGpuProgram {
             var n=new JsonObject();n.addProperty("op",op);n.addProperty("a",a);n.addProperty("b",b);n.addProperty("c",c);
             var p=new JsonArray();for(int i=0;i<4;i++)p.add(i<args.length?Math.clamp(args[i],-1.0e9f,1.0e9f):0);n.add("p",p);
             String key=n.toString();var existing=compiled.get(key);if(existing!=null)return existing;
-            if(nodes.size()>=1024)throw new IllegalArgumentException("Registry GPU expression exceeds 1024 nodes");
+            // Graph length is independent of interpreter scratch: Rust reuses values
+            // after their last read and sizes scratch from the actual live-register requirement.
             int index=nodes.size();nodes.add(n);compiled.put(key,index);return index;
         }
         int constant(float x) { return node(0,0,0,0,x); }

@@ -161,6 +161,7 @@ struct Emitter<'a> {
     bodies: &'a HashMap<u32, &'static str>,
     folded: Vec<Option<f32>>,
     columns: Option<&'a [Option<usize>]>,
+    lazy_branches: bool,
 }
 impl<'a> Emitter<'a> {
     fn new(
@@ -173,7 +174,16 @@ impl<'a> Emitter<'a> {
         for node in &program.nodes {
             folded.push(constant(node, &folded));
         }
+        let mut branch_depth = Vec::with_capacity(program.nodes.len());
+        for node in &program.nodes {
+            let depth = node.dependencies(points).into_iter()
+                .map(|d| branch_depth[d as usize]).max().unwrap_or(0usize);
+            branch_depth.push(depth + usize::from(matches!(node.op, 23 | 40 | 41)));
+        }
+        let lazy_branches = program.nodes.len() <= 1024
+            && branch_depth.iter().all(|&depth| depth <= 32);
         Self {
+            lazy_branches,
             program,
             points,
             bodies,
@@ -202,7 +212,10 @@ impl<'a> Emitter<'a> {
                 literal(value)
             )
             .unwrap();
-        } else if matches!(n.op, 23 | 40 | 41) {
+        } else if self.lazy_branches && matches!(n.op, 23 | 40 | 41) {
+            // Large DAGs use the interpreter's eager, topological semantics.
+            // Cloning shared subgraphs into every conditional arm can otherwise
+            // expand a small DAG exponentially and exceed shader nesting limits.
             // Pure DAG branches need only their selected arm. Scoped memoization
             // shares values available in a dominating scope, without pretending
             // values calculated in one arm are available in another.
@@ -326,7 +339,14 @@ fn source_columns_options(
     aquifer_columns: bool,
 ) -> Result<(String, u32), String> {
     let bodies = opcode_bodies()?;
-    let columns = crate::column_program::Plan::new(program);
+    // Direct-height terrain has no density lattice and never dispatches the
+    // horizontal column prepass. Emit its graph directly instead of expanding
+    // thousands of raw-column fallbacks for a cache that cannot be populated.
+    let columns = if program.surface[2] == 0 {
+        crate::column_program::Plan::new(program)
+    } else {
+        crate::column_program::Plan::for_programs(program, |_| false)
+    };
     let graphs = program.all_programs().collect::<Vec<_>>();
     let mut shared = HashMap::<String, usize>::new();
     // Preserve the interpreter's f32 node boundary through a dynamic integer
@@ -448,11 +468,7 @@ fn source_columns_options(
             &interpreter[..start],
             functions,
             crate::program::density_bounds_source(
-                if program.scratch_values() > crate::program::COMPACT_VALUES {
-                    1024
-                } else {
-                    crate::program::COMPACT_VALUES
-                }
+                program.interpreter_capacity()
             ),
             &interpreter[end..]
         ),
@@ -762,6 +778,9 @@ impl Compiler {
     ) -> Result<Arc<State>, String> {
         let (mut source, horizontal_fields) = source_columns_options(program, aquifer_columns)?;
         source = crate::program::density_composition_source(&source, composition);
+        if program.interpreter_capacity() > 1024 || program.interpolation_depth() > 2 {
+            source.push_str("\n// retina large graph call boundaries\n");
+        }
         let cached_nodes = composition
             && cached_masks
             && crate::program::composition::CachedDensity::for_nodes(program).is_some();
@@ -1008,7 +1027,11 @@ fn compile_program(
                 let source = static_calls(&source);
                 #[cfg(not(test))]
                 let outline_specialized = true;
-                if outline_specialized { crate::program::outline::specialized(source) } else { source }
+                if outline_specialized {
+                    let large = source.contains("// retina large graph call boundaries");
+                    let source = crate::program::outline::specialized(source);
+                    if large { source.replace("retina_noinline_", "retina_noinline_large_") } else { source }
+                } else { source }
             } else { source };
             let _jobs = crate::startup::PipelineBatch::new(
                 if specialized { "specialized registry" } else { "interpreter registry" },
@@ -1333,6 +1356,27 @@ mod tests {
         );
     }
     #[test]
+    fn large_branch_dags_emit_each_node_once_without_nested_arm_expansion() {
+        let mut program = Program {
+            nodes: vec![n(29, 0, 0, 0, [0.0; 4])], roots: vec![],
+        };
+        for i in 1..100 {
+            program.nodes.push(n(23, 0, i - 1, 0, [0.0, 1.0, 0.0, 0.0]));
+        }
+        program.roots.push(99);
+        let generated = graph(&program, &[], &opcode_bodies().unwrap()).unwrap();
+        assert_eq!(generated.matches("// retained node").count(), 100);
+        let mut depth = 0i32;
+        let mut peak = 0;
+        for c in generated.chars() {
+            if c == '{' { depth += 1; peak = peak.max(depth); }
+            if c == '}' { depth -= 1; }
+        }
+        assert_eq!(depth, 0);
+        assert!(peak < 4);
+    }
+
+    #[test]
     fn branch_dominance_does_not_reuse_arm_local_values() {
         let program = Program {
             nodes: vec![
@@ -1387,5 +1431,11 @@ mod tests {
         assert!(source.contains("vec3<f32>,2"));
         assert!(source.contains("v0,v0,v0,v0,v0"));
         assert_eq!(opcode_bodies().unwrap().len(), 47);
+        let mut direct = registry;
+        direct.surface[2] = 1;
+        let (direct_source, fields) = source_columns(&direct).unwrap();
+        assert_eq!(fields, 0);
+        assert!(!direct_source.contains("fn raw_column_"));
+        assert!(!direct_source.contains("fn column_field_"));
     }
 }

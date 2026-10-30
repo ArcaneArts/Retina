@@ -640,6 +640,7 @@ tasks.register('datapackTest', JavaExec) {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
     jvmArgs '--enable-native-access=ALL-UNNAMED'
     // Optional process-sized phases retain every assertion in the default all run.
+    systemProperty 'retina.datapack.test.debug', providers.gradleProperty('testDatapackDebug').getOrElse('false')
     systemProperty 'retina.datapack.test.phase', providers.gradleProperty('testDatapackPhase').getOrElse('all')
     args providers.gradleProperty('testDatapack').getOrElse('run/datapacks/Terralith.zip')
     if (providers.gradleProperty('testSupplement').isPresent()) args providers.gradleProperty('testSupplement').get()
@@ -1250,4 +1251,19 @@ tasks.register('repackWorldCatalog', JavaExec) {
     workingDir rootProject.projectDir
     args providers.gradleProperty('catalogInput').getOrElse("assets/world-definitions/${minecraft_version}/vanilla"),
             providers.gradleProperty('catalogOutput').getOrElse('build/repacked-catalog')
+}
+
+tasks.register('largeRegistryProgramTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate large registry expression export, optionally using an actual datapack.'
+    dependsOn 'compileGpuTestJava'
+    classpath = registryToolClasspath
+    mainClass = 'art.arcane.retina.worldgen.LargeRegistryProgramTest'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    maxHeapSize = '4g'
+    if (providers.gradleProperty('testDatapack').isPresent()) {
+        args providers.gradleProperty('testDatapack').get(),
+                providers.gradleProperty('testNoiseSettings').getOrElse('minecraft:overworld'),
+                layout.buildDirectory.file('large-registry-program.json').get().asFile.absolutePath
+    }
 }

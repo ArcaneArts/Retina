@@ -19,6 +19,7 @@ pub(crate) const PRIMED_CORNERS_SOURCE_KEY: &str = "// primed interval vertices 
 /// Material context, or an input which depends on it, keeps the direct sampler.
 pub(crate) struct CachePlan {
     fields: Vec<bool>,
+    horizontal: Vec<bool>,
     pub depth: usize,
 }
 impl CachePlan {
@@ -75,7 +76,31 @@ impl CachePlan {
             .filter_map(|(&used, d)| used.then_some(d))
             .max()
             .unwrap_or(0);
-        Self { fields, depth }
+        // Prove Y independence through the ordered field DAG. Unknown/context
+        // operations remain three-dimensional; only root dependencies matter.
+        let mut horizontal = Vec::new();
+        for field in &registry.interpolations {
+            let mut vertical = Vec::new();
+            for n in &field.input.nodes {
+                let direct = match n.op {
+                    0 | 4..=25 | 27 | 30 | 31 | 40 | 41 | 43 | 44 => false,
+                    1 => n.p[2] != 0.0,
+                    2 => !matches!(n.b, 1 | 2),
+                    3 | 29 => n.a == 1,
+                    26 => n.p[1] != 0.0,
+                    28 => false,
+                    _ => true,
+                };
+                let inherited = n.dependencies(&registry.points).into_iter().any(|d| {
+                    // The child's Y input is irrelevant only after proving it.
+                    !(n.op == 28 && d == n.b && d != n.a && d != n.c
+                        && horizontal[n.p[0] as usize]) && vertical[d as usize]
+                });
+                vertical.push(direct || inherited);
+            }
+            horizontal.push(!vertical[field.input.roots.first().copied().unwrap_or(0) as usize]);
+        }
+        Self { fields, horizontal, depth }
     }
 
     /// Small host descriptors only. Samples are produced and consumed on GPU.
@@ -120,7 +145,7 @@ impl CachePlan {
             let my = multiple(f.cell[1], r.density_step_y);
             let sx = (f.cell[0] * mx) as i64;
             let sy = (f.cell[1] * my) as i64;
-            let origin = [
+            let mut origin = [
                 (r.origin_x as i64 - guard as i64).div_euclid(sx) * sx,
                 (r.min_y as i64).div_euclid(sy) * sy,
                 (r.origin_z as i64 - guard as i64).div_euclid(sx) * sx,
@@ -131,9 +156,13 @@ impl CachePlan {
                 r.origin_z as i64 + width as i64 + guard as i64,
             ];
             let sizes = [sx, sy, sx];
-            let counts = std::array::from_fn::<_, 3, _>(|axis| {
+            let mut counts = std::array::from_fn::<_, 3, _>(|axis| {
                 ((top[axis] - origin[axis] + sizes[axis] - 1) / sizes[axis]) as u64 + 1
             });
+            if registry.surface[2] == 1 && self.horizontal[field] {
+                origin[1] = 0;
+                counts[1] = 1;
+            }
             let samples = counts.into_iter().try_fold(1u64, |v, n| v.checked_mul(n));
             let Some(samples) =
                 samples.filter(|&n| n <= max_samples && n <= limit.saturating_sub(*floats))
@@ -422,6 +451,21 @@ mod tests {
         })).unwrap()
     }
     #[test]
+    fn horizontal_fields_follow_child_coordinates_and_keep_vertical_inputs() {
+        let mut r = registry();
+        r.interpolations = vec![
+            Field { input: input(None), cell: [4, 1] },
+            Field { input: input(Some(0)), cell: [4, 1] },
+        ];
+        assert_eq!(CachePlan::new(&r).horizontal, [true, true]);
+        r.interpolations[0].input.roots = vec![2]; // Y
+        assert_eq!(CachePlan::new(&r).horizontal, [false, false]);
+        r.interpolations[0].input.roots = vec![1]; // X
+        r.interpolations[1].input.nodes[4].a = 2; // child's X <- parent's Y
+        assert_eq!(CachePlan::new(&r).horizontal, [true, false]);
+    }
+
+    #[test]
     fn field_dependencies_are_topological_and_coordinate_operands_stay_live() {
         let mut r = registry();
         r.programs = vec![input(Some(2)), input(None), input(None)];
@@ -521,6 +565,12 @@ mod tests {
         assert_eq!(limited[0..8], [0; 8]);
         assert_eq!(limited[16..], [0; 8]);
         assert_eq!((floats, dispatch), (1240, 240));
+        registry.surface[2] = 1;
+        let mut floats = 1000;
+        let (flat, dispatch) = plan.layout(&registry, &r, 6, &mut floats, 10000, 10000).unwrap();
+        assert_eq!([flat[5], flat[13], flat[21]], [1; 3]);
+        assert_eq!([flat[2], flat[10], flat[18]], [0; 3]);
+        assert_eq!((floats, dispatch), (1167, 81));
         registry.interpolations[0].input.nodes[0].op = 45;
         let context = CachePlan::new(&registry);
         assert_eq!(context.fields, [false; 3]);

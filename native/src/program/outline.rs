@@ -7,14 +7,25 @@ use super::compact_calls::function;
 
 /// Apply after cached-field rewrites and constant-call selection. Only the
 /// generated graph bodies are outlined; scalar arithmetic stays inline.
-pub(crate) fn specialized(mut source: String) -> String {
+pub(crate) fn specialized(source: String) -> String {
     let names: Vec<String> = source.split("fn ").skip(1)
         .filter_map(|tail| tail.split_once('(').map(|(name, _)| name))
         .filter(|name| ["graph_", "interpolation_graph_", "raw_column_"].iter().any(|prefix|
             name.strip_prefix(prefix).is_some_and(|suffix| !suffix.is_empty() && suffix.bytes().all(|b| b.is_ascii_digit()))))
         .map(str::to_owned).collect();
-    for name in names { source = outline(source, &name); }
-    source
+    // Functions arrive in source order. Copy untouched spans once rather than
+    // rescanning and reallocating the whole module for every graph body.
+    let mut result = String::with_capacity(source.len());
+    let mut offset = 0;
+    for name in names {
+        let start = offset + source[offset..].find(&format!("fn {name}(")).unwrap();
+        let original = function(&source[start..], &name);
+        result.push_str(&source[offset..start]);
+        result.push_str(&outline_definition(original, &name));
+        offset = start + original.len();
+    }
+    result.push_str(&source[offset..]);
+    result
 }
 
 pub(super) fn source(mut source: String, depth: usize) -> String {
@@ -25,8 +36,12 @@ pub(super) fn source(mut source: String, depth: usize) -> String {
     outline(source, "run_density_bounds")
 }
 
-fn outline(mut source: String, name: &str) -> String {
+fn outline(source: String, name: &str) -> String {
     let original = function(&source, name);
+    source.replace(original, &outline_definition(original, name))
+}
+
+fn outline_definition(original: &str, name: &str) -> String {
     let (signature, body) = original.split_once('{').unwrap();
     let (args, result) = signature.split_once('(').unwrap().1.split_once(")->").unwrap();
     let result = result.trim();
@@ -87,13 +102,22 @@ fn outline(mut source: String, name: &str) -> String {
     replacement.push_str(rest);
     let value = if count == 1 { results[0].clone() } else { format!("{result}({})",results.join(",")) };
     replacement.push_str(&format!("}}\n{signature}{{\n{wrapper}retina_noinline_{name}({});\nreturn {value};\n}}",call.join(",")));
-    source = source.replace(original, &replacement);
-    source
+    replacement
 }
 
 #[cfg(test)]
 mod tests {
     use wgpu::naga::{self, AddressSpace, Scalar, ScalarKind, TypeInner};
+
+    #[test]
+    fn batched_outlining_matches_individual_rewrites() {
+        let mut source = String::from("// retained prefix\n");
+        for index in 0..64 { source.push_str(&format!("fn graph_{index}(x:f32)->f32{{if x<0.0{{return -0.0;}}return x;}}\n// retained separator\n")); }
+        source.push_str("fn ordinary(x:f32)->f32{return x;}\n");
+        let mut reference = source.clone();
+        for index in 0..64 { reference = super::outline(reference, &format!("graph_{index}")); }
+        assert_eq!(super::specialized(source), reference);
+    }
 
     #[test]
     fn specialized_graphs_keep_nested_calls_and_early_returns() {
@@ -108,7 +132,7 @@ mod tests {
 
     #[test]
     fn outlined_bodies_have_scalar_abi_and_no_private_mailboxes() {
-        for (capacity, depth, composition) in [(64, 0, false), (64, 1, false), (64, 2, false), (1024, 2, true)] {
+        for (capacity, depth, composition) in [(64, 0, false), (64, 1, false), (64, 2, false), (1024, 2, true), (2048, 0, false), (2048, 2, true), (1080, 4, true)] {
             let program = super::super::interpreter_source_density(capacity, depth, composition);
             for (prefix, suffix) in [
                 (include_str!("../simplex.wgsl"), include_str!("../noise3.wgsl").to_owned()),

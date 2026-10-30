@@ -22,6 +22,7 @@ public final class NativeDatapackIntegrationTest {
         String phase = System.getProperty("retina.datapack.test.phase", "all");
         if (!Set.of("all", "automatic", "registry", "program", "decorations", "shores", "terrain").contains(phase))
             throw new IllegalArgumentException("Unknown datapack test phase: " + phase);
+        art.arcane.retina.core.NativeLibrary.configureDebug(Boolean.getBoolean("retina.datapack.test.debug"));
         SharedConstants.tryDetectVersion(); Bootstrap.bootStrap();
         // Standalone JVM has no Fabric registry-unfreeze lifecycle.
         var frozen = MappedRegistry.class.getDeclaredField("frozen"); frozen.setAccessible(true);
@@ -70,6 +71,9 @@ public final class NativeDatapackIntegrationTest {
                         require(new HashSet<>(automatic.profile().biomes()).equals(original.generator().getBiomeSource().possibleBiomes()),"automatic saved source pool remains exact");
                         require(ChunkGenerator.CODEC.encodeStart(originalOps,original.generator()).getOrThrow().equals(originalJson),"saved compilation preserves source");
                         retain(saved,"automatic");
+                        var columns = NativeTerrain.instance().sampleColumns(automatic.request(0,0));
+                        require(columns.heights().length == 256, "saved pack supplies a complete GPU column query");
+                        System.out.println("QA_EVT {\"event\":\"automatic_datapack_columns\",\"status\":\"pass\"}");
                         automatic.biomeAt(0,0);checkMca(automatic,automatic.profile(),false);
                         System.out.println("QA_EVT {\"event\":\"automatic_datapack_generation\",\"status\":\"pass\"}");
                     } finally {automatic.closePreviews();}
@@ -251,8 +255,9 @@ public final class NativeDatapackIntegrationTest {
                 try(var data=NativeTerrain.instance().generate(generator.request(position.x(),position.z()))) {
                     var blocks=data.blocks().toArray(java.lang.foreign.ValueLayout.JAVA_SHORT);
                     var samples=NativeTerrain.instance().sampleBiomes(generator.request(position.x(),position.z()));
-                    var sections=McaTestSections.terrain(tag,-64,384);
-                    for(int section=0;section<24;section++) {
+                    var request=generator.request(position.x(),position.z());
+                    var sections=McaTestSections.terrain(tag,request.minY(),request.height());
+                    for(int section=0;section<sections.size();section++) {
                         var nbt=sections.get(section);
                         var decoded=codec.parse(net.minecraft.nbt.NbtOps.INSTANCE,nbt.getCompoundOrEmpty("block_states")).getOrThrow();
                         var biomes=nbt.getCompoundOrEmpty("biomes");var palette=biomes.getListOrEmpty("palette");
