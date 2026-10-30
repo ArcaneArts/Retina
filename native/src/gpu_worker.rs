@@ -109,9 +109,7 @@ pub(crate) fn run(
             return;
         }
     };
-    // The owner and auxiliary devices are ready before starting background work,
-    // so shader compilation cannot delay their initialization API calls.
-    gpu.start_interpreter_preload();
+    // Compile only the interpreter requested by an actual loaded profile.
     let mut queued = None;
     let mut flights: VecDeque<(Vec<Job>, gpu::PendingSample)> = VecDeque::new();
     loop {

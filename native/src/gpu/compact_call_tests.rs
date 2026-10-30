@@ -23,7 +23,7 @@ fn compact_sampling_matches_reference_world_generation() {
         let composition = registry.density_composition;
         let key = (capacity, depth, composition, crate::specialize::interpreter_reuse::Plan::new(registry, capacity, composition));
         let make = |source: String| std::sync::Arc::new(crate::specialize::compile_interpreter(
-            &gpu.device, &gpu.layout, &gpu.cave_layout, &source, None, false).unwrap());
+            &gpu.device, &gpu.layout, &gpu.cave_layout, &source, None, false, None).unwrap());
         let reference = make(crate::program::interpreter_reference_source(capacity, depth, composition));
         let compact = make(crate::program::interpreter_source_density(capacity, depth, composition));
         let id = index as u32 + 1;

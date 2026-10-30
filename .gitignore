@@ -9,6 +9,7 @@ native/target/
 # Development game files
 run/
 logs/
+retina-cache/
 
 # IDE files
 .idea/

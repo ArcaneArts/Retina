@@ -622,6 +622,7 @@ impl Compiler {
         material_dispatch: bool,
         specialized_interpolation: bool,
         device_failure: impl Fn() -> Option<String> + Send + 'static,
+        driver_cache: Option<Arc<crate::pipeline_cache::Cache>>,
     ) -> Result<Self, String> {
         let device = device.clone();
         let world = world.clone();
@@ -644,6 +645,7 @@ impl Compiler {
                                 &job.program,
                                 Some(reuse),
                                 true,
+                                driver_cache.as_deref(),
                             )
                         } else {
                             compile_program(
@@ -663,6 +665,7 @@ impl Compiler {
                                 false,
                                 job.material_dispatch,
                                 job.specialized_interpolation,
+                                driver_cache.as_deref(),
                                 #[cfg(test)]
                                 !job.reference_specialization,
                             )
@@ -885,6 +888,7 @@ pub(crate) fn compile(
         false,
         false,
         false,
+        None,
         #[cfg(test)]
         true,
     )
@@ -897,6 +901,7 @@ pub(crate) fn compile_interpreter(
     program: &str,
     reuse: Option<interpreter_reuse::Plan>,
     shared_dispatch: bool,
+    driver_cache: Option<&crate::pipeline_cache::Cache>,
 ) -> Result<Pipelines, String> {
     compile_program(
         device,
@@ -915,6 +920,7 @@ pub(crate) fn compile_interpreter(
         shared_dispatch,
         false,
         false,
+        driver_cache,
         #[cfg(test)]
         true,
     )
@@ -937,6 +943,7 @@ fn compile_program(
     shared_dispatch: bool,
     material_dispatch: bool,
     specialized_interpolation: bool,
+    driver_cache: Option<&crate::pipeline_cache::Cache>,
     #[cfg(test)] outline_specialized: bool,
 ) -> Result<Pipelines, String> {
     let _startup = crate::startup::Stage::new(format!("compile world pipelines specialized={specialized} terrain={terrain} program_bytes={}", program.len()));
@@ -1041,16 +1048,15 @@ fn compile_program(
                     let entry_name = *entry;
                     #[cfg(test)]
                     let entry_start = Instant::now();
-                    let create = if specialized { crate::startup::pipeline } else { crate::startup::interpreter_pipeline };
                     let pipeline =
-                        create(&device, &wgpu::ComputePipelineDescriptor {
+                        crate::pipeline_cache::create(&device, &wgpu::ComputePipelineDescriptor {
                             label: Some(entry),
                             layout: Some(&layout),
                             module: &module,
                             entry_point: Some(&entry_name),
                             compilation_options: Default::default(),
                             cache: None,
-                        });
+                        }, !specialized, driver_cache);
                     #[cfg(test)]
                     probe.report("pipeline", entry, entry_start, bytes);
                     ((*entry).to_owned(), pipeline)

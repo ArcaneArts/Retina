@@ -32,7 +32,7 @@ impl Policy {
         let interpreter_dispatch = flag("RETINA_INTERPRETER_DISPATCH", immediate_dispatch);
         let material_dispatch = flag("RETINA_MATERIAL_DISPATCH", immediate_dispatch);
         Self {
-            // These are the previous Metal defaults, now shared.
+            // Generation algorithms remain shared; unused fallbacks compile on demand.
             specialized_terrain: flag("RETINA_SPECIALIZED_TERRAIN", false),
             specialized_interpolation: flag("RETINA_SPECIALIZED_INTERPOLATION", true),
             lake_point_cache: flag("RETINA_LAKE_POINT_CACHE", true),
@@ -42,7 +42,7 @@ impl Policy {
             aquifer_columns: flag("RETINA_AQUIFER_COLUMNS", false),
             interpreter_dispatch,
             material_dispatch,
-            eager_pipelines: flag("RETINA_EAGER_PIPELINES", true),
+            eager_pipelines: flag("RETINA_EAGER_PIPELINES", false),
             defer_specialization: flag("RETINA_DEFER_SPECIALIZATION", false),
             interpolation_cache: flag("RETINA_INTERPOLATION_CACHE", true),
             cached_density_masks: flag("RETINA_CACHED_DENSITY_MASKS", true),
@@ -59,6 +59,7 @@ mod tests {
     fn adapter_capabilities_only_change_dispatch_and_its_preload() {
         let shared = Policy::resolve(wgpu::Features::IMMEDIATES, 4, |_| None);
         assert!(shared.interpreter_dispatch && shared.material_dispatch && shared.interpreter_preload);
+        assert!(!shared.eager_pipelines, "unused fallback pipelines must not compile at startup");
         for (features, size) in [(wgpu::Features::empty(), 128), (wgpu::Features::IMMEDIATES, 0), (wgpu::Features::IMMEDIATES, 3)] {
             let limited = Policy::resolve(features, size, |_| None);
             assert_eq!(limited, Policy { interpreter_dispatch: false, material_dispatch: false, interpreter_preload: false, ..shared });

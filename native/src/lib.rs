@@ -42,6 +42,7 @@ mod gpu_worker;
 mod startup;
 pub mod lighting;
 pub mod pipeline;
+mod pipeline_cache;
 pub mod profile;
 pub mod world_definition;
 pub mod queries;
