@@ -1,5 +1,8 @@
 //! Always-on, bounded startup diagnostics. Logging never gates GPU operations.
 mod cpu;
+mod progress;
+mod batch;
+pub(crate) use batch::PipelineBatch;
 pub(crate) mod capture;
 pub(crate) mod driver;
 use std::{
@@ -14,6 +17,7 @@ struct State {
     next: u64,
     active: BTreeMap<u64, (String, Instant, cpu::Probe)>,
     monitoring: bool,
+    progress: progress::Progress,
 }
 type Shared = (Mutex<State>, Condvar);
 static STATE: LazyLock<Arc<Shared>> =
@@ -30,21 +34,28 @@ pub(crate) struct Stage {
     id: u64,
     label: String,
     started: Instant,
+    pipeline: bool,
 }
 impl Stage {
     pub(crate) fn new(label: impl Into<String>) -> Self {
-        let label = label.into();
+        Self::begin(label.into(), false)
+    }
+    fn begin(label: String, pipeline: bool) -> Self {
         let started = Instant::now();
         let thread = std::thread::current();
         let label = format!("{} [thread={}]", label, thread.name().unwrap_or("host"));
+        let reserved = pipeline && batch::claim();
         let mut state = STATE.0.lock().unwrap_or_else(|e| e.into_inner());
+        if pipeline { state.progress.begin(reserved, Instant::now()); }
         state.next += 1;
         let id = state.next;
         state.active.insert(id, (label.clone(), started, cpu::Probe::current()));
         let launch = !state.monitoring;
         state.monitoring = true;
+        let progress = state.progress.report(Instant::now());
+        let active = state.active.len();
         drop(state);
-        message(format_args!("BEGIN #{id} {label}"));
+        message(format_args!("BEGIN #{id} {label} | {progress} stages_active={active}"));
         if launch {
             let shared = Arc::clone(&STATE);
             if let Err(error) = std::thread::Builder::new()
@@ -55,24 +66,28 @@ impl Stage {
                 message(format_args!("Progress reporter unavailable: {error}"));
             }
         }
-        Self { id, label, started }
+        Self { id, label, started, pipeline }
     }
 }
 impl Drop for Stage {
     fn drop(&mut self) {
         let mut state = STATE.0.lock().unwrap_or_else(|e| e.into_inner());
         let cpu = state.active.remove(&self.id).map(|(_, _, cpu)| cpu);
+        let unwound = std::thread::panicking();
+        if self.pipeline { state.progress.finish(unwound, Instant::now()); }
         if state.active.is_empty() {
             STATE.1.notify_all();
         }
+        let progress = state.progress.report(Instant::now());
+        let active = state.active.len();
         drop(state);
-        let outcome = if std::thread::panicking() {
+        let outcome = if unwound {
             "UNWIND"
         } else {
             "END"
         };
         message(format_args!(
-            "{outcome} #{} {} elapsed={:.3}s{}",
+            "{outcome} #{} {} elapsed={:.3}s{} | {progress} stages_active={active}",
             self.id,
             self.label,
             self.started.elapsed().as_secs_f64(),
@@ -93,12 +108,14 @@ fn monitor(shared: Arc<Shared>, interval: Duration, mut emit: impl FnMut(String)
             .unwrap_or_else(|e| e.into_inner());
         state = next;
         if timeout.timed_out() {
+            let progress = state.progress.report(Instant::now());
+            let active = state.active.len();
             let lines: Vec<_> = state
                 .active
                 .iter()
                 .map(|(id, (label, began, cpu))| {
                     format!(
-                        "WAIT #{id} {label} elapsed={:.1}s{} (operation still running)",
+                        "WAIT #{id} {label} elapsed={:.1}s{} (operation still running) | {progress} stages_active={active}",
                         began.elapsed().as_secs_f64(), cpu.report()
                     )
                 })
@@ -151,11 +168,11 @@ fn compute_pipeline(
             _ => None,
         } }
     } else { ComputeCompilation::Optimized };
-    let stage = Stage::new(format!(
+    let stage = Stage::begin(format!(
         "compute pipeline {} entry={} interpreter={interpreter}",
         descriptor.label.unwrap_or("unnamed"),
         descriptor.entry_point.unwrap_or("auto")
-    ));
+    ), true);
     driver::observe(&stage, descriptor.entry_point.unwrap_or("auto"), || {
         #[cfg(any(not(target_vendor = "apple"), test))]
         { with_compute_compilation(policy, || device.create_compute_pipeline(descriptor)) }
@@ -203,6 +220,7 @@ mod tests {
         });
         let line = receive.recv_timeout(Duration::from_secs(5)).unwrap();
         assert!(line.contains("WAIT #7 blocked driver call") && line.contains("elapsed="));
+        assert!(line.contains("pipelines=0/0 finished") && line.contains("stages_active=1"));
         shared.0.lock().unwrap().active.clear();
         shared.1.notify_all();
         worker.join().unwrap();

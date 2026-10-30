@@ -215,6 +215,7 @@ impl Gpu {
                     })
                     .collect::<Vec<_>>(),
             });
+        let _jobs = crate::startup::PipelineBatch::new("lighting", 7);
         let module = crate::startup::shader(&self.device, wgpu::ShaderModuleDescriptor {
                 label: Some("Retina packed GPU lighting"),
                 source: wgpu::ShaderSource::Wgsl(include_str!("lighting.wgsl").into()),
