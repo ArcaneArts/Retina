@@ -1,6 +1,6 @@
-//! Retina's large interpreter bodies deliberately have a void, zero-argument
-//! ABI. Preserve those boundaries through HLSL/SPIR-V lowering; ordinary
-//! helpers and specialized shaders retain the backend's normal optimization.
+//! Retina's large shader bodies use a void ABI with scalar inputs and local
+//! scalar output pointers. Preserve those boundaries through HLSL/SPIR-V lowering; ordinary
+//! arithmetic helpers retain the backend's normal optimization.
 extern crate alloc;
 use alloc::{string::String, vec::Vec};
 
@@ -10,13 +10,13 @@ pub fn has_bodies(module: &naga::Module) -> bool {
     module.functions.iter().any(|(_, f)| f.name.as_deref().is_some_and(|n| n.starts_with(PREFIX)))
 }
 
-/// Naga emits these zero-argument declarations on their own unindented line.
+/// Naga emits these declarations on their own unindented line.
 /// Match the complete shape so call statements / other functions are untouched.
 pub fn hlsl(source: &mut String) -> usize {
     let mut patched = String::with_capacity(source.len());
     let mut count = 0;
     for line in source.split_inclusive('\n') {
-        if line.strip_prefix("void ").and_then(|s| s.strip_suffix("()\n"))
+        if line.strip_prefix("void ").and_then(|s| s.strip_suffix(")\n")).and_then(|s| s.split_once('(').map(|(name, _)| name))
             .is_some_and(|name| name.starts_with(PREFIX) && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')) {
             patched.push_str("[noinline] ");
             count += 1;

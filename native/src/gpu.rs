@@ -1,6 +1,7 @@
 use crate::timings;
 mod base_pipeline;
 mod policy;
+mod health;
 use policy::Policy;
 use base_pipeline::BasePipeline;
 #[cfg(test)]
@@ -38,6 +39,7 @@ const SURFACE_METADATA_FLOATS: usize = 8 * if 20000 > MAX_BATCH * 25 {
 pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
+    health: std::sync::Arc<health::Health>,
     sites_pipeline: BasePipeline,
     biome_queries_pipeline: BasePipeline,
     underground_queries_pipeline: BasePipeline,
@@ -226,6 +228,7 @@ impl Gpu {
         }))
         .map_err(|e| format!("cannot create the GPU compute device: {e}"))?;
         drop(_device_stage);
+        let health = health::Health::install(&device, &backend);
         crate::startup::message(format_args!("Dispatch: specialized_terrain={specialized_terrain} specialized_interpolation={specialized_interpolation} interpreter_columns={interpreter_columns} interpreter_dispatch={interpreter_dispatch} material_dispatch={material_dispatch}"));
         let shader = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
             label: Some("Retina GPU biomes and simplex"),
@@ -391,6 +394,7 @@ impl Gpu {
             &cave_layout,
             material_dispatch,
             specialized_interpolation,
+            { let health = health.clone(); move || health.check().err() },
         )?;
         let mut gpu = Self {
             device,
@@ -439,6 +443,7 @@ impl Gpu {
             last_device_tick: None,
             timestamp_support,
             backend,
+            health,
             compiler,
             specialized: HashMap::new(),
             wide_profiles: std::collections::HashSet::new(),
@@ -631,6 +636,7 @@ impl Gpu {
         timings: &timings::Timings,
         world_profile: u32,
     ) -> Result<PendingSample, String> {
+        self.health.check()?;
         let host_start = Instant::now();
         let surface_probe = requests[0].padding & (1 << 31) != 0;
         let underground_probe = requests[0].padding & (1 << 30) != 0;
@@ -1763,6 +1769,9 @@ impl Gpu {
                 }
             }
         }
+        self.health.check()?;
+        self.health.submission(format!("terrain backend={} profile={world_profile} requests={} tile_side={} columns={} y={}..{} specialized={} interpolation_items={interpolation_dispatch} interpolation_depth={interpolation_depth} density_grid={}x{} surface_items={surface_dispatch} lake_cells={lake_dispatch} cave_side={cave_side}",
+            self.backend, requests.len(), requests[0].tile_side, count * if sparse { 1 } else { COLUMNS }, requests[0].min_y, requests[0].max_y, specialized.is_some(), density_dispatch.0, density_dispatch.1));
         let submission = self.queue.submit([encoder.finish()]);
         // Procedural worlds share shader/buffer slot zero but retain distinct diagnostics.
         self.pipeline.transfer(
@@ -1955,6 +1964,7 @@ impl Gpu {
         let encode = start.elapsed().as_nanos() as u64;
         timings.add(timings::ENCODE, encode);
         trace.nanos[timings::ENCODE] += encode;
+        self.health.submission(format!("material emission backend={} profile={} columns={} bytes={size}",self.backend, request.profile, (request.padding * 16).pow(2)));
         let submission = self.queue.submit([encoder.finish()]);
         let mapping = Mapping::new(out, size);
         let query = timestamps.as_ref().map(|t| Mapping::new(&t.readback, 16));
@@ -2064,10 +2074,19 @@ impl Gpu {
             mapped_at_creation: false,
         })
     }
+    pub(crate) fn failure(&self) -> Option<String> { self.health.check().err() }
+    pub(crate) fn operation_panic(&self, operation: &str, payload: &(dyn std::any::Any + Send)) -> String {
+        self.health.panic(operation, payload)
+    }
+    fn poll(&self, kind: wgpu::PollType) -> Result<(), String> {
+        self.health.check()?;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.device.poll(kind)))
+            .map_err(|payload| self.health.panic("poll", payload.as_ref()))?;
+        self.health.check()?;
+        result.map(|_| ()).map_err(|e| format!("GPU poll failed: {e}"))
+    }
     pub(crate) fn ready(&self, pending: &mut PendingSample) -> Result<bool, String> {
-        self.device
-            .poll(wgpu::PollType::Poll)
-            .map_err(|e| format!("GPU poll failed: {e}"))?;
+        self.poll(wgpu::PollType::Poll)?;
         let ready = pending.ready();
         if !ready && pending.stage_start().elapsed() > Duration::from_secs(30) {
             return Err("GPU mapping timed out".into());
@@ -2094,15 +2113,14 @@ impl Gpu {
         mut pending: PendingSample,
         timings: &timings::Timings,
     ) -> Result<Progress, String> {
+        self.health.check()?;
         #[cfg(test)]
         let host_poll = host_phase_probe::Stamp::start(pending.wait_start);
         if !pending.ready() {
-            self.device
-                .poll(wgpu::PollType::Wait {
-                    submission_index: Some(pending.submission().clone()),
-                    timeout: Some(Duration::from_secs(30)),
-                })
-                .map_err(|e| format!("GPU poll failed: {e}"))?;
+            self.poll(wgpu::PollType::Wait {
+                submission_index: Some(pending.submission().clone()),
+                timeout: Some(Duration::from_secs(30)),
+            })?;
         }
         #[cfg(test)]
         host_poll.finish(pending.wait_start, "poll", &mut pending.host_phases);
@@ -2431,6 +2449,8 @@ mod column_interpreter_tests;
 mod compact_call_tests;
 #[cfg(test)]
 mod policy_tests;
+#[cfg(test)]
+mod specialized_outline_tests;
 #[cfg(test)]
 mod lake_sparse_tests;
 #[cfg(test)]

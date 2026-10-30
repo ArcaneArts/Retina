@@ -60,7 +60,7 @@ fn reply(batch: Vec<Job>, result: Result<gpu::GpuSample, String>) {
 fn advance(gpu: &mut gpu::Gpu, flights: &mut VecDeque<(Vec<Job>, gpu::PendingSample)>) {
     let (batch, pending) = flights.pop_front().unwrap();
     let result = catch_unwind(AssertUnwindSafe(|| gpu.advance(pending, &batch[0].timings)))
-        .unwrap_or_else(|_| Err("GPU completion panicked; see native stderr".into()));
+        .unwrap_or_else(|payload| Err(gpu.operation_panic("completion", payload.as_ref())));
     match result {
         Ok(gpu::Progress::Pending(next)) => flights.push_back((batch, next)),
         Ok(gpu::Progress::Complete(sample)) => {
@@ -115,6 +115,18 @@ pub(crate) fn run(
     let mut queued = None;
     let mut flights: VecDeque<(Vec<Job>, gpu::PendingSample)> = VecDeque::new();
     loop {
+        // This state is set only by a real device-loss callback or failed GPU
+        // operation. Drain callers without touching invalid GPU resources.
+        if let Some(error) = gpu.failure() {
+            for (batch, _) in flights.drain(..) { reply(batch, Err(error.clone())); }
+            let command = queued.take().or_else(|| receiver.recv().ok());
+            match command {
+                Some(GpuCommand::Generate(job)) => reply(vec![job], Err(error)),
+                Some(GpuCommand::Retire(_, done)) => { let _ = done.send(()); }
+                None => break,
+            }
+            continue;
+        }
         if flights.len() == depth {
             // Only wait for one submission. A dependent material pass joins
             // the back of the queue, behind other already-submitted terrain.
@@ -238,7 +250,7 @@ pub(crate) fn run(
         let result = catch_unwind(AssertUnwindSafe(|| {
             gpu.submit_for_world(&requests, batch[0].profile.as_deref(), &batch[0].timings, profile)
         }))
-        .unwrap_or_else(|_| Err("GPU dispatch panicked; see native stderr".into()));
+        .unwrap_or_else(|payload| Err(gpu.operation_panic("dispatch", payload.as_ref())));
         match result {
             Ok(pending) => {
                 flights.push_back((batch, pending));
