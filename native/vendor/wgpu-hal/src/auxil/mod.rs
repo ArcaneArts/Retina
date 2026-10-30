@@ -1,3 +1,6 @@
+#[doc(hidden)]
+pub mod retina_functions;
+
 // Mostly DX12-only, but also compiled for Vulkan-on-Windows, which reuses
 // `dxgi::hdr` to query display HDR info. The DX12-only submodules stay gated
 // behind `dx12` in `dxgi/mod.rs`.

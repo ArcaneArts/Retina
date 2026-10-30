@@ -979,8 +979,8 @@ fn compile_program(
                 compiled_entries.len(),
             );
             crate::startup::message(format_args!(
-                "Pipeline workload specialized={specialized} source_bytes={} entries={} [{}]",
-                source.len(), compiled_entries.len(), compiled_entries.join(", ")
+                "Pipeline workload specialized={specialized} source_bytes={} entries={} outlined_bodies={} [{}]",
+                source.len(), compiled_entries.len(), source.matches("fn retina_noinline_").count(), compiled_entries.join(", ")
             ));
             #[cfg(test)]
             let source = probe.source(source, &compiled_entries);

@@ -713,7 +713,8 @@ impl super::Device {
                     entry_point: stage.entry_point.to_owned(),
                     shader_stage: naga_stage,
                 };
-                let needs_temp_options = !runtime_checks.bounds_checks
+                let outlined = crate::auxil::retina_functions::has_bodies(&naga_shader.module);
+                let needs_temp_options = outlined || !runtime_checks.bounds_checks
                     || !runtime_checks.force_loop_bounding
                     || !runtime_checks.ray_query_initialization_tracking
                     || !binding_map.is_empty()
@@ -726,6 +727,7 @@ impl super::Device {
                 let mut temp_options;
                 let options = if needs_temp_options {
                     temp_options = self.naga_options.clone();
+                    if outlined { temp_options.flags.insert(naga::back::spv::WriterFlags::DEBUG); }
                     if !runtime_checks.bounds_checks {
                         temp_options.bounds_check_policies = naga::proc::BoundsCheckPolicies {
                             index: naga::proc::BoundsCheckPolicy::Unchecked,
@@ -777,11 +779,15 @@ impl super::Device {
                     crate::PipelineError::PipelineConstants(stage_flags, format!("{e}"))
                 })?;
 
-                let spv = {
+                let mut spv = {
                     profiling::scope!("naga::spv::write_vec");
                     naga::back::spv::write_vec(&module, &info, options, Some(&pipeline_options))
                 }
                 .map_err(|e| crate::PipelineError::Linkage(stage_flags, format!("{e}")))?;
+                if outlined {
+                    let count = crate::auxil::retina_functions::spirv(&mut spv);
+                    log::info!("Retina retained {count} interpreter function boundaries in SPIR-V");
+                }
                 if naga_stage == naga::ShaderStage::Compute {
                     super::diagnostics::emit(super::diagnostics::Event::Spirv {
                         words: &spv,
