@@ -381,6 +381,8 @@ impl super::Device {
                         .unwrap()
                         .map_err(|e| crate::PipelineError::Linkage(stage_bit, format!("{e}")))?;
 
+                    let outlined = crate::auxil::retina_functions::hlsl(&mut source);
+                    if outlined != 0 { log::info!("Retina retained {outlined} interpreter function boundaries in HLSL"); }
                     (source, entry_point)
                 };
                 log::debug!(

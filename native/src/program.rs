@@ -2,6 +2,7 @@
 use serde::Deserialize;
 mod column_interpreter;
 mod compact_calls;
+mod outline;
 pub(crate) use column_interpreter::FLAG as COLUMN_INTERPRETER_FLAG;
 pub(crate) mod composition;
 pub(crate) mod interpolation;
@@ -97,7 +98,7 @@ pub(crate) fn interpreter_source_density(
     depth: usize,
     composition: bool,
 ) -> String {
-    compact_calls::source(interpreter_reference_source(capacity, depth, composition), depth)
+    outline::source(compact_calls::source(interpreter_reference_source(capacity, depth, composition), depth), depth)
 }
 pub(crate) fn interpreter_reference_source(capacity: usize, depth: usize, composition: bool) -> String {
     let source = include_str!("program.wgsl");

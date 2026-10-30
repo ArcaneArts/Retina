@@ -1,0 +1,9 @@
+[package]
+name = "retina-compiler-audit"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "GPL-3.0-only"
+[dependencies]
+naga = { version = "=30.0.1", features = ["wgsl-in", "hlsl-out", "spv-out"] }
+mach-dxcompiler-rs = { version = "=0.1.7", features = ["cbindings"] }

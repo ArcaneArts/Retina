@@ -30,14 +30,20 @@ impl Probe {
         }
     }
     pub fn source(&self, mut source: String, entries: &[&str]) -> String {
-        if self.tag.is_none() {
-            return source;
+        if self.tag.is_some() {
+            for entry in entries {
+                source = source.replace(
+                    &format!("fn {entry}("),
+                    &format!("fn {}(", self.entry(entry)),
+                );
+            }
         }
-        for entry in entries {
-            source = source.replace(
-                &format!("fn {entry}("),
-                &format!("fn {}(", self.entry(entry)),
-            );
+        if let Some(directory) = std::env::var_os("RETINA_COMPILE_DUMP") {
+            static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+            let id = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let directory = std::path::PathBuf::from(directory);
+            std::fs::create_dir_all(&directory).unwrap();
+            std::fs::write(directory.join(format!("{id:04}-{}.wgsl", entries.join("-"))), &source).unwrap();
         }
         source
     }
