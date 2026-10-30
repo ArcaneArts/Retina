@@ -2245,7 +2245,7 @@ impl crate::Device for super::Device {
         )?;
 
         let flags = vk::PipelineCreateFlags::from_raw(
-            super::diagnostics::compute_flags(self.shared.vendor_id),
+            super::diagnostics::compute_flags(),
         );
         let vk_infos = [{
             vk::ComputePipelineCreateInfo::default()
