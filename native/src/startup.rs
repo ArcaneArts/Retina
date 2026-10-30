@@ -168,23 +168,22 @@ fn compute_pipeline(
 mod tests {
     use super::*;
     #[test]
-    fn vulkan_policy_is_scoped_to_interpreter_device_and_thread() {
+    fn vulkan_policy_is_opt_in_and_scoped_to_interpreter_and_thread() {
         use wgpu::hal::vulkan::diagnostics::{compute_flags, with_compute_compilation, ComputeCompilation::*};
-        assert_eq!(compute_flags(0x10de), 0);
+        assert_eq!(compute_flags(), 0);
         with_compute_compilation(Interpreter { fast_compile: None }, || {
-            assert_eq!(compute_flags(0x10de), u32::from(cfg!(windows)));
-            assert_eq!(compute_flags(0x1002), 0);
+            assert_eq!(compute_flags(), 0);
         });
         with_compute_compilation(Interpreter { fast_compile: Some(true) }, || {
-            assert_eq!(compute_flags(0x10de), 1);
-            with_compute_compilation(Optimized, || assert_eq!(compute_flags(0x10de), 0));
-            assert_eq!(compute_flags(0x10de), 1);
-            std::thread::spawn(|| assert_eq!(compute_flags(0x10de), 0)).join().unwrap();
-            with_compute_compilation(Interpreter { fast_compile: Some(false) }, || assert_eq!(compute_flags(0x10de), 0));
-            assert_eq!(compute_flags(0x10de), 1);
+            assert_eq!(compute_flags(), 1);
+            with_compute_compilation(Optimized, || assert_eq!(compute_flags(), 0));
+            assert_eq!(compute_flags(), 1);
+            std::thread::spawn(|| assert_eq!(compute_flags(), 0)).join().unwrap();
+            with_compute_compilation(Interpreter { fast_compile: Some(false) }, || assert_eq!(compute_flags(), 0));
+            assert_eq!(compute_flags(), 1);
         });
         let _ = std::panic::catch_unwind(|| with_compute_compilation(Interpreter { fast_compile: Some(true) }, || panic!("scope test")));
-        assert_eq!(compute_flags(0x10de), 0);
+        assert_eq!(compute_flags(), 0);
     }
     #[test]
     fn stalled_operation_reports_and_monitor_exits_after_completion() {

@@ -9,7 +9,7 @@ pub enum ComputeCompilation {
     /// Preserve the upstream optimized compilation path.
     #[default]
     Optimized,
-    /// `None` selects fast compilation only on Windows NVIDIA devices.
+    /// `None` retains normal optimization, matching other backends' defaults.
     Interpreter { fast_compile: Option<bool> },
 }
 
@@ -29,12 +29,12 @@ pub fn with_compute_compilation<T>(policy: ComputeCompilation, operation: impl F
     operation()
 }
 
-/// Effective VkPipelineCreateFlags for the device actually compiling this call.
-pub fn compute_flags(vendor: u32) -> u32 {
+/// Effective VkPipelineCreateFlags for this synchronous pipeline call.
+pub fn compute_flags() -> u32 {
     let fast = match COMPILATION.get() {
         ComputeCompilation::Optimized => false,
         ComputeCompilation::Interpreter { fast_compile } => {
-            fast_compile.unwrap_or(cfg!(windows) && vendor == crate::auxil::db::nvidia::VENDOR)
+            fast_compile.unwrap_or(false)
         }
     };
     if fast { ash::vk::PipelineCreateFlags::DISABLE_OPTIMIZATION.as_raw() } else { 0 }

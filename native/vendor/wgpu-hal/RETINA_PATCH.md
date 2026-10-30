@@ -26,7 +26,7 @@ Only these upstream source files are changed:
   unwind-safe compute compilation policy and read-only SPIR-V/driver observers.
 - `src/vulkan/device.rs`: observe the exact emitted compute SPIR-V before shader
   module creation; apply `VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT` to explicitly
-  marked interpreter pipelines on Windows NVIDIA devices by default. Capture the
+  marked interpreter pipelines only when explicitly requested. Capture the
   effective flags before the real driver call and report its result. Release the
   temporary shader module on driver errors as well as success.
 
@@ -42,8 +42,8 @@ explicit standalone replay modes, never applied during normal generation.
 
 Vulkan policy is scoped around each synchronous wgpu pipeline call. It does not
 depend on thread names, shader labels, or a process-global environment mutation.
-Unmarked/specialized pipelines keep upstream flags. The effective device vendor
-is checked at the Vulkan call, not inferred from another device. An explicit
+Unmarked/specialized pipelines keep upstream flags. There is no platform or
+vendor-specific default: normal optimization matches the common policy. An explicit
 `RETINA_VULKAN_FAST_COMPILE=0/1` override in Retina controls interpreter policy
 for comparison. The flag may trade runtime throughput for compilation time; it
 is not a time bound and does not disable validation or shader safety checks.

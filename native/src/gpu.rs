@@ -1,5 +1,7 @@
 use crate::timings;
 mod base_pipeline;
+mod policy;
+use policy::Policy;
 use base_pipeline::BasePipeline;
 #[cfg(test)]
 pub(crate) mod host_phase_probe;
@@ -104,6 +106,7 @@ pub(crate) struct Gpu {
     defer_specialization: bool,
     specialized_interpolation: bool,
     interpreter_dispatch: bool,
+    interpreter_preload: bool,
     preloaded_interpreters: HashMap<bool, std::sync::Arc<crate::specialize::State>>,
     cached_density_masks: bool,
     lake_point_cache: bool,
@@ -169,6 +172,10 @@ impl Gpu {
         crate::geology::raster_gpu::Gpu::new(self.device.clone(), self.queue.clone())
     }
     pub(crate) fn new(metrics: std::sync::Arc<crate::pipeline::Metrics>) -> Result<Self, String> {
+        Self::new_with_policy(metrics, Policy::from_env)
+    }
+
+    fn new_with_policy(metrics: std::sync::Arc<crate::pipeline::Metrics>, resolve: fn(wgpu::Features, u32) -> Policy) -> Result<Self, String> {
         let backends = crate::gpu_backend::selected()?;
         let _instance_stage = crate::startup::Stage::new(format!("GPU instance creation requested={backends:?}"));
         let instance = wgpu::Instance::new(crate::gpu_backend::instance_descriptor(backends));
@@ -185,67 +192,16 @@ impl Gpu {
         let info = adapter.get_info();
         crate::startup::message(format_args!("Selected adapter: backend={:?} name={} type={:?} vendor={:#x} device={:#x} driver={} driver_info={}", info.backend, info.name, info.device_type, info.vendor, info.device, info.driver, info.driver_info));
         let backend = format!("{:?}: {}", info.backend, info.name);
-        // Matched Metal measurements favor the compact density/climate stages.
-        // Keep the prior default on unmeasured backends; diagnostics can select
-        // either mode without changing loaded graph or saved-world semantics.
-        let specialized_terrain = match std::env::var("RETINA_SPECIALIZED_TERRAIN").as_deref() {
-            Ok("0") => false,
-            Ok("1") => true,
-            _ => info.backend != wgpu::Backend::Metal,
-        };
-        // Input-field writers benefit from direct graph calls even when the
-        // remaining Metal terrain stages favor the compact interpreter.
-        let specialized_interpolation =
-            match std::env::var("RETINA_SPECIALIZED_INTERPOLATION").as_deref() {
-                Ok("0") => false,
-                Ok("1") => true,
-                _ => info.backend == wgpu::Backend::Metal,
-            };
-        let lake_point_cache = match std::env::var("RETINA_LAKE_POINT_CACHE").as_deref() {
-            Ok("0") => false,
-            Ok("1") => true,
-            _ => info.backend == wgpu::Backend::Metal,
-        };
-        let lake_primed_corners = match std::env::var("RETINA_LAKE_PRIMED_CORNERS").as_deref() {
-            Ok("0") => false,
-            Ok("1") => true,
-            _ => info.backend == wgpu::Backend::Metal,
-        };
-        let lake_sparse_fields = match std::env::var("RETINA_LAKE_SPARSE_FIELDS").as_deref() {
-            Ok("0") => false,
-            Ok("1") => true,
-            _ => info.backend == wgpu::Backend::Metal,
-        };
-        let interpreter_columns = match std::env::var("RETINA_INTERPRETER_COLUMNS").as_deref() {
-            Ok("0") => false,
-            Ok("1") => true,
-            _ => info.backend == wgpu::Backend::Metal,
-        };
-        // Real profiles show small serial benefits but concurrent regressions.
-        // Keep this measured alternative opt-in until it improves both workloads.
-        let aquifer_columns = std::env::var("RETINA_AQUIFER_COLUMNS").as_deref() == Ok("1");
-        // Matched Metal runs cut compact interpreter first-use compilation by
-        // about 70%. Unmeasured backends retain their independent pipelines.
-        let interpreter_dispatch = match std::env::var("RETINA_INTERPRETER_DISPATCH").as_deref() {
-            Ok("0") => false,
-            Ok("1") => true,
-            _ => {
-                info.backend == wgpu::Backend::Metal
-                    && adapter.features().contains(wgpu::Features::IMMEDIATES)
-                    && adapter.limits().max_immediate_size >= 4
-            }
-        };
-        // The two material scans share a call graph. Fresh-identity Metal pairs
-        // cut their cold compilation by 48–63%; warm throughput is mixed.
-        let material_dispatch = match std::env::var("RETINA_MATERIAL_DISPATCH").as_deref() {
-            Ok("0") => false,
-            Ok("1") => true,
-            _ => {
-                info.backend == wgpu::Backend::Metal
-                    && adapter.features().contains(wgpu::Features::IMMEDIATES)
-                    && adapter.limits().max_immediate_size >= 4
-            }
-        };
+        let policy = resolve(adapter.features(), adapter.limits().max_immediate_size);
+        crate::startup::message(format_args!("GPU generation policy (shared defaults): {policy:?}; adapter_immediates={} max_immediate_size={}",
+            adapter.features().contains(wgpu::Features::IMMEDIATES), adapter.limits().max_immediate_size));
+        let Policy {
+            specialized_terrain, specialized_interpolation, lake_point_cache,
+            lake_primed_corners, lake_sparse_fields, interpreter_columns,
+            aquifer_columns, interpreter_dispatch, material_dispatch,
+            eager_pipelines, defer_specialization, interpolation_cache,
+            cached_density_masks, interpreter_preload,
+        } = policy;
         crate::startup::capture::install(&info);
         let _device_stage = crate::startup::Stage::new("GPU device creation");
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
@@ -306,17 +262,7 @@ impl Gpu {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let eager_pipelines = match std::env::var("RETINA_EAGER_PIPELINES").as_deref() {
-            Ok("0") => false,
-            Ok("1") => true,
-            _ => !matches!(info.backend, wgpu::Backend::Vulkan | wgpu::Backend::Dx12),
-        };
-        let defer_specialization = match std::env::var("RETINA_DEFER_SPECIALIZATION").as_deref() {
-            Ok("0") => false,
-            Ok("1") => true,
-            _ => matches!(info.backend, wgpu::Backend::Vulkan | wgpu::Backend::Dx12),
-        };
-        crate::startup::message(format_args!("Pipeline policy: eager_base={eager_pipelines} defer_specialization={defer_specialization}; deferred base pipelines compile once, only if selected"));
+        crate::startup::message(format_args!("Pipeline policy: eager_base={eager_pipelines} defer_specialization={defer_specialization}"));
         let pipeline = |entry| {
             BasePipeline::new(&device, eager_pipelines, &wgpu::ComputePipelineDescriptor {
                 label: Some(entry),
@@ -500,19 +446,19 @@ impl Gpu {
             cached_density_plans: HashMap::new(),
             cached_node_plans: HashMap::new(),
             sparse_lake_plans: HashMap::new(),
-            interpolation_cache: std::env::var("RETINA_INTERPOLATION_CACHE").as_deref() != Ok("0"),
+            interpolation_cache,
             specialized_terrain,
             defer_specialization,
             specialized_interpolation,
             interpreter_dispatch,
+            interpreter_preload,
             preloaded_interpreters: HashMap::new(),
             lake_sparse_fields,
             interpreter_columns,
             aquifer_columns,
             #[cfg(test)]
             material_storage_counts: Default::default(),
-            cached_density_masks: std::env::var("RETINA_CACHED_DENSITY_MASKS").as_deref()
-                != Ok("0"),
+            cached_density_masks,
             lake_point_cache,
             lake_primed_corners,
         };
@@ -522,9 +468,7 @@ impl Gpu {
 
     pub(crate) fn start_interpreter_preload(&mut self) {
         // Overlap compact density compilation with native profile parsing.
-        if self.interpreter_dispatch
-            && std::env::var("RETINA_INTERPRETER_PRELOAD").as_deref() != Ok("0")
-        {
+        if self.interpreter_preload {
             // New presets use composition; absent saved fields use legacy.
             // Each inventory has its own immutable source/layout identity.
             for composition in [true, false] {
@@ -2481,6 +2425,8 @@ mod aquifer_columns_tests;
 mod column_interpreter_tests;
 #[cfg(test)]
 mod compact_call_tests;
+#[cfg(test)]
+mod policy_tests;
 #[cfg(test)]
 mod lake_sparse_tests;
 #[cfg(test)]

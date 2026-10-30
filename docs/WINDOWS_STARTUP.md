@@ -1,5 +1,51 @@
 # Windows startup diagnostics
 
+## Common generation policy
+
+Metal, Vulkan and DX12 now use one generation-policy resolver with the previous
+Metal defaults. The resolver accepts actual adapter capabilities and explicit
+environment overrides; it does not accept a backend or platform name. The log
+prints `GPU generation policy (shared defaults): Policy { ... }` before device
+creation or shader compilation, including the effective cache/scheduling flags
+and the adapter's reported immediates capability/size.
+
+| Choice | Common default |
+| --- | --- |
+| Terrain stages | Compact interpreter (`specialized_terrain=false`) |
+| Specialized interpolation writers | Enabled |
+| Interpreter X/Z cache | Enabled |
+| Lake point cache, primed corners, sparse fields | Enabled |
+| Shared interpreter and material dispatch | Enabled when the adapter supports four bytes of immediates |
+| Compact interpreter preload | Enabled with shared interpreter dispatch |
+| Base pipeline creation | Eager |
+| Automatic specialization | Starts early, without Windows-only deferral |
+| Interpolation cache and cached density masks | Enabled |
+| Experimental aquifer column path | Disabled |
+| Vulkan interpreter optimization | Normal; disabling optimization is opt-in |
+
+This intentionally restores the same eager initialization and early background
+compilation used on Metal. Windows logs may therefore show compilation during
+engine initialization again. Explicit `RETINA_*` overrides remain available and
+are reflected in the policy log. Unsupported immediates select independent
+dispatch by default; explicitly forcing a feature still reaches the real device
+creation call, which reports any unsupported feature/limit.
+
+`RETINA_VULKAN_FAST_COMPILE=1` remains a diagnostic override. With it unset,
+Vulkan captures should report `flags=0x0 optimization_disabled=false`. On an
+immediate-capable device, compact world/cave workload logs should show
+`retina_world_dispatch` / `retina_cave_dispatch`; specialized material workloads
+use their shared dispatch entrypoint. Base fallback pipelines retain their own
+entrypoints, exactly as on Metal.
+
+The ignored `common_policy_shared_dispatch_matches_independent_generation` GPU
+test compares the common shared policy with identical settings except independent
+dispatch. It requires successful preload and checks real selectors for interpreter
+and specialized material pipelines, as well as generated columns/material masks.
+This and native capability/override tests validate the application policy;
+Windows driver timings still require a Windows run. Shader translation and
+hardware compilers remain backend-specific, and existing driver caches can
+affect timing comparisons.
+
 ## Shared interpreter call sites
 
 The 1.1.437 RTX 4090 Vulkan report confirms `flags=0x1` /
@@ -51,10 +97,11 @@ performance ratio between Metal and Vulkan.
 
 ## Vulkan interpreter compilation policy
 
-Windows NVIDIA Vulkan now requests `VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT`
-for generic interpreter pipelines, including the demand-created base fallbacks.
-Specialized pipelines keep normal optimization. Other vendors/platforms retain
-their previous default; Metal and DX12 compilation are unchanged. The Vulkan
+The 1.1.437 diagnostic build requested `VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT`
+for generic interpreter pipelines on Windows NVIDIA devices. The common policy
+now keeps normal optimization by default; `RETINA_VULKAN_FAST_COMPILE=1` opts
+into that experiment for generic pipelines. Specialized pipelines keep normal
+optimization, and Metal/DX12 compilation is unaffected by this override. The Vulkan
 flag permits a compilation/runtime tradeoff; it does not guarantee faster
 compilation, and interpreter generation throughput must also be measured.
 Shader code, output semantics, bounds checks, and validation are unchanged.
@@ -67,10 +114,10 @@ interpreter; it would not establish which internal optimization is expensive.
 `1` forces the fast policy on any Vulkan device. Each call uses a thread-local
 scope, so a background specialized compilation cannot inherit the fast policy.
 
-Keep Vulkan for this build (`-Dretina.gpuBackend=vulkan`). The log reports the
+Keep Vulkan for comparison (`-Dretina.gpuBackend=vulkan`). The log reports the
 actual flags at the driver boundary, e.g. `optimization_disabled=true` for the
-interpreter and `false` for specialization. If the same driver phase exceeds
-90 seconds, stop and send the complete log and the newest directory under
+interpreter when explicitly overridden and `false` by default. If the same driver
+phase exceeds 90 seconds, stop and send the complete log and the newest directory under
 `retina-diagnostics/vulkan-<time>-<pid>/`. Its absolute location is logged.
 
 Each pipeline directory saves `shader.spv` from the exact Naga output passed to
@@ -91,15 +138,15 @@ seconds were in `ID3D12Device::CreateComputePipelineState`. The generic and
 specialized compiler threads were both accumulating CPU time. This report shows
 slow compilation and real progress; it does not show an idle deadlock.
 
-Vulkan and DX12 now retain base interpreter descriptors and compile each base
+With `RETINA_EAGER_PIPELINES=0`, base interpreter descriptors compile each base
 entrypoint only when a request selects it. A world-specific replacement does not
 compile the unused base entrypoint. Each selected base pipeline remains cached
-in memory for the lifetime of the GPU device. Metal retains eager initialization.
-`RETINA_EAGER_PIPELINES=0` or `1` overrides this policy for controlled comparisons.
+in memory for the lifetime of the GPU device. The common default is eager
+initialization; `RETINA_EAGER_PIPELINES=0` or `1` selects a controlled comparison.
 Shader modules and layouts are still validated during engine initialization.
 
-Automatic specialization on Vulkan and DX12 starts after the first request's
-required pipelines, including base fallbacks, have compiled. Explicit specialized
+With `RETINA_DEFER_SPECIALIZATION=1`, automatic specialization starts after the
+first request's required pipelines, including base fallbacks, have compiled. Explicit specialized
 execution still waits for specialization; explicit interpreter execution never
 starts it. `RETINA_DEFER_SPECIALIZATION=0` or `1` overrides scheduling. These
 changes avoid unused work and initial compiler contention; they do not establish
