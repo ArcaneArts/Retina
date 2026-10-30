@@ -4,7 +4,8 @@ import java.math.BigInteger;
 import java.util.Map;
 
 /** Loader- and file-format-independent settings. Changes take effect at process startup. */
-public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression mcaCompression) {
+public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression mcaCompression,
+                           boolean allowDirectx, boolean allowMetal, boolean allowVulkan) {
     public enum McaCompression {
         ZLIB("zlib"), LZ4("lz4");
         private final String id;
@@ -15,6 +16,12 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
     public RetinaConfig {
         java.util.Objects.requireNonNull(mcaCompression, "mcaCompression");
     }
+
+    public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression compression) {
+        this(mcaParallelism, debug, f3Overlay, compression, true, true, true);
+    }
+
+    public boolean worldgenEnabled() { return allowDirectx || allowMetal || allowVulkan; }
 
     public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay) {
         this(mcaParallelism, debug, f3Overlay, McaCompression.ZLIB);
@@ -35,7 +42,8 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
 
     public static RetinaConfig from(Map<String, ?> values) {
         return new RetinaConfig(integer(values, "mca_parallelism", DEFAULT.mcaParallelism),
-                bool(values, "debug", DEFAULT.debug), bool(values, "f3_overlay", DEFAULT.f3Overlay), compression(values));
+                bool(values, "debug", DEFAULT.debug), bool(values, "f3_overlay", DEFAULT.f3Overlay), compression(values),
+                bool(values, "allow_directx", true), bool(values, "allow_metal", true), bool(values, "allow_vulkan", true));
     }
 
     private static McaCompression compression(Map<String, ?> values) {

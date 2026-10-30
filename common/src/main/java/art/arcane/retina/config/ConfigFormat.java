@@ -44,10 +44,14 @@ public enum ConfigFormat implements ConfigCodec {
     @Override public void write(Writer writer, RetinaConfig settings) throws IOException {
         writer.write("""
                 # Retina configuration. Restart the game/server after changing this file.
-                # Maximum simultaneous MCA region generations, shared across worlds, DH and Chunky.
-                # Positive: explicit limit. Zero: available CPU processors.
-                # Negative: ceil(processors / abs(value)), with a minimum of one.
                 """);
+        writer.write("# Allowed GPU backends. DirectX means DirectX 12. All false disables Retina worldgen.\n");
+        writer.write("allow_directx" + separator + settings.allowDirectx() + "\n");
+        writer.write("allow_metal" + separator + settings.allowMetal() + "\n");
+        writer.write("allow_vulkan" + separator + settings.allowVulkan() + "\n\n");
+        writer.write("# Maximum simultaneous MCA region generations, shared across worlds, DH and Chunky.\n"
+                + "# Positive: explicit limit. Zero: available CPU processors.\n"
+                + "# Negative: ceil(processors / abs(value)), with a minimum of one.\n");
         writer.write("mca_parallelism" + separator + settings.mcaParallelism() + "\n\n");
         writer.write("# MCA chunk compression: zlib (smaller saves) or lz4 (faster compression, larger saves).\n");
         writer.write("mca_compression" + separator + "\"" + settings.mcaCompression().id() + "\"\n\n");
