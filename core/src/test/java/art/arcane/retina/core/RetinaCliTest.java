@@ -10,6 +10,18 @@ public final class RetinaCliTest {
                 || NativeLibrary.backendCode("Vulkan") != 1
                 || NativeLibrary.backendCode("metal") != 3
                 || NativeLibrary.backendCode("auto") != 0) throw new AssertionError("Backend selection");
+        for (int allowed = 0; allowed < 8; allowed++) {
+            if (NativeLibrary.backendSelection(allowed, null) != (0x100 | allowed)) throw new AssertionError("Allowed set");
+            if (NativeLibrary.backendSelection(allowed, "auto") != (0x100 | allowed)) throw new AssertionError("Auto set");
+            for (String backend : List.of("vulkan", "dx12", "metal")) {
+                int bit = 1 << (NativeLibrary.backendCode(backend) - 1);
+                if (NativeLibrary.backendSelection(allowed, backend) != (0x100 | (allowed & bit)))
+                    throw new AssertionError("Override escaped allowed set");
+            }
+        }
+        // Configuration itself must not extract/load natives (none are on this test classpath).
+        NativeLibrary.allowGpuBackends(false, false, false);
+        NativeLibrary.allowGpuBackends(true, true, true);
         bad(() -> NativeLibrary.backendCode("gles"));
         bad(() -> NativeLibrary.backendCode(""));
         equal(RetinaCli.bounds(Map.of("region-radius", "0")), new int[]{0,0,0,0});

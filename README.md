@@ -116,11 +116,34 @@ Fabric and NeoForge create `config/retina.toml` on first startup. Restart the
 game or server after editing it. The defaults are:
 
 ```toml
+allow_directx = true
+allow_metal = true
+allow_vulkan = true
 mca_parallelism = 8
 mca_compression = "zlib"
 debug = false
 f3_overlay = true
 ```
+
+`allow_directx` (DirectX 12), `allow_metal`, and `allow_vulkan` restrict GPU
+selection to the enabled backends. Leave one enabled to select it; leave several
+enabled for automatic selection among those backends. Unsupported choices fail
+at GPU initialization. Existing files default missing flags to `true`; add the
+keys above to change them. Restart after editing.
+
+Set all three to `false` to disable automatic Retina worldgen. The mods keep
+Minecraft's original generators and skip opening/creating `retina.dat` and GPU
+startup. Existing chunks and `retina.dat` are retained. Legacy saves that explicitly
+serialize a Retina-only generator cannot recover an original Minecraft generator
+and report that they require a backend instead. Switching generators can create
+seams in newly generated terrain.
+
+Bukkit supports these same keys in `plugins/Retina/config.yml`; all false makes
+Retina return no custom generator or biome provider, leaving selection to Bukkit.
+The diagnostic `-Dretina.gpuBackend=...` override (or `RETINA_GPU_BACKEND`) further
+narrows the allowed set; it cannot enable a disabled backend. A conflicting
+override fails with a no-allowed-backend error. The JVM property takes precedence
+over the environment variable.
 
 `mca_parallelism` limits simultaneous native MCA region generations globally,
 including ordinary loads, Distant Horizons, Chunky and partial-save repairs:

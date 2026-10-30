@@ -15,6 +15,9 @@ public final class Retina {
 
     public static void initialize(RetinaPlatform platform) {
         RetinaConfiguration.initialize(platform.configDirectory());
+        var settings = RetinaConfiguration.get();
+        art.arcane.retina.core.NativeLibrary.allowGpuBackends(settings.allowDirectx(), settings.allowMetal(), settings.allowVulkan());
+        if (!RetinaConfiguration.get().worldgenEnabled()) LOGGER.info("Retina worldgen disabled: all GPU backends are disallowed");
         TerrainWorldgen.initialize(platform);
         LOGGER.info("Retina initialized");
         debug("MCA parallelism: {} (configured {}, available processors {})", RetinaConfiguration.get().regionParallelism(),

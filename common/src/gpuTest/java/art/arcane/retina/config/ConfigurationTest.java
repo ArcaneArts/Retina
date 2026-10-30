@@ -49,6 +49,18 @@ public final class ConfigurationTest {
             for (String bad : new String[]{"3.5", "\"3\"", "true", "2147483648", "-2147483649"}) {
                 rejected(format, "mca_parallelism" + separator + bad + "\n");
             }
+            for (int mask = 0; mask < 8; mask++) {
+                String flags = "allow_vulkan" + separator + ((mask & 1) != 0) + "\n"
+                        + "allow_directx" + separator + ((mask & 2) != 0) + "\n"
+                        + "allow_metal" + separator + ((mask & 4) != 0) + "\n";
+                var selected = parse(format, flags);
+                require(selected.worldgenEnabled() == (mask != 0), "all disabled bypasses generation");
+                var output = new StringWriter();
+                format.write(output, selected);
+                require(parse(format, output.toString()).equals(selected), "backend combination round trip " + mask);
+            }
+            for (String key : new String[]{"allow_directx", "allow_metal", "allow_vulkan"})
+                rejected(format, key + separator + "\"false\"\n");
             rejected(format, "debug" + separator + "\"false\"\n");
             rejected(format, "f3_overlay" + separator + "1\n");
             rejected(format, "debug" + separator + "true\ndebug" + separator + "false\n");

@@ -1,3 +1,8 @@
+# Allowed GPU backends (DirectX 12). All false leaves generator selection to Bukkit.
+# Restart the server after changes.
+allow_directx: true
+allow_metal: true
+allow_vulkan: true
 # New definitions use vanilla rules with structures and scheduled spring roots disabled.
 # Structure starts/references and raw chunk tick queues have no public Bukkit API.
 catalog-variant: bukkit-api

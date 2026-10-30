@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 abstract class MinecraftServerMixin {
     @Inject(method = "createLevels", at = @At("HEAD"))
     private void retina$openDefinition(CallbackInfo callback) {
+        if (!art.arcane.retina.config.RetinaConfiguration.get().worldgenEnabled()) return;
         art.arcane.retina.worldgen.EndLifecycleQa.prepareDefinition((MinecraftServer) (Object) this);
         WorldDefinitions.initialize((MinecraftServer) (Object) this);
     }

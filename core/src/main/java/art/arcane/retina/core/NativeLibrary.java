@@ -13,26 +13,42 @@ import java.util.Locale;
 /** One library image shared by definition I/O and the GPU bridge. Loading is GPU-independent. */
 public final class NativeLibrary {
     private NativeLibrary() { }
+    private static int allowedBackends = 7;
+    private static boolean backendFrozen;
+
+    /** Set before native loading; does not load the library or probe hardware. */
+    public static synchronized void allowGpuBackends(boolean directx, boolean metal, boolean vulkan) {
+        int mask = (vulkan ? 1 : 0) | (directx ? 2 : 0) | (metal ? 4 : 0);
+        if (backendFrozen && mask != allowedBackends)
+            throw new IllegalStateException("Retina GPU backends already configured; restart to change them");
+        allowedBackends = mask;
+    }
+
+    static int backendSelection(int allowed, String override) {
+        int selected = override == null ? 0 : backendCode(override);
+        int mask = selected == 0 ? 7 : 1 << (selected - 1);
+        // Empty is intentional: never enable a backend excluded by configuration.
+        return 0x100 | (allowed & mask);
+    }
     private static final class Holder {
         static final Path IMAGE = extract();
         static final SymbolLookup SYMBOLS = configuredSymbols(IMAGE);
     }
     public static SymbolLookup symbols() { return Holder.SYMBOLS; }
 
-    private static SymbolLookup configuredSymbols(Path image) {
+    private static synchronized SymbolLookup configuredSymbols(Path image) {
         SymbolLookup symbols = SymbolLookup.libraryLookup(image, Arena.global());
-        String backend = System.getProperty("retina.gpuBackend");
-        if (backend != null) {
-            int code = backendCode(backend);
-            var configure = Linker.nativeLinker().downcallHandle(
-                    symbols.findOrThrow("retina_configure_gpu_backend"),
-                    FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
-            try {
-                int result = (int) configure.invokeExact(code);
-                if (result != 0) throw new IllegalStateException("Retina GPU backend could not be configured; restart to change it");
-            } catch (RuntimeException | Error error) { throw error; }
-            catch (Throwable error) { throw new IllegalStateException("Could not configure Retina GPU backend", error); }
-        }
+        String backend = System.getProperty("retina.gpuBackend", System.getenv("RETINA_GPU_BACKEND"));
+        int code = backendSelection(allowedBackends, backend);
+        backendFrozen = true;
+        var configure = Linker.nativeLinker().downcallHandle(
+                symbols.findOrThrow("retina_configure_gpu_backend"),
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
+        try {
+            int result = (int) configure.invokeExact(code);
+            if (result != 0) throw new IllegalStateException("Retina GPU backend could not be configured; restart to change it");
+        } catch (RuntimeException | Error error) { throw error; }
+        catch (Throwable error) { throw new IllegalStateException("Could not configure Retina GPU backend", error); }
         return symbols;
     }
 

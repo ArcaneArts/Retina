@@ -13,6 +13,13 @@ fn from_code(code: u32) -> Result<wgpu::Backends, String> {
         1 => Ok(wgpu::Backends::VULKAN),
         2 => Ok(wgpu::Backends::DX12),
         3 => Ok(wgpu::Backends::METAL),
+        0x100..=0x107 => {
+            let mut backends = wgpu::Backends::empty();
+            if code & 1 != 0 { backends |= wgpu::Backends::VULKAN; }
+            if code & 2 != 0 { backends |= wgpu::Backends::DX12; }
+            if code & 4 != 0 { backends |= wgpu::Backends::METAL; }
+            Ok(backends)
+        }
         _ => Err(format!("unknown GPU backend code {code}")),
     }
 }
@@ -33,11 +40,13 @@ fn configure(selected: &OnceLock<Result<wgpu::Backends, String>>, code: u32) -> 
     }
 }
 pub(crate) fn selected() -> Result<wgpu::Backends, String> {
-    SELECTED.get_or_init(|| match std::env::var("RETINA_GPU_BACKEND") {
+    let backends = SELECTED.get_or_init(|| match std::env::var("RETINA_GPU_BACKEND") {
         Ok(value) => parse(&value),
         Err(std::env::VarError::NotPresent) => Ok(AUTO),
         Err(error) => Err(format!("cannot read RETINA_GPU_BACKEND: {error}")),
-    }).clone()
+    }).clone()?;
+    if backends.is_empty() { return Err("No GPU backend is allowed by Retina configuration and backend override".into()); }
+    Ok(backends)
 }
 
 pub(crate) fn instance_descriptor(backends: wgpu::Backends) -> wgpu::InstanceDescriptor {
@@ -59,6 +68,7 @@ pub(crate) fn instance_descriptor(backends: wgpu::Backends) -> wgpu::InstanceDes
 }
 
 /// Configure before GPU initialization. 0=auto, 1=Vulkan, 2=DX12, 3=Metal.
+/// 0x100 | mask selects a set: bit 0=Vulkan, bit 1=DX12, bit 2=Metal.
 #[unsafe(no_mangle)]
 pub extern "C" fn retina_configure_gpu_backend(code: u32) -> i32 {
     crate::boundary(|| configure(&SELECTED, code))
@@ -67,6 +77,21 @@ pub extern "C" fn retina_configure_gpu_backend(code: u32) -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn allowed_sets_preserve_every_combination_including_disabled() {
+        for mask in 0..8 {
+            let set = from_code(0x100 | mask).unwrap();
+            assert_eq!(set.contains(wgpu::Backends::VULKAN), mask & 1 != 0);
+            assert_eq!(set.contains(wgpu::Backends::DX12), mask & 2 != 0);
+            assert_eq!(set.contains(wgpu::Backends::METAL), mask & 4 != 0);
+            assert_eq!(instance_descriptor(set).backends, set);
+            let selected = OnceLock::new();
+            configure(&selected, 0x100 | mask).unwrap();
+            configure(&selected, 0x100 | mask).unwrap();
+            assert!(configure(&selected, 0x100 | (mask ^ 1)).is_err());
+        }
+        assert!(from_code(0x108).is_err());
+    }
     #[test]
     fn instance_preserves_backend_selection() {
         let descriptor = instance_descriptor(wgpu::Backends::VULKAN);
