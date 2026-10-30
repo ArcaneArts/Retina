@@ -1,4 +1,4 @@
-//! Always-on, bounded startup diagnostics. Logging never gates GPU operations.
+//! Configurable detailed diagnostics with bounded preparation progress. Logging never gates GPU operations.
 mod cpu;
 mod progress;
 mod batch;
@@ -23,7 +23,18 @@ type Shared = (Mutex<State>, Condvar);
 static STATE: LazyLock<Arc<Shared>> =
     LazyLock::new(|| Arc::new((Mutex::new(State::default()), Condvar::new())));
 
+static DEBUG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+pub(crate) fn debug_enabled() -> bool {
+    DEBUG.load(std::sync::atomic::Ordering::Relaxed)
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn retina_configure_debug(enabled: i32) {
+    DEBUG.store(enabled != 0, std::sync::atomic::Ordering::Relaxed);
+}
 pub(crate) fn message(message: impl std::fmt::Display) {
+    if debug_enabled() { info(message); }
+}
+pub(crate) fn info(message: impl std::fmt::Display) {
     // A closed launcher pipe must not panic or change generation behavior.
     let mut stderr = std::io::stderr().lock();
     let _ = writeln!(stderr, "[Retina startup] {message}");
@@ -60,10 +71,10 @@ impl Stage {
             let shared = Arc::clone(&STATE);
             if let Err(error) = std::thread::Builder::new()
                 .name("retina-startup-log".into())
-                .spawn(move || monitor(shared, Duration::from_secs(10), message))
+                .spawn(move || monitor(shared, Duration::from_secs(10), info))
             {
                 STATE.0.lock().unwrap_or_else(|e| e.into_inner()).monitoring = false;
-                message(format_args!("Progress reporter unavailable: {error}"));
+                info(format_args!("Progress reporter unavailable: {error}"));
             }
         }
         Self { id, label, started, pipeline }
@@ -121,11 +132,17 @@ fn monitor(shared: Arc<Shared>, interval: Duration, mut emit: impl FnMut(String)
                 })
                 .collect();
             drop(state);
-            for line in lines {
+            for line in report_lines(debug_enabled() || cfg!(test), lines, &progress, active) {
                 emit(line);
             }
             state = shared.0.lock().unwrap_or_else(|e| e.into_inner());
         }
+    }
+}
+
+fn report_lines(debug: bool, details: Vec<String>, progress: &str, active: usize) -> Vec<String> {
+    if debug { details } else {
+        vec![format!("Preparing generation: {progress}; active operations={active}")]
     }
 }
 
@@ -184,6 +201,13 @@ fn compute_pipeline(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn quiet_progress_collapses_details_and_debug_preserves_them() {
+        let details = vec!["WAIT driver phase".into(), "WAIT pipeline".into()];
+        let quiet = report_lines(false, details.clone(), "pipelines=1/2 finished", 2);
+        assert_eq!(quiet, vec!["Preparing generation: pipelines=1/2 finished; active operations=2"]);
+        assert_eq!(report_lines(true, details.clone(), "unused", 2), details);
+    }
     #[test]
     fn vulkan_policy_is_opt_in_and_scoped_to_interpreter_and_thread() {
         use wgpu::hal::vulkan::diagnostics::{compute_flags, with_compute_compilation, ComputeCompilation::*};

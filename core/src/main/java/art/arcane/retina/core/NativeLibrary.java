@@ -15,6 +15,14 @@ public final class NativeLibrary {
     private NativeLibrary() { }
     private static int allowedBackends = 7;
     private static boolean backendFrozen;
+    private static boolean debug;
+
+    /** Configure diagnostics before native initialization, without loading the library. */
+    public static synchronized void configureDebug(boolean enabled) {
+        if (backendFrozen && enabled != debug)
+            throw new IllegalStateException("Restart Retina to change debug logging");
+        debug = enabled;
+    }
 
     /** Set before native loading; does not load the library or probe hardware. */
     public static synchronized void allowGpuBackends(boolean directx, boolean metal, boolean vulkan) {
@@ -49,6 +57,11 @@ public final class NativeLibrary {
             if (result != 0) throw new IllegalStateException("Retina GPU backend could not be configured; restart to change it");
         } catch (RuntimeException | Error error) { throw error; }
         catch (Throwable error) { throw new IllegalStateException("Could not configure Retina GPU backend", error); }
+        var diagnostics = Linker.nativeLinker().downcallHandle(
+                symbols.findOrThrow("retina_configure_debug"),
+                FunctionDescriptor.ofVoid(ValueLayout.JAVA_INT));
+        try { diagnostics.invokeExact(debug ? 1 : 0); }
+        catch (Throwable error) { throw new IllegalStateException("Could not configure Retina diagnostics", error); }
         return symbols;
     }
 

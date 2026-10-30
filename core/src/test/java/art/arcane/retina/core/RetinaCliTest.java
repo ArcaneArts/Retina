@@ -20,6 +20,8 @@ public final class RetinaCliTest {
             }
         }
         // Configuration itself must not extract/load natives (none are on this test classpath).
+        NativeLibrary.configureDebug(true);
+        NativeLibrary.configureDebug(false);
         NativeLibrary.allowGpuBackends(false, false, false);
         NativeLibrary.allowGpuBackends(true, true, true);
         bad(() -> NativeLibrary.backendCode("gles"));

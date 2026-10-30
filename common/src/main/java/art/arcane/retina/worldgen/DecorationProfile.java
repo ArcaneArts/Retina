@@ -84,7 +84,7 @@ final class DecorationProfile {
             }
             profiles.get(i).getAsJsonObject().add("decorations", selected);
         }
-        Retina.LOGGER.info("Exported {} registered decoration recipes; omitted feature kinds: {}", exporter.recipes.size(), exporter.unsupported);
+        Retina.debug("Exported {} registered decoration recipes; omitted feature kinds: {}", exporter.recipes.size(), exporter.unsupported);
         world.add("decoration_omissions", new Gson().toJsonTree(exporter.unsupported));
         world.add("decoration_provider_noises", exporter.providerNoise.programs);
         world.add("decoration_ticks", exporter.ticks);
@@ -154,7 +154,7 @@ final class DecorationProfile {
         generationStep = -1;
         unsupported.clear(); unsupported.addAll(allUnsupported);
         var report = coverage.finish(); world.add("decoration_coverage", report);
-        Retina.LOGGER.info("Loaded decoration root export: {}; inventory errors: {}", report.get("statuses"), report.get("inventory_errors"));
+        Retina.debug("Loaded decoration root export: {}; inventory errors: {}", report.get("statuses"), report.get("inventory_errors"));
     }
 
     private boolean nativeFeature(Feature feature) {
@@ -844,7 +844,7 @@ final class DecorationProfile {
             }
         }
         world.add("simple_current_states",rows);world.add("simple_current_omissions",new Gson().toJsonTree(omissions));
-        if(!omissions.isEmpty())Retina.LOGGER.info("Contextual SimpleBlock survival omissions: {}",omissions);
+        if(!omissions.isEmpty())Retina.debug("Contextual SimpleBlock survival omissions: {}",omissions);
     }
     static void finishCurrentSurvival(JsonObject world,LinkedHashMap<BlockState,Integer> palette) {
         if(!world.has("simple_current_states"))return;

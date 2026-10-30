@@ -114,9 +114,9 @@ final class RegistryGpuProgram {
         var disks=new TreeSet<String>();
         registry.lookupOrThrow(Registries.PLACED_FEATURE).listElements().filter(h->compiler.nativeDisks.contains(h.value())).forEach(h->disks.add(h.key().identifier().toString()));
         result.add("registered_disks",new Gson().toJsonTree(disks));
-        Retina.LOGGER.info("Projected {} registered surface sediment features to GPU coverage: {}", shores.size(), shores);
+        Retina.debug("Projected {} registered surface sediment features to GPU coverage: {}", shores.size(), shores);
         var approximations=new JsonArray();compiler.approximations.forEach(approximations::add);result.add("approximations",approximations);
-        Retina.LOGGER.info("Compiled registry GPU programs: {} climate nodes, {} surface nodes, {} material programs, {} noises, {} interpolation fields; approximations {}",
+        Retina.debug("Compiled registry GPU programs: {} climate nodes, {} surface nodes, {} material programs, {} noises, {} interpolation fields; approximations {}",
                 climate.nodes.size(),terrain.nodes.size(),biomes.size(),compiler.noises.size(),compiler.interpolations.size(),compiler.approximations);
         return result;
     }

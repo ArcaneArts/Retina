@@ -55,7 +55,7 @@ public enum ConfigFormat implements ConfigCodec {
         writer.write("mca_parallelism" + separator + settings.mcaParallelism() + "\n\n");
         writer.write("# MCA chunk compression: zlib (smaller saves) or lz4 (faster compression, larger saves).\n");
         writer.write("mca_compression" + separator + "\"" + settings.mcaCompression().id() + "\"\n\n");
-        writer.write("# Extra generation diagnostics in the log. Warnings and errors remain enabled.\n");
+        writer.write("# Detailed startup, shader/driver and generation diagnostics (restart required). Progress, warnings and errors remain enabled.\n");
         writer.write("debug" + separator + settings.debug() + "\n\n");
         writer.write("# Show Retina's F3 information on this modded client. Ignored on servers.\n");
         writer.write("f3_overlay" + separator + settings.f3Overlay() + "\n");

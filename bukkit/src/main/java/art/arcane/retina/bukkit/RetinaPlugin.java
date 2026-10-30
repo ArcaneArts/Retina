@@ -16,6 +16,7 @@ public final class RetinaPlugin extends JavaPlugin implements Listener {
 
     @Override public void onLoad() {
         saveDefaultConfig();
+        art.arcane.retina.core.NativeLibrary.configureDebug(getConfig().getBoolean("debug", false));
         boolean directx = getConfig().getBoolean("allow_directx", true);
         boolean metal = getConfig().getBoolean("allow_metal", true);
         boolean vulkan = getConfig().getBoolean("allow_vulkan", true);

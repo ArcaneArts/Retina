@@ -181,7 +181,7 @@ final class GeologyProfile {
         }
         world.add("ores", recipes);
         world.add("geology_omissions",new Gson().toJsonTree(omitted));
-        Retina.LOGGER.info("Exported {} registered ore recipes and GPU cave profiles; omitted geology: {}", recipes.size(), omitted);
+        Retina.debug("Exported {} registered ore recipes and GPU cave profiles; omitted geology: {}", recipes.size(), omitted);
     }
     private static boolean supportedRule(JsonObject rule) {
         String type = rule.get("predicate_type").getAsString().replace("minecraft:", "");
