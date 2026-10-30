@@ -18,7 +18,7 @@ fn compact_sampling_matches_reference_world_generation() {
         let mut profile = (**definition.dimension(dimension).unwrap().profile().unwrap()).clone();
         profile.program_execution = crate::specialize::Execution::Interpreter;
         let registry = profile.registry_program.as_ref().unwrap();
-        let capacity = if registry.scratch_values() > crate::program::COMPACT_VALUES { 1024 } else { crate::program::COMPACT_VALUES };
+        let capacity = registry.interpreter_capacity();
         let depth = registry.interpolation_depth();
         let composition = registry.density_composition;
         let key = (capacity, depth, composition, crate::specialize::interpreter_reuse::Plan::new(registry, capacity, composition));
@@ -41,12 +41,12 @@ fn compact_sampling_matches_reference_world_generation() {
             request.padding = u32::from(side != 0);
             let mut samples = Vec::new();
             for pipelines in [&reference, &compact] {
-                if depth > 0 || composition {
+                if depth > 0 || composition || capacity > 1024 {
                     gpu.interpolation_interpreters.insert(key, pipelines.clone());
                 } else {
                     // Select the complete depth-zero bundle instead of base
                     // fallbacks, so both sides execute their own source code.
-                    gpu.wide_profiles.insert(id);
+                    gpu.wide_profiles.insert(id, 1024);
                     gpu.wide_interpreter = Some(pipelines.clone());
                 }
                 let pending = gpu.submit(&[request], Some(&profile), &times).unwrap();
@@ -55,5 +55,30 @@ fn compact_sampling_matches_reference_world_generation() {
             eprintln!("COMPACT_PARITY dimension={dimension} case={case} columns={} materials={}", samples[0].columns.len(), samples[0].mask.is_some());
             super::material_continuation_tests::equal(&samples[0], &samples[1]);
         }
+    }
+}
+
+#[test]
+#[ignore = "requires RETINA_LARGE_DEFINITION and a real GPU"]
+fn direct_height_interpolation_cache_matches_uncached_queries() {
+    let definition = crate::world_definition::WorldDefinition::read(
+        std::path::Path::new(&std::env::var("RETINA_LARGE_DEFINITION").unwrap())).unwrap();
+    let mut profile = (**definition.dimension("minecraft:overworld").unwrap().profile().unwrap()).clone();
+    profile.program_execution = crate::specialize::Execution::Interpreter;
+    let registry = profile.registry_program.as_ref().unwrap();
+    assert_eq!(registry.surface[2], 1);
+    assert!(registry.interpolation_depth() > 0);
+    let mut gpu = Gpu::new(std::sync::Arc::new(crate::pipeline::Metrics::default())).unwrap();
+    let times = timings::Timings::default();
+    for (x, z) in [(0, 0), (-3, -3)] {
+        let request = GpuRequest::from(definition.request("minecraft:overworld", 1, x, z).unwrap());
+        let mut samples = Vec::new();
+        for cache in [false, true] {
+            gpu.interpolation_cache = cache;
+            let pending = gpu.submit(&[request], Some(&profile), &times).unwrap();
+            samples.push(gpu.complete(pending, &times).unwrap());
+        }
+        super::material_continuation_tests::equal(&samples[0], &samples[1]);
+        eprintln!("DIRECT_HEIGHT_CACHE_PARITY chunk={x},{z} columns={}", samples[0].columns.len());
     }
 }

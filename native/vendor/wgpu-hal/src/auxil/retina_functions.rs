@@ -27,6 +27,24 @@ pub fn hlsl(source: &mut String) -> usize {
     count
 }
 
+/// Large/deep interpreter graphs opt into retained Metal calls. Ordinary
+/// profiles keep their existing Metal optimizer policy.
+pub fn msl(source: &mut String) -> usize {
+    let mut patched = String::with_capacity(source.len());
+    let mut count = 0;
+    for line in source.split_inclusive('\n') {
+        if line.strip_prefix("void ").and_then(|s| s.strip_suffix("(\n"))
+            .is_some_and(|name| name.starts_with("retina_noinline_large_")
+                && name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')) {
+            patched.push_str("__attribute__((noinline)) ");
+            count += 1;
+        }
+        patched.push_str(line);
+    }
+    if count != 0 { *source = patched; }
+    count
+}
+
 /// OpName identifies only our outlined bodies. Set DontInline on their
 /// OpFunction instructions; IDs, layouts, arithmetic and all other flags stay
 /// intact. The caller enables Naga's DEBUG names only for these modules.
@@ -68,6 +86,13 @@ mod tests {
         assert!(source.contains("[noinline] void retina_noinline_run_program()"));
         assert_eq!(source.matches("[noinline]").count(), 1);
         assert_eq!(hlsl(&mut source), 0);
+    }
+    #[test]
+    fn msl_only_marks_opted_in_large_definitions() {
+        let mut source = String::from("void retina_noinline_large_run_program(\n    uint program\n) { }\nvoid retina_noinline_run_program(\n) { }\n    retina_noinline_large_run_program(\n");
+        assert_eq!(msl(&mut source), 1);
+        assert!(source.starts_with("__attribute__((noinline)) void retina_noinline_large_run_program("));
+        assert_eq!(msl(&mut source), 0);
     }
     #[test]
     fn spirv_retains_other_functions_flags_and_operands() {
