@@ -9,12 +9,14 @@ pub(super) struct BasePipeline {
     layout: wgpu::PipelineLayout,
     label: String,
     entry: String,
+    cache: Option<std::sync::Arc<crate::pipeline_cache::Cache>>,
 }
 
 impl BasePipeline {
-    pub fn new(device: &wgpu::Device, eager: bool, descriptor: &wgpu::ComputePipelineDescriptor<'_>) -> Self {
+    pub fn new(device: &wgpu::Device, cache: Option<std::sync::Arc<crate::pipeline_cache::Cache>>, eager: bool, descriptor: &wgpu::ComputePipelineDescriptor<'_>) -> Self {
         let pipeline = Self {
             compiled: OnceLock::new(),
+            cache,
             device: device.clone(),
             module: descriptor.module.clone(),
             layout: descriptor.layout.expect("base pipeline has an explicit layout").clone(),
@@ -28,14 +30,14 @@ impl BasePipeline {
     }
 
     pub fn get(&self) -> &wgpu::ComputePipeline {
-        self.compiled.get_or_init(|| crate::startup::interpreter_pipeline(&self.device, &wgpu::ComputePipelineDescriptor {
+        self.compiled.get_or_init(|| crate::pipeline_cache::create(&self.device, &wgpu::ComputePipelineDescriptor {
             label: Some(&self.label),
             layout: Some(&self.layout),
             module: &self.module,
             entry_point: Some(&self.entry),
             compilation_options: Default::default(),
             cache: None,
-        }))
+        }, true, self.cache.as_deref()))
     }
 }
 

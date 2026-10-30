@@ -280,3 +280,28 @@ translation that might differ from the real input. See
 archive checksum and exact patch scope. Gradle tracks those sources as native
 build inputs. The scoped Vulkan changes are described above; Metal keeps its
 existing code path.
+
+## Demand compilation and Vulkan cache
+
+Fallback entrypoints now compile only when selected. Profile loading queues only
+that profile's required density-composition interpreter; it does not compile both
+modern and legacy bundles on every startup. Generation algorithms and shader
+optimization settings are unchanged across Metal, Vulkan and DX12.
+
+On Vulkan adapters exposing wgpu's pipeline-cache feature, Retina loads and saves
+opaque driver compilation data under `retina-cache/pipelines/` in the instance's
+working directory. Foreground terrain and background specialization have separate
+cache objects/files so checkpointing cannot wait for another compiler's driver
+call. Each completed pipeline checkpoints its cache, without waiting for shutdown.
+The adapter and driver determine the cache filename; wgpu validates compatibility
+and falls back to normal compilation when stored data cannot be used. Missing,
+corrupt, or unwritable cache files do not prevent generation. Files contain a
+length and SHA-256 checksum, are replaced atomically, and are capped at 256 MiB.
+The data is disposable and does not contain world definitions or generated chunks.
+
+Logs say `Pipeline cache cold`, `Pipeline cache loaded`, and `Pipeline cache saved`.
+Loaded bytes mean data was supplied, not a confirmed driver cache hit. Compare the
+actual `vkCreateComputePipelines` timings. Run the same world twice without changing
+the JAR, driver, backend or cache directory to measure reuse. For diagnostics,
+`RETINA_PIPELINE_CACHE=0` disables this cache and `RETINA_PIPELINE_CACHE_DIR` selects
+a different directory. DX12 and Metal caching behavior is unchanged.

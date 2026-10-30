@@ -12,13 +12,8 @@ fn common_policy_shared_dispatch_matches_independent_generation() {
         Policy::resolve(features, size, |key|
             matches!(key, "RETINA_INTERPRETER_DISPATCH" | "RETINA_MATERIAL_DISPATCH").then(|| "0".into()))).unwrap();
     assert!(shared.device.features().contains(wgpu::Features::IMMEDIATES), "test needs a real immediate-capable adapter");
-    shared.start_interpreter_preload();
-    independent.start_interpreter_preload();
-    assert_eq!(shared.preloaded_interpreters.len(), 2);
+    assert!(shared.preloaded_interpreters.is_empty(), "no speculative bundles before a profile exists");
     assert!(independent.preloaded_interpreters.is_empty());
-    for state in shared.preloaded_interpreters.values() {
-        assert!(state.ready(true).unwrap().is_some(), "preload must compile, not silently fall back");
-    }
     let times = timings::Timings::default();
     for (dimension_index, dimension) in ["minecraft:overworld", "minecraft:the_nether"].into_iter().enumerate() {
         for (mode_index, mode) in [crate::specialize::Execution::Interpreter, crate::specialize::Execution::Specialized].into_iter().enumerate() {
@@ -34,6 +29,11 @@ fn common_policy_shared_dispatch_matches_independent_generation() {
                 request.padding = 1;
                 let a = shared.submit(&[request], Some(&profile), &times).unwrap();
                 let a = shared.complete(a, &times).unwrap();
+                assert_eq!(shared.preloaded_interpreters.len(), 1, "unused legacy bundle must not compile");
+                assert!(independent.preloaded_interpreters.is_empty());
+                for state in shared.preloaded_interpreters.values() {
+                    assert!(state.ready(true).unwrap().is_some(), "required preload must compile, not silently fall back");
+                }
                 let b = independent.submit(&[request], Some(&profile), &times).unwrap();
                 let b = independent.complete(b, &times).unwrap();
                 super::material_continuation_tests::equal(&a, &b);
@@ -51,4 +51,22 @@ fn common_policy_shared_dispatch_matches_independent_generation() {
             }
         }
     }
+    // A legacy definition requests its own layout only when it is actually used.
+    let mut legacy = (**definition.dimension("minecraft:overworld").unwrap().profile().unwrap()).clone();
+    legacy.program_execution = crate::specialize::Execution::Interpreter;
+    legacy.registry_program.as_mut().unwrap().density_composition = false;
+    let mut request = GpuRequest::from(crate::ChunkRequest {
+        seed: 123456789, chunk_x: -33, chunk_z: -33, min_y: -64, height: 384,
+        base_height: 64., amplitude: 48., frequency: 0.008, reserved: 99,
+    });
+    request.tile_side = 3; request.padding = 1;
+    let a = shared.submit(&[request], Some(&legacy), &times).unwrap();
+    let a = shared.complete(a, &times).unwrap();
+    let b = independent.submit(&[request], Some(&legacy), &times).unwrap();
+    let b = independent.complete(b, &times).unwrap();
+    super::material_continuation_tests::equal(&a, &b);
+    assert_eq!(shared.preloaded_interpreters.len(), 2, "legacy compiled when requested");
+    assert!(shared.preloaded_interpreters[&false].ready(true).unwrap().is_some());
+    eprintln!("SHARED_POLICY_PARITY legacy=true columns={}", a.columns.len());
+
 }

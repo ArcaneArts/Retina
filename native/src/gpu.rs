@@ -40,6 +40,7 @@ pub(crate) struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
     health: std::sync::Arc<health::Health>,
+    driver_cache: Option<std::sync::Arc<crate::pipeline_cache::Cache>>,
     sites_pipeline: BasePipeline,
     biome_queries_pipeline: BasePipeline,
     underground_queries_pipeline: BasePipeline,
@@ -208,7 +209,7 @@ impl Gpu {
         let _device_stage = crate::startup::Stage::new("GPU device creation");
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
             label: Some("Retina terrain device"),
-            required_features: (adapter.features() & wgpu::Features::TIMESTAMP_QUERY)
+            required_features: (adapter.features() & (wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::PIPELINE_CACHE))
                 | if interpreter_dispatch || material_dispatch {
                     wgpu::Features::IMMEDIATES
                 } else {
@@ -229,6 +230,7 @@ impl Gpu {
         .map_err(|e| format!("cannot create the GPU compute device: {e}"))?;
         drop(_device_stage);
         let health = health::Health::install(&device, &backend);
+        let driver_cache = crate::pipeline_cache::Cache::open(&device, "terrain");
         crate::startup::message(format_args!("Dispatch: specialized_terrain={specialized_terrain} specialized_interpolation={specialized_interpolation} interpreter_columns={interpreter_columns} interpreter_dispatch={interpreter_dispatch} material_dispatch={material_dispatch}"));
         let shader = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
             label: Some("Retina GPU biomes and simplex"),
@@ -267,7 +269,7 @@ impl Gpu {
         });
         crate::startup::message(format_args!("Pipeline policy: eager_base={eager_pipelines} defer_specialization={defer_specialization}"));
         let pipeline = |entry| {
-            BasePipeline::new(&device, eager_pipelines, &wgpu::ComputePipelineDescriptor {
+            BasePipeline::new(&device, driver_cache.clone(), eager_pipelines, &wgpu::ComputePipelineDescriptor {
                 label: Some(entry),
                 layout: Some(&pipeline_layout),
                 module: &shader,
@@ -313,7 +315,7 @@ impl Gpu {
             immediate_size: 0,
         });
         let cave_pipeline = |entry| {
-            BasePipeline::new(&device, eager_pipelines, &wgpu::ComputePipelineDescriptor {
+            BasePipeline::new(&device, driver_cache.clone(), eager_pipelines, &wgpu::ComputePipelineDescriptor {
                 label: Some(entry),
                 layout: Some(&cave_pipeline_layout),
                 module: &cave_shader,
@@ -340,7 +342,7 @@ impl Gpu {
         let biome_queries_pipeline = pipeline("biome_queries");
         let climate_pipeline = pipeline("climate_nodes");
         let underground_queries_pipeline =
-            BasePipeline::new(&device, eager_pipelines, &wgpu::ComputePipelineDescriptor {
+            BasePipeline::new(&device, driver_cache.clone(), eager_pipelines, &wgpu::ComputePipelineDescriptor {
                 label: Some("Retina sparse underground biomes"),
                 layout: Some(&cave_pipeline_layout),
                 module: &cave_shader,
@@ -395,6 +397,7 @@ impl Gpu {
             material_dispatch,
             specialized_interpolation,
             { let health = health.clone(); move || health.check().err() },
+            crate::pipeline_cache::Cache::open(&device, "compiler"),
         )?;
         let mut gpu = Self {
             device,
@@ -444,6 +447,7 @@ impl Gpu {
             timestamp_support,
             backend,
             health,
+            driver_cache,
             compiler,
             specialized: HashMap::new(),
             wide_profiles: std::collections::HashSet::new(),
@@ -475,21 +479,19 @@ impl Gpu {
         Ok(gpu)
     }
 
-    pub(crate) fn start_interpreter_preload(&mut self) {
-        // Overlap compact density compilation with native profile parsing.
-        if self.interpreter_preload {
-            // New presets use composition; absent saved fields use legacy.
-            // Each inventory has its own immutable source/layout identity.
-            for composition in [true, false] {
-                match self.compiler.compact_interpreter(composition) {
-                    Ok(state) => {
-                        self.preloaded_interpreters.insert(composition, state);
-                    }
-                    Err(error) => {
-                        eprintln!("Retina keeps on-demand interpreter compilation: {error}")
-                    }
-                }
+    fn start_interpreter_preload(&mut self, id: u32, program: &crate::program::RegistryProgram) {
+        let composition = program.density_composition;
+        if !self.interpreter_preload || program.scratch_values() > crate::program::COMPACT_VALUES
+            || program.interpolation_depth() != 1 || self.preloaded_interpreters.contains_key(&composition) { return; }
+        let reuse = crate::specialize::interpreter_reuse::Plan::new(program, crate::program::COMPACT_VALUES, composition);
+        self.interpreter_reuse_plans.insert(id, reuse);
+        if !crate::specialize::interpreter_reuse::Plan::density_preload(composition).supports(reuse) { return; }
+        match self.compiler.compact_interpreter(composition) {
+            Ok(state) => {
+                crate::startup::message(format_args!("Queue required interpreter composition={composition} profile={id}"));
+                self.preloaded_interpreters.insert(composition, state);
             }
+            Err(error) => eprintln!("Retina keeps on-demand interpreter compilation: {error}"),
         }
     }
 
@@ -660,6 +662,7 @@ impl Gpu {
                 &crate::program::RegistryProgram::bytes(profile),
             );
             if let Some(program) = profile.and_then(|p| p.registry_program.as_ref()) {
+                self.start_interpreter_preload(profile_id, program);
                 self.interpolation_plans.insert(
                     profile_id,
                     std::sync::Arc::new(crate::program::interpolation::CachePlan::new(program)),
@@ -714,6 +717,7 @@ impl Gpu {
                     &crate::program::interpreter_source(1024),
                     None,
                     false,
+                    self.driver_cache.as_deref(),
                 )?));
         }
         let interpreted = if needs_interpreter && (depth > 0 || composition) {
@@ -781,6 +785,7 @@ impl Gpu {
                         &source,
                         Some(reuse),
                         self.interpreter_dispatch && capacity == crate::program::COMPACT_VALUES,
+                        self.driver_cache.as_deref(),
                     )?
                 };
                 let pipelines = std::sync::Arc::new(pipelines);
