@@ -974,6 +974,10 @@ fn compile_program(
             } else {
                 entries.to_vec()
             };
+            let _jobs = crate::startup::PipelineBatch::new(
+                if specialized { "specialized registry" } else { "interpreter registry" },
+                compiled_entries.len(),
+            );
             crate::startup::message(format_args!(
                 "Pipeline workload specialized={specialized} source_bytes={} entries={} [{}]",
                 source.len(), compiled_entries.len(), compiled_entries.join(", ")

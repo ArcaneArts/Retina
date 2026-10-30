@@ -319,6 +319,9 @@ impl Gpu {
                 cache: None,
             })
         };
+        // These 22 calls are the eager base inventory. Lazy calls are discovered
+        // individually by get(); unused fallbacks are not outstanding work.
+        let base_jobs = crate::startup::PipelineBatch::new("eager base", if eager_pipelines { 22 } else { 0 });
         let cave_nodes_pipeline = cave_pipeline("cave_nodes");
         let cave_exterior_pipeline = cave_pipeline("cave_exterior");
         let cave_mask_pipeline = cave_pipeline("cave_mask");
@@ -375,6 +378,7 @@ impl Gpu {
         let lake_candidates_pipeline = pipeline("lake_candidates");
         let lake_density_pipeline = pipeline("lake_density");
         let surface_pipeline = pipeline("surface_columns");
+        drop(base_jobs);
         let height_nodes = buffer(
             "Retina registered surface lattice",
             (SURFACE_METADATA_FLOATS * 4) as u64,

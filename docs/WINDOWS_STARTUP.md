@@ -1,5 +1,39 @@
 # Windows startup diagnostics
 
+## Live pipeline progress
+
+`BEGIN`, `END`, `UNWIND`, and the ten-second `WAIT` lines include a shared
+pipeline-job snapshot, including on nested Vulkan/DX12 driver-phase messages:
+
+```text
+... driver phase vkCreateComputePipelines ... | pipelines=8/22 finished (36.4% of discovered) remaining=14 queued=12 active=2 abandoned=0 recent_rate=0.30/s window=10.0s last_finished=4.2s stages_active=7
+```
+
+- `finished/total` counts actual compute-pipeline creation calls across threads.
+  Nested translation/driver phases and multiple selectors sharing one pipeline
+  do not count as additional jobs. `finished` means the call returned; validation
+  errors are still reported by the existing error handling.
+- `DISCOVER` adds known batches before compilation: 22 eager base pipelines,
+  each registry workload's actual compiled entries, and seven lighting pipelines.
+  Lazy and standalone pipeline calls are discovered when requested. New worlds,
+  dimensions, or background compilation can increase the total and lower the
+  percentage. Counts accumulate for the native library's lifetime.
+- `remaining` is `queued + active` for discovered pipeline calls. It excludes
+  future workloads that have not been discovered yet. Zero remaining / 100%
+  does **not** mean world preparation or all terrain generation is complete.
+- `recent_rate` is normal completions per second over the displayed window
+  (up to ten seconds); `last_finished` is time since the last normal completion,
+  or `none`. A stuck call therefore eventually shows zero recent throughput.
+- `abandoned` counts unwound calls and unstarted jobs left in an exiting batch;
+  these leave the remaining count without being claimed as completed.
+  `stages_active` includes nested operations and is separate from pipeline jobs.
+
+The driver does not expose a reliable percentage inside a compilation call.
+These are job counts, not estimates of remaining time or GPU work; jobs can
+take very different amounts of time. Existing thread CPU times, stage IDs, and
+pipeline IDs remain alongside the counters. Logging does not change scheduling,
+shader source, or compiler options.
+
 ## Common generation policy
 
 Metal, Vulkan and DX12 now use one generation-policy resolver with the previous

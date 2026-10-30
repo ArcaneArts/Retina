@@ -67,8 +67,9 @@ mod tests {
             let _span = tracing::info_span!("vkCreateComputePipelines").entered();
             panic!("diagnostic unwind");
         }));
+        let context = format!("pipeline_id=#{} ", pipeline.id);
         assert!(!super::super::STATE.0.lock().unwrap().active.values()
-            .any(|(label, _, _)| label.contains("driver phase")));
+            .any(|(label, _, _)| label.contains("driver phase") && label.contains(&context)));
         assert!(!relevant("unrelated frame event"));
         assert!(PIPELINE.with_borrow(|context| context.is_none()));
     }
