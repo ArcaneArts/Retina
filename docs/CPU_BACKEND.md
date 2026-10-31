@@ -136,4 +136,6 @@ The measured steps and excluded experiments are recorded in
 [demand scheduling](reports/cpu-demand-evaluation-2026-10-31.md),
 [sampling caches](reports/cpu-sampling-caches-2026-10-31.md),
 [tile parallelism](reports/cpu-tile-parallelism-2026-10-31.md), and
-[worker budgets](reports/cpu-worker-budget-2026-10-31.md).
+[worker budgets](reports/cpu-worker-budget-2026-10-31.md). A subsequent
+[column preparation pass](reports/cpu-column-parallelism-2026-10-31.md) reduced the
+complete Overworld diagnostic from 42.753 to 10.175 seconds with identical NBT.
