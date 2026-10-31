@@ -31,9 +31,16 @@ import java.util.function.Consumer;
 public final class NeoForgePlatform implements RetinaPlatform {
     @Override public java.util.Set<String> vanillaDataPacks() {
         var vanilla = java.util.Set.of("minecraft", "neoforge", "retina");
-        if (net.neoforged.fml.ModList.get().getMods().stream().anyMatch(mod -> !vanilla.contains(mod.getModId())))
-            return java.util.Set.of();
-        return java.util.Set.of("vanilla", "mod_data", "mod/neoforge", "mod/retina");
+        var packs = new java.util.HashSet<>(java.util.Set.of("vanilla", "mod_data", "mod/neoforge", "mod/retina"));
+        for (var mod : net.neoforged.fml.ModList.get().getMods()) {
+            if (vanilla.contains(mod.getModId())) continue;
+            boolean utility = art.arcane.retina.platform.VanillaUtilityMods.supported("neoforge",
+                    net.minecraft.SharedConstants.getCurrentVersion().id(), mod.getModId(), mod.getVersion().toString(),
+                    java.util.List.of(mod.getOwningFile().getFile().getFilePath()));
+            if (!utility) return java.util.Set.of();
+            packs.add("mod/" + mod.getModId());
+        }
+        return java.util.Set.copyOf(packs);
     }
 
     private final IEventBus modBus;

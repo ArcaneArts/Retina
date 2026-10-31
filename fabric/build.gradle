@@ -17,7 +17,7 @@ loom {
             if (providers.gradleProperty('retinaCatalogFailMaterializerQa').isPresent()) vmArg '-Dretina.qa.catalog.failMaterializer=true'
             vmArg '-Dretina.qa=true'
             [ClientPreset: 'client.preset', ClientNoStructures: 'client.noStructures', ClientVisual: 'client.visual',
-             DefinitionCapture: 'definition.capture', NetherCompatibility: 'nether.compatibility', Automatic: 'automatic', AutomaticReopen: 'automatic.reopen',
+             DefinitionCapture: 'definition.capture', CatalogCompare: 'catalog.compare', NetherCompatibility: 'nether.compatibility', Automatic: 'automatic', AutomaticReopen: 'automatic.reopen',
              ClientDatapack: 'client.datapack', ClientServer: 'client.server', ClientHoldSeconds: 'client.holdSeconds',
              ClientCommands: 'client.commands', ClientOpenExisting: 'client.openExisting', ExpectedFeature: 'expectedFeature', ProfileOutput: 'profileOutput'].each { flag, property ->
                 if (providers.gradleProperty("retina${flag}Qa").isPresent()) vmArg "-Dretina.qa.${property}=${providers.gradleProperty("retina${flag}Qa").get()}"

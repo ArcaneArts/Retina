@@ -273,6 +273,8 @@ pipeline. Temporary generated regions can later be promoted into the real save
 without generating them again. Chunky has a region-ahead scheduler that feeds
 Retina while Chunky continues loading/finalizing chunks. Neither mod is required.
 See [Chunky scheduling](docs/CHUNKY_REGION_SCHEDULING.md) for integration details.
+Verified Chunky releases can also use the bundled vanilla definition; see
+[supported artifacts and datapack fallback](docs/CHUNKY_VANILLA_CATALOG.md).
 
 Press **F3** on a modded client to see Retina's backend, region latency,
 completed-terrain throughput, in-flight jobs and stage timings. Completed terrain

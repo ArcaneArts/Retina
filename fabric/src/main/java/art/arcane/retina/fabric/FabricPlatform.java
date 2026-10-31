@@ -33,7 +33,12 @@ public final class FabricPlatform implements RetinaPlatform {
             var metadata = root.getMetadata();
             boolean apiModule = metadata.getId().startsWith("fabric-") && metadata.getContact().get("sources")
                     .filter("https://github.com/FabricMC/fabric"::equals).isPresent();
-            if (!roots.contains(metadata.getId()) && !apiModule) {
+            boolean utility = "chunky".equals(metadata.getId())
+                    && root.getOrigin().getKind() == net.fabricmc.loader.api.metadata.ModOrigin.Kind.PATH
+                    && art.arcane.retina.platform.VanillaUtilityMods.supported("fabric",
+                    net.minecraft.SharedConstants.getCurrentVersion().id(), metadata.getId(),
+                    metadata.getVersion().getFriendlyString(), root.getOrigin().getPaths());
+            if (!roots.contains(metadata.getId()) && !apiModule && !utility) {
                 Retina.debug("Vanilla catalog uses live registries for additional mod {}", root.getMetadata().getId());
                 return java.util.Set.of();
             }

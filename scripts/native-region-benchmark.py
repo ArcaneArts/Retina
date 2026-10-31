@@ -206,6 +206,13 @@ def main():
                 time.sleep(.1); check(readiness_probe(profile, c.byref(ready)))
             readiness_wait_ms = (time.perf_counter() - wait_start) * 1000
             final_states = (2,) if args.readiness == "optimized-interpreter" else (2, 3, 4)
+            # End/flat/procedural profiles generate without a registry shader
+            # program. After successful warmups there is no specialization to
+            # await; status 0 must not reject their otherwise valid benchmark.
+            profile_metadata = definition.dimension["profile_metadata"]
+            if args.readiness == "shader-ready" and (profile_metadata.get("end") is not None
+                    or not profile_metadata.get("registry_program")):
+                final_states += (0,)
             if ready.status not in final_states:
                 raise RuntimeError(f"GPU program did not reach a final readiness state: status={ready.status}")
         before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))

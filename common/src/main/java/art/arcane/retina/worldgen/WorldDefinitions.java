@@ -40,6 +40,10 @@ public final class WorldDefinitions {
             catch (IOException error) { throw new UncheckedIOException("Writing " + path, error); }
         }
         try {
+            if (created && bundled) {
+                try { VanillaCatalogQa.compare(server, root); }
+                catch (IOException error) { throw new UncheckedIOException("Comparing live vanilla catalog", error); }
+            }
             if (!created && WorldDefinitionEndUpgrade.hasDeferred(nativeWorld.metadata())) {
                 try {
                     if (WorldDefinitionEndUpgrade.upgrade(server, root)) {
