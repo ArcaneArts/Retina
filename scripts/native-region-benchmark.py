@@ -3,6 +3,7 @@
 Use a saved retina.dat and --library to compare retained native builds.
 """
 import argparse
+import atexit
 import concurrent.futures
 import ctypes as c
 import json
@@ -110,6 +111,11 @@ def main():
         os.environ["RETINA_SPECIALIZED_INTERPOLATION"] = "1" if args.specialized_interpolation == "enabled" else "0"
     args.out.mkdir(parents=True, exist_ok=False)
     lib = c.CDLL(str(args.library.resolve()))
+    flush_caches = getattr(lib, "retina_flush_pipeline_caches", None)
+    if flush_caches:
+        flush_caches.argtypes = []
+        flush_caches.restype = None
+        atexit.register(flush_caches)
     if args.startup_debug:
         lib.retina_configure_debug.argtypes = [c.c_int]
         lib.retina_configure_debug.restype = None

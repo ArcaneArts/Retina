@@ -28,6 +28,11 @@ pub(crate) struct Cache {
 }
 impl Cache {
     pub fn open(device: &wgpu::Device, lane: &str) -> Option<Arc<Self>> {
+        Self::open_variant(device, lane, "")
+    }
+    /// Each compiler worker/policy owns its cache and snapshot mutex. Empty
+    /// variant preserves existing filenames; explicit variants cannot alias it.
+    pub fn open_variant(device: &wgpu::Device, lane: &str, variant: &str) -> Option<Arc<Self>> {
         if !device.features().contains(wgpu::Features::PIPELINE_CACHE)
             || std::env::var("RETINA_PIPELINE_CACHE").as_deref() == Ok("0") {
             crate::startup::message(format_args!("Pipeline cache unavailable lane={lane} feature={} disabled={}",
@@ -35,8 +40,7 @@ impl Cache {
             return None;
         }
         let info = device.adapter_info();
-        let key = wgpu::util::pipeline_cache_key(&info)?;
-        let key = format!("{:x}", Sha256::digest(format!("{key}\n{}\n{}\n{lane}", info.driver, info.driver_info)));
+        let key = cache_key(&info, lane, variant)?;
         let root = std::env::var_os("RETINA_PIPELINE_CACHE_DIR").map(PathBuf::from)
             .unwrap_or_else(|| PathBuf::from("retina-cache/pipelines"));
         let path = root.join(format!("{key}.bin"));
@@ -57,9 +61,7 @@ impl Cache {
         // SAFETY: payloads originate only from PipelineCache::get_data below.
         // The envelope detects interrupted/corrupt files; wgpu validates device,
         // driver and format compatibility, falling back to an empty cache.
-        let raw = unsafe { device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
-            label: Some("Retina persistent driver cache"), data: data.as_deref(), fallback: true,
-        }) };
+        let raw = load(device, data.as_deref());
         let writer = match writer::Writer::new(path) {
             Ok(writer) => Some(writer),
             Err(error) => {
@@ -67,7 +69,8 @@ impl Cache {
                 None
             }
         };
-        let cache = Arc::new(Self { raw, lane: lane.into(), checkpoint: Mutex::new(Checkpoint::default()), writer });
+        let lane = if variant.is_empty() { lane.into() } else { format!("{lane}/{variant}") };
+        let cache = Arc::new(Self { raw, lane, checkpoint: Mutex::new(Checkpoint::default()), writer });
         let mut caches = CACHES.lock().unwrap_or_else(|e| e.into_inner());
         caches.retain(|cache| cache.strong_count() > 0);
         caches.push(Arc::downgrade(&cache));
@@ -95,6 +98,30 @@ impl Cache {
     pub fn checkpoint(&self) {
         self.snapshot(&mut self.checkpoint.lock().unwrap_or_else(|e| e.into_inner()), "milestone");
     }
+}
+
+fn cache_key(info: &wgpu::AdapterInfo, lane: &str, variant: &str) -> Option<String> {
+    let key = wgpu::util::pipeline_cache_key(info)?;
+    let legacy = format!("{key}\n{}\n{}\n{lane}", info.driver, info.driver_info);
+    let identity = if variant.is_empty() { legacy } else { format!("{legacy}\nvariant={variant}") };
+    Some(format!("{:x}", Sha256::digest(identity)))
+}
+
+fn load(device: &wgpu::Device, data: Option<&[u8]>) -> wgpu::PipelineCache {
+    let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
+    // SAFETY: stored data originated from get_data; wgpu validates its header
+    // before exposing any driver data. Retina also checks the whole envelope.
+    let raw = unsafe { device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
+        label: Some("Retina persistent driver cache"), data, fallback: true,
+    }) };
+    if let Some(error) = pollster::block_on(scope.pop()) {
+        // wgpu's fallback=true deliberately does not recover DeviceMismatch.
+        // A misplaced disposable file must not fail actual terrain generation.
+        crate::startup::info(format_args!("Pipeline cache rejected: {error}; creating an empty cache"));
+        unsafe { device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
+            label: Some("Retina fresh driver cache"), data: None, fallback: true,
+        }) }
+    } else { raw }
 }
 impl Drop for Cache {
     fn drop(&mut self) {
@@ -181,6 +208,72 @@ mod tests {
         corrupt = bytes; corrupt.push(0); assert!(decode(&corrupt).is_none());
         assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
         fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn worker_policy_and_driver_identities_are_distinct() {
+        let mut info = wgpu::AdapterInfo { name: "test".into(), vendor: 0x10de, device: 0x2504,
+            device_type: wgpu::DeviceType::DiscreteGpu, driver: "NVIDIA".into(), driver_info: "621.01".into(),
+            ..wgpu::AdapterInfo::new(wgpu::DeviceType::DiscreteGpu, wgpu::Backend::Vulkan) };
+        let baseline = cache_key(&info, "compiler", "").unwrap();
+        assert_ne!(baseline, cache_key(&info, "compiler", "fast").unwrap());
+        assert_ne!(baseline, cache_key(&info, "compiler/world", "").unwrap());
+        info.driver_info = "next driver".into();
+        assert_ne!(baseline, cache_key(&info, "compiler", "").unwrap());
+    }
+
+    #[test]
+    fn interrupted_process_retains_completed_checkpoint() {
+        let root = std::env::temp_dir().join(format!("retina-cache-exit-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let status = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["pipeline_cache::tests::checkpoint_child", "--exact", "--ignored"])
+            .env("RETINA_CACHE_TEST_CHILD", &root).status().unwrap();
+        assert_eq!(status.code(), Some(17));
+        assert_eq!(read(&root.join("cache.bin")).unwrap(), b"completed checkpoint");
+        assert!(read(&root.join("interrupted.tmp")).is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    #[ignore = "child process of interrupted_process_retains_completed_checkpoint"]
+    fn checkpoint_child() {
+        let root = PathBuf::from(std::env::var_os("RETINA_CACHE_TEST_CHILD").unwrap());
+        let writer = writer::Writer::new(root.join("cache.bin")).unwrap();
+        writer.enqueue(b"completed checkpoint".to_vec());
+        writer.flush();
+        std::fs::write(root.join("interrupted.tmp"), b"RTPC0001partial").unwrap();
+        std::process::exit(17); // No Rust Drop or shutdown hook runs.
+    }
+
+    #[test]
+    #[ignore = "requires explicitly selected Vulkan, including optional Mac portability"]
+    fn vulkan_cache_rejects_incompatible_data_and_keeps_compiling() {
+        assert_eq!(std::env::var("RETINA_GPU_BACKEND").as_deref(), Ok("vulkan"));
+        let instance = wgpu::Instance::new(crate::gpu_backend::instance_descriptor(wgpu::Backends::VULKAN));
+        let adapter = pollster::block_on(instance.request_adapter(&Default::default())).unwrap();
+        let (device, _) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            required_features: wgpu::Features::PIPELINE_CACHE, ..Default::default()
+        })).unwrap();
+        let cache = load(&device, None);
+        let data = cache.get_data().unwrap();
+        let _reloaded = load(&device, Some(&data));
+        // wgpu 30's serialized header: 8 magic + 4 version + 4 ABI + 1 backend,
+        // followed by adapter key. Only its header is altered; driver data is intact.
+        let mut other_adapter = data.clone(); other_adapter[17] ^= 1;
+        let recovered = load(&device, Some(&other_adapter));
+        let module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: None, source: wgpu::ShaderSource::Wgsl("@compute @workgroup_size(1) fn main() {}".into()),
+        });
+        let first = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: None, layout: None, module: &module, entry_point: Some("main"),
+            compilation_options: Default::default(), cache: Some(&recovered),
+        });
+        let second = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: None, layout: None, module: &module, entry_point: Some("main"),
+            compilation_options: Default::default(), cache: Some(&recovered),
+        });
+        drop((first, second));
+        assert!(recovered.get_data().unwrap().len() >= data.len());
     }
 }
 
