@@ -1,4 +1,6 @@
 mod climate;
+mod compute;
+pub mod cpu;
 // Rust-owned buffers are released by this library, including the byte buffers
 // returned through the C ABI. Foreign buffers and the host allocator stay owned
 // by their callers; mimalloc's process-wide override feature is not enabled.
@@ -170,7 +172,7 @@ enum GpuCommand {
 /// Concurrent callers enqueue work; one persistent device batches GPU submissions.
 /// Each caller assembles its own chunk in Rust after its GPU result arrives.
 pub struct TerrainEngine {
-    sender: mpsc::SyncSender<GpuCommand>,
+    compute: Option<compute::GpuResources>,
     backend: String,
     profiles: RwLock<world_definition::residency::Profiles>,
     cache: Mutex<ColumnCache>,
@@ -181,10 +183,6 @@ pub struct TerrainEngine {
     structures: Mutex<structures::Cache>,
     timings: Mutex<HashMap<u32, Arc<timings::Timings>>>,
     pipeline: Arc<pipeline::Metrics>,
-    ore_gpu: Mutex<geology::raster_gpu::Gpu>,
-    feature_gpu: Mutex<decoration::counts::gpu::Gpu>,
-    light_gpu: Mutex<lighting::Gpu>,
-    vine_gpu: Mutex<decoration::vine_gpu::Gpu>,
 }
 
 impl TerrainEngine {
@@ -243,34 +241,16 @@ impl TerrainEngine {
         if !(1..=2).contains(&depth) {
             return Err("GPU pipeline depth must be 1 or 2".into());
         }
-        let (sender, receiver) = mpsc::sync_channel::<GpuCommand>(256);
-        let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
         let pipeline = Arc::new(pipeline::Metrics::default());
-        let metrics = pipeline.clone();
-        std::thread::Builder::new()
-            .name("retina-gpu".into())
-            .spawn(move || gpu_worker::run(receiver, ready_sender, metrics, depth))
-            .map_err(|e| e.to_string())?;
-        let (backend, ores, counts) = {
-            let _wait = startup::Stage::new("waiting for GPU worker readiness");
-            ready_receiver.recv().map_err(|e| e.to_string())??
-        };
-        startup::info(format_args!("GPU worker ready: {backend}"));
-        let (device, queue) = ores.shared_device();
-        let vine_gpu = Mutex::new(decoration::vine_gpu::Gpu::new(
-            device.clone(),
-            queue.clone(),
-            &backend,
-        ));
-        let light_gpu = Mutex::new(lighting::Gpu::new(device, queue, &backend));
-        Ok(Self {
-            sender,
-            backend,
+        let compute = compute::GpuResources::start(depth, pipeline.clone())?;
+        Ok(Self::from_compute(Some(compute), pipeline))
+    }
+
+    fn from_compute(compute: Option<compute::GpuResources>, pipeline: Arc<pipeline::Metrics>) -> Self {
+        Self {
+            backend: compute.as_ref().map_or_else(|| "CPU: native".into(), |gpu| gpu.backend.clone()),
+            compute,
             pipeline,
-            ore_gpu: Mutex::new(ores),
-            feature_gpu: Mutex::new(counts),
-            vine_gpu,
-            light_gpu,
             profiles: RwLock::new(world_definition::residency::Profiles::default()),
             cache: Mutex::new(ColumnCache::default()),
             height_cache: Mutex::new(ColumnCache::default()),
@@ -279,16 +259,22 @@ impl TerrainEngine {
             dependency_versions: Mutex::new(decoration::dependencies::VersionCache::default()),
             structures: Mutex::new(structures::Cache::default()),
             timings: Mutex::new(HashMap::new()),
-        })
+        }
+    }
+
+    pub(crate) fn gpu(&self) -> Result<&compute::GpuResources, String> {
+        self.compute.as_ref().ok_or_else(|| "Operation requires a CPU executor; GPU resources are absent".into())
     }
 
     fn retire_world_profiles(&self, ids: Vec<u32>) {
         if ids.is_empty() { return; }
         self.profiles.write().unwrap_or_else(|e| e.into_inner()).retire(&ids);
         // The worker drains submitted commands before releasing profile bindings.
-        let (reply, done) = mpsc::channel();
-        if self.sender.send(GpuCommand::Retire(ids.clone(), reply)).is_ok() {
-            let _ = done.recv(); // A stopped worker has already dropped its GPU owners.
+        if let Some(gpu) = &self.compute {
+            let (reply, done) = mpsc::channel();
+            if gpu.sender.send(GpuCommand::Retire(ids.clone(), reply)).is_ok() {
+                let _ = done.recv(); // A stopped worker has already dropped its GPU owners.
+            }
         }
         for cache in [&self.cache, &self.height_cache] {
             let mut cache = cache.lock().unwrap_or_else(|e| e.into_inner());
@@ -304,8 +290,10 @@ impl TerrainEngine {
         self.query_cache.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
         self.dependency_versions.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
         self.structures.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
-        self.feature_gpu.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
-        self.light_gpu.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
+        if let Some(gpu) = &self.compute {
+            gpu.feature_gpu.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
+            gpu.light_gpu.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
+        }
         self.timings.lock().unwrap_or_else(|e| e.into_inner()).retain(|id, _| !ids.contains(id));
         self.pipeline.retire(&ids);
     }
@@ -356,7 +344,7 @@ impl TerrainEngine {
             geology::raster::Batch::prepare_compact(field, profile, request, side, mask)
         };
         let waiting = Instant::now();
-        let mut gpu = self.ore_gpu.lock().map_err(|_| "ore GPU lock poisoned")?;
+        let mut gpu = self.gpu()?.ore_gpu.lock().map_err(|_| "ore GPU lock poisoned")?;
         let lock_wait_nanos = waiting.elapsed().as_nanos() as u64;
         let result = gpu.run(&batch)?;
         drop(gpu);
@@ -400,8 +388,7 @@ impl TerrainEngine {
             .decoration_noise
             .as_ref()
             .ok_or("profile has no registered placement noise")?;
-        let result = self
-            .feature_gpu
+        let result = self.gpu()?.feature_gpu
             .lock()
             .map_err(|_| "feature GPU lock poisoned")?
             .run(request.reserved, noise, queries)?;
@@ -456,8 +443,7 @@ impl TerrainEngine {
         let profile = self
             .profile(request.reserved)?
             .ok_or("provider noise requires a registered profile")?;
-        let result = self
-            .feature_gpu
+        let result = self.gpu()?.feature_gpu
             .lock()
             .map_err(|_| "feature GPU lock poisoned")?
             .run_providers(
@@ -615,7 +601,7 @@ impl TerrainEngine {
         )
         .with_prefix_resume(retain_prefix)
         .with_gpu_programs(
-            self.vine_gpu
+            self.gpu()?.vine_gpu
                 .lock()
                 .ok()
                 .and_then(|mut gpu| gpu.programs(profile, request)),
@@ -650,7 +636,7 @@ impl TerrainEngine {
                     u64::from(!queries.counts.is_empty() && !queries.noise.is_empty());
             }
             if !queries.vines.is_empty() {
-                let stats = replay.run_vines(&queries.vines, &self.vine_gpu);
+                let stats = replay.run_vines(&queries.vines, &self.gpu()?.vine_gpu);
                 self.pipeline
                     .transfer(request.reserved, stats.upload_bytes, stats.readback_bytes);
                 if std::env::var("RETINA_VINE_DIAGNOSTICS").as_deref() == Ok("1") {
@@ -666,8 +652,7 @@ impl TerrainEngine {
             if !queries.counts.is_empty() || !queries.noise.is_empty() {
                 // Both query sets were collected against the same provisional
                 // anchor pass; neither depends on the other's newly sampled values.
-                let result = self
-                    .feature_gpu
+                let result = self.gpu()?.feature_gpu
                     .lock()
                     .map_err(|_| "feature GPU lock poisoned")?
                     .run_batch(
@@ -1394,8 +1379,7 @@ impl TerrainEngine {
         let timing_profile = requests[0].reserved;
         #[cfg(test)]
         let observer_at = [requests[0].chunk_x, requests[0].chunk_z];
-        self.sender
-            .send(GpuCommand::Generate(Job {
+        self.gpu()?.sender.send(GpuCommand::Generate(Job {
                 requests,
                 profile,
                 tile_side,
@@ -1914,8 +1898,7 @@ pub unsafe extern "C" fn retina_light_volume(
             return Err("unknown lighting material".into());
         }
         let start = Instant::now();
-        let light = engine
-            .light_gpu
+        let light = engine.gpu()?.light_gpu
             .lock()
             .map_err(|_| "lighting GPU lock poisoned")?
             .run(
