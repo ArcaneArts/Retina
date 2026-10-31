@@ -34,19 +34,7 @@ struct Input {
     points: Vec<[u32; 4]>,
     upload: u64,
 }
-pub(crate) struct BatchSamples {
-    pub counts: Vec<u32>,
-    pub providers: Vec<u32>,
-    pub upload: u64,
-    pub readback: u64,
-    pub device_nanos: [Option<u64>; 2],
-}
-pub(crate) struct ResultSamples {
-    pub values: Vec<u32>,
-    pub upload: u64,
-    pub readback: u64,
-    pub device_nanos: Option<u64>,
-}
+pub(crate) use super::{BatchSamples, ResultSamples};
 impl Gpu {
     pub(crate) fn retire(&mut self, ids: &[u32]) {
         self.profiles.retain(|id, _| !ids.contains(id));

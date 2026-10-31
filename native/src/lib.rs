@@ -333,7 +333,7 @@ impl TerrainEngine {
         mask: Option<&geology::CaveMask>,
         job: Option<&timings::Timings>,
     ) -> Result<geology::RegionPlan, String> {
-        if profile.geology.ore_layout < 2 || side == 1 || profile.geology.ores.is_empty() {
+        if self.compute.is_none() || profile.geology.ore_layout < 2 || side == 1 || profile.geology.ores.is_empty() {
             return Ok(geology::RegionPlan::Cpu(geology::plan(
                 field, profile, request, side, mask,
             )));
@@ -388,6 +388,9 @@ impl TerrainEngine {
             .decoration_noise
             .as_ref()
             .ok_or("profile has no registered placement noise")?;
+        if self.compute.is_none() {
+            return Ok(cpu::features::sample(Some(noise), queries, &[], &[])?.counts.into_iter().map(|v|v as i32).collect());
+        }
         let result = self.gpu()?.feature_gpu
             .lock()
             .map_err(|_| "feature GPU lock poisoned")?
@@ -402,6 +405,17 @@ impl TerrainEngine {
             }
         }
         Ok(result.values.into_iter().map(|v| v as i32).collect())
+    }
+
+    pub(crate) fn feature_batch(
+        &self, profile:&WorldProfile, request:ChunkRequest,
+        counts:&[decoration::counts::Query], points:&[[i32;4]],
+    ) -> Result<decoration::counts::BatchSamples,String> {
+        match &self.compute {
+            Some(gpu)=>gpu.feature_gpu.lock().map_err(|_|"feature GPU lock poisoned")?.run_batch(
+                request.reserved,profile.decoration_noise.as_ref(),counts,&profile.decoration_provider_noises,points),
+            None=>cpu::features::sample(profile.decoration_noise.as_ref(),counts,&profile.decoration_provider_noises,points),
+        }
     }
 
     /// Sparse diagnostics use exactly the production rule descriptors/sampler.
@@ -443,6 +457,10 @@ impl TerrainEngine {
         let profile = self
             .profile(request.reserved)?
             .ok_or("provider noise requires a registered profile")?;
+        if self.compute.is_none() {
+            return Ok(cpu::features::sample(None, &[], &profile.decoration_provider_noises, points)?.providers
+                .into_iter().map(f32::from_bits).collect());
+        }
         let result = self.gpu()?.feature_gpu
             .lock()
             .map_err(|_| "feature GPU lock poisoned")?
@@ -601,10 +619,8 @@ impl TerrainEngine {
         )
         .with_prefix_resume(retain_prefix)
         .with_gpu_programs(
-            self.gpu()?.vine_gpu
-                .lock()
-                .ok()
-                .and_then(|mut gpu| gpu.programs(profile, request)),
+            self.compute.as_ref().and_then(|resources| resources.vine_gpu
+                .lock().ok().and_then(|mut gpu| gpu.programs(profile, request))),
         )
         .with_backend_policy(self.backend());
         let mut samples = decoration::provider_noise::Samples::default();
@@ -652,16 +668,7 @@ impl TerrainEngine {
             if !queries.counts.is_empty() || !queries.noise.is_empty() {
                 // Both query sets were collected against the same provisional
                 // anchor pass; neither depends on the other's newly sampled values.
-                let result = self.gpu()?.feature_gpu
-                    .lock()
-                    .map_err(|_| "feature GPU lock poisoned")?
-                    .run_batch(
-                        request.reserved,
-                        profile.decoration_noise.as_ref(),
-                        &queries.counts,
-                        &profile.decoration_provider_noises,
-                        &queries.noise,
-                    )?;
+                let result = self.feature_batch(profile, request, &queries.counts, &queries.noise)?;
                 self.pipeline
                     .transfer(request.reserved, result.upload, result.readback);
                 for (slot, nanos) in [timings::FEATURE_COUNTS, timings::PROVIDER_NOISE]

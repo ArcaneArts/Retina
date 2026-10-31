@@ -5,6 +5,7 @@ use bytemuck::{Pod, Zeroable};
 use serde::Deserialize;
 
 pub mod gpu;
+mod cpu;
 
 #[derive(Clone, Deserialize)]
 pub struct Noise {
@@ -77,3 +78,17 @@ impl Counts {
 
 #[cfg(test)]
 mod gpu_tests;
+
+pub(crate) struct BatchSamples {
+    pub counts: Vec<u32>,
+    pub providers: Vec<u32>,
+    pub upload: u64,
+    pub readback: u64,
+    pub device_nanos: [Option<u64>; 2],
+}
+pub(crate) struct ResultSamples {
+    pub values: Vec<u32>,
+    pub upload: u64,
+    pub readback: u64,
+    pub device_nanos: Option<u64>,
+}

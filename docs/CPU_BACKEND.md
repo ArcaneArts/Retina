@@ -15,9 +15,9 @@ dimensions, and every existing supported registry program and adapter capability
 | Interpolation and sparse queries | program/interpolation.rs, queries.rs | Global coordinates, field/program → density/height/biome | CPU evaluator caches globally aligned interpolation corners; shared column-program reuse analysis; engine queries pending |
 | Surfaces/materials | materials.wgsl, program.wgsl | Density, material context/palettes → blocks/runs | All surface predicate opcodes implemented; material column assembly pending |
 | Caves/aquifers | caves.wgsl, aquifers.wgsl, geology.rs | Registered profiles, fields → masks/materials | Existing CPU carver/planning algorithms reused; shader calculations pending |
-| Ores | geology.rs, geology/raster_gpu.rs | Loaded ore recipes → placement masks | CPU planning exists; dispatch integration and coverage pending |
-| Counts/provider noise | decoration/counts/gpu.rs, provider_noise.wgsl | Count rules/registered Perlin stacks, sparse points → values | CPU kernels pending; retain existing CPU placement machinery |
-| Vines | decoration/vine_gpu.rs | Loaded recipe, substrate queries → writes | CPU replay exists for non-GPU batches; route CPU execution without a device |
+| Ores | geology.rs, geology/raster_gpu.rs | Loaded ore recipes → placement masks | CPU planning reused when graphics resources are absent; additional end-to-end coverage pending |
+| Counts/provider noise | decoration/counts/gpu.rs, provider_noise.wgsl | Count rules/registered Perlin stacks, sparse points → values | Native count and Perlin-stack kernels implemented; CPU batch dispatch connected; numerical hardware comparison covers loaded permutations and far coordinates |
+| Vines | decoration/vine_gpu.rs | Loaded recipe, substrate queries → writes | CPU mode selects the existing scalar replay without compiling or pausing for GPU vine programs |
 | Lighting | lighting.rs, lighting.wgsl | Opacity/emission/face rules → section light | CPU propagation pending; retain encoding and palettes |
 | End | end/, decoration/end_features/ | Saved island/density/feature settings → substrate/metadata | Existing CPU terrain/features reused; remove mandatory engine GPU initialization |
 | Storage/lifecycle | region/, world_definition/ | Same authoritative retina.dat → MCA/NBT | Reuse existing Rust publication, compression, metadata and ownership |
@@ -39,3 +39,22 @@ Numerical CPU/GPU equality is not required, but shared rules, integer seed/hash
 behavior, valid metadata and repeatability within CPU execution are required.
 Hardware numerical comparisons, complete generation coverage, automatic fallback,
 platform integration and performance acceptance remain outstanding.
+
+## Sparse sampling numerical comparison
+
+The CPU count kernel consumes the same BIOME_INFO_NOISE permutation and count
+rules. Provider kernels consume the same registered Perlin layers, offsets,
+frequencies, weights and optional rounded slow-coordinate scale. CPU provider
+coordinates use f64 rather than emulating shader integer limbs.
+
+The bounded Metal comparison exercises three loaded permutations, near and
+world-border coordinates, and both count-rule kinds. In 768 nearby count queries
+there was one difference of one at a rounding boundary. In 768 world-border
+queries the largest individual difference was 31 (a ratio-120 noise count), while
+total counts differed by at most 1.47% per permutation. A separate phase probe
+matched the hardware sample by shifting its divided f32 X by one representable
+step; this is meaningful near ±30 million blocks. The test bounds each result by
+the loaded rule sampled across a two-step numerical coordinate interval, plus
+one final ceil step where relevant; it does not accept arbitrary count drift.
+The maximum absolute error across 1,536 provider comparisons was 0.00000514.
+These are kernel comparisons, not complete CPU terrain acceptance or benchmarks.
