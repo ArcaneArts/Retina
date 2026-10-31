@@ -9,7 +9,7 @@ use std::{collections::HashMap, sync::Arc};
 
 pub struct Fields {
     program: Option<Prepared>,
-    climate: crate::climate::Index,
+    pub(crate) climate: crate::climate::Index,
     unplaced: Vec<usize>,
 }
 impl Fields {
@@ -60,7 +60,7 @@ pub struct Sampler<'a> {
     request: ChunkRequest,
     evaluator: Option<Evaluator<'a>>,
     grid: HashMap<(usize, [u32; 3]), [f32; 6]>,
-    heights: HashMap<[i32; 2], f32>,
+    heights: HashMap<[u32; 2], f32>,
 }
 impl Sampler<'_> {
     pub fn run(
@@ -167,7 +167,10 @@ impl Sampler<'_> {
             })
     }
     pub fn surface_height(&mut self, x: i32, z: i32) -> Result<f32, String> {
-        if let Some(value) = self.heights.get(&[x, z]) {
+        self.surface_height_at([x as f32, z as f32])
+    }
+    pub fn surface_height_at(&mut self, [x, z]: [f32; 2]) -> Result<f32, String> {
+        if let Some(value) = self.heights.get(&[x.to_bits(), z.to_bits()]) {
             return Ok(*value);
         }
         let registry = self
@@ -226,7 +229,7 @@ impl Sampler<'_> {
         if self.heights.len() >= 32768 {
             self.heights.clear();
         }
-        self.heights.insert([x, z], height);
+        self.heights.insert([x.to_bits(), z.to_bits()], height);
         Ok(height)
     }
     pub fn surface_biome(

@@ -11,7 +11,7 @@ dimensions, and every existing supported registry program and adapter capability
 | --- | --- | --- | --- |
 | Registry programs | program.wgsl, program.rs | Loaded instructions, noise parameters, spline points, context → six roots | cpu/program.rs: prepared reachable instructions, constants, per-job scratch, cached interpolation vertices; exhaustive opcode fixtures |
 | Noise primitives | simplex.wgsl, noise3.wgsl | XYZ, seed, coefficients → scalar | cpu/noise.rs: wrapping integer hashes, Perlin/simplex/FBM; primitive fixtures; hardware comparison pending |
-| Terrain/climate/biomes | simplex.wgsl, climate.wgsl, gpu.rs | Saved world profile and requests → columns, biomes | Shared climate index and CPU registered-field sampler implemented; final column/material dispatch remains pending |
+| Terrain/climate/biomes | simplex.wgsl, climate.wgsl, gpu.rs | Saved world profile and requests → columns, biomes | Shared climate index, registered fields and coherent column sampler implemented; final material/engine dispatch remains pending |
 | Interpolation and sparse queries | program/interpolation.rs, queries.rs | Global coordinates, field/program → density/height/biome | CPU evaluator and field sampler cache global interpolation/climate vertices and surface heights; shared column-program reuse analysis; engine query dispatch remains pending |
 | Surfaces/materials | materials.wgsl, program.wgsl | Density, material context/palettes → blocks/runs | All surface predicate opcodes implemented; material column assembly pending |
 | Caves/aquifers | caves.wgsl, aquifers.wgsl, geology.rs | Registered profiles, fields → masks/materials | Existing CPU carver/planning algorithms reused; shader calculations pending |
@@ -89,3 +89,17 @@ flags and ties. Actual vanilla catalog samples for Overworld and Nether are fini
 and repeatable at negative, ordinary and far coordinates, independently of request
 origin. These checks initialize no engine or GPU, create no world files, and do not
 claim complete CPU terrain/material generation yet.
+
+## CPU terrain columns
+
+The column sampler now consumes the same loaded biome sites, climate targets,
+registered height fields, lake recipes, temperatures, surface programs and packed
+column format. Site and lake caches reuse immutable-coordinate work. Fractional
+lake-bank probes retain their coordinates through registered height sampling.
+
+Focused checks cover actual vanilla Overworld/Nether catalogs, legacy profiles,
+negative and far coordinates, independent request origins, and synthetic loaded
+lake barriers, lava, snow and terracotta flags. A small real Metal comparison
+matched all 32 sampled column heights, biome IDs and representative materials
+exactly. This fixture is not a claim of general CPU/GPU bit equality. Complete
+cavity/aquifer and layered material assembly, dispatch and fallback remain pending.
