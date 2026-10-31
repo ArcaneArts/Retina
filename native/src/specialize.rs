@@ -3,7 +3,9 @@
 use crate::program::{Instruction, Program, RegistryProgram};
 use std::collections::HashMap;
 use std::fmt::Write;
-use std::sync::{Arc, Condvar, Mutex, Weak, mpsc};
+use std::sync::{Arc, Condvar, Mutex, Weak};
+#[cfg(test)]
+use std::sync::mpsc;
 use std::time::Instant;
 mod aquifer_columns;
 #[cfg(test)]
@@ -14,6 +16,9 @@ mod material_dispatch;
 mod interpreter_promotion;
 pub(crate) mod incremental;
 pub(crate) mod reuse_cache;
+mod compile_queue;
+mod compile_lifetime;
+mod parallel;
 
 #[derive(Clone, Copy, Default, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -655,7 +660,7 @@ struct Job {
     reference_specialization: bool,
 }
 pub(crate) struct Compiler {
-    sender: mpsc::Sender<Job>,
+    sender: compile_queue::Sender<Job>,
     // Exact generated source is the fingerprint key; HashMap also checks key
     // equality, so a hash collision cannot reuse an unrelated graph pipeline.
     cache: reuse_cache::Cache<(String, bool), State>,
@@ -665,6 +670,7 @@ pub(crate) struct Compiler {
     incremental_specialization: bool,
     optimized_interpreters: reuse_cache::Cache<(String, Option<interpreter_reuse::Plan>, bool), State>,
     terrain_fast_cache: Option<Arc<crate::pipeline_cache::Cache>>,
+    parallel: Option<Arc<parallel::Caches>>,
     #[cfg(test)]
     pub(crate) reference_specialization: bool,
 }
@@ -682,105 +688,126 @@ impl Compiler {
         cave: &wgpu::BindGroupLayout,
         material_dispatch: bool,
         specialized_interpolation: bool,
-        device_failure: impl Fn() -> Option<String> + Send + 'static,
+        device_failure: impl Fn() -> Option<String> + Send + Sync + 'static,
         driver_cache: Option<Arc<crate::pipeline_cache::Cache>>,
     ) -> Result<Self, String> {
         let device = device.clone();
         let tiered_interpreter = device.adapter_info().backend == wgpu::Backend::Vulkan
             && std::env::var("RETINA_VULKAN_TIERED_INTERPRETER").as_deref() == Ok("1");
         let incremental_specialization = std::env::var("RETINA_INCREMENTAL_SPECIALIZATION").as_deref() == Ok("1");
-        let fast_cache = tiered_interpreter.then(|| crate::pipeline_cache::Cache::open_variant(&device, "compiler", "fast-interpreter")).flatten();
-        let terrain_fast_cache = tiered_interpreter.then(|| crate::pipeline_cache::Cache::open_variant(&device, "terrain", "fast-interpreter")).flatten();
+        let sequential_fast = tiered_interpreter && !crate::compile_budget::parallel_enabled();
+        let fast_cache = sequential_fast.then(|| crate::pipeline_cache::Cache::open_variant(&device, "compiler", "fast-interpreter")).flatten();
+        let terrain_fast_cache = sequential_fast.then(|| crate::pipeline_cache::Cache::open_variant(&device, "terrain", "fast-interpreter")).flatten();
+        let parallel = crate::compile_budget::parallel_enabled().then(|| Arc::new(parallel::Caches::new(&device, "terrain-parallel", tiered_interpreter)));
         let world = world.clone();
         let cave = cave.clone();
-        let (sender, receiver) = mpsc::channel::<Job>();
-        std::thread::Builder::new()
-            .name("retina-shader-compiler".into())
-            .spawn(move || {
-                while let Ok(job) = receiver.recv() {
-                    // Evicted jobs with no live world do not keep compiling after close.
-                    let Some(state) = job.state.upgrade() else { continue; };
-                    let start = Instant::now();
-                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| crate::startup::with_interpreter_policy(job.policy, || {
-                        if let Some(error) = device_failure() { return Err(error); }
-                        if let Some(reuse) = job.interpreter {
-                            compile_interpreter(
-                                &device,
-                                &world,
-                                &cave,
-                                &job.program,
-                                reuse,
-                                job.shared_dispatch,
-                                if job.policy == crate::startup::InterpreterPolicy::Fast { fast_cache.as_deref() } else { driver_cache.as_deref() },
-                            )
+        let (sender, receiver) = compile_queue::channel::<Job>(32, 64 * 1024 * 1024);
+        let receiver = Arc::new(receiver);
+        let device_failure = Arc::new(device_failure);
+        for worker in 0..if crate::compile_budget::parallel_enabled() { 2 } else { 1 } {
+            // The original worker can process every job. The extra required-only
+            // lane prevents a long optional bundle from delaying a new preload.
+            let lane = if worker == 0 { compile_queue::Lane::Any } else { compile_queue::Lane::Required };
+            let device = device.clone(); let world = world.clone(); let cave = cave.clone();
+            let receiver = receiver.clone(); let device_failure = device_failure.clone();
+            let driver_cache = driver_cache.clone(); let fast_cache = fast_cache.clone();
+            let worker_parallel = crate::compile_budget::parallel_enabled().then(|| parallel::Caches::new(&device, &format!("compiler-parallel-{worker}"), tiered_interpreter));
+            let spawned = std::thread::Builder::new()
+                .name(if worker == 1 { "retina-startup-compiler" } else { "retina-shader-compiler" }.into())
+                .spawn(move || {
+                    while let Some(job) = receiver.recv(lane) {
+                        // Evicted jobs with no live world do not keep compiling after close.
+                        let Some(state) = job.state.upgrade() else { continue; };
+                        let start = Instant::now();
+                        let priority = if compile_queue::Work::required(&job) { crate::compile_budget::Priority::Required } else { crate::compile_budget::Priority::Optional };
+                        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| compile_lifetime::with_owner(Some(Arc::downgrade(&state)), || crate::compile_budget::with_priority(priority, || crate::startup::with_interpreter_policy(job.policy, || {
+                            if let Some(error) = device_failure() { return Err(error); }
+                            if let Some(reuse) = job.interpreter {
+                                compile_interpreter(
+                                    &device,
+                                    &world,
+                                    &cave,
+                                    &job.program,
+                                    reuse,
+                                    job.shared_dispatch,
+                                    if job.policy == crate::startup::InterpreterPolicy::Fast { fast_cache.as_deref() } else { driver_cache.as_deref() },
+                                    worker_parallel.as_ref().filter(|_| priority == crate::compile_budget::Priority::Required),
+                                )
+                            } else {
+                                compile_program(
+                                    &device,
+                                    &world,
+                                    &cave,
+                                    &job.program,
+                                    job.horizontal_fields,
+                                    job.material_layers,
+                                    job.aquifers,
+                                    true,
+                                    job.terrain,
+                                    job.cached_masks,
+                                    job.cached_nodes,
+                                    job.lake_point_cache,
+                                    None,
+                                    false,
+                                    job.material_dispatch,
+                                    job.specialized_interpolation,
+                                    driver_cache.as_deref(),
+                                    job.incremental.then_some(&state),
+                                    parallel::Part::All,
+                                    #[cfg(test)]
+                                    !job.reference_specialization,
+                                )
+                            }
+                        })))))
+                        .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
+                        let result = result.map(|mut pipelines| {
+                            pipelines.promotion = job.promotion;
+                            if job.policy == crate::startup::InterpreterPolicy::Optimized {
+                                pipelines.optimization_progress = Some(state.progress.clone());
+                            }
+                            pipelines.kind = match job.policy {
+                                crate::startup::InterpreterPolicy::Fast => "interpreter-fast",
+                                crate::startup::InterpreterPolicy::Optimized => "interpreter-optimized",
+                                crate::startup::InterpreterPolicy::Inherited => pipelines.kind,
+                            };
+                            crate::startup::message(format_args!("Compilation ready policy={:?} interpreter={} source_bytes={} elapsed_ms={:.3}",
+                                job.policy, job.interpreter.is_some(), job.program.len(), start.elapsed().as_secs_f64()*1000.0));
+                            pipelines
+                        });
+                        if let Err(error) = &result {
+                            if error == "GPU compilation retired after its last profile owner closed" {
+                                crate::startup::message(error);
+                            } else if device_failure().is_some() {
+                                eprintln!("Retina stops shader compilation after device failure: {error}");
+                            } else {
+                                eprintln!("Retina keeps the GPU interpreter: {error}");
+                            }
+                        }
+                        state.progress.nanos.store(
+                            start.elapsed().as_nanos().min(u64::MAX as u128) as u64,
+                            std::sync::atomic::Ordering::Relaxed,
+                        );
+                        let status = if result.is_ok() {
+                            if job.terrain { 2 } else { 4 }
                         } else {
-                            compile_program(
-                                &device,
-                                &world,
-                                &cave,
-                                &job.program,
-                                job.horizontal_fields,
-                                job.material_layers,
-                                job.aquifers,
-                                true,
-                                job.terrain,
-                                job.cached_masks,
-                                job.cached_nodes,
-                                job.lake_point_cache,
-                                None,
-                                false,
-                                job.material_dispatch,
-                                job.specialized_interpolation,
-                                driver_cache.as_deref(),
-                                job.incremental.then_some(&state),
-                                #[cfg(test)]
-                                !job.reference_specialization,
-                            )
-                        }
-                    })))
-                    .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
-                    let result = result.map(|mut pipelines| {
-                        pipelines.promotion = job.promotion;
-                        if job.policy == crate::startup::InterpreterPolicy::Optimized {
-                            pipelines.optimization_progress = Some(state.progress.clone());
-                        }
-                        pipelines.kind = match job.policy {
-                            crate::startup::InterpreterPolicy::Fast => "interpreter-fast",
-                            crate::startup::InterpreterPolicy::Optimized => "interpreter-optimized",
-                            crate::startup::InterpreterPolicy::Inherited => pipelines.kind,
+                            3
                         };
-                        crate::startup::message(format_args!("Compilation ready policy={:?} interpreter={} source_bytes={} elapsed_ms={:.3}",
-                            job.policy, job.interpreter.is_some(), job.program.len(), start.elapsed().as_secs_f64()*1000.0));
-                        pipelines
-                    });
-                    if let Err(error) = &result {
-                        if device_failure().is_some() {
-                            eprintln!("Retina stops shader compilation after device failure: {error}");
-                        } else {
-                            eprintln!("Retina keeps the GPU interpreter: {error}");
-                        }
+                        let succeeded = result.is_ok();
+                        *state.result.lock().unwrap_or_else(|e| e.into_inner()) =
+                            Some(result.map(Arc::new));
+                        if succeeded { *state.partial.lock().unwrap_or_else(|e| e.into_inner()) = None; }
+                        state
+                            .progress
+                            .status
+                            .store(status, std::sync::atomic::Ordering::Release);
+                        state.done.notify_all();
                     }
-                    state.progress.nanos.store(
-                        start.elapsed().as_nanos().min(u64::MAX as u128) as u64,
-                        std::sync::atomic::Ordering::Relaxed,
-                    );
-                    let status = if result.is_ok() {
-                        if job.terrain { 2 } else { 4 }
-                    } else {
-                        3
-                    };
-                    let succeeded = result.is_ok();
-                    *state.result.lock().unwrap_or_else(|e| e.into_inner()) =
-                        Some(result.map(Arc::new));
-                    if succeeded { *state.partial.lock().unwrap_or_else(|e| e.into_inner()) = None; }
-                    state
-                        .progress
-                        .status
-                        .store(status, std::sync::atomic::Ordering::Release);
-                    state.done.notify_all();
-                }
-            })
-            .map_err(|e| format!("cannot start GPU shader compiler: {e}"))?;
+                });
+            if let Err(error) = spawned {
+                if worker == 0 { return Err(format!("cannot start GPU shader compiler: {error}")); }
+                crate::startup::info(format_args!("Additional startup compiler unavailable; keeping the existing worker: {error}"));
+            }
+        }
         Ok(Self {
             sender,
             cache: reuse_cache::Cache::new(8),
@@ -790,6 +817,7 @@ impl Compiler {
             incremental_specialization,
             optimized_interpreters: reuse_cache::Cache::new(8),
             terrain_fast_cache,
+            parallel,
             #[cfg(test)]
             reference_specialization: false,
         })
@@ -841,9 +869,10 @@ impl Compiler {
                 specialized_interpolation: false,
                 #[cfg(test)]
                 reference_specialization: false,
-            })
-            .map_err(|_| "GPU shader compiler stopped")?;
-        if let Some(job) = optimized_job { self.sender.send(job).map_err(|_| "GPU shader compiler stopped")?; }
+            })?;
+        if let Some(job) = optimized_job {
+            if let Err(error) = self.sender.send(job) { crate::startup::info(format_args!("Optional interpreter optimization not queued: {error}")); }
+        }
         Ok(state)
     }
     pub fn request(
@@ -962,8 +991,7 @@ impl Compiler {
                 specialized_interpolation: self.specialized_interpolation,
                 #[cfg(test)]
                 reference_specialization: self.reference_specialization,
-            })
-            .map_err(|_| "GPU shader compiler stopped")?;
+            })?;
         self.cache.insert(key, state.clone());
         Ok(state)
     }
@@ -998,6 +1026,7 @@ pub(crate) fn compile(
         false,
         None,
         None,
+        parallel::Part::All,
         #[cfg(test)]
         true,
     )
@@ -1011,6 +1040,17 @@ pub(crate) fn compile_interpreter(
     reuse: Option<interpreter_reuse::Plan>,
     shared_dispatch: bool,
     driver_cache: Option<&crate::pipeline_cache::Cache>,
+    parallel: Option<&parallel::Caches>,
+) -> Result<Pipelines, String> {
+    if let Some(caches) = parallel {
+        return parallel::compile(device, world, cave, program, reuse, shared_dispatch, caches);
+    }
+    compile_interpreter_part(device, world, cave, program, reuse, shared_dispatch, driver_cache, parallel::Part::All)
+}
+
+fn compile_interpreter_part(device: &wgpu::Device, world: &wgpu::BindGroupLayout,
+    cave: &wgpu::BindGroupLayout, program: &str, reuse: Option<interpreter_reuse::Plan>,
+    shared_dispatch: bool, driver_cache: Option<&crate::pipeline_cache::Cache>, part: parallel::Part,
 ) -> Result<Pipelines, String> {
     compile_program(
         device,
@@ -1031,6 +1071,7 @@ pub(crate) fn compile_interpreter(
         false,
         driver_cache,
         None,
+        part,
         #[cfg(test)]
         true,
     )
@@ -1055,9 +1096,10 @@ fn compile_program(
     specialized_interpolation: bool,
     driver_cache: Option<&crate::pipeline_cache::Cache>,
     incremental: Option<&Arc<State>>,
+    part: parallel::Part,
     #[cfg(test)] outline_specialized: bool,
 ) -> Result<Pipelines, String> {
-    let _startup = crate::startup::Stage::new(format!("compile world pipelines specialized={specialized} terrain={terrain} program_bytes={}", program.len()));
+    let _startup = crate::startup::Stage::new(format!("compile world pipelines specialized={specialized} terrain={terrain} program_bytes={} part={part:?}", program.len()));
     let scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
     #[cfg(test)]
     let probe = compile_probe::Probe::new(specialized);
@@ -1073,6 +1115,7 @@ fn compile_program(
                         layout: &wgpu::BindGroupLayout,
                         entries: &[&str]|
          -> Result<HashMap<String, wgpu::ComputePipeline>, String> {
+            compile_lifetime::check()?;
             if entries.is_empty() {
                 return Ok(HashMap::new());
             }
@@ -1171,6 +1214,7 @@ fn compile_program(
             let mut pipelines: HashMap<String, wgpu::ComputePipeline> = compiled_entries
                 .iter()
                 .map(|entry| {
+                    compile_lifetime::check()?;
                     #[cfg(test)]
                     let entry_name = probe.entry(entry);
                     #[cfg(not(test))]
@@ -1188,9 +1232,9 @@ fn compile_program(
                         }, !specialized, driver_cache);
                     #[cfg(test)]
                     probe.report("pipeline", entry, entry_start, bytes);
-                    ((*entry).to_owned(), pipeline)
+                    Ok(((*entry).to_owned(), pipeline))
                 })
-                .collect();
+                .collect::<Result<_, String>>()?;
             if let Some(error) = pollster::block_on(module_scope.pop()) {
                 return Err(format!("GPU module cohort: {error}"));
             }
@@ -1250,7 +1294,9 @@ fn compile_program(
             world_entries.retain(|entry| *entry != "lake_density");
         }
         world_entries.retain(|entry| !reuse.is_some_and(|p| p.world_reuses(entry)));
+        if part == parallel::Part::Caves { world_entries.clear(); }
         let compile_caves = || -> Result<HashMap<String, wgpu::ComputePipeline>, String> {
+            if part == parallel::Part::World { return Ok(HashMap::new()); }
             let material_source = if material_layers {
                 format!(
                     "{}\n{}",

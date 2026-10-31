@@ -59,12 +59,12 @@ impl Compiler {
         -> Result<Pipelines, String> {
         let policy = if self.tiered_interpreter { InterpreterPolicy::Fast } else { InterpreterPolicy::Inherited };
         let first = with_interpreter_policy(policy, || compile_interpreter(device, world, cave, source, reuse, shared,
-            if self.tiered_interpreter { self.terrain_fast_cache.as_deref() } else { cache }));
+            if self.tiered_interpreter { self.terrain_fast_cache.as_deref() } else { cache }, self.parallel.as_deref()));
         let mut pipelines = match first {
             Err(error) if self.tiered_interpreter => {
                 crate::startup::info(format_args!("Fast interpreter unavailable: {error}; compiling normally"));
                 return with_interpreter_policy(InterpreterPolicy::Optimized,
-                    || compile_interpreter(device, world, cave, source, reuse, shared, cache));
+                    || compile_interpreter(device, world, cave, source, reuse, shared, cache, self.parallel.as_deref()));
             }
             result => result?,
         };
