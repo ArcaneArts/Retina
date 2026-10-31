@@ -362,3 +362,9 @@ captures a lane's unsaved completed work if no driver call is active, then drain
 its writer. It does not wait for an unfinished driver compilation; that lane's
 previous checkpoint is flushed instead. Forced termination can still lose work
 since the last checkpoint. Ordinary GPU jobs never wait for file persistence.
+
+
+For a matched first/repeated-launch and generation comparison, follow
+[Windows backend retest](WINDOWS_BACKEND_RETEST.md). This keeps diagnostic cache
+files separate and distinguishes reported cache hits, mixed execution paths and
+steady generation throughput.

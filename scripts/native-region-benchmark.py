@@ -41,6 +41,8 @@ def main():
     parser.add_argument("--dimension", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--compare", type=Path, help="A matched baseline output directory; fail on any changed chunk NBT")
+    parser.add_argument("--startup-debug", action="store_true",
+                        help="Enable detailed startup and region pipeline logs; keep separate from headline timings")
     parser.add_argument("--diagnostics", action="store_true",
                         help="Opt-in workload/wait attribution; keep these runs separate from headline timings")
     parser.add_argument("--parallel", type=int, choices=(1,2,4,8), default=1,
@@ -108,6 +110,10 @@ def main():
         os.environ["RETINA_SPECIALIZED_INTERPOLATION"] = "1" if args.specialized_interpolation == "enabled" else "0"
     args.out.mkdir(parents=True, exist_ok=False)
     lib = c.CDLL(str(args.library.resolve()))
+    if args.startup_debug:
+        lib.retina_configure_debug.argtypes = [c.c_int]
+        lib.retina_configure_debug.restype = None
+        lib.retina_configure_debug(1)
     lib.retina_initialize.restype = c.c_int
     lib.retina_generate_region.argtypes = [c.POINTER(Request), c.c_char_p, c.c_uint64, c.c_int32, c.c_char_p, c.c_uint64, c.POINTER(Report)]
     lib.retina_timing_snapshot.argtypes = [c.c_uint32, c.POINTER(Snapshot)]

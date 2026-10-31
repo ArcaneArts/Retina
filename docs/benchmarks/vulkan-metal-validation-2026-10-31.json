@@ -1,0 +1,100 @@
+{
+  "baseline_revision": "3fd5d28128cbef1d5628a9602785d4e0bcddd9a2",
+  "candidate_revision": "c1a6581bb95c4f2d5addb74a3e5cec40b3eaa021",
+  "baseline_sha256": "c446d53639b3f7d7e3f17d9f6524143e7bf1d821c1f323fefb18184d1da3019c",
+  "candidate_sha256": "2336caccb77fa36139f5f43723a4d970939670b652759279f280d2dda20695fc",
+  "trials": [
+    {
+      "trial": "00-baseline",
+      "chunks_per_second": 2476.284981773889,
+      "median_ms": 373.65310406312346,
+      "p95_region_ms": 679.7307526227088,
+      "initialize_ms": 33.30579213798046,
+      "load_and_bind_ms": 34.635291900485754,
+      "first_region_ms": 4589.051415678114,
+      "specialization_compile_ms": 30749.412792,
+      "readiness_wait_ms": 27370.731208007783,
+      "program_statuses": [
+        4
+      ],
+      "corpus": "ebfdebea103c047fe96b228cde357bda0bc72f830d07307ffb887a0c4cdc7608",
+      "identical_nbt_chunks": null
+    },
+    {
+      "trial": "01-candidate",
+      "chunks_per_second": 3190.5458476443505,
+      "median_ms": 307.2882080450654,
+      "p95_region_ms": 418.4981664409861,
+      "initialize_ms": 47.667957842350006,
+      "load_and_bind_ms": 56.98337499052286,
+      "first_region_ms": 558.0254173837602,
+      "specialization_compile_ms": 2071.330125,
+      "readiness_wait_ms": 0.0006253831088542938,
+      "program_statuses": [
+        4
+      ],
+      "corpus": "ebfdebea103c047fe96b228cde357bda0bc72f830d07307ffb887a0c4cdc7608",
+      "identical_nbt_chunks": 20480
+    },
+    {
+      "trial": "02-candidate",
+      "chunks_per_second": 2039.1054900029994,
+      "median_ms": 497.37937515601516,
+      "p95_region_ms": 674.9406867427753,
+      "initialize_ms": 60.354708693921566,
+      "load_and_bind_ms": 48.3799590729177,
+      "first_region_ms": 598.6257917247713,
+      "specialization_compile_ms": 2537.084125,
+      "readiness_wait_ms": 0.0007092021405696869,
+      "program_statuses": [
+        4
+      ],
+      "corpus": "ebfdebea103c047fe96b228cde357bda0bc72f830d07307ffb887a0c4cdc7608",
+      "identical_nbt_chunks": 20480
+    },
+    {
+      "trial": "03-baseline",
+      "chunks_per_second": 2349.0056786810956,
+      "median_ms": 434.65702096000314,
+      "p95_region_ms": 556.6069808788599,
+      "initialize_ms": 50.593375228345394,
+      "load_and_bind_ms": 61.4330000244081,
+      "first_region_ms": 707.6446670107543,
+      "specialization_compile_ms": 5677.9975,
+      "readiness_wait_ms": 624.3035839870572,
+      "program_statuses": [
+        4
+      ],
+      "corpus": "ebfdebea103c047fe96b228cde357bda0bc72f830d07307ffb887a0c4cdc7608",
+      "identical_nbt_chunks": null
+    }
+  ],
+  "guard": {
+    "baseline": {
+      "iterations": 40,
+      "mean_ms": 424.055254175,
+      "median_ms": 410.2209375,
+      "p95_ms": 619.599541,
+      "min_ms": 255.157792,
+      "max_ms": 865.340209,
+      "stdev_ms": 122.40204059774122
+    },
+    "candidate": {
+      "iterations": 40,
+      "mean_ms": 410.578169775,
+      "median_ms": 381.01016649999997,
+      "p95_ms": 585.72625,
+      "min_ms": 245.08975,
+      "max_ms": 809.309083,
+      "stdev_ms": 124.09521610212336
+    }
+  },
+  "notes": [
+    "AC power, normal powermode=0",
+    "One caller, five warmups, twenty measured regions per process; A/B/B/A order",
+    "Lighting disabled: native region/MCA completion boundary, not gameplay FPS or live activation",
+    "Desktop CPU load varied; no consistent improvement claim",
+    "All measured status=4: specialized materials ready, terrain policy retains mixed interpretation/specialization",
+    "First/repeated process startup differs from a proven cold GPU-driver cache"
+  ]
+}
