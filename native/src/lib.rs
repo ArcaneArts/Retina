@@ -1602,6 +1602,17 @@ pub unsafe extern "C" fn retina_gpu_program_snapshot(
     })
 }
 /// # Safety
+/// output points to a writable version-1 program diagnostic snapshot. Status 0
+/// means promotion is not requested; 1 pending, 2 optimized-ready, 3 failed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_gpu_interpreter_snapshot(profile: u32, output: *mut pipeline::ProgramSnapshot) -> i32 {
+    boundary(|| {
+        if output.is_null() { return Err("null interpreter snapshot".into()); }
+        unsafe { *output = shared_engine()?.pipeline.interpreter_snapshot(profile); }
+        Ok(())
+    })
+}
+/// # Safety
 /// output must point to a writable timing snapshot.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_timing_snapshot(
