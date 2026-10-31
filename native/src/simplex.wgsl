@@ -148,14 +148,15 @@ fn biome_sites(@builtin(global_invocation_id) id: vec3<u32>) {
         if fitness < best { best = fitness; biome = index; }
     }
     if climate_table.count.x > 0u {
-        let noise = climate_table.noise;
-        var frequency = noise.frequency; var persistence = 1.0; var sum = 0.0; var weights = 0.0;
-        for(var octave=0u;octave<noise.count;octave++) {
-            let weight = noise.modifiers[octave]*persistence;
+        // Read immutable storage fields directly, as registry_noise does above.
+        // Copying NoiseProfile also copies its whole fixed-size modifier array.
+        var frequency = climate_table.noise.frequency; var persistence = 1.0; var sum = 0.0; var weights = 0.0;
+        for(var octave=0u;octave<climate_table.noise.count;octave++) {
+            let weight = climate_table.noise.modifiers[octave]*persistence;
             sum += simplex(point*frequency,request.seed_low+31676u+octave*1013u,request.seed_high)*weight;
             weights += weight; frequency *= 2.0; persistence *= 0.5;
         }
-        let weirdness = select(clamp(sum/max(weights,0.0001)*noise.amplitude*1.6,-1.0,1.0),weirdness_value,bytecode[0]>0u);
+        let weirdness = select(clamp(sum/max(weights,0.0001)*climate_table.noise.amplitude*1.6,-1.0,1.0),weirdness_value,bytecode[0]>0u);
         biome=climate_search(array<f32,6>(climate.x,climate.y,climate.z,climate.w,weirdness,0.0),true,false,bytecode[0]==0u,biome,best);
     }
     sites[id.y * SITE_COUNT + id.x] = Site(point, biome, 0u, climate);
