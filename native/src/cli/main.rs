@@ -1,4 +1,5 @@
 mod args;
+mod definitions;
 mod output;
 
 use retina_worldgen::{
@@ -17,7 +18,9 @@ use std::{
 
 struct CacheFlush;
 impl Drop for CacheFlush {
-    fn drop(&mut self) { retina_worldgen::retina_flush_pipeline_caches(); }
+    fn drop(&mut self) {
+        retina_worldgen::retina_flush_pipeline_caches();
+    }
 }
 fn main() -> ExitCode {
     let _cache_flush = CacheFlush;
@@ -27,6 +30,8 @@ fn main() -> ExitCode {
             return ExitCode::SUCCESS;
         }
         Ok(args::Command::Generate(options)) => options,
+        Ok(args::Command::Init(options)) => return metadata_exit(definitions::initialize(options)),
+        Ok(args::Command::Inspect(path)) => return metadata_exit(definitions::inspect(&path)),
         Err(error) => {
             eprintln!("retina: {error}\nUse retina --help");
             return ExitCode::from(2);
@@ -45,6 +50,19 @@ fn main() -> ExitCode {
     match generate(options, &cancelled) {
         Ok(false) => ExitCode::SUCCESS,
         Ok(true) => ExitCode::from(130),
+        Err(error) => {
+            eprintln!("retina: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn metadata_exit(result: Result<serde_json::Value, String>) -> ExitCode {
+    match result {
+        Ok(metadata) => {
+            println!("{metadata}");
+            ExitCode::SUCCESS
+        }
         Err(error) => {
             eprintln!("retina: {error}");
             ExitCode::FAILURE

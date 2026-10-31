@@ -445,18 +445,26 @@ Build from the repository root:
 ```sh
 cargo build --manifest-path native/Cargo.toml --release --bin retina
 ./native/target/release/retina --help
-./native/target/release/retina generate \
-  --definition ./retina.dat \
+./native/target/release/retina init \
+  --catalog ./assets/world-definitions/26.3/vanilla-binary/retina-catalog.dat \
+  --world ./generated-world --seed 12345
+./native/target/release/retina inspect --world ./generated-world
+RETINA_GPU_BACKEND=cpu ./native/target/release/retina generate \
+  --definition ./generated-world/retina.dat \
   --dimension minecraft:overworld \
-  --region-min=-4,-4 --region-max=4,4 \
+  --region-min=0,0 --region-max=0,0 \
   --output ./generated-world
 ```
 
 The executable is `retina.exe` on Windows. Both range endpoints are inclusive,
-using region coordinates (32x32 chunks). The example selects 81 regions. Rows
-advance in Z, then X within each row. There is no seed override: copying the
-file reproduces its exact seed-bound supported generation. A supported GPU
-compute adapter remains required; neither Minecraft, a JVM nor datapack files
+using region coordinates (32x32 chunks). The example selects one region. Rows
+advance in Z, then X within each row. `init` uses the existing reusable catalog
+materializer and accepts `--variant` (default `normal`); it never replaces an
+existing `retina.dat`. `inspect --definition FILE` or `--world DIRECTORY` reads
+the authoritative file. These metadata commands initialize no generation backend.
+Generation has no seed override: copying the file reproduces its exact seed-bound
+supported generation. A permitted hardware GPU is preferred, with native CPU
+fallback when unavailable. Neither Minecraft, a JVM nor datapack files
 are runtime dependencies. Unsupported records report their saved reason when
 selected. Historical files with deferred End records first need the one-time
 adapter upgrade when their world opens in the mod; the CLI has no live source
@@ -469,7 +477,8 @@ paths. Newly compiled supported End definitions execute through the same saved
 definition path as the other dimensions.
 Use `--compression zlib` (default) or `--compression lz4` to select output
 compression independently of the snapshot. `RAYON_NUM_THREADS` and
-`RETINA_REGION_THREADS` control existing CPU execution pools.
+`RETINA_REGION_THREADS` control CPU execution pools; the latter bounds the combined
+native CPU dependency/terrain workers as described in [CPU controls](CPU_BACKEND.md).
 
 Progress and errors go to stderr; completed generation reports a JSON summary
 on stdout with counts, backend, seed, DataVersion and elapsed time. Exit codes

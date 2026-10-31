@@ -93,6 +93,7 @@ jobs:
         run: |
           cargo test --manifest-path native/Cargo.toml --locked --no-default-features --lib --target-dir build/cpu-contract-target cpu:: -- --test-threads=2
           cargo test --manifest-path native/Cargo.toml --locked --no-default-features --lib --target-dir build/cpu-contract-target program::opcode::tests
+          cargo test --manifest-path native/Cargo.toml --locked --no-default-features --bin retina --target-dir build/cpu-contract-target
       - uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.target }}-${{ github.sha }}
