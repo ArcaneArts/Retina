@@ -5,12 +5,12 @@ use super::{
     noise::*,
     program::Context,
 };
+use crate::spatial_hash::SamplingMap;
 use crate::{
     ChunkRequest,
     geology::ColumnHalo,
     profile::{Column, WorldProfile},
 };
-use std::collections::HashMap;
 mod carvers;
 #[derive(Clone, Copy, Default)]
 pub(crate) struct ProofStats {
@@ -23,9 +23,9 @@ pub struct Caves<'a> {
     request: ChunkRequest,
     columns: &'a ColumnHalo,
     sampler: Sampler<'a>,
-    nodes: HashMap<[i32; 3], [f32; 4]>,
-    exterior: HashMap<[i32; 2], [f32; 2]>,
-    biomes: HashMap<[i32; 3], u32>,
+    nodes: SamplingMap<[i32; 3], [f32; 4]>,
+    exterior: SamplingMap<[i32; 2], [f32; 2]>,
+    biomes: SamplingMap<[i32; 3], u32>,
     proof_stats: ProofStats,
 }
 impl<'a> Caves<'a> {
@@ -40,9 +40,9 @@ impl<'a> Caves<'a> {
             request,
             columns,
             sampler: fields.sampler(profile, request),
-            nodes: HashMap::new(),
-            exterior: HashMap::new(),
-            biomes: HashMap::new(),
+            nodes: SamplingMap::default(),
+            exterior: SamplingMap::default(),
+            biomes: SamplingMap::default(),
             proof_stats: ProofStats::default(),
         }
     }
