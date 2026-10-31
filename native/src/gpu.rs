@@ -9,6 +9,7 @@ use crate::timings;
 mod base_pipeline;
 mod policy;
 mod health;
+mod init;
 use policy::Policy;
 use base_pipeline::BasePipeline;
 #[cfg(test)]
@@ -184,30 +185,18 @@ impl Gpu {
     pub(crate) fn ore_planner(&self) -> crate::geology::raster_gpu::Gpu {
         crate::geology::raster_gpu::Gpu::new(self.device.clone(), self.queue.clone())
     }
+    #[cfg(test)]
     pub(crate) fn new(metrics: std::sync::Arc<crate::pipeline::Metrics>) -> Result<Self, String> {
+        Self::try_new(metrics).map_err(String::from)
+    }
+    pub(crate) fn try_new(metrics: std::sync::Arc<crate::pipeline::Metrics>) -> Result<Self, crate::compute::InitError> {
         Self::new_with_policy(metrics, Policy::from_env)
     }
 
-    fn new_with_policy(metrics: std::sync::Arc<crate::pipeline::Metrics>, resolve: fn(wgpu::Features, u32) -> Policy) -> Result<Self, String> {
+    fn new_with_policy(metrics: std::sync::Arc<crate::pipeline::Metrics>, resolve: fn(wgpu::Features, u32) -> Policy) -> Result<Self, crate::compute::InitError> {
         let backends = crate::gpu_backend::selected()?;
-        let _instance_stage = crate::startup::Stage::new(format!("GPU instance creation requested={backends:?}"));
-        let instance = wgpu::Instance::new(crate::gpu_backend::instance_descriptor(backends));
-        drop(_instance_stage);
-        let _adapter_stage = crate::startup::Stage::new("GPU adapter selection (high performance)");
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        }))
-        .map_err(|e| format!("cannot create a GPU compute adapter: {e}"))?;
-        drop(_adapter_stage);
-        let info = adapter.get_info();
-        crate::startup::message(format_args!("Selected adapter: backend={:?} name={} type={:?} vendor={:#x} device={:#x} driver={} driver_info={}", info.backend, info.name, info.device_type, info.vendor, info.device, info.driver, info.driver_info));
-        let backend = format!("{:?}: {}", info.backend, info.name);
-        let policy = resolve(adapter.features(), adapter.limits().max_immediate_size);
-        crate::startup::message(format_args!("GPU generation policy (shared defaults): {policy:?}; adapter_immediates={} max_immediate_size={}",
-            adapter.features().contains(wgpu::Features::IMMEDIATES), adapter.limits().max_immediate_size));
+        let init::Device {device,queue,info,policy}=init::open(backends,resolve)?;
+        let backend=format!("{:?}: {}",info.backend,info.name);
         let Policy {
             specialized_terrain, specialized_interpolation, lake_point_cache,
             lake_primed_corners, lake_sparse_fields, interpreter_columns,
@@ -216,29 +205,6 @@ impl Gpu {
             cached_density_masks, interpreter_preload,
         } = policy;
         crate::startup::capture::install(&info);
-        let _device_stage = crate::startup::Stage::new("GPU device creation");
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("Retina terrain device"),
-            required_features: (adapter.features() & (wgpu::Features::TIMESTAMP_QUERY | wgpu::Features::PIPELINE_CACHE))
-                | if interpreter_dispatch || material_dispatch {
-                    wgpu::Features::IMMEDIATES
-                } else {
-                    wgpu::Features::empty()
-                },
-            required_limits: wgpu::Limits {
-                max_immediate_size: if interpreter_dispatch || material_dispatch {
-                    4
-                } else {
-                    0
-                },
-                max_storage_buffer_binding_size: adapter.limits().max_storage_buffer_binding_size,
-                max_buffer_size: adapter.limits().max_buffer_size,
-                ..Default::default()
-            },
-            ..Default::default()
-        }))
-        .map_err(|e| format!("cannot create the GPU compute device: {e}"))?;
-        drop(_device_stage);
         let health = health::Health::install(&device, &backend);
         let driver_cache = crate::pipeline_cache::Cache::open(&device, "terrain");
         crate::startup::message(format_args!("Dispatch: specialized_terrain={specialized_terrain} specialized_interpolation={specialized_interpolation} interpreter_columns={interpreter_columns} interpreter_dispatch={interpreter_dispatch} material_dispatch={material_dispatch}"));

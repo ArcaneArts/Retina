@@ -1,5 +1,5 @@
-//! Backend selection is frozen when requested, before creating any GPU device.
-//! Explicit requests go to wgpu; unsupported hardware fails at adapter creation.
+//! Backend requests are frozen before initialization. Graphics APIs remain
+//! restricted to the requested set; actual availability can select native CPU.
 use std::sync::OnceLock;
 
 const AUTO: wgpu::Backends = wgpu::Backends::METAL
@@ -13,6 +13,7 @@ fn from_code(code: u32) -> Result<wgpu::Backends, String> {
         1 => Ok(wgpu::Backends::VULKAN),
         2 => Ok(wgpu::Backends::DX12),
         3 => Ok(wgpu::Backends::METAL),
+        4 => Ok(wgpu::Backends::empty()),
         0x100..=0x107 => {
             let mut backends = wgpu::Backends::empty();
             if code & 1 != 0 { backends |= wgpu::Backends::VULKAN; }
@@ -29,7 +30,8 @@ fn parse(value: &str) -> Result<wgpu::Backends, String> {
         "vulkan" => 1,
         "dx12" => 2,
         "metal" => 3,
-        _ => return Err(format!("unknown RETINA_GPU_BACKEND {value:?}; use auto, vulkan, dx12 or metal")),
+        "cpu" => 4,
+        _ => return Err(format!("unknown RETINA_GPU_BACKEND {value:?}; use auto, cpu, vulkan, dx12 or metal")),
     })
 }
 fn configure(selected: &OnceLock<Result<wgpu::Backends, String>>, code: u32) -> Result<(), String> {
@@ -45,7 +47,6 @@ pub(crate) fn selected() -> Result<wgpu::Backends, String> {
         Err(std::env::VarError::NotPresent) => Ok(AUTO),
         Err(error) => Err(format!("cannot read RETINA_GPU_BACKEND: {error}")),
     }).clone()?;
-    if backends.is_empty() { return Err("No GPU backend is allowed by Retina configuration and backend override".into()); }
     Ok(backends)
 }
 
@@ -67,7 +68,7 @@ pub(crate) fn instance_descriptor(backends: wgpu::Backends) -> wgpu::InstanceDes
     descriptor
 }
 
-/// Configure before GPU initialization. 0=auto, 1=Vulkan, 2=DX12, 3=Metal.
+/// Configure before GPU initialization. 0=auto, 1=Vulkan, 2=DX12, 3=Metal, 4=native CPU.
 /// 0x100 | mask selects a set: bit 0=Vulkan, bit 1=DX12, bit 2=Metal.
 #[unsafe(no_mangle)]
 pub extern "C" fn retina_configure_gpu_backend(code: u32) -> i32 {
