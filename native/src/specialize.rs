@@ -12,6 +12,7 @@ mod interpreter_dispatch;
 pub(crate) mod interpreter_reuse;
 mod material_dispatch;
 mod interpreter_promotion;
+pub(crate) mod incremental;
 pub(crate) mod reuse_cache;
 
 #[derive(Clone, Copy, Default, serde::Deserialize, PartialEq)]
@@ -480,6 +481,9 @@ fn source_columns_options(
 #[derive(Clone)]
 pub(crate) struct Pipelines {
     pub kind: &'static str,
+    pub complete: bool,
+    world_kinds: HashMap<String, &'static str>,
+    cave_kinds: HashMap<String, &'static str>,
     world: HashMap<String, wgpu::ComputePipeline>,
     cave: HashMap<String, wgpu::ComputePipeline>,
     pub horizontal_fields: u32,
@@ -512,16 +516,20 @@ impl Selected<'_> {
 }
 impl Pipelines {
     pub fn world_kind(&self, entry: &str) -> &'static str {
-        if self.reuse.is_some_and(|p| p.world_reuses(entry)) { "fallback" } else { self.kind }
+        if !self.world.contains_key(entry) || self.reuse.is_some_and(|p| p.world_reuses(entry)) { "fallback" }
+        else { self.world_kinds.get(entry).copied().unwrap_or(self.kind) }
     }
     pub fn cave_kind(&self, entry: &str) -> &'static str {
-        if self.reuse.is_some_and(|p| p.cave_reuses(entry)) { "fallback" } else { self.kind }
+        if !self.cave.contains_key(entry) || self.reuse.is_some_and(|p| p.cave_reuses(entry)) { "fallback" }
+        else { self.cave_kinds.get(entry).copied().unwrap_or(self.kind) }
     }
     /// Overlay the loaded profile's exact compatibility mask on complete generic
     /// pipelines. Pipeline clones retain the same device objects and selectors.
     pub fn with_reuse(&self, reuse: interpreter_reuse::Plan) -> Self {
         Self {
             kind: self.kind,
+            complete: self.complete,
+            world_kinds: self.world_kinds.clone(), cave_kinds: self.cave_kinds.clone(),
             world: self.world.clone(),
             cave: self.cave.clone(),
             horizontal_fields: self.horizontal_fields,
@@ -550,14 +558,14 @@ impl Pipelines {
         }
     }
     pub fn world_or<'a>(&'a self, entry: &str, base: impl Into<Selected<'a>>) -> Selected<'a> {
-        if self.reuse.is_some_and(|p| p.world_reuses(entry)) {
+        if !self.complete && !self.world.contains_key(entry) || self.reuse.is_some_and(|p| p.world_reuses(entry)) {
             base.into()
         } else {
             self.world_selected(entry)
         }
     }
     pub fn cave_or<'a>(&'a self, entry: &str, base: impl Into<Selected<'a>>) -> Selected<'a> {
-        if self.reuse.is_some_and(|p| p.cave_reuses(entry)) {
+        if !self.complete && !self.cave.contains_key(entry) || self.reuse.is_some_and(|p| p.cave_reuses(entry)) {
             base.into()
         } else {
             self.cave_selected(entry)
@@ -573,6 +581,7 @@ impl Pipelines {
 #[derive(Default)]
 pub(crate) struct State {
     result: Mutex<Option<Result<Arc<Pipelines>, String>>>,
+    partial: Mutex<Option<Arc<Pipelines>>>,
     done: Condvar,
     pub progress: Arc<Progress>,
 }
@@ -586,8 +595,16 @@ pub(crate) struct Progress {
     emitted: u32,
     graphs: u32,
     horizontal_fields: u32,
+    groups_ready: std::sync::atomic::AtomicU32,
+    groups_total: std::sync::atomic::AtomicU32,
 }
 impl Progress {
+    pub fn group_snapshot(&self) -> crate::pipeline::SpecializationSnapshot {
+        use std::sync::atomic::Ordering;
+        crate::pipeline::SpecializationSnapshot { version: 1, status: self.status.load(Ordering::Acquire),
+            ready_groups: self.groups_ready.load(Ordering::Acquire), total_groups: self.groups_total.load(Ordering::Relaxed),
+            compile_nanos: self.nanos.load(Ordering::Relaxed), source_bytes: self.source_bytes }
+    }
     pub fn snapshot(&self) -> crate::pipeline::ProgramSnapshot {
         use std::sync::atomic::Ordering;
         crate::pipeline::ProgramSnapshot {
@@ -610,6 +627,9 @@ impl State {
         while wait && result.is_none() {
             result = self.done.wait(result).unwrap_or_else(|e| e.into_inner());
         }
+        if !wait && !matches!(result.as_ref(), Some(Ok(_))) {
+            if let Some(partial) = self.partial.lock().unwrap_or_else(|e| e.into_inner()).clone() { return Ok(Some(partial)); }
+        }
         result.as_ref().cloned().transpose()
     }
 }
@@ -619,6 +639,7 @@ struct Job {
     shared_dispatch: bool,
     policy: crate::startup::InterpreterPolicy,
     promotion: Option<Arc<State>>,
+    incremental: bool,
     program: String,
     state: Weak<State>,
     horizontal_fields: u32,
@@ -641,6 +662,7 @@ pub(crate) struct Compiler {
     material_dispatch: bool,
     specialized_interpolation: bool,
     tiered_interpreter: bool,
+    incremental_specialization: bool,
     optimized_interpreters: reuse_cache::Cache<(String, Option<interpreter_reuse::Plan>, bool), State>,
     terrain_fast_cache: Option<Arc<crate::pipeline_cache::Cache>>,
     #[cfg(test)]
@@ -666,6 +688,7 @@ impl Compiler {
         let device = device.clone();
         let tiered_interpreter = device.adapter_info().backend == wgpu::Backend::Vulkan
             && std::env::var("RETINA_VULKAN_TIERED_INTERPRETER").as_deref() == Ok("1");
+        let incremental_specialization = std::env::var("RETINA_INCREMENTAL_SPECIALIZATION").as_deref() == Ok("1");
         let fast_cache = tiered_interpreter.then(|| crate::pipeline_cache::Cache::open_variant(&device, "compiler", "fast-interpreter")).flatten();
         let terrain_fast_cache = tiered_interpreter.then(|| crate::pipeline_cache::Cache::open_variant(&device, "terrain", "fast-interpreter")).flatten();
         let world = world.clone();
@@ -709,6 +732,7 @@ impl Compiler {
                                 job.material_dispatch,
                                 job.specialized_interpolation,
                                 driver_cache.as_deref(),
+                                job.incremental.then_some(&state),
                                 #[cfg(test)]
                                 !job.reference_specialization,
                             )
@@ -745,8 +769,10 @@ impl Compiler {
                     } else {
                         3
                     };
+                    let succeeded = result.is_ok();
                     *state.result.lock().unwrap_or_else(|e| e.into_inner()) =
                         Some(result.map(Arc::new));
+                    if succeeded { *state.partial.lock().unwrap_or_else(|e| e.into_inner()) = None; }
                     state
                         .progress
                         .status
@@ -761,6 +787,7 @@ impl Compiler {
             material_dispatch,
             specialized_interpolation,
             tiered_interpreter,
+            incremental_specialization,
             optimized_interpreters: reuse_cache::Cache::new(8),
             terrain_fast_cache,
             #[cfg(test)]
@@ -800,6 +827,7 @@ impl Compiler {
                 shared_dispatch: true,
                 policy: if self.tiered_interpreter { crate::startup::InterpreterPolicy::Fast } else { crate::startup::InterpreterPolicy::Inherited },
                 promotion,
+                incremental: false,
                 program: source,
                 state: Arc::downgrade(&state),
                 horizontal_fields: 0,
@@ -889,6 +917,7 @@ impl Compiler {
                 .map_or(0, |a| if a.enabled { 2 } else { 1 })
         )
         .unwrap();
+        if self.incremental_specialization { source.push_str("\n// incremental specialization cohorts\n"); }
         let key = (source, terrain);
         if let Some(state) = self.cache.get(&key) {
             state
@@ -901,6 +930,7 @@ impl Compiler {
             progress: Arc::new(Progress {
                 status: std::sync::atomic::AtomicU32::new(1),
                 source_bytes: key.0.len() as u64,
+                groups_total: std::sync::atomic::AtomicU32::new(if self.incremental_specialization { 3 } else { 0 }),
                 nodes: program.all_programs().map(|p| p.nodes.len() as u32).sum(),
                 emitted: key.0.matches("// retained node\n").count() as u32,
                 graphs: key.0.matches("fn graph_").count() as u32 - 1,
@@ -915,6 +945,7 @@ impl Compiler {
                 shared_dispatch: false,
                 policy: crate::startup::InterpreterPolicy::Inherited,
                 promotion: None,
+                incremental: self.incremental_specialization,
                 program: key.0.clone(),
                 state: Arc::downgrade(&state),
                 horizontal_fields,
@@ -966,6 +997,7 @@ pub(crate) fn compile(
         false,
         false,
         None,
+        None,
         #[cfg(test)]
         true,
     )
@@ -998,6 +1030,7 @@ pub(crate) fn compile_interpreter(
         false,
         false,
         driver_cache,
+        None,
         #[cfg(test)]
         true,
     )
@@ -1021,6 +1054,7 @@ fn compile_program(
     material_dispatch: bool,
     specialized_interpolation: bool,
     driver_cache: Option<&crate::pipeline_cache::Cache>,
+    incremental: Option<&Arc<State>>,
     #[cfg(test)] outline_specialized: bool,
 ) -> Result<Pipelines, String> {
     let _startup = crate::startup::Stage::new(format!("compile world pipelines specialized={specialized} terrain={terrain} program_bytes={}", program.len()));
@@ -1030,8 +1064,10 @@ fn compile_program(
     #[cfg(test)]
     let total_start = Instant::now();
     let result = (|| {
-        let mut dispatches = HashMap::new();
-        let mut make = |program: &str,
+        let dispatches = std::cell::RefCell::new(HashMap::new());
+        let root_program = program;
+        let root_world_module = std::cell::RefCell::new(None::<(String, wgpu::ShaderModule)>);
+        let make = |program: &str,
                         prefix: &str,
                         suffix: &str,
                         layout: &wgpu::BindGroupLayout,
@@ -1105,9 +1141,21 @@ fn compile_program(
             let bytes = source.len();
             #[cfg(test)]
             let module_start = Instant::now();
-            let module = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
-                label: Some("Retina specialized registry graphs"),
-                source: wgpu::ShaderSource::Wgsl(source.into()),
+            let module_scope = device.push_error_scope(wgpu::ErrorFilter::Validation);
+            // Fields and remaining world entries use the exact same immutable
+            // root template/options. Parse it once while publishing separately.
+            let cache_root = incremental.is_some() && prefix == include_str!("simplex.wgsl")
+                && suffix == include_str!("noise3.wgsl") && std::ptr::eq(program.as_ptr(), root_program.as_ptr())
+                && program.len() == root_program.len();
+            let cached = cache_root.then(|| root_world_module.borrow().as_ref()
+                .filter(|(identity, _)| identity == &source).map(|(_, module)| module.clone())).flatten();
+            let module = cached.unwrap_or_else(|| {
+                let identity = cache_root.then(|| source.clone());
+                let module = crate::startup::shader(&device, wgpu::ShaderModuleDescriptor {
+                    label: Some("Retina specialized registry graphs"), source: wgpu::ShaderSource::Wgsl(source.into()),
+                });
+                if let Some(identity) = identity { *root_world_module.borrow_mut() = Some((identity, module.clone())); }
+                module
             });
             let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Retina specialized registry graphs"),
@@ -1143,20 +1191,23 @@ fn compile_program(
                     ((*entry).to_owned(), pipeline)
                 })
                 .collect();
+            if let Some(error) = pollster::block_on(module_scope.pop()) {
+                return Err(format!("GPU module cohort: {error}"));
+            }
             if shared_dispatch {
                 let pipeline = &pipelines[wrapper];
                 Ok(entries
                     .iter()
                     .enumerate()
                     .map(|(mode, entry)| {
-                        dispatches.insert((*entry).to_owned(), mode as u32);
+                        dispatches.borrow_mut().insert((*entry).to_owned(), mode as u32);
                         ((*entry).to_owned(), pipeline.clone())
                     })
                     .collect())
             } else if shared_materials {
                 let pipeline = pipelines.remove(material_dispatch::ENTRY).unwrap();
                 for (mode, entry) in ["material_counts", "material_emit"].into_iter().enumerate() {
-                    dispatches.insert(entry.to_owned(), mode as u32);
+                    dispatches.borrow_mut().insert(entry.to_owned(), mode as u32);
                     pipelines.insert(entry.to_owned(), pipeline.clone());
                 }
                 Ok(pipelines)
@@ -1199,13 +1250,74 @@ fn compile_program(
             world_entries.retain(|entry| *entry != "lake_density");
         }
         world_entries.retain(|entry| !reuse.is_some_and(|p| p.world_reuses(entry)));
-        let mut world: HashMap<String, wgpu::ComputePipeline> = make(
-            program,
-            include_str!("simplex.wgsl"),
-            include_str!("noise3.wgsl"),
-            world_layout,
-            &world_entries,
-        )?;
+        let compile_caves = || -> Result<HashMap<String, wgpu::ComputePipeline>, String> {
+            let material_source = if material_layers {
+                format!(
+                    "{}\n{}",
+                    include_str!("aquifers.wgsl"),
+                    include_str!("materials.wgsl")
+                )
+            } else {
+                String::new()
+            };
+            let mut cave_entries = vec![
+                "underground_queries",
+                "cave_nodes",
+                "cave_exterior",
+                "cave_mask",
+            ];
+            if material_layers {
+                cave_entries.extend(["material_counts", "material_emit"]);
+            }
+            if aquifers > 0 {
+                cave_entries.push("aquifer_mask");
+            }
+            if aquifers > 1 {
+                cave_entries.extend(["aquifer_surface", "aquifer_centers", "aquifer_barrier"]);
+            }
+            cave_entries.retain(|entry| !reuse.is_some_and(|p| p.cave_reuses(entry)));
+            let mut cave_pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+                program,
+                include_str!("caves.wgsl"),
+                &material_source,
+                cave,
+                &cave_entries,
+            )?;
+            if cached_masks || cached_nodes {
+                let cached_program = crate::program::composition::cached_source(program);
+                let mut entries = ["cave_exterior", "cave_mask", "aquifer_mask"]
+                    .into_iter()
+                    .filter(|e| cached_masks && cave_entries.contains(e))
+                    .collect::<Vec<_>>();
+                if cached_nodes {
+                    entries.push("cave_nodes");
+                }
+                let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
+                    &cached_program,
+                    include_str!("caves.wgsl"),
+                    &material_source,
+                    cave,
+                    &entries,
+                )?;
+                for (entry, pipeline) in pipelines {
+                    cave_pipelines.insert(format!("{entry}_cached"), pipeline);
+                }
+            }
+            Ok(cave_pipelines)
+        };
+        let field_entries = if incremental.is_some() {
+            world_entries.iter().copied().filter(|entry| *entry == "horizontal_nodes" || entry.starts_with("interpolation_nodes_")).collect::<Vec<_>>()
+        } else { world_entries.clone() };
+        let mut world = make(program, include_str!("simplex.wgsl"), include_str!("noise3.wgsl"), world_layout, &field_entries)?;
+        let mut cave_pipelines = HashMap::new();
+        if let Some(state) = incremental {
+            incremental::publish(state, 1, "interpolation-fields", &world, &cave_pipelines, &dispatches, horizontal_fields);
+            cave_pipelines = compile_caves()?;
+            incremental::publish(state, 2, "caves-and-materials", &world, &cave_pipelines, &dispatches, horizontal_fields);
+            let mut remaining = world_entries.iter().copied().filter(|entry| !field_entries.contains(entry)).collect::<Vec<_>>();
+            remaining.sort_by_key(|entry| *entry == "main");
+            world.extend(make(program, include_str!("simplex.wgsl"), include_str!("noise3.wgsl"), world_layout, &remaining)?);
+        }
         if sparse_lakes {
             let pipeline = world.remove("lake_sparse_fields").unwrap();
             world.insert("lake_sparse_fields_cached".to_owned(), pipeline);
@@ -1250,65 +1362,18 @@ fn compile_program(
                 world.insert(format!("{entry}_cached"), pipeline);
             }
         }
-        let material_source = if material_layers {
-            format!(
-                "{}\n{}",
-                include_str!("aquifers.wgsl"),
-                include_str!("materials.wgsl")
-            )
-        } else {
-            String::new()
-        };
-        let mut cave_entries = vec![
-            "underground_queries",
-            "cave_nodes",
-            "cave_exterior",
-            "cave_mask",
-        ];
-        if material_layers {
-            cave_entries.extend(["material_counts", "material_emit"]);
-        }
-        if aquifers > 0 {
-            cave_entries.push("aquifer_mask");
-        }
-        if aquifers > 1 {
-            cave_entries.extend(["aquifer_surface", "aquifer_centers", "aquifer_barrier"]);
-        }
-        cave_entries.retain(|entry| !reuse.is_some_and(|p| p.cave_reuses(entry)));
-        let mut cave_pipelines: HashMap<String, wgpu::ComputePipeline> = make(
-            program,
-            include_str!("caves.wgsl"),
-            &material_source,
-            cave,
-            &cave_entries,
-        )?;
-        if cached_masks || cached_nodes {
-            let cached_program = crate::program::composition::cached_source(program);
-            let mut entries = ["cave_exterior", "cave_mask", "aquifer_mask"]
-                .into_iter()
-                .filter(|e| cached_masks && cave_entries.contains(e))
-                .collect::<Vec<_>>();
-            if cached_nodes {
-                entries.push("cave_nodes");
-            }
-            let pipelines: HashMap<String, wgpu::ComputePipeline> = make(
-                &cached_program,
-                include_str!("caves.wgsl"),
-                &material_source,
-                cave,
-                &entries,
-            )?;
-            for (entry, pipeline) in pipelines {
-                cave_pipelines.insert(format!("{entry}_cached"), pipeline);
-            }
-        }
+        if let Some(state) = incremental {
+            incremental::publish(state, 3, "world-and-query-variants", &world, &cave_pipelines, &dispatches, horizontal_fields);
+        } else { cave_pipelines = compile_caves()?; }
         Ok(Pipelines {
             kind: if specialized { "specialized" } else { "interpreter" },
+            complete: true,
+            world_kinds: HashMap::new(), cave_kinds: HashMap::new(),
             world,
             cave: cave_pipelines,
             horizontal_fields,
             reuse,
-            dispatches,
+            dispatches: dispatches.into_inner(),
             promotion: None,
             optimization_progress: None,
         })

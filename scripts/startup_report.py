@@ -27,7 +27,7 @@ def summarize(text):
             feedback.append({"id": int(hit[1]), "entry": hit[2], "valid": hit[3] == "true",
                              "cache_supplied": hit[4] == "true", "cache_hit": hit[5],
                              "driver_ms": float(hit[6])})
-        for prefix in ("Region GPU timings ", "Region generation timings "):
+        for prefix in ("Region GPU timings ", "Region generation timings ", "Specialization cohort "):
             if prefix in line:
                 try:
                     regions.append({"kind": prefix.strip(), **json.loads(line.split(prefix, 1)[1])})

@@ -34,6 +34,8 @@ class PipelineSnapshot(c.Structure):
                 ("completed", "device_span_nanos", "device_gap_nanos", "unavailable_timestamp_pairs")]
 class ProgramSnapshot(c.Structure):
     _fields_ = [("version", c.c_uint32), ("status", c.c_uint32), ("compile_nanos", c.c_uint64), ("source_bytes", c.c_uint64)] + [(s,c.c_uint32) for s in ("nodes","emitted","graphs","horizontal_fields")] + [(s,c.c_uint64) for s in ("cache_hits","upload_bytes","readback_bytes")]
+class SpecializationSnapshot(c.Structure):
+    _fields_ = [(s, c.c_uint32) for s in ("version", "status", "ready_groups", "total_groups")] + [(s, c.c_uint64) for s in ("compile_nanos", "source_bytes")]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -72,6 +74,7 @@ def main():
     parser.add_argument("--interpreter-dispatch", choices=("enabled", "disabled"), help="Shared compact interpreter entrypoints or independent pipelines")
     parser.add_argument("--interpreter-preload", choices=("enabled", "disabled"), help="Overlap compact density pipeline preparation with profile parsing")
     parser.add_argument("--tiered-interpreter", choices=("enabled", "disabled"), help="Vulkan-only fast initial interpreter followed by optimized replacement")
+    parser.add_argument("--incremental-specialization", choices=("enabled", "disabled"), help="Publish validated specialization groups before the complete bundle")
     parser.add_argument("--interpreter-columns", choices=("enabled", "disabled"), help="Reuse resident X/Z expressions in compact interpreted density programs")
     parser.add_argument("--aquifer-columns", choices=("enabled", "disabled"), help="Reuse invocation-local X/Z expressions in registered aquifer surface searches")
     parser.add_argument("--material-dispatch", choices=("enabled", "disabled"), help="Share the specialized material count/emit pipeline")
@@ -102,6 +105,8 @@ def main():
         os.environ["RETINA_INTERPRETER_PRELOAD"] = "1" if args.interpreter_preload == "enabled" else "0"
     if args.tiered_interpreter:
         os.environ["RETINA_VULKAN_TIERED_INTERPRETER"] = "1" if args.tiered_interpreter == "enabled" else "0"
+    if args.incremental_specialization:
+        os.environ["RETINA_INCREMENTAL_SPECIALIZATION"] = "1" if args.incremental_specialization == "enabled" else "0"
     if args.interpreter_columns:
         os.environ["RETINA_INTERPRETER_COLUMNS"] = "1" if args.interpreter_columns == "enabled" else "0"
     if args.aquifer_columns:
@@ -299,6 +304,11 @@ def main():
         if interpreter:
             optimized = ProgramSnapshot(); check(interpreter(profile, c.byref(optimized)))
             data["interpreter_optimization"] = {name: getattr(optimized, name) for name, _ in ProgramSnapshot._fields_}
+        groups = getattr(lib, "retina_gpu_specialization_snapshot", None)
+        if groups:
+            groups.argtypes = [c.c_uint32, c.POINTER(SpecializationSnapshot)]
+            snapshot = SpecializationSnapshot(); check(groups(profile, c.byref(snapshot)))
+            data["specialization_groups"] = {name: getattr(snapshot, name) for name, _ in SpecializationSnapshot._fields_}
         names = [name for name, _, _ in coords]
         data["corpus"] = corpus_manifest(args.out, names)
         if args.compare:

@@ -1613,6 +1613,16 @@ pub unsafe extern "C" fn retina_gpu_interpreter_snapshot(profile: u32, output: *
     })
 }
 /// # Safety
+/// output points to a writable 32-byte version-1 specialization group snapshot.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_gpu_specialization_snapshot(profile: u32, output: *mut pipeline::SpecializationSnapshot) -> i32 {
+    boundary(|| {
+        if output.is_null() { return Err("null specialization snapshot".into()); }
+        unsafe { *output = shared_engine()?.pipeline.specialization_snapshot(profile); }
+        Ok(())
+    })
+}
+/// # Safety
 /// output must point to a writable timing snapshot.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_timing_snapshot(

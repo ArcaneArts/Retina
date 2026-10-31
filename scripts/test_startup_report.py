@@ -23,6 +23,15 @@ class StartupReportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "line 1"):
             summarize("Region GPU timings {broken}")
 
+    def test_partial_specialization_is_not_complete_startup(self):
+        report = summarize('''[Retina startup] BEGIN #3 compile world pipelines [thread=compiler]
+[Retina startup] Specialization cohort {"cohort":"interpolation-fields","ready_groups":1,"total_groups":3}
+''')
+        self.assertEqual(report["regions"][0]["kind"], "Specialization cohort")
+        self.assertEqual(report["regions"][0]["ready_groups"], 1)
+        self.assertEqual(report["unfinished_stages"][0]["id"], 3)
+        self.assertEqual(report["completed_stages"], [])
+
     def test_process_counters_without_resource_keep_unavailable_values_null(self):
         with patch.object(process_usage, "resource", None):
             before, after = process_usage.snapshot(), process_usage.snapshot()

@@ -1,6 +1,8 @@
 mod execution_trace;
 #[cfg(test)]
 mod interpreter_promotion_tests;
+#[cfg(test)]
+mod incremental_tests;
 #[cfg(all(test, feature = "vulkan-portability"))]
 mod portability_tests;
 use crate::timings;
@@ -719,7 +721,7 @@ impl Gpu {
         let depth = profile
             .and_then(|p| p.registry_program.as_ref())
             .map_or(0, |p| p.interpolation_depth());
-        let needs_interpreter = specialized.is_none() || !self.specialized_terrain;
+        let needs_interpreter = specialized.as_ref().is_none_or(|p| !p.complete) || !self.specialized_terrain;
         let composition = profile
             .and_then(|p| p.registry_program.as_ref())
             .is_some_and(|p| p.density_composition);
@@ -833,6 +835,8 @@ impl Gpu {
                 .filter(|_| capacity == 1024)
                 .cloned()
         };
+        let specialized = specialized.map(|pipelines| if pipelines.complete { pipelines }
+            else { std::sync::Arc::new(pipelines.overlay(interpreted.as_deref())) });
         let selected = specialized.as_deref().or(interpreted.as_deref());
         // Terrain input and climate passes may use the compact interpreter while
         // materials/caves retain specialization. Both use the same resident
