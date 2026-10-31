@@ -11,8 +11,8 @@ dimensions, and every existing supported registry program and adapter capability
 | --- | --- | --- | --- |
 | Registry programs | program.wgsl, program.rs | Loaded instructions, noise parameters, spline points, context → six roots | cpu/program.rs: prepared reachable instructions, constants, per-job scratch, cached interpolation vertices; exhaustive opcode fixtures |
 | Noise primitives | simplex.wgsl, noise3.wgsl | XYZ, seed, coefficients → scalar | cpu/noise.rs: wrapping integer hashes, Perlin/simplex/FBM; primitive fixtures; hardware comparison pending |
-| Terrain/climate/biomes | simplex.wgsl, climate.wgsl, gpu.rs | Saved world profile and requests → columns, biomes | Pending CPU executor using the same profile and program evaluator |
-| Interpolation and sparse queries | program/interpolation.rs, queries.rs | Global coordinates, field/program → density/height/biome | CPU evaluator caches globally aligned interpolation corners; shared column-program reuse analysis; engine queries pending |
+| Terrain/climate/biomes | simplex.wgsl, climate.wgsl, gpu.rs | Saved world profile and requests → columns, biomes | Shared climate index and CPU registered-field sampler implemented; final column/material dispatch remains pending |
+| Interpolation and sparse queries | program/interpolation.rs, queries.rs | Global coordinates, field/program → density/height/biome | CPU evaluator and field sampler cache global interpolation/climate vertices and surface heights; shared column-program reuse analysis; engine query dispatch remains pending |
 | Surfaces/materials | materials.wgsl, program.wgsl | Density, material context/palettes → blocks/runs | All surface predicate opcodes implemented; material column assembly pending |
 | Caves/aquifers | caves.wgsl, aquifers.wgsl, geology.rs | Registered profiles, fields → masks/materials | Existing CPU carver/planning algorithms reused; shader calculations pending |
 | Ores | geology.rs, geology/raster_gpu.rs | Loaded ore recipes → placement masks | CPU planning reused when graphics resources are absent; additional end-to-end coverage pending |
@@ -73,3 +73,19 @@ sky/no-sky, partial-face rules and voxel/section outputs. Unit checks cover
 attenuation, invalid material IDs, section packing, and an empty 32x32 region
 using only constant descriptors with no graphics resources. No regions or client
 instances were created for these checks.
+
+## Shared climate and registered fields
+
+CPU lookup and GPU table encoding now use the same climate-tree builder, including
+registry-order ties, depth intervals, shore projection and unplaced biome niches.
+CPU samplers evaluate registered climate, density, explicit heights and surface
+searches from the same programs. Climate and density caches align to global grids;
+job/request origins do not change their values. Final-field height searches retain
+the existing crossing calculation; composed graphs evaluate actual block positions.
+The complete backend will add interval acceleration after profiling.
+
+Property checks compare indexed queries to linear targets across weights, depth,
+flags and ties. Actual vanilla catalog samples for Overworld and Nether are finite
+and repeatable at negative, ordinary and far coordinates, independently of request
+origin. These checks initialize no engine or GPU, create no world files, and do not
+claim complete CPU terrain/material generation yet.
