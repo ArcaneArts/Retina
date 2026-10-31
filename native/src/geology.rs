@@ -74,6 +74,46 @@ pub struct Carver {
     #[serde(default)]
     pub rotation_range: [f32; 2],
 }
+impl Carver {
+    /// Shared recipe-to-wire mapping, also used by CPU/GPU numerical fixtures.
+    pub(crate) fn parameters(&self) -> [f32; 24] {
+        let c = self;
+        [
+            c.height.min as f32,
+            c.height.max as f32,
+            c.probability,
+            c.kind as f32,
+            c.thickness,
+            c.horizontal,
+            c.vertical,
+            c.count,
+            c.floor,
+            c.room,
+            c.width_smoothness,
+            c.vertical_default,
+            c.thickness_range[0],
+            c.thickness_range[1],
+            c.horizontal_range[0],
+            c.horizontal_range[1],
+            c.distance_range[0],
+            c.distance_range[1],
+            c.vertical_center,
+            if c.height.triangle {
+                c.height.plateau as f32 + 1.0
+            } else {
+                0.0
+            },
+            if c.kind == 0 {
+                c.start_vertical
+            } else {
+                c.vertical_range[0]
+            },
+            c.vertical_range[1],
+            c.rotation_range[0],
+            c.rotation_range[1],
+        ]
+    }
+}
 #[derive(Clone, Deserialize)]
 pub struct GeologyProfile {
     /// Independent attempt streams permit conservative culling without shifting
@@ -249,36 +289,7 @@ impl GeologyProfile {
         for biome in &profile.biomes {
             for i in 0..4 {
                 let floats = if let Some(c) = biome.carvers.get(i) {
-                    [
-                        c.height.min as f32,
-                        c.height.max as f32,
-                        c.probability,
-                        c.kind as f32,
-                        c.thickness,
-                        c.horizontal,
-                        c.vertical,
-                        c.count,
-                        c.floor,
-                        c.room,
-                        c.width_smoothness,
-                        c.vertical_default,
-                        c.thickness_range[0],
-                        c.thickness_range[1],
-                        c.horizontal_range[0],
-                        c.horizontal_range[1],
-                        c.distance_range[0],
-                        c.distance_range[1],
-                        c.vertical_center,
-                        if c.height.triangle {
-                            c.height.plateau as f32 + 1.0
-                        } else {
-                            0.0
-                        },
-                        if c.kind == 0 { c.start_vertical } else { c.vertical_range[0] },
-                        c.vertical_range[1],
-                        c.rotation_range[0],
-                        c.rotation_range[1],
-                    ]
+                    c.parameters()
                 } else {
                     [0.0; 24]
                 };

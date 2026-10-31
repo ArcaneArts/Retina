@@ -127,6 +127,14 @@ impl Sampler<'_> {
             trilinear(corners.map(|v| v[channel]), alpha)
         }))
     }
+    pub fn lattice(
+        &mut self,
+        program: usize,
+        point: [f32; 3],
+        cell: [u32; 3],
+    ) -> Result<[f32; 6], String> {
+        self.interpolated(program, point, cell, false)
+    }
     pub fn climate(&mut self, point: [f32; 3], surface: bool) -> Result<[f32; 6], String> {
         if surface {
             self.interpolated(0, [point[0], 0.0, point[2]], [4, 1, 4], false)
@@ -165,6 +173,14 @@ impl Sampler<'_> {
                     max.min(g.terrain_min_y + g.terrain_height),
                 ]
             })
+    }
+    pub fn generation_top(&self) -> i32 {
+        let max = self.request.min_y + self.request.height as i32;
+        self.profile
+            .registry_program
+            .as_ref()
+            .and_then(|r| r.generation.as_ref())
+            .map_or(max, |g| max.min(g.min_y + g.height))
     }
     pub fn surface_height(&mut self, x: i32, z: i32) -> Result<f32, String> {
         self.surface_height_at([x as f32, z as f32])
@@ -272,6 +288,9 @@ impl Sampler<'_> {
         self.fields
             .climate
             .search(actual, false, false, false, biome, best, exclude_shores)
+    }
+    pub fn has_underground(&self) -> bool {
+        self.fields.climate.has_underground()
     }
     pub fn underground_biome(&mut self, point: [f32; 3], surface: u32) -> Result<u32, String> {
         if !self.fields.climate.has_underground() {
