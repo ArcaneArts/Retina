@@ -258,12 +258,12 @@ pub(crate) fn build(
         side,
         columns,
         metrics,
-        crate::region::assemblers()?,
+        super::pools::terrain()?,
     )
 }
 
-/// All CPU tiles share the existing assembly thread budget, including nested
-/// feature requests. Per-worker samplers/scratch never contain GPU resources.
+/// All CPU tiles share the bounded terrain lane, independent of waiting feature
+/// tasks. Per-worker samplers/scratch never contain GPU resources.
 pub(super) fn build_in_pool(
     profile: &WorldProfile,
     fields: &Fields,

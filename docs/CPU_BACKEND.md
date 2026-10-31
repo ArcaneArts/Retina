@@ -222,12 +222,21 @@ The [cache comparison](reports/cpu-sampling-caches-2026-10-31.md) observes anoth
 reduction from 58.4 to 38.1 seconds for the same complete diagnostic Nether region;
 thread utilization and final uncontended acceptance remain outstanding.
 
-CPU biome and material tile work now runs in bounded row strips on the existing
-shared region/assembly Rayon pool. Samplers and scratch stay local to a worker;
+CPU biome and material tile work runs in bounded row strips. Samplers and scratch stay local to a worker;
 immutable definitions and columns are shared. Canonical strip collection keeps
 packed biomes and material-run order stable. Cavity boundary words use relaxed
-atomic OR and publish only after all tasks join. `RETINA_REGION_THREADS` also
-bounds these workers; concurrent regions do not allocate a full pool each.
+atomic OR and publish only after all tasks join. Concurrent regions share global
+worker pools and do not allocate a full pool each.
 One- versus four-worker fixtures match packed output for registered and legacy
 profiles. The [parallel tile diagnostic](reports/cpu-tile-parallelism-2026-10-31.md)
 observes another latency reduction, with remaining dependency/concurrency limits.
+
+CPU generation now divides one native worker budget between dependency/assembly
+and terrain lanes. Terrain stays runnable when dependency workers wait for the
+same terrain cell. `RETINA_REGION_THREADS` sets the combined CPU budget, clamped
+to 2–16; the default is available parallelism in that range. One quarter (at least
+one worker) handles dependencies/assembly, with the rest computing terrain.
+A requested budget of one uses the two-worker minimum, one in each lane. Startup
+reports actual counts. These are native worker limits, excluding host/JVM threads.
+GPU assembly retains its previous pool and control behavior. See the
+[worker-budget diagnostic](reports/cpu-worker-budget-2026-10-31.md).
