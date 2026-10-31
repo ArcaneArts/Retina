@@ -1,3 +1,4 @@
+mod execution_trace;
 use crate::timings;
 mod base_pipeline;
 mod policy;
@@ -640,6 +641,7 @@ impl Gpu {
     ) -> Result<PendingSample, String> {
         self.health.check()?;
         let host_start = Instant::now();
+        let execution = execution_trace::Trace::new(world_profile, requests[0]);
         let surface_probe = requests[0].padding & (1 << 31) != 0;
         let underground_probe = requests[0].padding & (1 << 30) != 0;
         let height_probe = requests[0].padding & (1 << 29) != 0;
@@ -808,11 +810,13 @@ impl Gpu {
             interpreted.as_deref()
         };
         let world_pipeline = |entry, fallback| {
+            execution.record(entry, selected.map_or("fallback", |p| p.world_kind(entry)));
             selected.map_or_else(|| crate::specialize::Selected::from(fallback), |p| {
                 p.world_or(entry, fallback)
             })
         };
         let terrain_pipeline = |entry, fallback| {
+            execution.record(entry, terrain.map_or("fallback", |p| p.world_kind(entry)));
             terrain.map_or_else(|| crate::specialize::Selected::from(fallback), |p| {
                 p.world_or(entry, fallback)
             })
@@ -1047,6 +1051,9 @@ impl Gpu {
             } else {
                 cached_masks
             };
+            execution.record(entry, selected.map_or("fallback", |p| {
+                if cached && p.cached_cave(entry).is_some() { p.kind } else { p.cave_kind(entry) }
+            }));
             selected.map_or_else(|| crate::specialize::Selected::from(fallback), |p| {
                 if cached {
                     p.cached_cave(entry)
@@ -1279,6 +1286,7 @@ impl Gpu {
                 label: Some("Retina shared horizontal program fields"),
                 timestamp_writes: writes,
             });
+            execution.record("horizontal_nodes", "specialized");
             pass.set_pipeline(specialized.as_ref().unwrap().world("horizontal_nodes"));
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(density_dispatch.0.div_ceil(64), requests.len() as u32, 1);
@@ -1302,6 +1310,7 @@ impl Gpu {
             } else {
                 terrain
             };
+            execution.record(&entry, fields.unwrap().kind);
             fields.unwrap().world_selected(&entry).bind(&mut pass);
             pass.set_bind_group(0, group, &[]);
             pass.dispatch_workgroups(
@@ -1343,6 +1352,9 @@ impl Gpu {
                             .all(|(r, (_, header))| plan.covers_lattice(r, header))
                             && interpolation_headers.len() == gpu_requests.len()
                     });
+            if let Some(p) = selected.filter(|_| cached_lattice).filter(|p| p.cached_world("density_nodes").is_some()) {
+                execution.record("density_nodes_cached", p.kind);
+            }
             (selected
                 .filter(|_| cached_lattice)
                 .and_then(|p| p.cached_world("density_nodes"))
@@ -1401,6 +1413,9 @@ impl Gpu {
                             .all(|(r, (_, header))| plan.covers_surface(r, header))
                             && interpolation_headers.len() == gpu_requests.len()
                     });
+            if let Some(p) = selected.filter(|_| cached_surface).filter(|p| p.cached_world("surface_columns").is_some()) {
+                execution.record("surface_columns_cached", p.kind);
+            }
             (selected
                 .filter(|_| cached_surface)
                 .and_then(|p| p.cached_world("surface_columns"))
@@ -1438,6 +1453,7 @@ impl Gpu {
                     label: Some("Retina sparse lake interpolation corners"),
                     timestamp_writes: writes,
                 });
+                execution.record("lake_sparse_fields", selected.unwrap().kind);
                 pass.set_pipeline(
                     selected
                         .unwrap()
@@ -1461,6 +1477,7 @@ impl Gpu {
                 label: Some("Retina parallel lake density probes"),
                 timestamp_writes: writes,
             });
+            if sparse_lakes { execution.record("lake_density_sparse", selected.unwrap().kind); }
             (if sparse_lakes {
                 crate::specialize::Selected::from(
                     selected
@@ -1726,6 +1743,7 @@ impl Gpu {
                 ] {
                     let mut pass =
                         encoder.begin_compute_pass(&wgpu::ComputePassDescriptor::default());
+                    execution.record("material_prefix", "fallback");
                     pass.set_pipeline(pipeline.get());
                     pass.set_bind_group(0, &cave_group, &[]);
                     pass.dispatch_workgroups(groups, 1, 1);
@@ -1830,7 +1848,10 @@ impl Gpu {
             .timestamps
             .as_ref()
             .map(|t| Mapping::new(&t.readback, query_bytes));
+        let execution = execution.finish();
+        if let Some(trace) = &execution { trace.submitted(&self.backend, host_start.elapsed()); }
         Ok(PendingSample {
+            execution,
             stage: PendingStage::Terrain(TerrainReadback {
                 slot,
                 submission,
@@ -2200,6 +2221,7 @@ impl Gpu {
         );
         timings.gpu(pending.timings.gpu_columns, self.timestamp_support);
         self.pipeline.completed();
+        if let Some(trace) = &pending.execution { trace.completed(&self.backend, &pending.timings); }
         Ok(Progress::Complete(GpuSample {
             columns,
             mask,
@@ -2379,6 +2401,7 @@ impl Drop for Mapping {
 }
 
 pub(crate) struct PendingSample {
+    execution: Option<execution_trace::Run>,
     stage: PendingStage,
     wait_start: Instant,
     timings: timings::Snapshot,

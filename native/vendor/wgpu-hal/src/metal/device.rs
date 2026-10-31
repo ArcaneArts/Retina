@@ -254,13 +254,16 @@ impl super::Device {
                     binding_array_length_map: layout.binding_array_length_map.clone(),
                 };
 
-                let (mut source, info) = naga::back::msl::write_string(
+                let (mut source, info) = {
+                    profiling::scope!("naga::back::msl::write_string");
+                    naga::back::msl::write_string(
                     &module,
                     &module_info,
                     &options,
                     &pipeline_options,
                 )
-                .map_err(|e| crate::PipelineError::Linkage(stage_bit, format!("MSL: {e:?}")))?;
+                    .map_err(|e| crate::PipelineError::Linkage(stage_bit, format!("MSL: {e:?}")))?
+                };
 
                 crate::auxil::retina_functions::msl(&mut source);
 
@@ -279,8 +282,9 @@ impl super::Device {
                     options.setPreserveInvariance(true);
                 }
 
-                let library = self
-                    .shared
+                let library = {
+                    profiling::scope!("MTLDevice::newLibraryWithSource");
+                    self.shared
                     .device
                     .newLibraryWithSource_options_error(
                         &NSString::from_str(&source),
@@ -289,7 +293,8 @@ impl super::Device {
                     .map_err(|err| {
                         log::debug!("Naga generated shader:\n{source}");
                         crate::PipelineError::Linkage(stage_bit, format!("Metal: {err}"))
-                    })?;
+                    })?
+                };
 
                 let ep_index = module
                     .entry_points
@@ -1857,14 +1862,14 @@ impl crate::Device for super::Device {
                 descriptor.setLabel(Some(&NSString::from_str(name)));
             }
 
-            let raw = self
-                .shared
-                .device
-                .newComputePipelineStateWithDescriptor_options_reflection_error(
+            let raw = {
+                profiling::scope!("MTLDevice::newComputePipelineState");
+                self.shared.device.newComputePipelineStateWithDescriptor_options_reflection_error(
                     &descriptor,
                     MTLPipelineOption::empty(),
                     None,
-                );
+                )
+            };
 
             let raw: Retained<ProtocolObject<dyn MTLComputePipelineState>> =
                 raw.map_err(|e: Retained<NSError>| {

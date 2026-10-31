@@ -2253,7 +2253,10 @@ impl crate::Device for super::Device {
         let flags = vk::PipelineCreateFlags::from_raw(
             super::diagnostics::compute_flags(),
         );
-        let vk_infos = [{
+        let mut feedback = vk::PipelineCreationFeedback::default();
+        let mut feedback_info = vk::PipelineCreationFeedbackCreateInfo::default()
+            .pipeline_creation_feedback(&mut feedback);
+        let mut vk_infos = [{
             vk::ComputePipelineCreateInfo::default()
                 .flags(flags)
                 .layout(desc.layout.raw)
@@ -2265,6 +2268,9 @@ impl crate::Device for super::Device {
             .map(|it| it.raw)
             .unwrap_or(vk::PipelineCache::null());
 
+        if self.shared.pipeline_creation_feedback {
+            vk_infos[0] = vk_infos[0].push_next(&mut feedback_info);
+        }
         super::diagnostics::emit(super::diagnostics::Event::ComputeStart { flags: flags.as_raw() });
         let result = {
             profiling::scope!("vkCreateComputePipelines");
@@ -2276,6 +2282,13 @@ impl crate::Device for super::Device {
             }
         };
 
+        super::diagnostics::emit(super::diagnostics::Event::ComputeFeedback {
+            supported: self.shared.pipeline_creation_feedback,
+            valid: result.is_ok() && feedback.flags.contains(vk::PipelineCreationFeedbackFlags::VALID),
+            cache_supplied: desc.cache.is_some(),
+            cache_hit: feedback.flags.contains(vk::PipelineCreationFeedbackFlags::APPLICATION_PIPELINE_CACHE_HIT),
+            duration_ns: feedback.duration,
+        });
         // The module is no longer needed after the call, including on failure.
         if let Some(raw_module) = compiled.temp_raw_module {
             unsafe { self.shared.raw.destroy_shader_module(raw_module, None) };

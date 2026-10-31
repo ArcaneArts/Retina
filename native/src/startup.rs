@@ -192,7 +192,17 @@ fn compute_pipeline(
     ), true);
     driver::observe(&stage, descriptor.entry_point.unwrap_or("auto"), || {
         #[cfg(any(not(target_vendor = "apple"), test))]
-        { with_compute_compilation(policy, || device.create_compute_pipeline(descriptor)) }
+        {
+            wgpu::hal::vulkan::diagnostics::take_feedback();
+            let result = with_compute_compilation(policy, || device.create_compute_pipeline(descriptor));
+            if let Some(f) = wgpu::hal::vulkan::diagnostics::take_feedback() {
+                message(format_args!("Vulkan pipeline feedback pipeline_id=#{} entry={} supported={} valid={} cache_supplied={} cache_hit={} driver_ms={:.3} policy={policy:?}",
+                    stage.id, descriptor.entry_point.unwrap_or("auto"), f.supported, f.valid,
+                    f.cache_supplied, if f.valid { if f.cache_hit { "yes" } else { "no" } } else { "unknown" },
+                    f.duration_ns as f64 / 1e6));
+            }
+            result
+        }
         #[cfg(all(target_vendor = "apple", not(test)))]
         { device.create_compute_pipeline(descriptor) }
     })

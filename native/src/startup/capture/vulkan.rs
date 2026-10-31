@@ -56,6 +56,7 @@ mod windows {
                 crate::startup::message(format_args!("Vulkan driver compilation pipeline_id=#{id} entry={entry} flags=0x{flags:x} optimization_disabled={}", flags & 1 != 0));
                 driver(&directory, flags)
             }
+            Event::ComputeFeedback { .. } => Ok(()),
             Event::ComputeEnd { error } => finish(&directory, error),
         };
         if let Err(error) = result {
