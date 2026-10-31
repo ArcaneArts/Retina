@@ -50,6 +50,7 @@ def main():
                         help="Opt-in workload/wait attribution; keep these runs separate from headline timings")
     parser.add_argument("--parallel", type=int, choices=(1,2,4,8), default=1,
                         help="Concurrent callers; CPU worker limits remain separate")
+    parser.add_argument("--assembly-threads", type=int, choices=range(1,17), help="Existing shared native assembly pool budget; leaves its default/environment unchanged when omitted")
     parser.add_argument("--origin-x", type=int, default=-1, help="First region X coordinate")
     parser.add_argument("--origin-z", type=int, default=-1, help="First region Z coordinate")
     parser.add_argument("--grid-width", type=int, default=3)
@@ -83,6 +84,8 @@ def main():
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
+    if args.assembly_threads:
+        os.environ["RETINA_REGION_THREADS"] = str(args.assembly_threads)
     if args.diagnostics:
         os.environ["RETINA_PERFORMANCE_DIAGNOSTICS"] = "1"
     if args.count < 1 or args.warmups < 0 or args.grid_width < 1:
@@ -252,6 +255,7 @@ def main():
                     host={"system": platform.system(), "release": platform.release(), "machine": platform.machine(),
                           "python": platform.python_version()},
                     library=str(args.library), parallel=args.parallel, seed=seed, dimension=args.dimension, request=request_context,
+                    assembly_threads=args.assembly_threads or os.environ.get("RETINA_REGION_THREADS", "auto"),
                     coordinates={"origin_x": args.origin_x, "origin_z": args.origin_z, "grid_width": args.grid_width},
                     request_order=args.request_order,
                     regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=definition.dimension["profile_metadata"].get("registry_program", {}).get("density_composition"), cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
