@@ -14,7 +14,7 @@ dimensions, and every existing supported registry program and adapter capability
 | Terrain/climate/biomes | simplex.wgsl, climate.wgsl, gpu.rs | Saved world profile and requests → columns, biomes | Shared climate index, registered fields and coherent column sampler implemented; final material/engine dispatch remains pending |
 | Interpolation and sparse queries | program/interpolation.rs, queries.rs | Global coordinates, field/program → density/height/biome | CPU evaluator and field sampler cache global interpolation/climate vertices and surface heights; shared column-program reuse analysis; engine query dispatch remains pending |
 | Surfaces/materials | materials.wgsl, program.wgsl | Density, material context/palettes → blocks/runs | All surface predicate opcodes implemented; material column assembly pending |
-| Caves/aquifers | caves.wgsl, aquifers.wgsl, geology.rs | Registered profiles, fields → masks/materials | Existing CPU carver/planning algorithms reused; shader calculations pending |
+| Caves/aquifers | caves.wgsl, aquifers.wgsl, geology.rs | Registered profiles, fields → masks/materials | Native cave/carver and local/global aquifer fields implemented; final mask/material assembly pending |
 | Ores | geology.rs, geology/raster_gpu.rs | Loaded ore recipes → placement masks | CPU planning reused when graphics resources are absent; additional end-to-end coverage pending |
 | Counts/provider noise | decoration/counts/gpu.rs, provider_noise.wgsl | Count rules/registered Perlin stacks, sparse points → values | Native count and Perlin-stack kernels implemented; CPU batch dispatch connected; numerical hardware comparison covers loaded permutations and far coordinates |
 | Vines | decoration/vine_gpu.rs | Loaded recipe, substrate queries → writes | CPU mode selects the existing scalar replay without compiling or pausing for GPU vine programs |
@@ -103,3 +103,23 @@ lake barriers, lava, snow and terracotta flags. A small real Metal comparison
 matched all 32 sampled column heights, biome IDs and representative materials
 exactly. This fixture is not a claim of general CPU/GPU bit equality. Complete
 cavity/aquifer and layered material assembly, dispatch and fallback remain pending.
+
+## CPU cavity and fluid fields
+
+The CPU cave sampler now uses the loaded cave noises, density programs, biome
+selection, tunnel/room/ravine settings, surface entrances and generation bounds.
+Its globally aligned four-block lattice and bounded job-local caches preserve
+request-order independence. The carver recipe-to-wire parameter mapping is shared
+with GPU uploads. Registered aquifers use the same surface/flood/spread/lava/barrier
+programs, seeded centers, fluid palettes and pressure decisions; global-fluid mode
+remains available when local aquifers are disabled.
+
+Forty-eight CPU-related checks pass, including actual vanilla/legacy cave fields
+and local/global aquifer samples. A direct Metal comparison exercises 256 loaded
+carver fixtures. Maximum sampled absolute errors were 0.00000138 for tunnels,
+0.814 for room distance and 0.0000153 for ravines. The room difference occurs near
+±30 million blocks. That comparison propagates a coordinate-spacing interval for
+(cell+jitter)*size through squared normalized distance, while near-coordinate and
+other kernel comparisons retain tight numerical tolerances. These are field
+checks; complete voxel/material masks, engine dispatch and production fallback
+are still pending and must be validated before enabling CPU selection.
