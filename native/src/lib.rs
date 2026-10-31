@@ -1,4 +1,5 @@
 mod climate;
+pub mod cpu;
 // Rust-owned buffers are released by this library, including the byte buffers
 // returned through the C ABI. Foreign buffers and the host allocator stay owned
 // by their callers; mimalloc's process-wide override feature is not enabled.

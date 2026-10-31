@@ -1,5 +1,6 @@
 //! Resident bytecode for registered density functions and surface predicates.
 use serde::Deserialize;
+pub(crate) mod opcode;
 mod column_interpreter;
 mod compact_calls;
 pub(crate) mod outline;
@@ -383,9 +384,7 @@ impl RegistryProgram {
                         return Err("interpolation fields must reference earlier subgraphs".into());
                     }
                 }
-                if !matches!(n.op,0..=31|40..=54) {
-                    return Err("unknown GPU opcode".into());
-                }
+                opcode::Opcode::from_code(n.op)?;
             }
         }
         if self.interpolations.iter().any(|f| {
