@@ -17,10 +17,12 @@ struct Step {
     index: usize,
     opcode: Opcode,
     constant: Option<f32>,
+    dependencies: Box<[u32]>,
 }
 struct Plan {
     steps: Vec<Step>,
     boundable: bool,
+    indices: Vec<usize>,
 }
 pub struct Prepared {
     registry: Arc<RegistryProgram>,
@@ -102,6 +104,7 @@ impl Prepared {
                     index,
                     opcode,
                     constant,
+                    dependencies: deps.into_boxed_slice(),
                 });
             }
             let mut possible = vec![false; program.nodes.len()];
@@ -111,7 +114,15 @@ impl Prepared {
             }
             let boundable =
                 (0..6).all(|i| possible[program.roots.get(i).copied().unwrap_or(0) as usize]);
-            plans.push(Plan { steps, boundable });
+            let mut indices = vec![usize::MAX; program.nodes.len()];
+            for (position, step) in steps.iter().enumerate() {
+                indices[step.index] = position;
+            }
+            plans.push(Plan {
+                steps,
+                boundable,
+                indices,
+            });
         }
         let columns = crate::column_program::Plan::new(&registry);
         Ok(Self {
@@ -130,6 +141,8 @@ impl Prepared {
             corners: HashMap::new(),
             horizontal: HashMap::new(),
             bounds_scratch: Vec::new(),
+            #[cfg(test)]
+            eager: false,
         }
     }
 }
@@ -140,15 +153,94 @@ struct Corner {
     surface: [u32; 4],
     detail: [u32; 4],
 }
+#[derive(Default)]
+struct Frame {
+    values: Vec<f32>,
+    stamps: Vec<u32>,
+    epoch: u32,
+    work: Vec<u32>,
+}
+impl Frame {
+    fn begin(&mut self, size: usize) {
+        self.values.resize(size, 0.0);
+        self.stamps.resize(size, 0);
+        self.epoch = self.epoch.wrapping_add(1);
+        if self.epoch == 0 {
+            self.stamps.fill(0);
+            self.epoch = 1;
+        }
+        self.work.clear();
+    }
+    fn missing(&self, node: u32) -> bool {
+        self.stamps[node as usize] != self.epoch
+    }
+    fn store(&mut self, node: usize, value: f32) {
+        self.values[node] = value;
+        self.stamps[node] = self.epoch;
+        self.work.pop();
+    }
+}
+impl Step {
+    /// Select dependencies using the scalar operation's actual branch rules.
+    /// Programs are validated DAGs; the explicit stack also handles deep graphs.
+    fn pending(&self, node: &Instruction, frame: &Frame, points: &[[f32; 4]]) -> Option<u32> {
+        use Opcode::*;
+        if matches!(self.opcode, RangeChoice | And | Or | Spline) {
+            if frame.missing(node.a) {
+                return Some(node.a);
+            }
+            let a = frame.values[node.a as usize];
+            match self.opcode {
+                RangeChoice => {
+                    let branch = if a >= node.p[0] && a < node.p[1] {
+                        node.b
+                    } else {
+                        node.c
+                    };
+                    return frame.missing(branch).then_some(branch);
+                }
+                And if a == 0.0 => return None,
+                Or if a != 0.0 => return None,
+                And | Or => return frame.missing(node.b).then_some(node.b),
+                Spline => {
+                    let knots = &points[node.b as usize..(node.b + node.c) as usize];
+                    let mut j = 0;
+                    for (i, knot) in knots.iter().enumerate().skip(1) {
+                        if a >= knot[0] {
+                            j = i;
+                        }
+                    }
+                    let left = knots[j];
+                    if frame.missing(left[2] as u32) {
+                        return Some(left[2] as u32);
+                    }
+                    if !(a < left[0] || j + 1 == knots.len()) {
+                        let right = knots[j + 1][2] as u32;
+                        return frame.missing(right).then_some(right);
+                    }
+                    return None;
+                }
+                _ => unreachable!(),
+            }
+        }
+        self.dependencies
+            .iter()
+            .copied()
+            .find(|&node| frame.missing(node))
+    }
+}
 pub struct Evaluator<'a> {
     prepared: &'a Prepared,
     seed: u64,
     sea_level: i32,
     bands: &'a [u16],
-    frames: Vec<Vec<f32>>,
+    frames: Vec<Frame>,
     corners: HashMap<Corner, f32>,
     horizontal: HashMap<(u32, u32, usize), f32>,
     bounds_scratch: Vec<bounds::Bounds>,
+    /// Reference scheduling runs all reachable nodes in original forward order.
+    #[cfg(test)]
+    eager: bool,
 }
 impl Evaluator<'_> {
     pub fn run(
@@ -269,29 +361,59 @@ impl Evaluator<'_> {
         depth: usize,
     ) -> [f32; 6] {
         if self.frames.len() <= depth {
-            self.frames.resize_with(depth + 1, Vec::new);
+            self.frames.resize_with(depth + 1, Frame::default);
         }
-        let mut values = std::mem::take(&mut self.frames[depth]);
+        let mut frame = std::mem::take(&mut self.frames[depth]);
         let registry = &self.prepared.registry;
         let program: &Program = if pid < registry.programs.len() {
             &registry.programs[pid]
         } else {
             &registry.interpolations[pid - registry.programs.len()].input
         };
-        values.resize(program.nodes.len(), 0.0);
-        for step in &self.prepared.plans[pid].steps {
-            let index = step.index;
+        let plan = &self.prepared.plans[pid];
+        frame.begin(program.nodes.len());
+        #[cfg(test)]
+        let eager = self.eager;
+        #[cfg(not(test))]
+        let eager = false;
+        if eager {
+            frame
+                .work
+                .extend(plan.steps.iter().rev().map(|step| step.index as u32));
+        } else {
+            frame.work.extend(
+                (0..6)
+                    .rev()
+                    .map(|i| program.roots.get(i).copied().unwrap_or(0)),
+            );
+        }
+        while let Some(&index) = frame.work.last() {
+            if !frame.missing(index) {
+                frame.work.pop();
+                continue;
+            }
+            let index = index as usize;
+            let step = &plan.steps[plan.indices[index]];
             let n = &program.nodes[index];
             let a = n.a as usize;
             let b = n.b as usize;
             let c = n.c as usize;
             let p = n.p;
+            if let Some(value) = step.constant {
+                frame.store(index, value);
+                continue;
+            }
             let cache = self.prepared.columns.slots[pid][index]
                 .map(|slot| (point[0].to_bits(), point[2].to_bits(), slot));
             if let Some(value) = cache.and_then(|key| self.horizontal.get(&key)) {
-                values[index] = *value;
+                frame.store(index, *value);
                 continue;
             }
+            if !eager && let Some(dependency) = step.pending(n, &frame, &registry.points) {
+                frame.work.push(dependency);
+                continue;
+            }
+            let values = &mut frame.values;
             use Opcode::*;
             let value = if let Some(value) = step.constant {
                 value
@@ -455,7 +577,7 @@ impl Evaluator<'_> {
                     }
                 }
             };
-            values[index] = value;
+            frame.store(index, value);
             if let Some(key) = cache {
                 if self.horizontal.len() >= 32768 {
                     self.horizontal.clear();
@@ -463,9 +585,10 @@ impl Evaluator<'_> {
                 self.horizontal.insert(key, value);
             }
         }
-        let result =
-            std::array::from_fn(|i| values[program.roots.get(i).copied().unwrap_or(0) as usize]);
-        self.frames[depth] = values;
+        let result = std::array::from_fn(|i| {
+            frame.values[program.roots.get(i).copied().unwrap_or(0) as usize]
+        });
+        self.frames[depth] = frame;
         result
     }
 }
