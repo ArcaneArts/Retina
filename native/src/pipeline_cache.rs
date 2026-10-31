@@ -101,7 +101,11 @@ impl Cache {
 }
 
 fn cache_key(info: &wgpu::AdapterInfo, lane: &str, variant: &str) -> Option<String> {
-    cache_key_for_input(info, lane, variant, crate::spirv_input::identity())
+    cache_key_for_groups(info, lane, variant, crate::spirv_input::identity(), crate::specialize::interpreter_group_identity())
+}
+fn cache_key_for_groups(info: &wgpu::AdapterInfo, lane: &str, variant: &str, input: &str, groups: &str) -> Option<String> {
+    let variant = if groups == "shared" { variant.to_owned() } else { format!("{variant}/{groups}") };
+    cache_key_for_input(info, lane, &variant, input)
 }
 fn cache_key_for_input(info: &wgpu::AdapterInfo, lane: &str, variant: &str, input: &str) -> Option<String> {
     let key = wgpu::util::pipeline_cache_key(info)?;
@@ -219,7 +223,9 @@ mod tests {
             device_type: wgpu::DeviceType::DiscreteGpu, driver: "NVIDIA".into(), driver_info: "621.01".into(),
             ..wgpu::AdapterInfo::new(wgpu::DeviceType::DiscreteGpu, wgpu::Backend::Vulkan) };
         let baseline = cache_key_for_input(&info, "compiler", "", "naga").unwrap();
-        assert_eq!(cache_key(&info, "compiler", ""), cache_key_for_input(&info, "compiler", "", crate::spirv_input::identity()));
+        assert_eq!(cache_key(&info, "compiler", ""), cache_key_for_groups(&info, "compiler", "", crate::spirv_input::identity(), crate::specialize::interpreter_group_identity()));
+        assert_eq!(baseline, cache_key_for_groups(&info, "compiler", "", "naga", "shared").unwrap());
+        assert_ne!(baseline, cache_key_for_groups(&info, "compiler", "", "naga", "compact-dispatch-groups-v1").unwrap());
         assert_ne!(baseline, cache_key_for_input(&info, "compiler", "", "spirv-tools-0.13.3-safe-v1").unwrap());
         assert_ne!(baseline, cache_key_for_input(&info, "compiler", "fast", "naga").unwrap());
         assert_ne!(baseline, cache_key_for_input(&info, "compiler/world", "", "naga").unwrap());

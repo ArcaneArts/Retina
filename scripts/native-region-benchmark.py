@@ -71,7 +71,7 @@ def main():
     parser.add_argument("--lake-sparse-fields", choices=("enabled", "disabled"), help="GPU scratch stencils for actual composed lake probe coordinates")
     parser.add_argument("--terrain-execution", choices=("interpreter", "specialized"), help="Select terrain/climate stages independently of specialized material/cave stages")
     parser.add_argument("--specialized-interpolation", choices=("enabled", "disabled"), help="Specialize input-field prepasses independently of remaining terrain stages")
-    parser.add_argument("--interpreter-dispatch", choices=("enabled", "disabled"), help="Shared compact interpreter entrypoints or independent pipelines")
+    parser.add_argument("--interpreter-dispatch", choices=("enabled", "disabled", "grouped"), help="Shared, independent or two-family compact interpreter dispatchers")
     parser.add_argument("--interpreter-preload", choices=("enabled", "disabled"), help="Overlap compact density pipeline preparation with profile parsing")
     parser.add_argument("--tiered-interpreter", choices=("enabled", "disabled"), help="Vulkan-only fast initial interpreter followed by optimized replacement")
     parser.add_argument("--incremental-specialization", choices=("enabled", "disabled"), help="Publish validated specialization groups before the complete bundle")
@@ -102,7 +102,8 @@ def main():
     if args.lake_sparse_fields:
         os.environ["RETINA_LAKE_SPARSE_FIELDS"] = "1" if args.lake_sparse_fields == "enabled" else "0"
     if args.interpreter_dispatch:
-        os.environ["RETINA_INTERPRETER_DISPATCH"] = "1" if args.interpreter_dispatch == "enabled" else "0"
+        os.environ["RETINA_INTERPRETER_DISPATCH"] = "0" if args.interpreter_dispatch == "disabled" else "1"
+        os.environ["RETINA_INTERPRETER_GROUPS"] = "2" if args.interpreter_dispatch == "grouped" else "1"
     if args.interpreter_preload:
         os.environ["RETINA_INTERPRETER_PRELOAD"] = "1" if args.interpreter_preload == "enabled" else "0"
     if args.tiered_interpreter:
@@ -260,6 +261,7 @@ def main():
                     interpreter_columns=args.interpreter_columns or os.environ.get("RETINA_INTERPRETER_COLUMNS"),
                     interpreter_compile_threads=args.interpreter_compile_threads or os.environ.get("RETINA_INTERPRETER_COMPILE_THREADS", "1"),
                     vulkan_spirv=args.vulkan_spirv or os.environ.get("RETINA_VULKAN_SPIRV", "naga"),
+                    interpreter_groups=os.environ.get("RETINA_INTERPRETER_GROUPS", "1"),
                     tiered_interpreter=args.tiered_interpreter or os.environ.get("RETINA_VULKAN_TIERED_INTERPRETER", "0"),
                     incremental_specialization=args.incremental_specialization or os.environ.get("RETINA_INCREMENTAL_SPECIALIZATION", "0"),
                     aquifer_columns=args.aquifer_columns or os.environ.get("RETINA_AQUIFER_COLUMNS"),

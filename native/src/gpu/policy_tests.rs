@@ -23,6 +23,13 @@ fn compiler_input_generation_fingerprints() {
                 base_height:64.,amplitude:48.,frequency:0.008,reserved:id });
             request.padding=interior; request.tile_side=interior+2;
             let pending=gpu.submit(&[request],Some(&profile),&times).unwrap(); let sample=gpu.complete(pending,&times).unwrap();
+            if crate::specialize::interpreter_group_identity() != "shared"
+                && std::env::var("RETINA_INTERPRETER_DISPATCH").as_deref()!=Ok("0") {
+                let (world,cave)=gpu.interpreter_profiles[&id].pipeline_counts();
+                assert_eq!(world,2,"fixture must actually use both world dispatcher families");
+                assert!((1..=2).contains(&cave));
+                eprintln!("DISPATCH_PIPELINES profile={id} world={world} cave={cave}");
+            }
             let mut hash=Sha256::new(); hash.update(bytemuck::cast_slice::<Column,u8>(&sample.columns));
             if let Some(mask)=&sample.mask { hash.update(bytemuck::cast_slice::<u32,u8>(&mask.words)); }
             eprintln!("COMPILER_INPUT_SAMPLE {}",serde_json::json!({"dimension":dimension,"case":case,

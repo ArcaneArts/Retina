@@ -20,6 +20,10 @@ mod compile_queue;
 mod compile_lifetime;
 mod parallel;
 
+pub(crate) fn interpreter_group_identity() -> &'static str {
+    if interpreter_dispatch::grouped() { "compact-dispatch-groups-v1" } else { "shared" }
+}
+
 #[derive(Clone, Copy, Default, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Execution {
@@ -520,6 +524,11 @@ impl Selected<'_> {
     }
 }
 impl Pipelines {
+    #[cfg(test)]
+    pub(crate) fn pipeline_counts(&self) -> (usize, usize) {
+        (self.world.values().collect::<std::collections::HashSet<_>>().len(),
+         self.cave.values().collect::<std::collections::HashSet<_>>().len())
+    }
     pub fn world_kind(&self, entry: &str) -> &'static str {
         if !self.world.contains_key(entry) || self.reuse.is_some_and(|p| p.world_reuses(entry)) { "fallback" }
         else { self.world_kinds.get(entry).copied().unwrap_or(self.kind) }
@@ -1140,15 +1149,16 @@ fn compile_program(
                 && prefix == include_str!("caves.wgsl")
                 && entries.contains(&"material_counts")
                 && entries.contains(&"material_emit");
-            let source = if shared_dispatch {
-                interpreter_dispatch::source(source, entries, wrapper)?
+            let dispatcher = shared_dispatch.then(|| interpreter_dispatch::Plan::new(entries, wrapper, interpreter_dispatch::grouped()));
+            let source = if let Some(plan) = &dispatcher {
+                plan.source(source)?
             } else if shared_materials {
                 material_dispatch::source(source)?
             } else {
                 source
             };
-            let compiled_entries = if shared_dispatch {
-                vec![wrapper]
+            let compiled_entries = if let Some(plan) = &dispatcher {
+                plan.groups.iter().map(|group| group.wrapper.as_str()).collect::<Vec<_>>()
             } else if shared_materials {
                 let mut compiled = entries
                     .iter()
@@ -1238,12 +1248,11 @@ fn compile_program(
             if let Some(error) = pollster::block_on(module_scope.pop()) {
                 return Err(format!("GPU module cohort: {error}"));
             }
-            if shared_dispatch {
-                let pipeline = &pipelines[wrapper];
-                Ok(entries
-                    .iter()
-                    .enumerate()
-                    .map(|(mode, entry)| {
+            if let Some(plan) = &dispatcher {
+                Ok(plan.groups.iter().flat_map(|group| {
+                    let pipeline = &pipelines[&group.wrapper];
+                    group.entries.iter().enumerate().map(move |(mode, entry)| (pipeline, mode, entry))
+                }).map(|(pipeline, mode, entry)| {
                         dispatches.borrow_mut().insert((*entry).to_owned(), mode as u32);
                         ((*entry).to_owned(), pipeline.clone())
                     })
