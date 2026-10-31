@@ -1,10 +1,9 @@
 # Native CPU backend
 
-Implementation is in progress. CPU generation is not yet selected by production
-entry points. GPU handles and the worker are now isolated in `compute::GpuResources`;
+Implementation is in progress. Native engine construction now selects CPU when
+no permitted hardware adapter/device can initialize or the requested API set is empty. GPU handles and the worker are now isolated in `compute::GpuResources`;
 engine-owned definitions, caches and lifecycle can exist without graphics resources.
-Existing GPU behavior remains active until complete CPU workloads
-can be connected and verified. The goal includes all operations below, all three
+Loader configuration and headless Java selection integration remain pending. The goal includes all operations below, all three
 dimensions, and every existing supported registry program and adapter capability.
 
 | Operation boundary | Current source | Shared input/output | CPU implementation and proof |
@@ -141,8 +140,30 @@ Overworld, Nether, central End and outer End. These checks constructed engines
 without graphics resources, kept outputs in memory and opened no client.
 
 This establishes complete native terrain dispatch, not final delivery or speed.
-Production constructors still select GPU initialization. Automatic fallback,
-configuration/CLI integration, complete-operation coverage fixtures, measured
+Native automatic selection is described below. Configuration/CLI integration,
+complete-operation coverage fixtures, measured
 optimization, platform/loader acceptance and release verification remain pending.
 The first complete chunk check exposed substantial Nether work beyond raw terrain;
 that must be profiled and optimized before performance acceptance.
+
+## Native backend selection
+
+An empty API set or `RETINA_GPU_BACKEND=cpu` selects CPU before a graphics worker
+or instance is created. With permitted APIs, Retina enumerates actual adapters,
+tries hardware devices in performance order and retains a successful device for
+the session. Integrated/virtual GPUs remain candidates. Software adapters select
+the native CPU path. A failed hardware device allows another enumerated hardware
+candidate to be tried; no permitted API is re-enabled.
+
+Typed initialization errors distinguish adapter/device unavailability from
+configuration and implementation failures. Shader initialization panics keep their
+error details and never trigger successful CPU fallback. Runtime device loss still
+reports failure without changing the backend halfway through generation.
+
+Four isolated native process scenarios pass: empty API set, explicit CPU override,
+actual unavailable permitted API, and invalid override rejection. Debug output
+confirms the first two create no graphics instance. The unavailable-API case really
+attempts adapter initialization. This is not yet proof on a GPU-free machine; that
+remains a required platform/CI acceptance check. The normal Metal terrain/material
+and world-retirement regression checks also pass. Loader all-APIs-disabled
+activation and Java CPU override support are the next integration pass.

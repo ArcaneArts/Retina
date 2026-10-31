@@ -82,14 +82,14 @@ pub(crate) fn run(
                 crate::geology::raster_gpu::Gpu,
                 crate::decoration::counts::gpu::Gpu,
             ),
-            String,
+            crate::compute::InitError,
         >,
     >,
     metrics: Arc<pipeline::Metrics>,
     depth: usize,
 ) {
     let startup = catch_unwind(AssertUnwindSafe(|| {
-        gpu::Gpu::new(metrics.clone()).map(|gpu| {
+        gpu::Gpu::try_new(metrics.clone()).map(|gpu| {
             let ores = gpu.ore_planner();
             let counts = gpu.decoration_counts();
             (gpu, ores, counts)
@@ -104,8 +104,10 @@ pub(crate) fn run(
             let _ = ready.send(Err(error));
             return;
         }
-        Err(_) => {
-            let _ = ready.send(Err("GPU initialization panicked".into()));
+        Err(payload) => {
+            let detail=payload.downcast_ref::<String>().map(String::as_str)
+                .or_else(||payload.downcast_ref::<&str>().copied()).unwrap_or("unknown initialization panic");
+            let _ = ready.send(Err(crate::compute::InitError::Failure(format!("GPU initialization panicked: {detail}"))));
             return;
         }
     };

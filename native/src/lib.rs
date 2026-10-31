@@ -245,7 +245,7 @@ impl TerrainEngine {
         }
         let pipeline = Arc::new(pipeline::Metrics::default());
         let compute = compute::GpuResources::start(depth, pipeline.clone())?;
-        Ok(Self::from_compute(Some(compute), pipeline))
+        Ok(Self::from_compute(compute, pipeline))
     }
 
     fn from_compute(compute: Option<compute::GpuResources>, pipeline: Arc<pipeline::Metrics>) -> Self {
