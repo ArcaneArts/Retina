@@ -43,6 +43,7 @@ impl Compiler {
         let job = Job {
             interpreter: Some(reuse), shared_dispatch: shared, policy: InterpreterPolicy::Optimized,
             promotion: None, program: key.0.clone(), state: Arc::downgrade(&state),
+            incremental: false,
             horizontal_fields: 0, material_layers: true, aquifers: 2, terrain: true,
             cached_masks: false, cached_nodes: false, lake_point_cache: false,
             material_dispatch: false, specialized_interpolation: false,
@@ -88,6 +89,7 @@ mod tests {
     use super::*;
     fn pipelines(kind: &'static str, promotion: Option<Arc<State>>) -> Pipelines {
         Pipelines { kind, world: HashMap::new(), cave: HashMap::new(), horizontal_fields: 0,
+            complete: true, world_kinds: HashMap::new(), cave_kinds: HashMap::new(),
             reuse: None, dispatches: HashMap::new(), promotion, optimization_progress: None }
     }
     #[test]

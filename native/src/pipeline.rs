@@ -22,6 +22,12 @@ pub struct ProgramSnapshot {
     pub upload_bytes: u64,
     pub readback_bytes: u64,
 }
+#[repr(C)]
+#[derive(Clone, Copy, Default, Debug, serde::Serialize)]
+pub struct SpecializationSnapshot {
+    pub version: u32, pub status: u32, pub ready_groups: u32, pub total_groups: u32,
+    pub compile_nanos: u64, pub source_bytes: u64,
+}
 #[derive(Default)]
 struct ProfileCounters {
     shader: Mutex<Option<Arc<crate::specialize::Progress>>>,
@@ -78,6 +84,11 @@ impl Metrics {
         let profile = self.profiles.lock().unwrap_or_else(|e| e.into_inner()).get(&id).cloned();
         profile.as_ref().and_then(|p| p.interpreter.lock().unwrap_or_else(|e| e.into_inner()).clone())
             .map_or(ProgramSnapshot { version: 1, ..Default::default() }, |p| p.snapshot())
+    }
+    pub fn specialization_snapshot(&self, id: u32) -> SpecializationSnapshot {
+        let profile = self.profiles.lock().unwrap_or_else(|e| e.into_inner()).get(&id).cloned();
+        profile.as_ref().and_then(|p| p.shader.lock().unwrap_or_else(|e| e.into_inner()).clone())
+            .map_or(SpecializationSnapshot { version: 1, ..Default::default() }, |p| p.group_snapshot())
     }
     pub fn transfer(&self, id: u32, upload: u64, readback: u64) {
         let p = self.profile(id);
