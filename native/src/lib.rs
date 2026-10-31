@@ -1905,19 +1905,13 @@ pub unsafe extern "C" fn retina_light_volume(
             return Err("unknown lighting material".into());
         }
         let start = Instant::now();
-        let light = engine.gpu()?.light_gpu
-            .lock()
-            .map_err(|_| "lighting GPU lock poisoned")?
-            .run(
-                request.reserved,
-                profile,
-                chunks,
-                request.height,
-                0,
-                chunks,
-                source,
-                lighting::OutputFormat::Voxels,
-            )?;
+        let light = if let Some(gpu) = &engine.compute {
+            gpu.light_gpu.lock().map_err(|_| "lighting GPU lock poisoned")?.run(
+                request.reserved,profile,chunks,request.height,0,chunks,source,lighting::OutputFormat::Voxels)?
+        } else {
+            lighting::cpu::run(profile,chunks as usize,request.height as usize,0,chunks as usize,
+                lighting::OutputFormat::Voxels,|index|source[index])?
+        };
         let timings = engine.timings(request.reserved);
         timings.add(timings::LIGHT_HOST, start.elapsed().as_nanos() as u64);
         if let Some(nanos) = light.device_nanos {

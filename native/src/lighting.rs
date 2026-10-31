@@ -1,5 +1,6 @@
 //! Final-block GPU lighting. The outer MCA ring is input only, never marked lit.
 mod output;
+pub(crate) mod cpu;
 mod palettes;
 pub(crate) use palettes::Section as PaletteSection;
 mod transport;
@@ -148,6 +149,7 @@ impl Pending {
         })
     }
 }
+#[derive(Clone,Copy)]
 pub(crate) enum OutputFormat {
     Voxels,
     Sections,
@@ -786,6 +788,7 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
     job: &crate::timings::Timings,
     mut consume: impl FnMut(Tile) -> Result<(), String>,
 ) -> Result<(), String> {
+    if engine.compute.is_none() { return cpu::region(engine,request,profile,chunks,job,consume); }
     let start = Instant::now();
     let mut consuming = Duration::ZERO;
     let gpu = engine.gpu()?.light_gpu

@@ -18,7 +18,7 @@ dimensions, and every existing supported registry program and adapter capability
 | Ores | geology.rs, geology/raster_gpu.rs | Loaded ore recipes → placement masks | CPU planning reused when graphics resources are absent; additional end-to-end coverage pending |
 | Counts/provider noise | decoration/counts/gpu.rs, provider_noise.wgsl | Count rules/registered Perlin stacks, sparse points → values | Native count and Perlin-stack kernels implemented; CPU batch dispatch connected; numerical hardware comparison covers loaded permutations and far coordinates |
 | Vines | decoration/vine_gpu.rs | Loaded recipe, substrate queries → writes | CPU mode selects the existing scalar replay without compiling or pausing for GPU vine programs |
-| Lighting | lighting.rs, lighting.wgsl | Opacity/emission/face rules → section light | CPU propagation pending; retain encoding and palettes |
+| Lighting | lighting.rs, lighting.wgsl | Opacity/emission/face rules → section light | Queue-based CPU propagation uses the same opacity/emission/occlusion data and section format; reuses constant-light proofs; hardware equality checks cover integer channels and crop/halo behavior |
 | End | end/, decoration/end_features/ | Saved island/density/feature settings → substrate/metadata | Existing CPU terrain/features reused; remove mandatory engine GPU initialization |
 | Storage/lifecycle | region/, world_definition/ | Same authoritative retina.dat → MCA/NBT | Reuse existing Rust publication, compression, metadata and ownership |
 
@@ -58,3 +58,18 @@ the loaded rule sampled across a two-step numerical coordinate interval, plus
 one final ceil step where relevant; it does not accept arbitrary count drift.
 The maximum absolute error across 1,536 provider comparisons was 0.00000514.
 These are kernel comparisons, not complete CPU terrain acceptance or benchmarks.
+
+## CPU lighting
+
+The CPU propagator uses a bounded tile, a monotonic frontier queue, the loaded
+material emission/opacity and the exact registered face-pair occlusion table.
+Its outputs use the existing voxel or section-packed light representation. It
+also consumes the same conservative constant-light proofs as GPU packing: a
+fully proven tile requires no dense light arrays or propagation. CPU region
+lighting retains the existing outer-ring boundary policy and lifecycle.
+
+Six bounded Metal comparisons matched every integer light byte exactly, across
+sky/no-sky, partial-face rules and voxel/section outputs. Unit checks cover
+attenuation, invalid material IDs, section packing, and an empty 32x32 region
+using only constant descriptors with no graphics resources. No regions or client
+instances were created for these checks.
