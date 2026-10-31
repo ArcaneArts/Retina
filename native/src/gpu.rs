@@ -205,6 +205,7 @@ impl Gpu {
             cached_density_masks, interpreter_preload,
         } = policy;
         crate::spirv_input::install(&info);
+        crate::startup::message(format_args!("Interpreter dispatcher grouping: {} (compact shared bundles)", crate::specialize::interpreter_group_identity()));
         crate::startup::capture::install(&info);
         let health = health::Health::install(&device, &backend);
         let driver_cache = crate::pipeline_cache::Cache::open(&device, "terrain");
