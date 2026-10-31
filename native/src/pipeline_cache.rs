@@ -101,9 +101,13 @@ impl Cache {
 }
 
 fn cache_key(info: &wgpu::AdapterInfo, lane: &str, variant: &str) -> Option<String> {
+    cache_key_for_input(info, lane, variant, crate::spirv_input::identity())
+}
+fn cache_key_for_input(info: &wgpu::AdapterInfo, lane: &str, variant: &str, input: &str) -> Option<String> {
     let key = wgpu::util::pipeline_cache_key(info)?;
     let legacy = format!("{key}\n{}\n{}\n{lane}", info.driver, info.driver_info);
-    let identity = if variant.is_empty() { legacy } else { format!("{legacy}\nvariant={variant}") };
+    let mut identity = if variant.is_empty() { legacy } else { format!("{legacy}\nvariant={variant}") };
+    if input != "naga" { identity.push_str(&format!("\ncompiler-input={input}")); }
     Some(format!("{:x}", Sha256::digest(identity)))
 }
 
@@ -214,11 +218,13 @@ mod tests {
         let mut info = wgpu::AdapterInfo { name: "test".into(), vendor: 0x10de, device: 0x2504,
             device_type: wgpu::DeviceType::DiscreteGpu, driver: "NVIDIA".into(), driver_info: "621.01".into(),
             ..wgpu::AdapterInfo::new(wgpu::DeviceType::DiscreteGpu, wgpu::Backend::Vulkan) };
-        let baseline = cache_key(&info, "compiler", "").unwrap();
-        assert_ne!(baseline, cache_key(&info, "compiler", "fast").unwrap());
-        assert_ne!(baseline, cache_key(&info, "compiler/world", "").unwrap());
+        let baseline = cache_key_for_input(&info, "compiler", "", "naga").unwrap();
+        assert_eq!(cache_key(&info, "compiler", ""), cache_key_for_input(&info, "compiler", "", crate::spirv_input::identity()));
+        assert_ne!(baseline, cache_key_for_input(&info, "compiler", "", "spirv-tools-0.13.3-safe-v1").unwrap());
+        assert_ne!(baseline, cache_key_for_input(&info, "compiler", "fast", "naga").unwrap());
+        assert_ne!(baseline, cache_key_for_input(&info, "compiler/world", "", "naga").unwrap());
         info.driver_info = "next driver".into();
-        assert_ne!(baseline, cache_key(&info, "compiler", "").unwrap());
+        assert_ne!(baseline, cache_key_for_input(&info, "compiler", "", "naga").unwrap());
     }
 
     #[test]

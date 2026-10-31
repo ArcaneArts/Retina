@@ -789,6 +789,7 @@ impl super::Device {
                     log::info!("Retina retained {count} interpreter function boundaries in SPIR-V");
                 }
                 if naga_stage == naga::ShaderStage::Compute {
+                    super::diagnostics::transform_spirv(&mut spv, stage.entry_point);
                     super::diagnostics::emit(super::diagnostics::Event::Spirv {
                         words: &spv,
                         entry: stage.entry_point,
