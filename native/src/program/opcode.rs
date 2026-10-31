@@ -5,6 +5,7 @@ macro_rules! opcodes {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub enum Opcode { $($name = $value),+ }
         impl Opcode {
+            #[cfg(test)]
             pub const ALL: &'static [Self] = &[$(Self::$name),+];
             pub fn from_code(code: u32) -> Result<Self, String> {
                 match code { $($value => Ok(Self::$name),)+ _ => Err(format!("unknown generation opcode {code}")) }

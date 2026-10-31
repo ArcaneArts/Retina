@@ -36,7 +36,7 @@ fn expected(section: &[u16]) -> (Vec<u16>, Vec<u8>) {
 #[ignore = "requires GPU; bounded exact section palette and fallback validation"]
 fn gpu_section_palettes_keep_order_bits_overflow_and_light() {
     let engine = crate::TerrainEngine::new().unwrap();
-    let mut gpu = engine.light_gpu.lock().unwrap();
+    let mut gpu = engine.gpu().unwrap().light_gpu.lock().unwrap();
     let mut flights = Vec::new();
     for (case, (side, height, crop, core)) in [
         (2usize, 64usize, 0usize, 2usize),

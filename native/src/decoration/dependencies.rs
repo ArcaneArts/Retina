@@ -945,7 +945,7 @@ impl Planner<'_> {
                     #[cfg(test)]
                     let mut lookup = worker_phase_probe::LookupCall::start(
                         worker_phase_probe::JoinKey::new("feature_gpu", Some(root), x, z));
-                    let acquired = self.engine.feature_gpu.lock();
+                    let acquired = self.engine.gpu()?.feature_gpu.lock();
                     #[cfg(test)]
                     lookup.acquired(acquired.is_ok());
                     let sampled = acquired

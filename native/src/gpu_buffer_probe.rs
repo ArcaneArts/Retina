@@ -39,13 +39,14 @@ pub(crate) fn census(engine: &TerrainEngine) -> Option<Value> {
     }
     // Callers have joined. The terrain owner published before its final reply;
     // these helper mutexes cover their complete synchronous submissions.
+    let gpu = engine.compute.as_ref()?;
     Some(json!({
         "terrain":engine.pipeline.gpu_buffer_probe.latest.lock().unwrap().clone(),
         "completed_now":engine.pipeline.snapshot().completed,
-        "lighting":engine.light_gpu.lock().unwrap().buffer_inventory().value(),
-        "ores":engine.ore_gpu.lock().unwrap().buffer_inventory().value(),
-        "features":engine.feature_gpu.lock().unwrap().buffer_inventory().value(),
-        "vines":engine.vine_gpu.lock().unwrap().buffer_inventory().value(),
+        "lighting":gpu.light_gpu.lock().unwrap().buffer_inventory().value(),
+        "ores":gpu.ore_gpu.lock().unwrap().buffer_inventory().value(),
+        "features":gpu.feature_gpu.lock().unwrap().buffer_inventory().value(),
+        "vines":gpu.vine_gpu.lock().unwrap().buffer_inventory().value(),
     }))
 }
 pub(crate) fn validate(value: &Value) {

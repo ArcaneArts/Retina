@@ -1,7 +1,9 @@
 # Native CPU backend
 
 Implementation is in progress. CPU generation is not yet selected by production
-entry points. Existing GPU behavior remains active until complete CPU workloads
+entry points. GPU handles and the worker are now isolated in `compute::GpuResources`;
+engine-owned definitions, caches and lifecycle can exist without graphics resources.
+Existing GPU behavior remains active until complete CPU workloads
 can be connected and verified. The goal includes all operations below, all three
 dimensions, and every existing supported registry program and adapter capability.
 

@@ -154,7 +154,7 @@ fn replay_batched(
 #[ignore = "bounded Metal planner handoff, overflow and retained-prefix correctness"]
 fn gpu_vine_planner_handoff() {
     let engine = crate::TerrainEngine::new().unwrap();
-    let (device, queue) = engine.ore_gpu.lock().unwrap().shared_device();
+    let (device, queue) = engine.gpu().unwrap().ore_gpu.lock().unwrap().shared_device();
     let mut gpu = Gpu::new(device, queue, engine.backend());
     gpu.enable_for_test(true);
     let gpu = Mutex::new(gpu);
@@ -296,7 +296,7 @@ fn gpu_vine_registered_planner() {
     let mut expected = None;
     let mut rows = Vec::new();
     for enabled in [false, true, true, false] {
-        engine.vine_gpu.lock().unwrap().enable_for_test(enabled);
+        engine.gpu().unwrap().vine_gpu.lock().unwrap().enable_for_test(enabled);
         let start = std::time::Instant::now();
         let result = pool
             .install(|| engine.plan_decorations(&field, &profile, r, 32, mask.as_deref()))
@@ -316,7 +316,7 @@ fn gpu_vine_registered_planner() {
 #[ignore = "bounded Metal unknown materials versus capacity overflow classification"]
 fn gpu_vine_unknown_material_is_not_overflow() {
     let engine = crate::TerrainEngine::new().unwrap();
-    let (device, queue) = engine.ore_gpu.lock().unwrap().shared_device();
+    let (device, queue) = engine.gpu().unwrap().ore_gpu.lock().unwrap().shared_device();
     let mut gpu = Gpu::new(device, queue, engine.backend());
     gpu.enable_for_test(true);
     let gpu = Mutex::new(gpu);

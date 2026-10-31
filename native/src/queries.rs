@@ -153,8 +153,7 @@ impl TerrainEngine {
                         || p.material_layers()
                 });
                 let (reply, receiver) = mpsc::channel();
-                self.sender
-                    .send(GpuCommand::Generate(Job {
+                self.gpu()?.sender.send(GpuCommand::Generate(Job {
                         requests,
                         profile,
                         tile_side: 0,
