@@ -228,6 +228,7 @@ fn generate_region_inner(
     detail: Option<&mut timings::Snapshot>,
 ) -> Result<RegionReport, String> {
     static FIRST_REGION: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    let diagnostic_start = crate::startup::debug_enabled().then(Instant::now);
     let _first_region = FIRST_REGION.swap(false, std::sync::atomic::Ordering::Relaxed).then(||
         crate::startup::Stage::new(format!("first region generation profile={} region={},{} cached={}", request.reserved, request.chunk_x.div_euclid(32), request.chunk_z.div_euclid(32), cached.is_some())));
     // Cached records are opaque publication inputs and need no live generation profile.
@@ -667,7 +668,10 @@ fn generate_region_inner(
     report.write_nanos = start.elapsed().as_nanos() as u64;
     report.bytes = published_bytes;
     drop(_io);
-    if let Some(detail) = detail {
+    if detail.is_some() || diagnostic_start.is_some() {
+        let mut snapshot = timings::Snapshot::default();
+        let detail_output = detail;
+        let detail = &mut snapshot;
         *detail = job.snapshot();
         detail.chunks = report.generated as u64;
         detail.flags = gpu_trace.flags;
@@ -695,6 +699,20 @@ fn generate_region_inner(
                 (detail.nanos[stage] as u128 * parallel_nanos as u128 / worker_total as u128) as u64
             };
         }
+        if let Some(started) = diagnostic_start {
+            crate::startup::message(format_args!("Region generation timings {}", serde_json::json!({
+                "schema_version": 1, "profile": request.reserved, "seed": request.seed,
+                "region": [region_x, region_z], "cached": cached.is_some(),
+                "generated": report.generated, "preserved": report.preserved,
+                "elapsed_ms": started.elapsed().as_secs_f64()*1000.0,
+                "terrain_host_ms": report.gpu_nanos as f64/1e6,
+                "assembly_ms": report.assembly_nanos as f64/1e6,
+                "publication_ms": report.write_nanos as f64/1e6,
+                "timestamp_flags": snapshot.flags, "stage_ms": snapshot.stage_ms(),
+                "scope": "Complete native region. Device stages overlap host intervals. Assembly worker costs are scaled to the parallel phase; planning and concurrent regions can overlap."
+            })));
+        }
+        if let Some(output) = detail_output { *output = snapshot; }
     }
     Ok(report)
 }

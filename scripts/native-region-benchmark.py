@@ -10,7 +10,7 @@ import os
 import hashlib
 from pathlib import Path
 import platform
-import resource
+import process_usage
 import statistics
 import time
 import subprocess
@@ -193,16 +193,16 @@ def main():
         coords = region_coordinates(args.count, args.origin_x, args.origin_z, args.grid_width,
                                     args.request_order, seed)
         batch_start_unix = time.time()
-        usage_before = resource.getrusage(resource.RUSAGE_SELF)
+        usage_before = process_usage.snapshot()
         start = time.perf_counter()
         with concurrent.futures.ThreadPoolExecutor(args.parallel) as workers:
             regions = list(workers.map(generate, coords))
         wall = time.perf_counter()-start
-        usage_after = resource.getrusage(resource.RUSAGE_SELF)
+        usage_after = process_usage.snapshot()
         batch_end_unix = time.time()
         user_seconds = usage_after.ru_utime - usage_before.ru_utime
         system_seconds = usage_after.ru_stime - usage_before.ru_stime
-        generation_peak_rss_bytes = usage_after.ru_maxrss * (1 if platform.system()=="Darwin" else 1024)
+        generation_peak_rss_bytes = process_usage.peak_rss_bytes(usage_after)
         after = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(after)))
         after_performance = performance_snapshot()
         chunks = after.chunks-before.chunks
@@ -244,10 +244,11 @@ def main():
                         "total_ms": (user_seconds + system_seconds) * 1000,
                         "cpu_ms_per_region": (user_seconds + system_seconds) * 1000 / len(regions),
                         "average_scheduled_cores": (user_seconds + system_seconds) / wall,
-                        "voluntary_context_switches": usage_after.ru_nvcsw - usage_before.ru_nvcsw,
-                        "involuntary_context_switches": usage_after.ru_nivcsw - usage_before.ru_nivcsw,
-                        "minor_faults": usage_after.ru_minflt - usage_before.ru_minflt,
-                        "major_faults": usage_after.ru_majflt - usage_before.ru_majflt,
+                        "counter_source": process_usage.SOURCE,
+                        "voluntary_context_switches": process_usage.difference(usage_after, usage_before, "ru_nvcsw"),
+                        "involuntary_context_switches": process_usage.difference(usage_after, usage_before, "ru_nivcsw"),
+                        "minor_faults": process_usage.difference(usage_after, usage_before, "ru_minflt"),
+                        "major_faults": process_usage.difference(usage_after, usage_before, "ru_majflt"),
                         "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
                         "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
                     },
@@ -301,7 +302,7 @@ def main():
             if old != new: raise AssertionError("Compilation changed region NBT")
             data["specialization_warmup_check"]={"status_before_wait":status_before_wait,"wait_after_measurement_ms":wait_after_measurement_ms,
                 "compile_ms":awaited.compile_nanos/1e6,"identical_nbt_chunks":1024,"regenerated_region":regenerated}
-        data["peak_rss_bytes"]=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss*(1 if platform.system()=="Darwin" else 1024)
+        data["peak_rss_bytes"]=process_usage.peak_rss_bytes(process_usage.snapshot())
         write_json(args.out/"measurements.json", data)
         print(json.dumps(data, indent=2))
 if __name__ == "__main__": main()
