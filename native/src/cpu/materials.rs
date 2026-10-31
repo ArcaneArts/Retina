@@ -5,6 +5,8 @@ use crate::{
     geology::{CaveMask, ColumnHalo},
     profile::{Column, WorldProfile},
 };
+use rayon::prelude::*;
+use std::sync::atomic::{AtomicU32, Ordering};
 #[derive(Clone, Copy)]
 struct Voxel {
     id: u16,
@@ -249,6 +251,28 @@ pub(crate) fn build(
     columns: &ColumnHalo,
     metrics: &crate::performance::Metrics,
 ) -> Result<CaveMask, String> {
+    build_in_pool(
+        profile,
+        fields,
+        request,
+        side,
+        columns,
+        metrics,
+        crate::region::assemblers()?,
+    )
+}
+
+/// All CPU tiles share the existing assembly thread budget, including nested
+/// feature requests. Per-worker samplers/scratch never contain GPU resources.
+pub(super) fn build_in_pool(
+    profile: &WorldProfile,
+    fields: &Fields,
+    request: ChunkRequest,
+    side: u32,
+    columns: &ColumnHalo,
+    metrics: &crate::performance::Metrics,
+    pool: &rayon::ThreadPool,
+) -> Result<CaveMask, String> {
     let side = side as usize;
     let surface = side * 16;
     let run_width = surface - 32;
@@ -272,21 +296,44 @@ pub(crate) fn build(
     ];
     let ox = request.chunk_x * 16;
     let oz = request.chunk_z * 16;
-    let mut b = Builder::new(profile, fields, request, columns);
     // Biome storage extends through the full horizontal halo, independently of
     // clipped terrain bounds. It is sampled on the same global quart lattice.
     let bottom = request.min_y.div_euclid(4) * 4;
-    for z in 0..quart {
-        for x in 0..quart {
-            for y in 0..layers {
-                let index = (y * quart + z) * quart + x;
-                let biome =
-                    b.caves
-                        .biome([ox + x as i32 * 4, bottom + y as i32 * 4, oz + z as i32 * 4])?;
-                words[biome_offset + index / 2] |= biome << ((index % 2) * 16);
-            }
+    let biome_rows = pool.install(|| {
+        (0..quart.div_ceil(4))
+            .into_par_iter()
+            .map_init(
+                || Builder::new(profile, fields, request, columns),
+                |b, strip| {
+                    let start = strip * 4;
+                    let rows = (quart - start).min(4);
+                    let mut packed = vec![0u32; rows * quart * layers / 2];
+                    for z in 0..rows {
+                        for x in 0..quart {
+                            for y in 0..layers {
+                                let index = (y * rows + z) * quart + x;
+                                let biome = b.caves.biome([
+                                    ox + x as i32 * 4,
+                                    bottom + y as i32 * 4,
+                                    oz + (start + z) as i32 * 4,
+                                ])?;
+                                packed[index / 2] |= biome << ((index % 2) * 16);
+                            }
+                        }
+                    }
+                    Ok((start, rows, packed))
+                },
+            )
+            .collect::<Result<Vec<_>, String>>()
+    })?;
+    for (start, rows, packed) in biome_rows {
+        let len = rows * quart / 2;
+        for y in 0..layers {
+            let offset = biome_offset + (y * quart + start) * quart / 2;
+            words[offset..offset + len].copy_from_slice(&packed[y * len..(y + 1) * len]);
         }
     }
+    let mut b = Builder::new(profile, fields, request, columns);
     for z in 0..surface {
         for x in 0..surface {
             let c = columns
@@ -300,57 +347,109 @@ pub(crate) fn build(
             }
         }
     }
-    let mut voxels = Vec::with_capacity(request.height as usize);
-    let mut runs = Vec::new();
-    let mut below = Vec::with_capacity(request.height as usize);
+    let mut proof = b.caves.proof_stats();
+    drop(b);
     if layered {
         words[base..base + 4].copy_from_slice(&[0x52554e53, run_width as u32, count as u32, 0]);
     }
-    for z in 0..width {
-        for x in 0..width {
-            let wx = ox + 15 + x as i32;
-            let wz = oz + 15 + z as i32;
-            let c = columns
-                .column_at(wx, wz)
-                .ok_or("missing CPU material column")?;
-            let interior = x > 0 && z > 0 && x + 1 < width && z + 1 < width;
-            if layered && interior {
-                let index = (z - 1) * run_width + x - 1;
-                words[base + 5 + index * 2] = runs.len() as u32;
-                let before = runs.len();
-                b.column(wx, wz, c, &mut voxels, &mut runs, &mut below)?;
-                words[base + 4 + index * 2] = (runs.len() - before) as u32;
-                for (y, voxel) in voxels.iter().enumerate() {
-                    if voxel.cavity {
-                        let bit = (y * width + z) * width + x;
-                        words[bit / 32] |= 1 << (bit % 32);
+    // Different strips can touch separate bits of the same boundary word.
+    // Relaxed OR is sufficient: all workers join before publishing the mask.
+    let air_bits = (0..air_words)
+        .map(|_| AtomicU32::new(0))
+        .collect::<Vec<_>>();
+    let strips = pool.install(|| {
+        (0..width.div_ceil(16))
+            .into_par_iter()
+            .map_init(
+                || {
+                    (
+                        Builder::new(profile, fields, request, columns),
+                        Vec::with_capacity(request.height as usize),
+                        Vec::with_capacity(request.height as usize),
+                    )
+                },
+                |(b, voxels, below), strip| {
+                    let start = strip * 16;
+                    let end = (start + 16).min(width);
+                    let before = b.caves.proof_stats();
+                    let mut descriptors = Vec::new();
+                    let mut runs = Vec::new();
+                    for z in start..end {
+                        for x in 0..width {
+                            let wx = ox + 15 + x as i32;
+                            let wz = oz + 15 + z as i32;
+                            let c = columns
+                                .column_at(wx, wz)
+                                .ok_or("missing CPU material column")?;
+                            let interior = x > 0 && z > 0 && x + 1 < width && z + 1 < width;
+                            if layered && interior {
+                                let offset = runs.len() as u32;
+                                let before = runs.len();
+                                b.column(wx, wz, c, voxels, &mut runs, below)?;
+                                descriptors.push([(runs.len() - before) as u32, offset]);
+                                for (y, voxel) in voxels.iter().enumerate() {
+                                    if voxel.cavity {
+                                        let bit = (y * width + z) * width + x;
+                                        air_bits[bit / 32]
+                                            .fetch_or(1 << (bit % 32), Ordering::Relaxed);
+                                    }
+                                }
+                            } else {
+                                for y in 0..request.height {
+                                    let p = [wx, request.min_y + y as i32, wz];
+                                    let carved = b.caves.carved(p)?;
+                                    let air = if profile
+                                        .registry_program
+                                        .as_ref()
+                                        .is_some_and(|r| r.aquifer.is_some())
+                                    {
+                                        carved
+                                            && (p[1] < b.caves.sampler().bounds()[0]
+                                                || p[1] >= b.caves.sampler().bounds()[1]
+                                                || b.aquifers.substance(p, &mut b.caves)? == 0)
+                                    } else {
+                                        carved
+                                    };
+                                    if air {
+                                        let bit = (y as usize * width + z) * width + x;
+                                        air_bits[bit / 32]
+                                            .fetch_or(1 << (bit % 32), Ordering::Relaxed);
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
-            } else {
-                for y in 0..request.height {
-                    let p = [wx, request.min_y + y as i32, wz];
-                    let carved = b.caves.carved(p)?;
-                    let air = if profile
-                        .registry_program
-                        .as_ref()
-                        .is_some_and(|r| r.aquifer.is_some())
-                    {
-                        carved
-                            && (p[1] < b.caves.sampler().bounds()[0]
-                                || p[1] >= b.caves.sampler().bounds()[1]
-                                || b.aquifers.substance(p, &mut b.caves)? == 0)
-                    } else {
-                        carved
-                    };
-                    if air {
-                        let bit = (y as usize * width + z) * width + x;
-                        words[bit / 32] |= 1 << (bit % 32);
-                    }
-                }
-            }
-        }
+                    let after = b.caves.proof_stats();
+                    Ok((
+                        (start.max(1) - 1) * run_width,
+                        descriptors,
+                        runs,
+                        super::caves::ProofStats {
+                            air: after.air - before.air,
+                            solid: after.solid - before.solid,
+                            scalar: after.scalar - before.scalar,
+                        },
+                    ))
+                },
+            )
+            .collect::<Result<Vec<_>, String>>()
+    })?;
+    for (word, value) in words[..air_words].iter_mut().zip(air_bits) {
+        *word = value.into_inner();
     }
-    let proof = b.caves.proof_stats();
+    let mut runs = Vec::new();
+    // Indexed collection retains z-major order regardless of worker scheduling.
+    for (first, descriptors, strip_runs, stats) in strips {
+        let offset = runs.len() as u32;
+        for (i, [len, start]) in descriptors.into_iter().enumerate() {
+            words[base + 4 + (first + i) * 2] = len;
+            words[base + 5 + (first + i) * 2] = start + offset;
+        }
+        runs.extend(strip_runs);
+        proof.air += stats.air;
+        proof.solid += stats.solid;
+        proof.scalar += stats.scalar;
+    }
     metrics.add(
         crate::performance::Counter::cpu_density_air_proofs,
         proof.air,

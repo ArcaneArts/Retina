@@ -80,7 +80,7 @@ impl Drop for RegionGuard<'_> {
     }
 }
 
-fn assemblers() -> Result<&'static rayon::ThreadPool, String> {
+pub(crate) fn assemblers() -> Result<&'static rayon::ThreadPool, String> {
     ASSEMBLERS
         .get_or_init(|| {
             // Optional runtime budget for shared hosts and matched backend

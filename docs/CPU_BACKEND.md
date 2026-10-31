@@ -221,3 +221,13 @@ limits remain unchanged. Integer placement caches keep their previous hashing.
 The [cache comparison](reports/cpu-sampling-caches-2026-10-31.md) observes another
 reduction from 58.4 to 38.1 seconds for the same complete diagnostic Nether region;
 thread utilization and final uncontended acceptance remain outstanding.
+
+CPU biome and material tile work now runs in bounded row strips on the existing
+shared region/assembly Rayon pool. Samplers and scratch stay local to a worker;
+immutable definitions and columns are shared. Canonical strip collection keeps
+packed biomes and material-run order stable. Cavity boundary words use relaxed
+atomic OR and publish only after all tasks join. `RETINA_REGION_THREADS` also
+bounds these workers; concurrent regions do not allocate a full pool each.
+One- versus four-worker fixtures match packed output for registered and legacy
+profiles. The [parallel tile diagnostic](reports/cpu-tile-parallelism-2026-10-31.md)
+observes another latency reduction, with remaining dependency/concurrency limits.

@@ -60,6 +60,81 @@ fn cpu_engine_queries_share_owned_preparation_and_retire_without_graphics() {
     assert!(engine.cpu_fields.lock().unwrap().is_empty());
 }
 #[test]
+fn cpu_material_masks_repeat_exactly_across_one_and_four_workers() {
+    let d = definition();
+    let one = rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .unwrap();
+    let four = rayon::ThreadPoolBuilder::new()
+        .num_threads(4)
+        .build()
+        .unwrap();
+    for key in ["minecraft:overworld", "minecraft:the_nether"] {
+        for legacy in [false, true] {
+            let mut profile = d
+                .dimension(key)
+                .unwrap()
+                .profile()
+                .unwrap()
+                .as_ref()
+                .clone();
+            if legacy {
+                profile.registry_program = None;
+            }
+            let fields = Fields::new(&profile).unwrap();
+            let r = d.request(key, 1, -2, -2).unwrap();
+            let metrics = timings::Timings::default();
+            let columns = sample(
+                Some(&profile),
+                Some(&fields),
+                &[r],
+                3,
+                0,
+                0,
+                &[],
+                &[],
+                &metrics,
+            )
+            .unwrap()
+            .columns;
+            let halo = ColumnHalo {
+                origin_x: r.chunk_x,
+                origin_z: r.chunk_z,
+                side: 3,
+                columns: Arc::new(columns),
+            };
+            let a = crate::cpu::materials::build_in_pool(
+                &profile,
+                &fields,
+                r,
+                3,
+                &halo,
+                &metrics.performance,
+                &one,
+            )
+            .unwrap();
+            let b = crate::cpu::materials::build_in_pool(
+                &profile,
+                &fields,
+                r,
+                3,
+                &halo,
+                &metrics.performance,
+                &four,
+            )
+            .unwrap();
+            assert_eq!(
+                a.words, b.words,
+                "{key} legacy={legacy}: worker scheduling changed packed output"
+            );
+            if !legacy {
+                a.validate_material_runs().unwrap();
+            }
+        }
+    }
+}
+#[test]
 fn cpu_complete_material_tile_has_valid_storage_and_global_overlap() {
     let d = definition();
     for key in ["minecraft:overworld", "minecraft:the_nether"] {
