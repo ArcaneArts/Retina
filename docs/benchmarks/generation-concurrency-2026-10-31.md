@@ -26,8 +26,8 @@ is uncontrolled. This is native generation, not Java preparation or rendering.
 ## Local observations
 
 Apple M4 Max / Metal, release native build, 20 measured 1,024-chunk regions after
-five warmups, two passes in reversed order: all 36 processes completed and their
-36,864 region chunks matched structurally. One assembly worker achieved roughly
+five warmups, two passes in reversed order: all 36 processes completed and each
+20-region measured corpus passed the same structural chunk comparison. One assembly worker achieved roughly
 1,600–2,000 chunks/sec across the cell medians, two roughly 2,800–3,900, and four
 roughly 4,400–5,100. With four assembly workers and one compiler worker, two,
 four and eight concurrent callers had cell-median throughput 4,697 / 5,144 /
@@ -41,7 +41,7 @@ optimal budget, NVIDIA performance, or a gain over the production default.
 A separate four-cell diagnostic sweep used two/eight callers, four assembly
 workers, one/two compiler workers, one warmup and five lit MCA regions. All four
 passed the same strict chunk comparison. These short warmup runs showed about
-1,300–1,600 chunks/sec while background optimization was still active. Device
+1,050–1,555 chunks/sec while background optimization was still active. Device
 timestamps were available, and the first submissions spent about 287–295 ms in
 the host wait/readback/material-continuation interval. That interval includes
 work outside the GPU and must not be interpreted as pure device execution.
