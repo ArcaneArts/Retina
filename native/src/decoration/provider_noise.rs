@@ -1,6 +1,7 @@
 //! Resident, registry-initialized Perlin stacks for spatial block providers.
 //! Only integer positions and program IDs cross the sparse query boundary.
 use serde::Deserialize;
+mod cpu;
 
 #[derive(Clone, Deserialize)]
 pub struct Program {

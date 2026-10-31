@@ -294,3 +294,49 @@ fn combined_samples_benchmark() {
         );
     }
 }
+
+
+#[test]
+#[ignore = "bounded CPU/GPU numerical comparison; requires a real GPU"]
+fn native_cpu_feature_samples_match_the_loaded_gpu_rules() {
+    let mut gpu=gpu(false);
+    let mut max_error=0.0f32;
+    for shift in [1,25,219] {
+        let (noise,mut queries,programs,points)=fixture(shift,256,256);
+        for far in [false,true] {
+            if !far {for (i,q) in queries.iter_mut().enumerate(){q.x=i as i32*37-4096;q.z=4096-i as i32*19;}}
+            else {queries=fixture(shift,256,0).1;}
+            let cpu=crate::cpu::features::sample(Some(&noise),&queries,&programs,&points).unwrap();
+            let actual=gpu.run_batch(shift,Some(&noise),&queries,&programs,&points).unwrap();
+            for ((&cpu,&actual),q) in cpu.counts.iter().zip(&actual.counts).zip(&queries) {
+                if cpu==actual {continue;}
+                // Backend division/reassociation may move a far f32 coordinate
+                // by a representable step. At the world border this is spatially
+                // meaningful; compare the loaded rule over that numerical interval,
+                // rather than permitting arbitrary differences in feature counts.
+                let divisor=f32::from_bits(q.rule.words[4]);
+                let p=[q.x as f32/divisor,q.z as f32/divisor];
+                let mut low=i32::MAX;let mut high=i32::MIN;
+                for dx in -2..=2 {for dz in -2..=2 {
+                    let at=[f32::from_bits(p[0].to_bits().wrapping_add_signed(dx)),
+                            f32::from_bits(p[1].to_bits().wrapping_add_signed(dz))];
+                    let count=noise.count_at(q.rule,at);low=low.min(count);high=high.max(count);
+                }}
+                // A ceil boundary can differ by one after final f32 arithmetic.
+                let rounding=i32::from(q.rule.words[0]==1);
+                assert!((low-rounding..=high+rounding).contains(&(actual as i32)),
+                    "count outside numerical coordinate interval: CPU={cpu} GPU={actual} range={low}..={high} far={far} query={q:?}");
+            }
+            let differing=cpu.counts.iter().zip(&actual.counts).filter(|(a,b)|a!=b).count();
+            let max_count_error=cpu.counts.iter().zip(&actual.counts).map(|(a,b)|a.abs_diff(*b)).max().unwrap();
+            let totals=(cpu.counts.iter().map(|&v|v as u64).sum::<u64>(),actual.counts.iter().map(|&v|v as u64).sum::<u64>());
+            eprintln!("CPU_COUNT_COMPARISON permutation={shift} far={far} differing={differing} max_error={max_count_error} totals={totals:?}");
+            for (cpu,gpu) in cpu.providers.into_iter().zip(actual.providers) {
+                let (cpu,gpu)=(f32::from_bits(cpu),f32::from_bits(gpu));
+                let error=(cpu-gpu).abs();max_error=max_error.max(error);
+                assert!(error<0.0001,"provider CPU {cpu} vs GPU {gpu}, permutation {shift}");
+            }
+        }
+    }
+    eprintln!("CPU_FEATURE_SAMPLES_PASS permutations=3 counts=1536 providers=1536 max_provider_error={max_error}");
+}

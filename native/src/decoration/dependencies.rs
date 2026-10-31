@@ -940,25 +940,24 @@ impl Planner<'_> {
                     if queries.is_empty() {
                         break;
                     }
-                    // Geometry is native; spatial count/provider evaluation still uses
-                    // the resident GPU programs. No Java generation callbacks exist.
-                    #[cfg(test)]
-                    let mut lookup = worker_phase_probe::LookupCall::start(
-                        worker_phase_probe::JoinKey::new("feature_gpu", Some(root), x, z));
-                    let acquired = self.engine.gpu()?.feature_gpu.lock();
-                    #[cfg(test)]
-                    lookup.acquired(acquired.is_ok());
-                    let sampled = acquired
-                        .map_err(|_| "feature GPU lock poisoned")?
-                        .run_batch(
-                            request.reserved,
-                            self.profile.decoration_noise.as_ref(),
-                            &queries.counts,
-                            &self.profile.decoration_provider_noises,
-                            &queries.noise,
-                        )?;
-                    #[cfg(test)]
-                    lookup.finish(true);
+                    // Geometry and sampling share the loaded feature rules.
+                    let sampled = if let Some(gpu) = &self.engine.compute {
+                        #[cfg(test)]
+                        let mut lookup = worker_phase_probe::LookupCall::start(
+                            worker_phase_probe::JoinKey::new("feature_gpu", Some(root), x, z));
+                        let acquired = gpu.feature_gpu.lock();
+                        #[cfg(test)]
+                        lookup.acquired(acquired.is_ok());
+                        let sampled = acquired.map_err(|_| "feature GPU lock poisoned")?.run_batch(
+                            request.reserved, self.profile.decoration_noise.as_ref(), &queries.counts,
+                            &self.profile.decoration_provider_noises, &queries.noise)?;
+                        #[cfg(test)]
+                        lookup.finish(true);
+                        sampled
+                    } else {
+                        crate::cpu::features::sample(self.profile.decoration_noise.as_ref(), &queries.counts,
+                            &self.profile.decoration_provider_noises, &queries.noise)?
+                    };
                     self.engine.pipeline.transfer(
                         request.reserved,
                         sampled.upload,
