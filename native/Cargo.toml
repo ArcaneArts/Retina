@@ -8,6 +8,8 @@ publish = false
 
 [features]
 default = ["scalable-allocator"]
+# Developer-only Vulkan-on-Metal coverage; normal Apple builds remain Metal.
+vulkan-portability = ["wgpu/vulkan-portability"]
 scalable-allocator = ["dep:mimalloc"]
 # Diagnostic reference encodings and standalone GPU ore benchmarks.
 ore-raster-benchmark = []
