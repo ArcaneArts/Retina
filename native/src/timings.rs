@@ -5,6 +5,11 @@ use std::time::Instant;
 
 pub const VERSION: u32 = 8;
 pub const STAGES: usize = 33;
+pub const NAMES: [&str; STAGES] = ["queue", "encode", "wait_copy", "height", "sites", "columns",
+    "cave_density", "cave_mask", "structure_plan", "vegetation_plan", "ore_plan", "assembly",
+    "geology", "cave_features", "vegetation", "structures", "snow", "nbt", "compress", "io",
+    "materials", "aquifer_fields", "aquifer_mask", "feature_counts", "ore_mask", "provider_noise",
+    "lake_candidates", "lake_density", "lake_reduce", "light_host", "light_sky", "light_spread", "light_pack"];
 pub const QUEUE: usize = 0;
 pub const ENCODE: usize = 1;
 pub const WAIT_COPY: usize = 2;
@@ -59,6 +64,11 @@ impl Default for Snapshot {
             gpu_jobs: 0,
             nanos: [0; STAGES],
         }
+    }
+}
+impl Snapshot {
+    pub fn stage_ms(&self) -> std::collections::BTreeMap<&'static str, f64> {
+        NAMES.into_iter().zip(self.nanos.map(|n| n as f64 / 1e6)).collect()
     }
 }
 pub struct Timings {

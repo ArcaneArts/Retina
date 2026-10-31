@@ -29,6 +29,12 @@ impl Run {
         crate::startup::message(format_args!("Region GPU completed job={} backend={backend} profile={} origin={},{} tile_side={} elapsed_ms={:.3} gpu_columns={} wait_readback_ms={:.3}",
             self.id, self.profile, self.x, self.z, self.side, self.started.elapsed().as_secs_f64()*1000.0,
             timing.gpu_columns, timing.nanos[timings::WAIT_COPY] as f64/1e6));
+        crate::startup::message(format_args!("Region GPU timings {}", serde_json::json!({
+            "schema_version": 1, "job": self.id, "backend": backend, "profile": self.profile,
+            "origin": [self.x, self.z], "tile_side": self.side,
+            "timestamp_supported": timing.flags & 1 != 0, "stage_ms": timing.stage_ms(),
+            "scope": "Per-submission counters. encode includes preparation; wait_copy includes queue execution, readback and material continuation. Device stages overlap host intervals; zero does not prove an available timestamp."
+        })));
     }
 }
 #[cfg(test)]
