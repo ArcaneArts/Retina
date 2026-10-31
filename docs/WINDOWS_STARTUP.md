@@ -321,3 +321,28 @@ aggregate pipeline-progress line every ten seconds. Pipeline totals can grow as
 work is discovered; they are not a percentage of overall world loading. Warnings
 and errors remain visible. Explicit `RETINA_SHADER_CAPTURE=1` still enables capture
 without verbose logging. Changing debug does not change shader compilation policy.
+
+
+## Comparing backend compilation and region execution
+
+With `debug=true`, `Vulkan pipeline feedback` reports whether feedback is
+supported, whether the driver marked it valid, whether an application cache was
+supplied, its reported hit, and driver duration. `cache_hit=unknown` means the
+feedback is absent/invalid; loading a cache file alone never establishes a hit.
+Vulkan 1.3 or the optional pipeline-creation-feedback extension supplies this
+observation without changing pipeline optimization. The actual pipeline call
+still runs on devices without feedback.
+
+`Region GPU selected` and `Region GPU completed` share a job ID, profile and block
+origin. They cover region-sized submissions only and identify individual shader
+stages as interpreter, specialized or fallback. A job may mix all three. The
+completion time includes preparation and readback; it is neither pure GPU device
+time nor total MCA generation time. Existing detailed region timing remains the
+source for the latter. Material emission uses the pipeline selected with the
+count stage; its continuation is included in completion time. Small per-chunk
+queries do not produce these summaries.
+
+Cache save diagnostics split driver snapshot time from hashing/file persistence.
+Shader source preparation has its own startup stage; existing driver spans split
+SPIR-V/HLSL generation and actual pipeline creation. Debug remains false by
+default and does not change generation policy.

@@ -2514,7 +2514,7 @@ impl super::Adapter {
     }
 
     pub fn required_device_extensions(&self, features: wgt::Features) -> Vec<&'static CStr> {
-        let (supported_extensions, unsupported_extensions) = self
+        let (mut supported_extensions, unsupported_extensions) = self
             .phd_capabilities
             .get_required_extensions(features)
             .iter()
@@ -2526,6 +2526,12 @@ impl super::Adapter {
             log::debug!("Missing extensions: {unsupported_extensions:?}");
         }
 
+        // Optional observational feedback: no feature bit or alternate pipeline.
+        if self.phd_capabilities.device_api_version < vk::API_VERSION_1_3
+            && self.phd_capabilities.supports_extension(ext::pipeline_creation_feedback::NAME)
+        {
+            supported_extensions.push(ext::pipeline_creation_feedback::NAME);
+        }
         log::debug!("Supported extensions: {supported_extensions:?}");
         supported_extensions
     }
@@ -2902,6 +2908,8 @@ impl super::Adapter {
                 .map_err(super::map_host_device_oom_err)?
         };
 
+        let pipeline_creation_feedback = self.phd_capabilities.device_api_version >= vk::API_VERSION_1_3
+            || enabled_extensions.contains(&ext::pipeline_creation_feedback::NAME);
         let shared = Arc::new(super::DeviceShared {
             raw: raw_device,
             family_index,
@@ -2921,6 +2929,7 @@ impl super::Adapter {
                 external_memory_fd: external_memory_fd_fn,
             },
             pipeline_cache_validation_key,
+            pipeline_creation_feedback,
             vendor_id: self.phd_capabilities.properties.vendor_id,
             timestamp_period: self.phd_capabilities.properties.limits.timestamp_period,
             private_caps: self.private_caps.clone(),

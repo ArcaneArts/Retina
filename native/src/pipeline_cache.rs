@@ -1,4 +1,5 @@
 //! Disposable driver compilation data. World definitions and terrain never live here.
+use std::time::Instant;
 use sha2::{Digest, Sha256};
 use std::{fs, io::{Read, Write}, path::{Path, PathBuf}, sync::{Arc, Mutex, atomic::{AtomicBool, AtomicU64, Ordering}}};
 
@@ -17,7 +18,11 @@ pub(crate) struct Cache {
 impl Cache {
     pub fn open(device: &wgpu::Device, lane: &str) -> Option<Arc<Self>> {
         if !device.features().contains(wgpu::Features::PIPELINE_CACHE)
-            || std::env::var("RETINA_PIPELINE_CACHE").as_deref() == Ok("0") { return None; }
+            || std::env::var("RETINA_PIPELINE_CACHE").as_deref() == Ok("0") {
+            crate::startup::message(format_args!("Pipeline cache unavailable lane={lane} feature={} disabled={}",
+                device.features().contains(wgpu::Features::PIPELINE_CACHE), std::env::var("RETINA_PIPELINE_CACHE").as_deref() == Ok("0")));
+            return None;
+        }
         let info = device.adapter_info();
         let key = wgpu::util::pipeline_cache_key(&info)?;
         let key = format!("{:x}", Sha256::digest(format!("{key}\n{}\n{}\n{lane}", info.driver, info.driver_info)));
@@ -48,9 +53,11 @@ impl Cache {
     }
     fn save(&self) {
         let _saving = self.saving.lock().unwrap_or_else(|e| e.into_inner());
+        let started = Instant::now();
         let Some(data) = self.raw.get_data() else { return; };
+        let snapshot = started.elapsed();
         match write(&self.path, &data) {
-            Ok(()) => crate::startup::message(format_args!("Pipeline cache saved bytes={} path={}", data.len(), self.path.display())),
+            Ok(()) => crate::startup::message(format_args!("Pipeline cache saved bytes={} snapshot_ms={:.3} persist_ms={:.3} path={}", data.len(), snapshot.as_secs_f64()*1000.0, (started.elapsed()-snapshot).as_secs_f64()*1000.0, self.path.display())),
             Err(error) if !self.warned.swap(true, Ordering::Relaxed) =>
                 crate::startup::info(format_args!("Pipeline cache could not be saved: {error}; generation continues")),
             Err(_) => {},

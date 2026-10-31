@@ -9,7 +9,8 @@ fn relevant(name: &str) -> bool {
     matches!(name, "naga::spv::write_vec" | "naga::back::hlsl::write"
         | "compile_fxc" | "Fxc::D3DCompile" | "compile_dxc"
         | "vkCreateComputePipelines" | "ID3D12Device::CreateComputePipelineState"
-        | "ID3D12Device::CreateRootSignature")
+        | "ID3D12Device::CreateRootSignature" | "naga::back::msl::write_string"
+        | "MTLDevice::newLibraryWithSource" | "MTLDevice::newComputePipelineState")
 }
 struct DriverStages;
 thread_local! {

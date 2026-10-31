@@ -477,6 +477,7 @@ fn source_columns_options(
 }
 
 pub(crate) struct Pipelines {
+    pub kind: &'static str,
     world: HashMap<String, wgpu::ComputePipeline>,
     cave: HashMap<String, wgpu::ComputePipeline>,
     pub horizontal_fields: u32,
@@ -506,10 +507,17 @@ impl Selected<'_> {
     }
 }
 impl Pipelines {
+    pub fn world_kind(&self, entry: &str) -> &'static str {
+        if self.reuse.is_some_and(|p| p.world_reuses(entry)) { "fallback" } else { self.kind }
+    }
+    pub fn cave_kind(&self, entry: &str) -> &'static str {
+        if self.reuse.is_some_and(|p| p.cave_reuses(entry)) { "fallback" } else { self.kind }
+    }
     /// Overlay the loaded profile's exact compatibility mask on complete generic
     /// pipelines. Pipeline clones retain the same device objects and selectors.
     pub fn with_reuse(&self, reuse: interpreter_reuse::Plan) -> Self {
         Self {
+            kind: self.kind,
             world: self.world.clone(),
             cave: self.cave.clone(),
             horizontal_fields: self.horizontal_fields,
@@ -776,11 +784,13 @@ impl Compiler {
         lake_sparse_fields: bool,
         aquifer_columns: bool,
     ) -> Result<Arc<State>, String> {
+        let prepare = crate::startup::Stage::new("prepare specialized registry shader source");
         let (mut source, horizontal_fields) = source_columns_options(program, aquifer_columns)?;
         source = crate::program::density_composition_source(&source, composition);
         if program.interpreter_capacity() > 1024 || program.interpolation_depth() > 2 {
             source.push_str("\n// retina large graph call boundaries\n");
         }
+        drop(prepare);
         let cached_nodes = composition
             && cached_masks
             && crate::program::composition::CachedDensity::for_nodes(program).is_some();
@@ -1245,6 +1255,7 @@ fn compile_program(
             }
         }
         Ok(Pipelines {
+            kind: if specialized { "specialized" } else { "interpreter" },
             world,
             cave: cave_pipelines,
             horizontal_fields,

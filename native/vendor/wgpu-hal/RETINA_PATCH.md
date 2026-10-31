@@ -47,3 +47,11 @@ vendor-specific default: normal optimization matches the common policy. An expli
 `RETINA_VULKAN_FAST_COMPILE=0/1` override in Retina controls interpreter policy
 for comparison. The flag may trade runtime throughput for compilation time; it
 is not a time bound and does not disable validation or shader safety checks.
+
+
+Optional Vulkan pipeline-creation feedback is enabled when provided by Vulkan
+1.3 or VK_EXT_pipeline_creation_feedback. Compute creation appends the feedback
+structure only on supported devices. The observer and thread-local last-result
+slot report validity, application-cache hits and driver duration; no feedback
+changes optimization or skips pipeline creation. Unsupported/invalid results
+remain distinguishable from cache misses.

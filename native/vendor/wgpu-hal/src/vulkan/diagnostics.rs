@@ -40,11 +40,22 @@ pub fn compute_flags() -> u32 {
     if fast { ash::vk::PipelineCreateFlags::DISABLE_OPTIMIZATION.as_raw() } else { 0 }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct Feedback {
+    pub supported: bool, pub valid: bool, pub cache_supplied: bool,
+    pub cache_hit: bool, pub duration_ns: u64,
+}
+std::thread_local! {
+    static FEEDBACK: Cell<Option<Feedback>> = const { Cell::new(None) };
+}
+pub fn take_feedback() -> Option<Feedback> { FEEDBACK.take() }
+
 /// Inputs are borrowed from the actual HAL compilation path, never regenerated.
 #[derive(Clone, Copy, Debug)]
 pub enum Event<'a> {
     Spirv { words: &'a [u32], entry: &'a str },
     ComputeStart { flags: u32 },
+    ComputeFeedback { supported: bool, valid: bool, cache_supplied: bool, cache_hit: bool, duration_ns: u64 },
     ComputeEnd { error: Option<&'a str> },
 }
 static OBSERVER: OnceLock<for<'a> fn(Event<'a>)> = OnceLock::new();
@@ -55,6 +66,9 @@ pub fn set_observer(observer: for<'a> fn(Event<'a>)) -> bool {
     OBSERVER.set(observer).is_ok()
 }
 pub(super) fn emit(event: Event<'_>) {
+    if let Event::ComputeFeedback { supported, valid, cache_supplied, cache_hit, duration_ns } = event {
+        FEEDBACK.set(Some(Feedback { supported, valid, cache_supplied, cache_hit, duration_ns }));
+    }
     if let Some(observer) = OBSERVER.get() {
         let _ = std::panic::catch_unwind(|| observer(event));
     }

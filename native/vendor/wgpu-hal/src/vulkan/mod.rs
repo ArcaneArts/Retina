@@ -514,6 +514,7 @@ struct DeviceShared {
     extension_fns: DeviceExtensionFunctions,
     vendor_id: u32,
     pipeline_cache_validation_key: [u8; 16],
+    pipeline_creation_feedback: bool,
     timestamp_period: f32,
     private_caps: PrivateCapabilities,
     workarounds: Workarounds,
