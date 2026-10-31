@@ -2,6 +2,19 @@
 use super::*;
 
 #[test]
+#[ignore = "requires an explicitly selected Vulkan runtime"]
+fn storage_noise_profile_biome_pipeline_creates_on_vulkan() {
+    assert_eq!(std::env::var("RETINA_GPU_BACKEND").as_deref(), Ok("vulkan"));
+    let gpu = Gpu::new(Default::default()).unwrap();
+    assert!(gpu.backend.starts_with("Vulkan:"));
+    let scope = gpu.device.push_error_scope(wgpu::ErrorFilter::Validation);
+    let first = gpu.sites_pipeline.get();
+    assert!(std::ptr::eq(first, gpu.sites_pipeline.get()));
+    assert!(pollster::block_on(scope.pop()).is_none());
+    gpu.health.check().unwrap();
+}
+
+#[test]
 #[ignore = "requires a real GPU with immediates and RETINA_STARTUP_DEFINITION"]
 fn common_policy_shared_dispatch_matches_independent_generation() {
     let definition = crate::world_definition::WorldDefinition::read(
