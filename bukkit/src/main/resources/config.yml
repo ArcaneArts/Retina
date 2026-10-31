@@ -1,4 +1,4 @@
-# Allowed GPU backends (DirectX 12). All false leaves generator selection to Bukkit.
+# Allowed GPU backends (DirectX 12). All false selects native CPU generation.
 # Restart the server after changes.
 # Detailed startup/driver diagnostics. Preparation progress remains visible.
 debug: false

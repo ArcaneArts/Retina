@@ -13,6 +13,8 @@ Existing chunk records are preserved; missing records are generated.
 Use an offline output directory with the matching generation definition.
 Ctrl-C/SIGTERM finishes the active region, stops, and exits with status 130.
 Output contains region data; initializing a playable save is outside this command.
+A usable permitted GPU is preferred; native CPU generation is automatic otherwise.
+Set RETINA_GPU_BACKEND=cpu to select CPU explicitly (auto, cpu, vulkan, dx12, metal).
 ";
 
 #[derive(Debug, PartialEq, Eq)]

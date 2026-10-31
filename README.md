@@ -222,11 +222,12 @@ f3_overlay = true
 
 Leave several backends allowed for automatic selection, or allow just one to
 choose it. For example, Windows DirectX-only means `allow_directx = true` and
-the other two `false`. An unavailable selected backend reports an initialization
-error. Set **all three to `false`** to disable automatic Retina worldgen and keep
-Minecraft's original generators. Legacy saves with an explicitly serialized
-Retina-only generator still need an enabled backend. Changing generators can
-create seams in new terrain.
+the other two `false`. Retina uses its native CPU backend if no usable permitted
+hardware GPU can initialize. Set **all three to `false`** to select CPU directly,
+without graphics initialization. Supported worlds keep using Retina in both cases.
+CPU and GPU numerical output may differ; switching execution backends can create
+terrain discontinuities where new chunks meet existing chunks. Saved definitions
+and existing chunks remain authoritative.
 
 For `mca_parallelism`, positive values are fixed limits; `0` and `-1` use Java's
 available CPU count; other negative values divide that count by their absolute
@@ -238,11 +239,17 @@ YAML is also supported at `config/retina.yaml` or `config/retina.yml`, using
 `key: value` syntax. If multiple files exist, priority is TOML, YAML, then YML.
 Missing settings use defaults; invalid selected files report an error.
 
+For either headless interface, `RETINA_GPU_BACKEND=cpu` explicitly selects CPU.
+The executable JAR also accepts `java -Dretina.gpuBackend=cpu -jar retina.jar ...`.
+Other override values are `auto`, `vulkan`, `dx12`, and `metal`. Overrides respect
+the allowed API set. Invalid configuration and shader errors still report errors.
+See [CPU backend implementation and validation](docs/CPU_BACKEND.md).
+
 ### Bukkit settings
 
 Edit `plugins/Retina/config.yml` and restart. The three `allow_*` flags and
-`debug` work here too. With all backends disabled, Retina returns no custom
-generator or biome provider and leaves selection to Bukkit.
+`debug` work here too. With all graphics APIs disabled, Retina keeps its generator
+and biome provider active and uses native CPU execution.
 
 Bukkit has its own delivery/cache settings; the mod's MCA parallelism,
 compression and F3 settings do not configure Bukkit's server-owned chunk saves.

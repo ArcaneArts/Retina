@@ -54,7 +54,7 @@ public final class ConfigurationTest {
                         + "allow_directx" + separator + ((mask & 2) != 0) + "\n"
                         + "allow_metal" + separator + ((mask & 4) != 0) + "\n";
                 var selected = parse(format, flags);
-                require(selected.worldgenEnabled() == (mask != 0), "all disabled bypasses generation");
+                require(selected.worldgenEnabled(), "all backend combinations keep Retina generation active");
                 var output = new StringWriter();
                 format.write(output, selected);
                 require(parse(format, output.toString()).equals(selected), "backend combination round trip " + mask);

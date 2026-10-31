@@ -25,7 +25,7 @@ public final class TerrainDebugReport {
         lines.add(LABEL+"Regions: §a"+stats.regions()+LABEL+"   In flight: §e"+stats.inFlight());
         lines.add(LABEL+"Temporary regions: §a"+stats.previewRegions()+LABEL+"   Hits: §a"+stats.previewCacheHits()+LABEL+"   Promotions: §a"+stats.promotions()+LABEL+" (publication count, not production rate)");
         lines.add(LABEL+"Terrain chunks: §a"+stats.total()+LABEL+"   Failed: "+(stats.failures()>0?"§c":"§a")+stats.failures());
-        lines.add(GPU+"GPU: "+DATA+payload.backend());
+        lines.add(GPU+"Backend: "+DATA+payload.backend());
         var gpu=payload.diagnostics();
         if(gpu.nodes()>0) {
             lines.add(GPU+"GPU programs: "+(gpu.status()==3?"§c":DATA)+gpu.execution());

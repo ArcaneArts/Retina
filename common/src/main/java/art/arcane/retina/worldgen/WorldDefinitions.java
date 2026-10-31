@@ -16,9 +16,8 @@ public final class WorldDefinitions {
     private static final Map<MinecraftServer, WorldDefinitionContext> WORLDS = new IdentityHashMap<>();
     private WorldDefinitions() { }
 
-    /** Returns null when Retina worldgen is disabled; no definition or native library is opened. */
+    /** Open the authoritative world definition before dimension generators are constructed. */
     public static synchronized WorldDefinitionContext initialize(MinecraftServer server) {
-        if (!art.arcane.retina.config.RetinaConfiguration.get().worldgenEnabled()) return null;
         var present = WORLDS.get(server);
         if (present != null) return present;
         var root = server.getWorldPath(LevelResource.ROOT);
