@@ -62,6 +62,16 @@ public final class NativeLibrary {
                 FunctionDescriptor.ofVoid(ValueLayout.JAVA_INT));
         try { diagnostics.invokeExact(debug ? 1 : 0); }
         catch (Throwable error) { throw new IllegalStateException("Could not configure Retina diagnostics", error); }
+        var flush = Linker.nativeLinker().downcallHandle(
+                symbols.findOrThrow("retina_flush_pipeline_caches"), FunctionDescriptor.ofVoid());
+        try {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try { flush.invokeExact(); }
+                catch (Throwable error) { System.err.println("Retina cache shutdown flush failed: " + error); }
+            }, "retina-cache-shutdown"));
+        } catch (IllegalStateException shuttingDown) {
+            // Loading during JVM shutdown must still permit the requested native call.
+        }
         return symbols;
     }
 

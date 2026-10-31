@@ -1811,6 +1811,7 @@ impl Gpu {
                 }
             }
         }
+        if let Some(cache) = &self.driver_cache { cache.checkpoint(); }
         self.health.check()?;
         self.health.submission(format!("terrain backend={} profile={world_profile} requests={} tile_side={} columns={} y={}..{} specialized={} interpolation_items={interpolation_dispatch} interpolation_depth={interpolation_depth} density_grid={}x{} surface_items={surface_dispatch} lake_cells={lake_dispatch} cave_side={cave_side}",
             self.backend, requests.len(), requests[0].tile_side, count * if sparse { 1 } else { COLUMNS }, requests[0].min_y, requests[0].max_y, specialized.is_some(), density_dispatch.0, density_dispatch.1));

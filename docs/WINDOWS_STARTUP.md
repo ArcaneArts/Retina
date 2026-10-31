@@ -296,14 +296,15 @@ On Vulkan adapters exposing wgpu's pipeline-cache feature, Retina loads and save
 opaque driver compilation data under `retina-cache/pipelines/` in the instance's
 working directory. Foreground terrain and background specialization have separate
 cache objects/files so checkpointing cannot wait for another compiler's driver
-call. Each completed pipeline checkpoints its cache, without waiting for shutdown.
+call. The first completed pipeline checkpoints its cache, followed by coalesced progress
+checkpoints (eight completions or two seconds) and bundle/region milestones.
 The adapter and driver determine the cache filename; wgpu validates compatibility
 and falls back to normal compilation when stored data cannot be used. Missing,
 corrupt, or unwritable cache files do not prevent generation. Files contain a
 length and SHA-256 checksum, are replaced atomically, and are capped at 256 MiB.
 The data is disposable and does not contain world definitions or generated chunks.
 
-Logs say `Pipeline cache cold`, `Pipeline cache loaded`, and `Pipeline cache saved`.
+Logs say `Pipeline cache cold`, `Pipeline cache loaded`, and `Pipeline cache checkpoint` / `Pipeline cache persisted`.
 Loaded bytes mean data was supplied, not a confirmed driver cache hit. Compare the
 actual `vkCreateComputePipelines` timings. Run the same world twice without changing
 the JAR, driver, backend or cache directory to measure reuse. For diagnostics,
@@ -346,3 +347,18 @@ Cache save diagnostics split driver snapshot time from hashing/file persistence.
 Shader source preparation has its own startup stage; existing driver spans split
 SPIR-V/HLSL generation and actual pipeline creation. Debug remains false by
 default and does not change generation policy.
+
+
+Cache snapshots stay on the lane's compiling thread, serialized with pipeline
+creation. Only hashing, file writes and filesystem flushes run on a dedicated
+writer. Each lane has one writer and one replaceable pending snapshot, plus any
+snapshot currently being written; updates during a write keep the newest full
+cache, rather than an unbounded queue. Foreground terrain and background shader
+compilation retain separate cache objects and writers. Failed writes are retried
+at later checkpoints and never prevent generation.
+
+Java installs a shutdown hook and the native CLI flushes on normal exit. Shutdown
+captures a lane's unsaved completed work if no driver call is active, then drains
+its writer. It does not wait for an unfinished driver compilation; that lane's
+previous checkpoint is flushed instead. Forced termination can still lose work
+since the last checkpoint. Ordinary GPU jobs never wait for file persistence.

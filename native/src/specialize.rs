@@ -1267,6 +1267,7 @@ fn compile_program(
     if let Some(error) = pollster::block_on(scope.pop()) {
         return Err(format!("specialized GPU program: {error}"));
     }
+    if let Some(cache) = driver_cache { cache.checkpoint(); }
     #[cfg(test)]
     probe.report("bundle", "all", total_start, program.len());
     result
