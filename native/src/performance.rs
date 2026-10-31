@@ -17,6 +17,7 @@ macro_rules! counters {
     };
 }
 counters! {
+    cpu_density_air_proofs, cpu_density_solid_proofs, cpu_density_scalar_points,
     cpu_prepare_nanos, cpu_columns_nanos, cpu_masks_nanos, cpu_queries_nanos, cpu_tiles,
     end_columns_nanos, end_query_nanos, end_terrain_nanos,
     end_mask_nanos, end_mask_bytes, end_empty_cells, end_solid_cells, end_uncertain_cells,

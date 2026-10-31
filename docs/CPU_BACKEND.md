@@ -81,7 +81,7 @@ CPU samplers evaluate registered climate, density, explicit heights and surface
 searches from the same programs. Climate and density caches align to global grids;
 job/request origins do not change their values. Final-field height searches retain
 the existing crossing calculation; composed graphs evaluate actual block positions.
-The complete backend will add interval acceleration after profiling.
+Conservative interval acceleration is described below.
 
 Property checks compare indexed queries to linear targets across weights, depth,
 flags and ties. Actual vanilla catalog samples for Overworld and Nether are finite
@@ -188,3 +188,20 @@ Fabric, NeoForge and Bukkit Java compilation succeeds. A Java/native CPU-overrid
 catalog initialization wrote a seed-bound definition containing all three
 Minecraft dimensions. This is focused integration evidence, not final installed
 loader, packaged-artifact or performance acceptance.
+
+## CPU density certificates
+
+Prepared programs identify graphs whose density can be bounded. Job-local
+samplers bound globally aligned terrain cells, using the same twenty interval
+operations and interpolation-field vertices as `density_bounds.wgsl`. Unknown,
+non-finite, oversized or unsafe far-coordinate intervals retain scalar sampling.
+An interval only skips a density decision when the entire interval proves its
+result; carver decisions still run when required. Returned program roots must all
+have finite certificates, so a shortcut cannot hide invalid output.
+
+Tests require interval opcode coverage to match the actual shader switch, enclose
+sampled scalar results across signs and branches, and contain every block in
+sampled vanilla cells. Full Metal material/cavity fixtures still match. One
+complete CPU Nether region retained all 1,024 chunk NBT records exactly while
+certifying 247.8 million density decisions. See the
+[bounded diagnostic comparison](reports/cpu-density-certificates-2026-10-31.md).
