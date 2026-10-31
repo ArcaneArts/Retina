@@ -1,6 +1,6 @@
 //! Private preview companion: independently compressed base runs for each chunk.
 //! Keeps cold Java column queries exact without another GPU terrain dispatch.
-use super::{RegionTimers, assemblers};
+use super::RegionTimers;
 use crate::{COLUMNS, ChunkRequest, geology::CaveMask, timings};
 use libdeflater::{CompressionLvl, Compressor};
 use rayon::prelude::*;
@@ -12,9 +12,10 @@ pub(super) fn write(
     request: ChunkRequest,
     mask: &CaveMask,
     timers: &RegionTimers<'_>,
+    pool: &rayon::ThreadPool,
 ) -> Result<u64, String> {
     let start = Instant::now();
-    let records: Result<Vec<Vec<u8>>, String> = assemblers()?.install(|| {
+    let records: Result<Vec<Vec<u8>>, String> = pool.install(|| {
         (0..1024usize)
             .into_par_iter()
             .map_init(

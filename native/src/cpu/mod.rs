@@ -6,6 +6,7 @@ pub mod columns;
 pub(crate) mod features;
 pub mod fields;
 pub mod noise;
+pub(crate) mod pools;
 pub mod program;
 
 pub(crate) mod materials;
