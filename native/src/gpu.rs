@@ -1,4 +1,6 @@
 mod execution_trace;
+#[cfg(test)]
+mod interpreter_promotion_tests;
 #[cfg(all(test, feature = "vulkan-portability"))]
 mod portability_tests;
 use crate::timings;
@@ -114,6 +116,8 @@ pub(crate) struct Gpu {
     interpreter_dispatch: bool,
     interpreter_preload: bool,
     preloaded_interpreters: HashMap<bool, std::sync::Arc<crate::specialize::State>>,
+    interpreter_preload_owners: HashMap<u32, bool>,
+    wide_interpreter_owners: std::collections::HashSet<u32>,
     cached_density_masks: bool,
     lake_point_cache: bool,
     lake_primed_corners: bool,
@@ -167,7 +171,14 @@ impl Gpu {
         self.sparse_lake_plans.retain(|id, _| !ids.contains(id));
         self.wide_profiles.retain(|id, _| !ids.contains(id));
         self.interpreter_profiles.retain(|id, _| !ids.contains(id));
-        self.interpolation_interpreters.prune();
+        self.interpreter_preload_owners.retain(|id, _| !ids.contains(id));
+        self.wide_interpreter_owners.retain(|id| !ids.contains(id));
+        self.interpolation_interpreters.retain_warm(|pipelines| !pipelines.promotion_pending());
+        self.preloaded_interpreters.retain(|composition, state| self.interpreter_preload_owners.values().any(|owner| owner == composition)
+            || state.ready(false).ok().flatten().is_some_and(|pipelines| !pipelines.promotion_pending()));
+        if self.wide_interpreter_owners.is_empty() && self.wide_interpreter.as_ref().is_some_and(|p| p.promotion_pending()) {
+            self.wide_interpreter = None;
+        }
         self.compiler.prune();
     }
 
@@ -469,6 +480,8 @@ impl Gpu {
             interpreter_dispatch,
             interpreter_preload,
             preloaded_interpreters: HashMap::new(),
+            interpreter_preload_owners: HashMap::new(),
+            wide_interpreter_owners: Default::default(),
             lake_sparse_fields,
             interpreter_columns,
             aquifer_columns,
@@ -485,10 +498,12 @@ impl Gpu {
     fn start_interpreter_preload(&mut self, id: u32, program: &crate::program::RegistryProgram) {
         let composition = program.density_composition;
         if !self.interpreter_preload || program.scratch_values() > crate::program::COMPACT_VALUES
-            || program.interpolation_depth() != 1 || self.preloaded_interpreters.contains_key(&composition) { return; }
+            || program.interpolation_depth() != 1 { return; }
         let reuse = crate::specialize::interpreter_reuse::Plan::new(program, crate::program::COMPACT_VALUES, composition);
         self.interpreter_reuse_plans.insert(id, reuse);
         if !crate::specialize::interpreter_reuse::Plan::density_preload(composition).supports(reuse) { return; }
+        self.interpreter_preload_owners.insert(id, composition);
+        if self.preloaded_interpreters.contains_key(&composition) { return; }
         match self.compiler.compact_interpreter(composition) {
             Ok(state) => {
                 crate::startup::message(format_args!("Queue required interpreter composition={composition} profile={id}"));
@@ -710,6 +725,9 @@ impl Gpu {
             .is_some_and(|p| p.density_composition);
         let capacity = self.wide_profiles.get(&profile_id).copied()
             .unwrap_or(crate::program::COMPACT_VALUES);
+        if depth == 0 && capacity == 1024 && needs_interpreter && self.wide_profiles.contains_key(&profile_id) {
+            self.wide_interpreter_owners.insert(profile_id);
+        }
         if depth == 0
             && capacity == 1024
             && needs_interpreter
@@ -717,7 +735,7 @@ impl Gpu {
             && self.wide_interpreter.is_none()
         {
             self.wide_interpreter =
-                Some(std::sync::Arc::new(crate::specialize::compile_interpreter(
+                Some(std::sync::Arc::new(self.compiler.compile_interpreter_on_demand(
                     &self.device,
                     &self.layout,
                     &self.cave_layout,
@@ -726,6 +744,13 @@ impl Gpu {
                     false,
                     self.driver_cache.as_deref(),
                 )?));
+        }
+        if let Some(optimized) = self.wide_interpreter.as_ref().and_then(|p| p.promoted()) {
+            crate::startup::message("Promoted wide interpreter to optimized pipelines");
+            self.wide_interpreter = Some(optimized);
+        }
+        if let Some(progress) = self.wide_interpreter.as_ref().and_then(|p| p.promotion_progress()) {
+            self.pipeline.interpreter_shader(profile_id, progress);
         }
         let interpreted = if needs_interpreter && (depth > 0 || composition || capacity > 1024) {
             // Profiles and execution/layout options are immutable on this GPU.
@@ -754,7 +779,12 @@ impl Gpu {
             };
             let key = (capacity, depth, composition, reuse);
             let pipelines = if let Some(pipelines) = self.interpolation_interpreters.get(&key) {
-                pipelines
+                if let Some(optimized) = pipelines.promoted() {
+                    crate::startup::message(format_args!("Promoted interpreter profile={profile_id} capacity={capacity} depth={depth} composition={composition}"));
+                    let optimized = std::sync::Arc::new(optimized.with_reuse(reuse));
+                    self.interpolation_interpreters.insert(key, optimized.clone());
+                    optimized
+                } else { pipelines }
             } else {
                 let source =
                     crate::program::interpreter_source_density(capacity, depth, composition);
@@ -778,9 +808,9 @@ impl Gpu {
                     None
                 };
                 let pipelines = if let Some(pipelines) = preloaded {
-                    pipelines.with_reuse(reuse)
+                    pipelines.promoted().unwrap_or(pipelines).with_reuse(reuse)
                 } else {
-                    crate::specialize::compile_interpreter(
+                    self.compiler.compile_interpreter_on_demand(
                         &self.device,
                         &self.layout,
                         &self.cave_layout,
@@ -794,6 +824,7 @@ impl Gpu {
                 self.interpolation_interpreters.insert(key, pipelines.clone());
                 pipelines
             };
+            if let Some(progress) = pipelines.promotion_progress() { self.pipeline.interpreter_shader(profile_id, progress); }
             self.interpreter_profiles.insert(profile_id, pipelines.clone());
             Some(pipelines)
         } else {

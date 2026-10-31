@@ -25,6 +25,7 @@ pub struct ProgramSnapshot {
 #[derive(Default)]
 struct ProfileCounters {
     shader: Mutex<Option<Arc<crate::specialize::Progress>>>,
+    interpreter: Mutex<Option<Arc<crate::specialize::Progress>>>,
     upload: AtomicU64,
     readback: AtomicU64,
 }
@@ -69,6 +70,14 @@ impl Metrics {
             .shader
             .lock()
             .unwrap_or_else(|e| e.into_inner()) = Some(state);
+    }
+    pub fn interpreter_shader(&self, id: u32, state: Arc<crate::specialize::Progress>) {
+        *self.profile(id).interpreter.lock().unwrap_or_else(|e| e.into_inner()) = Some(state);
+    }
+    pub fn interpreter_snapshot(&self, id: u32) -> ProgramSnapshot {
+        let profile = self.profiles.lock().unwrap_or_else(|e| e.into_inner()).get(&id).cloned();
+        profile.as_ref().and_then(|p| p.interpreter.lock().unwrap_or_else(|e| e.into_inner()).clone())
+            .map_or(ProgramSnapshot { version: 1, ..Default::default() }, |p| p.snapshot())
     }
     pub fn transfer(&self, id: u32, upload: u64, readback: u64) {
         let p = self.profile(id);

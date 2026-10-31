@@ -59,7 +59,7 @@ def main():
     parser.add_argument("--lighting", choices=("enabled", "disabled", "dense"), default="enabled")
     parser.add_argument("--mca-compression", choices=("zlib", "lz4"), default="zlib", help="MCA output codec; LZ4 validation needs Python lz4 and xxhash")
     parser.add_argument("--library-revision", help="Revision or immutable label that produced --library")
-    parser.add_argument("--readiness", choices=("driver-warm", "shader-ready"), default="driver-warm",
+    parser.add_argument("--readiness", choices=("driver-warm", "shader-ready", "optimized-interpreter"), default="driver-warm",
                         help="Whether measurement may overlap specialization or waits for a ready/final status")
     parser.add_argument("--program-execution", choices=("auto", "interpreter", "specialized"), help="Override GPU program mode for matched diagnostics")
     parser.add_argument("--interpolation-cache", choices=("enabled", "disabled"), help="A/B diagnostic for resident interpolation-field reuse")
@@ -71,6 +71,7 @@ def main():
     parser.add_argument("--specialized-interpolation", choices=("enabled", "disabled"), help="Specialize input-field prepasses independently of remaining terrain stages")
     parser.add_argument("--interpreter-dispatch", choices=("enabled", "disabled"), help="Shared compact interpreter entrypoints or independent pipelines")
     parser.add_argument("--interpreter-preload", choices=("enabled", "disabled"), help="Overlap compact density pipeline preparation with profile parsing")
+    parser.add_argument("--tiered-interpreter", choices=("enabled", "disabled"), help="Vulkan-only fast initial interpreter followed by optimized replacement")
     parser.add_argument("--interpreter-columns", choices=("enabled", "disabled"), help="Reuse resident X/Z expressions in compact interpreted density programs")
     parser.add_argument("--aquifer-columns", choices=("enabled", "disabled"), help="Reuse invocation-local X/Z expressions in registered aquifer surface searches")
     parser.add_argument("--material-dispatch", choices=("enabled", "disabled"), help="Share the specialized material count/emit pipeline")
@@ -99,6 +100,8 @@ def main():
         os.environ["RETINA_INTERPRETER_DISPATCH"] = "1" if args.interpreter_dispatch == "enabled" else "0"
     if args.interpreter_preload:
         os.environ["RETINA_INTERPRETER_PRELOAD"] = "1" if args.interpreter_preload == "enabled" else "0"
+    if args.tiered_interpreter:
+        os.environ["RETINA_VULKAN_TIERED_INTERPRETER"] = "1" if args.tiered_interpreter == "enabled" else "0"
     if args.interpreter_columns:
         os.environ["RETINA_INTERPRETER_COLUMNS"] = "1" if args.interpreter_columns == "enabled" else "0"
     if args.aquifer_columns:
@@ -160,6 +163,9 @@ def main():
         program = getattr(lib,"retina_gpu_program_snapshot",None)
         if program:
             program.argtypes=[c.c_uint32,c.POINTER(ProgramSnapshot)]
+        interpreter = getattr(lib, "retina_gpu_interpreter_snapshot", None)
+        if interpreter:
+            interpreter.argtypes = [c.c_uint32, c.POINTER(ProgramSnapshot)]
         def generate(item):
             name, x, z = item
             path = str((args.out / f"{name}.mca").resolve()).encode()
@@ -175,15 +181,17 @@ def main():
                         gpu_ms=report.gpu/1e6, assembly_ms=report.assembly/1e6, write_ms=report.write/1e6)
         warmups = [generate((f"warm{i}",8+i,8)) for i in range(args.warmups)]
         readiness_wait_ms = 0.0
-        if args.readiness == "shader-ready":
-            if not program:
+        if args.readiness != "driver-warm":
+            readiness_probe = interpreter if args.readiness == "optimized-interpreter" else program
+            if not readiness_probe:
                 raise RuntimeError("The loaded library does not expose program readiness diagnostics")
-            ready = ProgramSnapshot(); check(program(profile, c.byref(ready)))
+            ready = ProgramSnapshot(); check(readiness_probe(profile, c.byref(ready)))
             wait_start = time.perf_counter()
             while ready.status == 1 and time.perf_counter() - wait_start < args.specialization_timeout:
-                time.sleep(.1); check(program(profile, c.byref(ready)))
+                time.sleep(.1); check(readiness_probe(profile, c.byref(ready)))
             readiness_wait_ms = (time.perf_counter() - wait_start) * 1000
-            if ready.status not in (2, 3, 4):
+            final_states = (2,) if args.readiness == "optimized-interpreter" else (2, 3, 4)
+            if ready.status not in final_states:
                 raise RuntimeError(f"GPU program did not reach a final readiness state: status={ready.status}")
         before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
         before_performance = performance_snapshot()
@@ -234,6 +242,7 @@ def main():
                     library=str(args.library), parallel=args.parallel, seed=seed, dimension=args.dimension, request=request_context,
                     coordinates={"origin_x": args.origin_x, "origin_z": args.origin_z, "grid_width": args.grid_width},
                     request_order=args.request_order,
+                    tiered_interpreter=args.tiered_interpreter or os.environ.get("RETINA_VULKAN_TIERED_INTERPRETER"),
                     regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=definition.dimension["profile_metadata"].get("registry_program", {}).get("density_composition"), cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
                     lake_point_cache=args.lake_point_cache,
                     lake_primed_corners=args.lake_primed_corners,
@@ -287,6 +296,9 @@ def main():
             data["gpu_program"]={name:getattr(after_program,name) for name,_ in ProgramSnapshot._fields_ if name != "version"}
             data["gpu_transfers"]={"upload_bytes":after_program.upload_bytes-before_program.upload_bytes,"readback_bytes":after_program.readback_bytes-before_program.readback_bytes,
                 "upload_bytes_per_region":(after_program.upload_bytes-before_program.upload_bytes)/len(regions),"readback_bytes_per_region":(after_program.readback_bytes-before_program.readback_bytes)/len(regions)}
+        if interpreter:
+            optimized = ProgramSnapshot(); check(interpreter(profile, c.byref(optimized)))
+            data["interpreter_optimization"] = {name: getattr(optimized, name) for name, _ in ProgramSnapshot._fields_}
         names = [name for name, _, _ in coords]
         data["corpus"] = corpus_manifest(args.out, names)
         if args.compare:

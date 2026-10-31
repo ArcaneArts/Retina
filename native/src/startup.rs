@@ -24,6 +24,17 @@ static STATE: LazyLock<Arc<Shared>> =
     LazyLock::new(|| Arc::new((Mutex::new(State::default()), Condvar::new())));
 
 static DEBUG: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub(crate) enum InterpreterPolicy { #[default] Inherited, Fast, Optimized }
+thread_local! { static INTERPRETER_POLICY: std::cell::Cell<InterpreterPolicy> = const { std::cell::Cell::new(InterpreterPolicy::Inherited) }; }
+pub(crate) fn with_interpreter_policy<T>(policy: InterpreterPolicy, operation: impl FnOnce() -> T) -> T {
+    struct Restore(InterpreterPolicy);
+    impl Drop for Restore {
+        fn drop(&mut self) { INTERPRETER_POLICY.set(self.0); }
+    }
+    let _restore = Restore(INTERPRETER_POLICY.replace(policy));
+    operation()
+}
 pub(crate) fn debug_enabled() -> bool {
     DEBUG.load(std::sync::atomic::Ordering::Relaxed)
 }
@@ -179,11 +190,14 @@ fn compute_pipeline(
     use wgpu::hal::vulkan::diagnostics::{with_compute_compilation, ComputeCompilation};
     #[cfg(any(not(target_vendor = "apple"), test, feature = "vulkan-portability"))]
     let policy = if interpreter {
-        ComputeCompilation::Interpreter { fast_compile: match std::env::var("RETINA_VULKAN_FAST_COMPILE").as_deref() {
+        ComputeCompilation::Interpreter { fast_compile: match INTERPRETER_POLICY.get() {
+            InterpreterPolicy::Fast => Some(true),
+            InterpreterPolicy::Optimized => Some(false),
+            InterpreterPolicy::Inherited => match std::env::var("RETINA_VULKAN_FAST_COMPILE").as_deref() {
             Ok("0") => Some(false),
             Ok("1") => Some(true),
             _ => None,
-        } }
+        } } }
     } else { ComputeCompilation::Optimized };
     let stage = Stage::begin(format!(
         "compute pipeline {} entry={} interpreter={interpreter}",
@@ -211,6 +225,17 @@ fn compute_pipeline(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn policy_scope_restores_after_nested_calls_and_unwind() {
+        assert_eq!(INTERPRETER_POLICY.get(), InterpreterPolicy::Inherited);
+        let _ = std::panic::catch_unwind(|| with_interpreter_policy(InterpreterPolicy::Fast, || {
+            assert_eq!(INTERPRETER_POLICY.get(), InterpreterPolicy::Fast);
+            with_interpreter_policy(InterpreterPolicy::Optimized, || assert_eq!(INTERPRETER_POLICY.get(), InterpreterPolicy::Optimized));
+            assert_eq!(INTERPRETER_POLICY.get(), InterpreterPolicy::Fast);
+            panic!("scope unwind");
+        }));
+        assert_eq!(INTERPRETER_POLICY.get(), InterpreterPolicy::Inherited);
+    }
     #[test]
     fn quiet_progress_collapses_details_and_debug_preserves_them() {
         let details = vec!["WAIT driver phase".into(), "WAIT pipeline".into()];

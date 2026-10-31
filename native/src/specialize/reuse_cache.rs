@@ -33,6 +33,11 @@ impl<K: Eq + Hash, V> Cache<K, V> {
     pub fn prune(&mut self) {
         self.entries.retain(|_, value| value.strong_count() != 0);
     }
+    /// Pending jobs are owned by actual profiles, not merely by idle reuse.
+    pub fn retain_warm(&mut self, mut keep: impl FnMut(&V) -> bool) {
+        self.warm.retain(|value| keep(value));
+        self.prune();
+    }
 }
 
 #[cfg(test)]

@@ -11,6 +11,7 @@ mod compile_probe;
 mod interpreter_dispatch;
 pub(crate) mod interpreter_reuse;
 mod material_dispatch;
+mod interpreter_promotion;
 pub(crate) mod reuse_cache;
 
 #[derive(Clone, Copy, Default, serde::Deserialize, PartialEq)]
@@ -476,6 +477,7 @@ fn source_columns_options(
     ))
 }
 
+#[derive(Clone)]
 pub(crate) struct Pipelines {
     pub kind: &'static str,
     world: HashMap<String, wgpu::ComputePipeline>,
@@ -483,6 +485,8 @@ pub(crate) struct Pipelines {
     pub horizontal_fields: u32,
     reuse: Option<interpreter_reuse::Plan>,
     dispatches: HashMap<String, u32>,
+    promotion: Option<Arc<State>>,
+    optimization_progress: Option<Arc<Progress>>,
 }
 
 #[derive(Clone, Copy)]
@@ -523,6 +527,8 @@ impl Pipelines {
             horizontal_fields: self.horizontal_fields,
             reuse: Some(reuse),
             dispatches: self.dispatches.clone(),
+            promotion: self.promotion.clone(),
+            optimization_progress: self.optimization_progress.clone(),
         }
     }
     pub fn world<'a>(&'a self, entry: &str) -> &'a wgpu::ComputePipeline {
@@ -609,7 +615,10 @@ impl State {
 }
 
 struct Job {
-    interpreter: Option<interpreter_reuse::Plan>,
+    interpreter: Option<Option<interpreter_reuse::Plan>>,
+    shared_dispatch: bool,
+    policy: crate::startup::InterpreterPolicy,
+    promotion: Option<Arc<State>>,
     program: String,
     state: Weak<State>,
     horizontal_fields: u32,
@@ -631,11 +640,17 @@ pub(crate) struct Compiler {
     cache: reuse_cache::Cache<(String, bool), State>,
     material_dispatch: bool,
     specialized_interpolation: bool,
+    tiered_interpreter: bool,
+    optimized_interpreters: reuse_cache::Cache<(String, Option<interpreter_reuse::Plan>, bool), State>,
+    terrain_fast_cache: Option<Arc<crate::pipeline_cache::Cache>>,
     #[cfg(test)]
     pub(crate) reference_specialization: bool,
 }
 impl Compiler {
-    pub(crate) fn prune(&mut self) { self.cache.prune(); }
+    pub(crate) fn prune(&mut self) {
+        self.cache.retain_warm(|state| !state.pending());
+        self.optimized_interpreters.retain_warm(|state| !state.pending());
+    }
     #[cfg(test)]
     pub(crate) fn cache_inventory(&self) -> serde_json::Value { self.cache.inventory() }
 
@@ -649,6 +664,10 @@ impl Compiler {
         driver_cache: Option<Arc<crate::pipeline_cache::Cache>>,
     ) -> Result<Self, String> {
         let device = device.clone();
+        let tiered_interpreter = device.adapter_info().backend == wgpu::Backend::Vulkan
+            && std::env::var("RETINA_VULKAN_TIERED_INTERPRETER").as_deref() == Ok("1");
+        let fast_cache = tiered_interpreter.then(|| crate::pipeline_cache::Cache::open_variant(&device, "compiler", "fast-interpreter")).flatten();
+        let terrain_fast_cache = tiered_interpreter.then(|| crate::pipeline_cache::Cache::open_variant(&device, "terrain", "fast-interpreter")).flatten();
         let world = world.clone();
         let cave = cave.clone();
         let (sender, receiver) = mpsc::channel::<Job>();
@@ -659,7 +678,7 @@ impl Compiler {
                     // Evicted jobs with no live world do not keep compiling after close.
                     let Some(state) = job.state.upgrade() else { continue; };
                     let start = Instant::now();
-                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| crate::startup::with_interpreter_policy(job.policy, || {
                         if let Some(error) = device_failure() { return Err(error); }
                         if let Some(reuse) = job.interpreter {
                             compile_interpreter(
@@ -667,9 +686,9 @@ impl Compiler {
                                 &world,
                                 &cave,
                                 &job.program,
-                                Some(reuse),
-                                true,
-                                driver_cache.as_deref(),
+                                reuse,
+                                job.shared_dispatch,
+                                if job.policy == crate::startup::InterpreterPolicy::Fast { fast_cache.as_deref() } else { driver_cache.as_deref() },
                             )
                         } else {
                             compile_program(
@@ -694,8 +713,22 @@ impl Compiler {
                                 !job.reference_specialization,
                             )
                         }
-                    }))
+                    })))
                     .unwrap_or_else(|_| Err("specialized GPU compilation panicked".into()));
+                    let result = result.map(|mut pipelines| {
+                        pipelines.promotion = job.promotion;
+                        if job.policy == crate::startup::InterpreterPolicy::Optimized {
+                            pipelines.optimization_progress = Some(state.progress.clone());
+                        }
+                        pipelines.kind = match job.policy {
+                            crate::startup::InterpreterPolicy::Fast => "interpreter-fast",
+                            crate::startup::InterpreterPolicy::Optimized => "interpreter-optimized",
+                            crate::startup::InterpreterPolicy::Inherited => pipelines.kind,
+                        };
+                        crate::startup::message(format_args!("Compilation ready policy={:?} interpreter={} source_bytes={} elapsed_ms={:.3}",
+                            job.policy, job.interpreter.is_some(), job.program.len(), start.elapsed().as_secs_f64()*1000.0));
+                        pipelines
+                    });
                     if let Err(error) = &result {
                         if device_failure().is_some() {
                             eprintln!("Retina stops shader compilation after device failure: {error}");
@@ -727,13 +760,16 @@ impl Compiler {
             cache: reuse_cache::Cache::new(8),
             material_dispatch,
             specialized_interpolation,
+            tiered_interpreter,
+            optimized_interpreters: reuse_cache::Cache::new(8),
+            terrain_fast_cache,
             #[cfg(test)]
             reference_specialization: false,
         })
     }
     /// Prepare a profile-independent fallback after device startup, overlapping
     /// native registry parsing. The same compiler thread preserves job ordering.
-    pub fn compact_interpreter(&self, composition: bool) -> Result<Arc<State>, String> {
+    pub fn compact_interpreter(&mut self, composition: bool) -> Result<Arc<State>, String> {
         let source = crate::program::interpreter_source_density(
             crate::program::COMPACT_VALUES,
             1,
@@ -753,9 +789,17 @@ impl Compiler {
             }),
             ..Default::default()
         });
+        let reuse = Some(interpreter_reuse::Plan::density_preload(composition));
+        let (promotion, optimized_job) = if self.tiered_interpreter {
+            let (state, job) = self.prepare_optimized(&source, reuse, true);
+            (Some(state), job)
+        } else { (None, None) };
         self.sender
             .send(Job {
-                interpreter: Some(interpreter_reuse::Plan::density_preload(composition)),
+                interpreter: Some(reuse),
+                shared_dispatch: true,
+                policy: if self.tiered_interpreter { crate::startup::InterpreterPolicy::Fast } else { crate::startup::InterpreterPolicy::Inherited },
+                promotion,
                 program: source,
                 state: Arc::downgrade(&state),
                 horizontal_fields: 0,
@@ -771,6 +815,7 @@ impl Compiler {
                 reference_specialization: false,
             })
             .map_err(|_| "GPU shader compiler stopped")?;
+        if let Some(job) = optimized_job { self.sender.send(job).map_err(|_| "GPU shader compiler stopped")?; }
         Ok(state)
     }
     pub fn request(
@@ -867,6 +912,9 @@ impl Compiler {
         self.sender
             .send(Job {
                 interpreter: None,
+                shared_dispatch: false,
+                policy: crate::startup::InterpreterPolicy::Inherited,
+                promotion: None,
                 program: key.0.clone(),
                 state: Arc::downgrade(&state),
                 horizontal_fields,
@@ -1261,6 +1309,8 @@ fn compile_program(
             horizontal_fields,
             reuse,
             dispatches,
+            promotion: None,
+            optimization_progress: None,
         })
     })();
     // Source-generation errors must unwind the validation scope as well.
