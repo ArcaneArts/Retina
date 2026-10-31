@@ -60,6 +60,71 @@ fn cpu_engine_queries_share_owned_preparation_and_retire_without_graphics() {
     assert!(engine.cpu_fields.lock().unwrap().is_empty());
 }
 #[test]
+fn dense_columns_preserve_serial_order_across_workers_and_program_modes() {
+    let d = definition();
+    let one = rayon::ThreadPoolBuilder::new()
+        .num_threads(1)
+        .build()
+        .unwrap();
+    let four = rayon::ThreadPoolBuilder::new()
+        .num_threads(4)
+        .build()
+        .unwrap();
+    for key in ["minecraft:overworld", "minecraft:the_nether"] {
+        for legacy in [false, true] {
+            let mut profile = d
+                .dimension(key)
+                .unwrap()
+                .profile()
+                .unwrap()
+                .as_ref()
+                .clone();
+            if legacy {
+                profile.registry_program = None;
+            }
+            let fields = Fields::new(&profile).unwrap();
+            let r = d.request(key, 1, -2, -1).unwrap();
+            for mode in [0, 3] {
+                let mut serial = Columns::new(&profile, &fields, r);
+                let mut reference = Vec::new();
+                for cz in 0..3 {
+                    for cx in 0..3 {
+                        for z in 0..16 {
+                            for x in 0..16 {
+                                let (x, z) = ((r.chunk_x + cx) * 16 + x, (r.chunk_z + cz) * 16 + z);
+                                reference.push(
+                                    if mode == 3 {
+                                        serial.probe(x, z, true)
+                                    } else {
+                                        serial.column(x, z, true)
+                                    }
+                                    .unwrap(),
+                                );
+                            }
+                        }
+                    }
+                }
+                for pool in [&one, &four] {
+                    let actual =
+                        dense_columns(Some(&profile), Some(&fields), r, 3, mode, pool).unwrap();
+                    assert_eq!(
+                        bytemuck::cast_slice::<Column, u8>(&reference),
+                        bytemuck::cast_slice::<Column, u8>(&actual),
+                        "{key} legacy={legacy} mode={mode}"
+                    );
+                }
+            }
+        }
+    }
+    let r = d.request("minecraft:overworld", 1, -1, 0).unwrap();
+    let a = dense_columns(None, None, r, 3, 0, &one).unwrap();
+    let b = dense_columns(None, None, r, 3, 0, &four).unwrap();
+    assert_eq!(
+        bytemuck::cast_slice::<Column, u8>(&a),
+        bytemuck::cast_slice::<Column, u8>(&b)
+    );
+}
+#[test]
 fn cpu_material_masks_repeat_exactly_across_one_and_four_workers() {
     let d = definition();
     let one = rayon::ThreadPoolBuilder::new()

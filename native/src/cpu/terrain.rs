@@ -8,6 +8,7 @@ use crate::{
     queries::Point,
     timings,
 };
+use rayon::prelude::*;
 use std::sync::Arc;
 fn procedural(r: ChunkRequest, x: i32, z: i32) -> Column {
     let height = (r.base_height
@@ -38,12 +39,12 @@ pub(crate) fn sample(
     let mut result = Vec::new();
     let sparse = matches!(mode, 1 | 2 | 4);
     for (index, &r) in requests.iter().enumerate() {
-        let mut columns = match (profile, fields) {
-            (Some(p), Some(f)) => Some(Columns::new(p, f, r)),
-            (None, None) => None,
-            _ => return Err("missing prepared CPU fields".into()),
-        };
         if sparse {
+            let mut columns = match (profile, fields) {
+                (Some(p), Some(f)) => Some(Columns::new(p, f, r)),
+                (None, None) => None,
+                _ => return Err("missing prepared CPU fields".into()),
+            };
             let point = points.get(index).copied().unwrap_or(Point {
                 x: r.chunk_x * 16 + 8,
                 y: probe_y.get(index).copied().unwrap_or(r.min_y),
@@ -65,22 +66,14 @@ pub(crate) fn sample(
             result.push(column);
             continue;
         }
-        let side = side.max(1);
-        for cz in 0..side {
-            for cx in 0..side {
-                for z in 0..16 {
-                    for x in 0..16 {
-                        let x = (r.chunk_x + cx as i32) * 16 + x;
-                        let z = (r.chunk_z + cz as i32) * 16 + z;
-                        result.push(match &mut columns {
-                            Some(c) if mode == 3 => c.probe(x, z, true)?,
-                            Some(c) => c.column(x, z, true)?,
-                            None => procedural(r, x, z),
-                        });
-                    }
-                }
-            }
-        }
+        result.extend(dense_columns(
+            profile,
+            fields,
+            r,
+            side,
+            mode,
+            super::pools::terrain()?,
+        )?);
     }
     metrics
         .performance
@@ -122,6 +115,51 @@ pub(crate) fn sample(
         #[cfg(test)]
         host_phases: Default::default(),
     })
+}
+
+/// Chunk-row strips retain the shared chunk/column order while each task owns
+/// its sampler caches. This uses the same terrain lane as material production,
+/// rather than creating a pool or allocating a sampler for every column.
+fn dense_columns(
+    profile: Option<&WorldProfile>,
+    fields: Option<&Fields>,
+    request: ChunkRequest,
+    side: u32,
+    mode: u32,
+    pool: &rayon::ThreadPool,
+) -> Result<Vec<Column>, String> {
+    if profile.is_some() != fields.is_some() {
+        return Err("missing prepared CPU fields".into());
+    }
+    let side = side.max(1) as usize;
+    let mut result = vec![Column::default(); side * side * COLUMNS];
+    pool.install(|| {
+        result
+            .par_chunks_mut(side * COLUMNS)
+            .enumerate()
+            .try_for_each_init(
+                || {
+                    profile
+                        .zip(fields)
+                        .map(|(p, f)| Columns::new(p, f, request))
+                },
+                |columns, (cz, row)| {
+                    for (index, column) in row.iter_mut().enumerate() {
+                        let cx = index / COLUMNS;
+                        let x = (request.chunk_x + cx as i32) * 16 + (index % 16) as i32;
+                        let z =
+                            (request.chunk_z + cz as i32) * 16 + ((index % COLUMNS) / 16) as i32;
+                        *column = match columns {
+                            Some(c) if mode == 3 => c.probe(x, z, true)?,
+                            Some(c) => c.column(x, z, true)?,
+                            None => procedural(request, x, z),
+                        };
+                    }
+                    Ok::<_, String>(())
+                },
+            )
+    })?;
+    Ok(result)
 }
 
 #[cfg(test)]
