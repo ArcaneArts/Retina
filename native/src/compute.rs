@@ -52,3 +52,12 @@ mod tests {
         assert!(engine.gpu().is_err());
     }
 }
+
+/// Backend-independent terrain result. Device buffers never cross this boundary.
+pub(crate) struct Sample {
+    pub columns: Vec<crate::profile::Column>,
+    pub mask: Option<crate::geology::CaveMask>,
+    pub timings: crate::timings::Snapshot,
+    #[cfg(test)]
+    pub host_phases: crate::gpu::host_phase_probe::Phases,
+}

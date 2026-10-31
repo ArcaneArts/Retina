@@ -130,13 +130,7 @@ pub(crate) struct Gpu {
     material_storage_counts: std::cell::Cell<MaterialStorageCounts>,
 }
 
-pub(crate) struct GpuSample {
-    pub columns: Vec<Column>,
-    pub mask: Option<crate::geology::CaveMask>,
-    pub timings: timings::Snapshot,
-    #[cfg(test)]
-    pub host_phases: host_phase_probe::Phases,
-}
+pub(crate) use crate::compute::Sample as GpuSample;
 struct Timestamps {
     queries: wgpu::QuerySet,
     resolve: wgpu::Buffer,

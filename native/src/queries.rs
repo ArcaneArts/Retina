@@ -152,28 +152,37 @@ impl TerrainEngine {
                     p.geology.caves_enabled(p)
                         || p.material_layers()
                 });
-                let (reply, receiver) = mpsc::channel();
-                self.gpu()?.sender.send(GpuCommand::Generate(Job {
-                        requests,
-                        profile,
-                        tile_side: 0,
-                        cave_side: 0,
-                        probe_mode: match kind {
-                            Kind::Biome if underground => 2,
-                            Kind::Biome => 1,
-                            Kind::Height => 4,
-                        },
-                        probe_y: missing.iter().map(|p| p.y).collect(),
-                        probe_points: missing,
-                        reply,
-                        queued: Instant::now(),
-                        queue_nanos: 0,
-                        timings: self.timings(request.reserved),
-                    }))
-                    .map_err(|_| "GPU worker stopped")?;
-                let GpuSample { columns, .. } = receiver
-                    .recv()
-                    .map_err(|_| "GPU worker stopped before completing point queries")??;
+                let mode = match kind {
+                    Kind::Biome if underground => 2, Kind::Biome => 1, Kind::Height => 4,
+                };
+                let GpuSample { columns, .. } = if self.compute.is_none() {
+                    let metrics = self.timings(request.reserved);
+                    let started = metrics.performance.start();
+                    let ys: Vec<_> = missing.iter().map(|p| p.y).collect();
+                    let sample = self.cpu_sample(profile.as_deref(), &requests, 0, 0, mode, &ys, &missing)?;
+                    metrics.performance.elapsed(crate::performance::Counter::cpu_queries_nanos, started);
+                    sample
+                } else {
+                    let (reply, receiver) = mpsc::channel();
+                    self.gpu()?.sender.send(GpuCommand::Generate(Job {
+                            requests,
+                            profile,
+                            tile_side: 0,
+                            cave_side: 0,
+                            probe_mode: mode,
+                            probe_y: missing.iter().map(|p| p.y).collect(),
+                            probe_points: missing,
+                            reply,
+                            queued: Instant::now(),
+                            queue_nanos: 0,
+                            timings: self.timings(request.reserved),
+                        }))
+                        .map_err(|_| "GPU worker stopped")?;
+                    let sample = receiver
+                        .recv()
+                        .map_err(|_| "GPU worker stopped before completing point queries")??;
+                    sample
+                };
                 let mut cache = self
                     .query_cache
                     .lock()

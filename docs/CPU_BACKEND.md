@@ -11,10 +11,10 @@ dimensions, and every existing supported registry program and adapter capability
 | --- | --- | --- | --- |
 | Registry programs | program.wgsl, program.rs | Loaded instructions, noise parameters, spline points, context → six roots | cpu/program.rs: prepared reachable instructions, constants, per-job scratch, cached interpolation vertices; exhaustive opcode fixtures |
 | Noise primitives | simplex.wgsl, noise3.wgsl | XYZ, seed, coefficients → scalar | cpu/noise.rs: wrapping integer hashes, Perlin/simplex/FBM; primitive fixtures; hardware comparison pending |
-| Terrain/climate/biomes | simplex.wgsl, climate.wgsl, gpu.rs | Saved world profile and requests → columns, biomes | Shared climate index, registered fields and coherent column sampler implemented; final material/engine dispatch remains pending |
-| Interpolation and sparse queries | program/interpolation.rs, queries.rs | Global coordinates, field/program → density/height/biome | CPU evaluator and field sampler cache global interpolation/climate vertices and surface heights; shared column-program reuse analysis; engine query dispatch remains pending |
-| Surfaces/materials | materials.wgsl, program.wgsl | Density, material context/palettes → blocks/runs | All surface predicate opcodes implemented; material column assembly pending |
-| Caves/aquifers | caves.wgsl, aquifers.wgsl, geology.rs | Registered profiles, fields → masks/materials | Native cave/carver and local/global aquifer fields implemented; final mask/material assembly pending |
+| Terrain/climate/biomes | simplex.wgsl, climate.wgsl, gpu.rs | Saved world profile and requests → columns, biomes | Shared climate index, registered fields and coherent column sampler implemented; CPU engine dispatch connected; fallback/platform acceptance pending |
+| Interpolation and sparse queries | program/interpolation.rs, queries.rs | Global coordinates, field/program → density/height/biome | CPU evaluator and field sampler cache global interpolation/climate vertices and surface heights; shared column-program reuse analysis; CPU engine query dispatch connected |
+| Surfaces/materials | materials.wgsl, program.wgsl | Density, material context/palettes → blocks/runs | All surface predicate opcodes implemented; complete material column assembly implemented; broader acceptance pending |
+| Caves/aquifers | caves.wgsl, aquifers.wgsl, geology.rs | Registered profiles, fields → masks/materials | Native cave/carver and local/global aquifer fields implemented; complete mask/material assembly implemented; broader acceptance pending |
 | Ores | geology.rs, geology/raster_gpu.rs | Loaded ore recipes → placement masks | CPU planning reused when graphics resources are absent; additional end-to-end coverage pending |
 | Counts/provider noise | decoration/counts/gpu.rs, provider_noise.wgsl | Count rules/registered Perlin stacks, sparse points → values | Native count and Perlin-stack kernels implemented; CPU batch dispatch connected; numerical hardware comparison covers loaded permutations and far coordinates |
 | Vines | decoration/vine_gpu.rs | Loaded recipe, substrate queries → writes | CPU mode selects the existing scalar replay without compiling or pausing for GPU vine programs |
@@ -123,3 +123,26 @@ carver fixtures. Maximum sampled absolute errors were 0.00000138 for tunnels,
 other kernel comparisons retain tight numerical tolerances. These are field
 checks; complete voxel/material masks, engine dispatch and production fallback
 are still pending and must be validated before enabling CPU selection.
+
+## Complete terrain/material dispatch
+
+A common compute result now carries columns, masks and timing data without device
+handles. CPU dispatch supplies dense columns, surface/height/underground probes,
+quart biomes, cavity/exposure planes and complete downward material runs. Material
+assembly reuses per-tile voxel/depth buffers and the existing End-compatible run
+layout. World-owned prepared programs retire with their profiles. CPU work has its
+own opt-in preparation/column/mask/query counters, without fabricating GPU times.
+
+Fifty CPU-related checks pass. Overlapping one- and four-chunk cores agree in
+material, cavity and biome data for Overworld and Nether. A bounded Metal comparison
+matched all 163,840 sampled material voxels, cavity bits and biome samples exactly
+near the origin. Four complete CPU chunk calls also reached features/NBT status:
+Overworld, Nether, central End and outer End. These checks constructed engines
+without graphics resources, kept outputs in memory and opened no client.
+
+This establishes complete native terrain dispatch, not final delivery or speed.
+Production constructors still select GPU initialization. Automatic fallback,
+configuration/CLI integration, complete-operation coverage fixtures, measured
+optimization, platform/loader acceptance and release verification remain pending.
+The first complete chunk check exposed substantial Nether work beyond raw terrain;
+that must be profiled and optimized before performance acceptance.

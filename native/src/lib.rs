@@ -173,6 +173,7 @@ enum GpuCommand {
 /// Each caller assembles its own chunk in Rust after its GPU result arrives.
 pub struct TerrainEngine {
     compute: Option<compute::GpuResources>,
+    cpu_fields: Mutex<HashMap<u32, Arc<cpu::fields::Fields>>>,
     backend: String,
     profiles: RwLock<world_definition::residency::Profiles>,
     cache: Mutex<ColumnCache>,
@@ -250,6 +251,7 @@ impl TerrainEngine {
         Self {
             backend: compute.as_ref().map_or_else(|| "CPU: native".into(), |gpu| gpu.backend.clone()),
             compute,
+            cpu_fields: Mutex::new(HashMap::new()),
             pipeline,
             profiles: RwLock::new(world_definition::residency::Profiles::default()),
             cache: Mutex::new(ColumnCache::default()),
@@ -287,6 +289,7 @@ impl TerrainEngine {
             cache.order.retain(|key| !ids.contains(&key.profile));
             cache.live_tiles.retire(&ids);
         }
+        self.cpu_fields.lock().unwrap_or_else(|e| e.into_inner()).retain(|id, _| !ids.contains(id));
         self.query_cache.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
         self.dependency_versions.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
         self.structures.lock().unwrap_or_else(|e| e.into_inner()).retire(&ids);
@@ -1351,6 +1354,27 @@ impl TerrainEngine {
         Ok(())
     }
 
+    pub(crate) fn cpu_sample(
+        &self, profile: Option<&WorldProfile>, requests: &[ChunkRequest],
+        side: u32, cave_side: u32, mode: u32, probe_y: &[i32], points: &[queries::Point],
+    ) -> Result<compute::Sample, String> {
+        let id = requests[0].reserved;
+        let metrics = self.timings(id);
+        let fields = if let Some(profile) = profile {
+            let cached = self.cpu_fields.lock().map_err(|_| "CPU field cache poisoned")?
+                .get(&id).cloned();
+            Some(if let Some(fields) = cached { fields } else {
+                let started = metrics.performance.start();
+                let fields = Arc::new(cpu::fields::Fields::new(profile)?);
+                metrics.performance.elapsed(performance::Counter::cpu_prepare_nanos, started);
+                self.cpu_fields.lock().map_err(|_| "CPU field cache poisoned")?
+                    .entry(id).or_insert(fields).clone()
+            })
+        } else { None };
+        cpu::terrain::sample(profile, fields.as_deref(), requests, side, cave_side,
+            mode, probe_y, points, &metrics)
+    }
+
     fn dispatch(&self, requests: Vec<ChunkRequest>, tile_side: u32) -> Result<Vec<Column>, String> {
         Ok(self.dispatch_full(requests, tile_side, 0)?.columns)
     }
@@ -1381,6 +1405,9 @@ impl TerrainEngine {
             metrics.performance.elapsed(performance::Counter::end_columns_nanos, started);
             return Ok(gpu::GpuSample { columns, mask: None, timings: timings::Snapshot::default(),
                 #[cfg(test)] host_phases: Default::default() });
+        }
+        if self.compute.is_none() {
+            return self.cpu_sample(profile.as_deref(), &requests, tile_side, cave_side, probe_mode, &probe_y, &[]);
         }
         let (reply, receiver) = mpsc::channel();
         let timing_profile = requests[0].reserved;
