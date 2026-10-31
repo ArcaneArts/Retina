@@ -1,19 +1,30 @@
 //! Disposable driver compilation data. World definitions and terrain never live here.
-use std::time::Instant;
+mod writer;
+use std::time::{Duration, Instant};
 use sha2::{Digest, Sha256};
-use std::{fs, io::{Read, Write}, path::{Path, PathBuf}, sync::{Arc, Mutex, atomic::{AtomicBool, AtomicU64, Ordering}}};
+use std::{fs, io::{Read, Write}, path::{Path, PathBuf}, sync::{Arc, LazyLock, Mutex, Weak, atomic::{AtomicU64, Ordering}}};
 
 const MAGIC: &[u8; 8] = b"RTPC0001";
 const MAX_BYTES: usize = 256 * 1024 * 1024;
 static TEMP_ID: AtomicU64 = AtomicU64::new(0);
 
+static CACHES: LazyLock<Mutex<Vec<Weak<Cache>>>> = LazyLock::new(Default::default);
+#[derive(Default)]
+struct Checkpoint { dirty: u32, last: Option<Instant> }
+impl Checkpoint {
+    fn due(&self, now: Instant) -> bool {
+        self.dirty > 0 && (self.last.is_none() || self.dirty >= 8
+            || now.duration_since(self.last.unwrap()) >= Duration::from_secs(2))
+    }
+    fn captured(&mut self, now: Instant) { self.dirty = 0; self.last = Some(now); }
+}
 pub(crate) struct Cache {
     raw: wgpu::PipelineCache,
-    path: PathBuf,
-    // Each compiler lane owns its own raw cache, so foreground snapshots never
-    // contend with a long background driver compilation.
-    saving: Mutex<()>,
-    warned: AtomicBool,
+    lane: String,
+    // Serialize actual creation and snapshots within this lane only. The worker
+    // never accesses driver objects, and disk I/O never holds this mutex.
+    checkpoint: Mutex<Checkpoint>,
+    writer: Option<writer::Writer>,
 }
 impl Cache {
     pub fn open(device: &wgpu::Device, lane: &str) -> Option<Arc<Self>> {
@@ -49,19 +60,61 @@ impl Cache {
         let raw = unsafe { device.create_pipeline_cache(&wgpu::PipelineCacheDescriptor {
             label: Some("Retina persistent driver cache"), data: data.as_deref(), fallback: true,
         }) };
-        Some(Arc::new(Self { raw, path, saving: Mutex::new(()), warned: AtomicBool::new(false) }))
+        let writer = match writer::Writer::new(path) {
+            Ok(writer) => Some(writer),
+            Err(error) => {
+                crate::startup::info(format_args!("Pipeline cache writer unavailable: {error}; generation continues"));
+                None
+            }
+        };
+        let cache = Arc::new(Self { raw, lane: lane.into(), checkpoint: Mutex::new(Checkpoint::default()), writer });
+        let mut caches = CACHES.lock().unwrap_or_else(|e| e.into_inner());
+        caches.retain(|cache| cache.strong_count() > 0);
+        caches.push(Arc::downgrade(&cache));
+        Some(cache)
     }
-    fn save(&self) {
-        let _saving = self.saving.lock().unwrap_or_else(|e| e.into_inner());
+    fn snapshot(&self, state: &mut Checkpoint, reason: &str) {
+        let Some(writer) = &self.writer else { return; };
+        let retry = writer.failed() && state.last.is_none_or(|last| last.elapsed() >= Duration::from_secs(2));
+        if state.dirty == 0 && !retry { return; }
         let started = Instant::now();
-        let Some(data) = self.raw.get_data() else { return; };
-        let snapshot = started.elapsed();
-        match write(&self.path, &data) {
-            Ok(()) => crate::startup::message(format_args!("Pipeline cache saved bytes={} snapshot_ms={:.3} persist_ms={:.3} path={}", data.len(), snapshot.as_secs_f64()*1000.0, (started.elapsed()-snapshot).as_secs_f64()*1000.0, self.path.display())),
-            Err(error) if !self.warned.swap(true, Ordering::Relaxed) =>
-                crate::startup::info(format_args!("Pipeline cache could not be saved: {error}; generation continues")),
-            Err(_) => {},
+        let Some(data) = self.raw.get_data() else {
+            state.captured(Instant::now());
+            return;
+        };
+        let bytes = data.len();
+        if bytes > MAX_BYTES {
+            crate::startup::message("Pipeline cache snapshot exceeds persistence limit; generation continues");
+            state.captured(Instant::now());
+            return;
         }
+        writer.enqueue(data);
+        state.captured(Instant::now());
+        crate::startup::message(format_args!("Pipeline cache checkpoint lane={} reason={reason} bytes={bytes} snapshot_enqueue_ms={:.3}", self.lane, started.elapsed().as_secs_f64()*1000.0));
+    }
+    pub fn checkpoint(&self) {
+        self.snapshot(&mut self.checkpoint.lock().unwrap_or_else(|e| e.into_inner()), "milestone");
+    }
+}
+impl Drop for Cache {
+    fn drop(&mut self) {
+        self.checkpoint();
+        // Writer::drop drains the latest pending snapshot and joins its one thread.
+    }
+}
+
+/// Flush completed compilation data without waiting for a driver compile which
+/// may still be running. That lane's last checkpoint is already in its writer.
+pub(crate) fn flush_all() {
+    let caches: Vec<_> = CACHES.lock().unwrap_or_else(|e| e.into_inner())
+        .iter().filter_map(Weak::upgrade).collect();
+    for cache in caches {
+        match cache.checkpoint.try_lock() {
+            Ok(mut state) => cache.snapshot(&mut state, "shutdown"),
+            Err(std::sync::TryLockError::Poisoned(error)) => cache.snapshot(&mut error.into_inner(), "shutdown"),
+            Err(std::sync::TryLockError::WouldBlock) => crate::startup::message("Pipeline cache shutdown: compiler active; flushing previous completed checkpoint"),
+        }
+        if let Some(writer) = &cache.writer { writer.flush(); }
     }
 }
 
@@ -69,11 +122,13 @@ pub(crate) fn create(device: &wgpu::Device, descriptor: &wgpu::ComputePipelineDe
                      interpreter: bool, cache: Option<&Cache>) -> wgpu::ComputePipeline {
     let mut descriptor = descriptor.clone();
     if let Some(cache) = cache { descriptor.cache = Some(&cache.raw); }
+    let mut state = cache.map(|cache| cache.checkpoint.lock().unwrap_or_else(|e| e.into_inner()));
     let pipeline = if interpreter { crate::startup::interpreter_pipeline(device, &descriptor) }
         else { crate::startup::pipeline(device, &descriptor) };
-    // Persist each completed compile, including when the player closes before
-    // the background specialization bundle finishes. Never wait until shutdown.
-    if let Some(cache) = cache { cache.save(); }
+    if let (Some(cache), Some(state)) = (cache, state.as_mut()) {
+        state.dirty = state.dirty.saturating_add(1);
+        if state.due(Instant::now()) { cache.snapshot(state, "progress"); }
+    }
     pipeline
 }
 
@@ -125,6 +180,50 @@ mod tests {
         assert!(decode(&corrupt).is_none());
         corrupt = bytes; corrupt.push(0); assert!(decode(&corrupt).is_none());
         assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod checkpoint_tests {
+    use super::*;
+    #[test]
+    fn checkpoints_preserve_first_progress_slow_compiles_and_bundle_tail() {
+        let now = Instant::now(); let mut state = Checkpoint::default(); let mut captures = 0;
+        for _ in 0..64 {
+            state.dirty += 1;
+            if state.due(now) { captures += 1; state.captured(now); }
+        }
+        assert_eq!(captures, 8); assert_eq!(state.dirty, 7);
+        state.captured(now); assert!(!state.due(now + Duration::from_secs(10)));
+        state.dirty += 1;
+        assert!(!state.due(now + Duration::from_millis(1999)));
+        assert!(state.due(now + Duration::from_secs(2)));
+    }
+    #[test]
+    #[ignore = "filesystem persistence benchmark; run explicitly"]
+    fn persistence_foreground_benchmark() {
+        let root = std::env::temp_dir().join(format!("retina-cache-benchmark-{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        for bytes in [4096, 1024*1024, 8*1024*1024] {
+            let mut data = vec![17u8; bytes];
+            let path = root.join(format!("sync-{bytes}"));
+            let old = Instant::now();
+            for generation in 0..64 { data[0] = generation; let snapshot=data.clone(); write(&path, &snapshot).unwrap(); }
+            let old = old.elapsed();
+            let writer = writer::Writer::new(root.join(format!("coalesced-{bytes}"))).unwrap();
+            let mut state = Checkpoint::default(); let mut snapshots = 0;
+            let now = Instant::now(); let foreground = Instant::now();
+            for generation in 0..64 {
+                data[0] = generation; state.dirty += 1;
+                if state.due(now) { writer.enqueue(data.clone()); snapshots += 1; state.captured(now); }
+            }
+            if state.dirty > 0 { writer.enqueue(data.clone()); snapshots += 1; }
+            let foreground = foreground.elapsed();
+            writer.flush();
+            assert_eq!(read(&root.join(format!("coalesced-{bytes}"))).unwrap(), data);
+            println!("CACHE_BENCH bytes={bytes} updates=64 old_snapshots=64 snapshots={snapshots} old_foreground_ms={:.3} foreground_ms={:.3}", old.as_secs_f64()*1000., foreground.as_secs_f64()*1000.);
+        }
         fs::remove_dir_all(root).unwrap();
     }
 }

@@ -1846,6 +1846,12 @@ fn boundary(action: impl FnOnce() -> Result<(), String>) -> i32 {
     }
 }
 
+/// Best-effort persistence of completed compilation data; never initializes a GPU.
+#[unsafe(no_mangle)]
+pub extern "C" fn retina_flush_pipeline_caches() {
+    let _ = catch_unwind(AssertUnwindSafe(pipeline_cache::flush_all));
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn retina_initialize() -> i32 {
     boundary(|| shared_engine().map(|_| ()))

@@ -15,7 +15,12 @@ use std::{
     time::Instant,
 };
 
+struct CacheFlush;
+impl Drop for CacheFlush {
+    fn drop(&mut self) { retina_worldgen::retina_flush_pipeline_caches(); }
+}
 fn main() -> ExitCode {
+    let _cache_flush = CacheFlush;
     let options = match args::parse(std::env::args_os().skip(1)) {
         Ok(args::Command::Help) => {
             print!("{}", args::HELP);
