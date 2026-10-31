@@ -4,10 +4,16 @@ use std::{collections::HashSet, ffi::OsString, path::PathBuf};
 pub const HELP: &str = "Retina standalone region generation
 
 Usage:
+  retina init --catalog PATH --world DIRECTORY --seed LONG [--variant normal]
+  retina inspect --definition PATH
+  retina inspect --world DIRECTORY
   retina generate --definition PATH --dimension NAMESPACE:PATH \\
     --region-min=X,Z --region-max=X,Z --output DIRECTORY [--compression zlib|lz4]
 
 Region coordinates are inclusive at both ends. Each region is 32x32 chunks.
+Init materializes a reusable retina-catalog.dat into a seed-bound retina.dat.
+It never replaces an existing definition. Inspect reads that authoritative file.
+Init and inspect do not initialize a generation backend.
 The saved definition supplies the exact seed and all generation settings.
 Existing chunk records are preserved; missing records are generated.
 Use an offline output directory with the matching generation definition.
@@ -30,7 +36,17 @@ pub struct Generate {
 #[derive(Debug)]
 pub enum Command {
     Help,
+    Init(Init),
+    Inspect(PathBuf),
     Generate(Generate),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Init {
+    pub catalog: PathBuf,
+    pub world: PathBuf,
+    pub seed: i64,
+    pub variant: String,
 }
 
 pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String> {
@@ -41,8 +57,14 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
     if command == "--help" || command == "-h" {
         return Ok(Command::Help);
     }
+    if command == "init" || command == "inspect" {
+        return definitions(command == "init", args);
+    }
     if command != "generate" {
-        return Err(format!("unknown command {:?}; use generate", command));
+        return Err(format!(
+            "unknown command {:?}; use init, inspect or generate",
+            command
+        ));
     }
     let mut definition = None;
     let mut dimension = None;
@@ -115,6 +137,70 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
     }))
 }
 
+fn definitions(init: bool, mut args: impl Iterator<Item = OsString>) -> Result<Command, String> {
+    let (mut catalog, mut world, mut definition, mut seed) = (None, None, None, None);
+    let mut variant = "normal".to_owned();
+    let mut seen = HashSet::new();
+    while let Some(argument) = args.next() {
+        if argument == "--help" || argument == "-h" {
+            return Ok(Command::Help);
+        }
+        let text = argument.to_str().ok_or("option names must be UTF-8")?;
+        let (flag, inline) = text
+            .split_once('=')
+            .map_or((text, None), |(k, v)| (k, Some(v)));
+        let allowed = if init {
+            matches!(flag, "--catalog" | "--world" | "--seed" | "--variant")
+        } else {
+            matches!(flag, "--world" | "--definition")
+        };
+        if !allowed {
+            return Err(format!("unknown option {flag}"));
+        }
+        if !seen.insert(flag.to_owned()) {
+            return Err(format!("duplicate option {flag}"));
+        }
+        let value = inline
+            .map(OsString::from)
+            .or_else(|| args.next())
+            .ok_or_else(|| format!("missing value for {flag}"))?;
+        if value.is_empty() {
+            return Err(format!("empty value for {flag}"));
+        }
+        match flag {
+            "--catalog" => catalog = Some(PathBuf::from(value)),
+            "--world" => world = Some(PathBuf::from(value)),
+            "--definition" => definition = Some(PathBuf::from(value)),
+            "--seed" => {
+                seed = Some(
+                    value
+                        .to_str()
+                        .ok_or("seed must be UTF-8")?
+                        .parse::<i64>()
+                        .map_err(|_| "seed must be a signed 64-bit integer")?,
+                )
+            }
+            "--variant" => variant = value.into_string().map_err(|_| "variant must be UTF-8")?,
+            _ => unreachable!(),
+        }
+    }
+    if init {
+        Ok(Command::Init(Init {
+            catalog: catalog.ok_or("missing --catalog")?,
+            world: world.ok_or("missing --world")?,
+            seed: seed.ok_or("missing --seed")?,
+            variant,
+        }))
+    } else {
+        match (definition, world) {
+            (Some(path), None) => Ok(Command::Inspect(path)),
+            (None, Some(root)) => Ok(Command::Inspect(root.join("retina.dat"))),
+            (Some(_), Some(_)) => Err("choose --definition or --world, not both".into()),
+            (None, None) => Err("missing --definition or --world".into()),
+        }
+    }
+}
+
 fn coordinate(value: &OsString) -> Result<[i32; 2], String> {
     let text = value.to_str().ok_or("region coordinates must be UTF-8")?;
     let (x, z) = text
@@ -149,6 +235,62 @@ mod tests {
         assert_eq!(options.max, [1, 3]);
         assert_eq!(options.count(), 36);
         assert_eq!(options.compression, Compression::Lz4);
+    }
+    #[test]
+    fn definition_commands_preserve_paths_signed_seeds_and_variant() {
+        let input = [
+            "init",
+            "--catalog",
+            "catalog with spaces.dat",
+            "--world",
+            "world with spaces",
+            "--seed=-9223372036854775808",
+            "--variant",
+            "bukkit-api",
+        ];
+        let Command::Init(options) = parse(input.map(OsString::from)).unwrap() else {
+            panic!()
+        };
+        assert_eq!(
+            options,
+            Init {
+                catalog: "catalog with spaces.dat".into(),
+                world: "world with spaces".into(),
+                seed: i64::MIN,
+                variant: "bukkit-api".into()
+            }
+        );
+        let Command::Inspect(path) =
+            parse(["inspect", "--world", "world with spaces"].map(OsString::from)).unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(path, PathBuf::from("world with spaces/retina.dat"));
+        assert!(matches!(
+            parse(["init", "--help"].map(OsString::from)).unwrap(),
+            Command::Help
+        ));
+        for input in [
+            vec!["init", "--catalog=c.dat", "--world=w"],
+            vec![
+                "init",
+                "--catalog=c.dat",
+                "--world=w",
+                "--seed=9223372036854775808",
+            ],
+            vec![
+                "init",
+                "--catalog=c.dat",
+                "--world=w",
+                "--seed=1",
+                "--seed=2",
+            ],
+            vec!["inspect", "--world=w", "--definition=r.dat"],
+            vec!["inspect", "--seed=1"],
+            vec!["inspect"],
+        ] {
+            assert!(parse(input.into_iter().map(OsString::from)).is_err());
+        }
     }
     #[test]
     fn invalid_options_are_actual_usage_errors() {

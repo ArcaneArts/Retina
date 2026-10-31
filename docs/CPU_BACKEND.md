@@ -40,6 +40,12 @@ Use the CLI's help for required generation bounds and catalog options. `auto`
 attempts permitted graphics APIs; explicit GPU overrides cannot re-enable APIs
 excluded by configuration. Startup reports the selected backend and reason.
 
+The standalone runner also supports `init --catalog FILE --world DIRECTORY
+--seed LONG [--variant normal]` and `inspect --world DIRECTORY` (or
+`--definition FILE`). These commands reuse the same native catalog materializer
+and reader without initializing a generation engine. Initialization never replaces
+an existing definition, including an invalid one.
+
 `RETINA_REGION_THREADS` controls the combined native CPU worker budget, clamped
 to 2–16. Its default is available parallelism within that range. One quarter, at
 least one worker, handles dependency/assembly work; the rest compute terrain.
