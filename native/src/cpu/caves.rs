@@ -12,6 +12,12 @@ use crate::{
 };
 use std::collections::HashMap;
 mod carvers;
+#[derive(Clone, Copy, Default)]
+pub(crate) struct ProofStats {
+    pub air: u64,
+    pub solid: u64,
+    pub scalar: u64,
+}
 pub struct Caves<'a> {
     profile: &'a WorldProfile,
     request: ChunkRequest,
@@ -20,6 +26,7 @@ pub struct Caves<'a> {
     nodes: HashMap<[i32; 3], [f32; 4]>,
     exterior: HashMap<[i32; 2], [f32; 2]>,
     biomes: HashMap<[i32; 3], u32>,
+    proof_stats: ProofStats,
 }
 impl<'a> Caves<'a> {
     pub fn new(
@@ -36,6 +43,7 @@ impl<'a> Caves<'a> {
             nodes: HashMap::new(),
             exterior: HashMap::new(),
             biomes: HashMap::new(),
+            proof_stats: ProofStats::default(),
         }
     }
     fn enclosed(&self) -> bool {
@@ -217,6 +225,9 @@ impl<'a> Caves<'a> {
         self.exterior.insert([x, z], value);
         Ok(value)
     }
+    pub(crate) fn proof_stats(&self) -> ProofStats {
+        self.proof_stats
+    }
     pub fn carved(&mut self, p: [i32; 3]) -> Result<bool, String> {
         let [x, y, z] = p;
         let [min, max] = self.sampler.bounds();
@@ -234,20 +245,51 @@ impl<'a> Caves<'a> {
         if column.packed & (1 << 29) != 0 && y >= column.height - 4 {
             return Ok(false);
         }
-        let values = self.values(p)?;
-        let biome = self.biome(p)?;
         let [exterior, entrance] = self.exterior(x, z, column)?;
         let roof = (1.0 - entrance) * (1.0 - smoothstep(0.0, 24.0, (column.height - 1 - y) as f32));
+        let mut values = None;
         let mut carved = false;
         if self.registered_caves() && (y as f32) < exterior {
-            carved = self.density(p, values[0])? < -roof * 0.20;
-        }
-        if enclosed {
-            if y <= min || y >= self.sampler.generation_top() - 7 {
-                return Ok(carved);
+            let r = self.profile.registry_program.as_ref().unwrap();
+            let threshold = -roof * 0.20;
+            let bounds = if r.surface[2] == 0 {
+                self.sampler.density_certificate(1, p)
+            } else {
+                super::program::bounds::Bounds::UNKNOWN
+            };
+            if bounds.hi < threshold {
+                self.proof_stats.air += 1;
+                carved = true;
+            } else if bounds.lo >= threshold {
+                self.proof_stats.solid += 1;
+            } else {
+                self.proof_stats.scalar += 1;
+                let sampled = if r.surface[2] == 0
+                    && (r.density_composition || r.terrain_cell.iter().any(|s| s % 4 != 0))
+                {
+                    0.0
+                } else {
+                    let v = self.values(p)?;
+                    values = Some(v);
+                    v[0]
+                };
+                carved = self.density(p, sampled)? < threshold;
             }
-            return Ok(carved || values[1] < 0.0 || values[3] < 1.0);
         }
+        if carved {
+            return Ok(true);
+        }
+        if enclosed && (y <= min || y >= self.sampler.generation_top() - 7) {
+            return Ok(false);
+        }
+        let values = match values {
+            Some(v) => v,
+            None => self.values(p)?,
+        };
+        if enclosed {
+            return Ok(values[1] < 0.0 || values[3] < 1.0);
+        }
+        let biome = self.biome(p)?;
         for c in &self.profile.biomes[biome as usize].carvers {
             if c.count <= 0.0 || c.probability <= 0.0 {
                 continue;

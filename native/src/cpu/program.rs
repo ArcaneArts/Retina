@@ -1,6 +1,7 @@
 //! Prepared execution of the same loaded DAGs used by the GPU. Reachability and
 //! constant folding happen once; scratch frames and spatial caches belong to a
 //! bounded sampling job, never the global engine or saved world definition.
+pub(crate) mod bounds;
 use super::noise::*;
 use crate::program::{Instruction, Program, RegistryProgram, opcode::Opcode};
 use std::{collections::HashMap, sync::Arc};
@@ -19,6 +20,7 @@ struct Step {
 }
 struct Plan {
     steps: Vec<Step>,
+    boundable: bool,
 }
 pub struct Prepared {
     registry: Arc<RegistryProgram>,
@@ -102,7 +104,14 @@ impl Prepared {
                     constant,
                 });
             }
-            plans.push(Plan { steps });
+            let mut possible = vec![false; program.nodes.len()];
+            for step in &steps {
+                possible[step.index] = step.constant.is_some_and(f32::is_finite)
+                    || bounds::possible(step.opcode, &program.nodes[step.index], &possible);
+            }
+            let boundable =
+                (0..6).all(|i| possible[program.roots.get(i).copied().unwrap_or(0) as usize]);
+            plans.push(Plan { steps, boundable });
         }
         let columns = crate::column_program::Plan::new(&registry);
         Ok(Self {
@@ -120,6 +129,7 @@ impl Prepared {
             frames: Vec::new(),
             corners: HashMap::new(),
             horizontal: HashMap::new(),
+            bounds_scratch: Vec::new(),
         }
     }
 }
@@ -138,6 +148,7 @@ pub struct Evaluator<'a> {
     frames: Vec<Vec<f32>>,
     corners: HashMap<Corner, f32>,
     horizontal: HashMap<(u32, u32, usize), f32>,
+    bounds_scratch: Vec<bounds::Bounds>,
 }
 impl Evaluator<'_> {
     pub fn run(
@@ -221,33 +232,34 @@ impl Evaluator<'_> {
                 continue;
             }
             let p = std::array::from_fn(|i| lower[i] + upper[i] as f32 * size[i]);
-            let key = Corner {
-                field,
-                point: p.map(f32::to_bits),
-                surface: context.surface.map(f32::to_bits),
-                detail: context.detail.map(f32::to_bits),
-            };
-            *value = if let Some(value) = self.corners.get(&key) {
-                *value
-            } else {
-                let value = self.evaluate(
-                    self.prepared.registry.programs.len() + field,
-                    p,
-                    context,
-                    depth,
-                )[0];
-                // Bounded optional cache: eviction never changes sampled values.
-                if self.corners.len() >= 32768 {
-                    self.corners.clear();
-                }
-                self.corners.insert(key, value);
-                value
-            };
+            *value = self.corner(field, p, context, depth);
             if alpha == [0.0; 3] {
                 return *value;
             }
         }
         trilinear(corners, alpha)
+    }
+    fn corner(&mut self, field: usize, point: [f32; 3], context: Context, depth: usize) -> f32 {
+        let key = Corner {
+            field,
+            point: point.map(f32::to_bits),
+            surface: context.surface.map(f32::to_bits),
+            detail: context.detail.map(f32::to_bits),
+        };
+        if let Some(value) = self.corners.get(&key) {
+            return *value;
+        }
+        let value = self.evaluate(
+            self.prepared.registry.programs.len() + field,
+            point,
+            context,
+            depth,
+        )[0];
+        if self.corners.len() >= 32768 {
+            self.corners.clear();
+        }
+        self.corners.insert(key, value);
+        value
     }
     fn evaluate(
         &mut self,

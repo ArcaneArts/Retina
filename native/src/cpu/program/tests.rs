@@ -25,7 +25,7 @@ fn registry(program: Program) -> RegistryProgram {
         aquifer: None,
     }
 }
-fn one(op: u32) -> RegistryProgram {
+pub(super) fn one(op: u32) -> RegistryProgram {
     let mut r = registry(Program {
         nodes: vec![
             n(0, 0, 0, 0, [0.25; 4]),

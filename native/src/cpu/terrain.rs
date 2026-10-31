@@ -103,7 +103,7 @@ pub(crate) fn sample(
             side: side as usize,
             columns: Arc::new(result),
         };
-        let mask = super::materials::build(p, f, r, side, &halo)?;
+        let mask = super::materials::build(p, f, r, side, &halo, &metrics.performance)?;
         result = Arc::try_unwrap(halo.columns).unwrap_or_else(|c| (*c).clone());
         metrics
             .performance

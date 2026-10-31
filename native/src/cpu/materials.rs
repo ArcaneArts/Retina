@@ -247,6 +247,7 @@ pub(crate) fn build(
     request: ChunkRequest,
     side: u32,
     columns: &ColumnHalo,
+    metrics: &crate::performance::Metrics,
 ) -> Result<CaveMask, String> {
     let side = side as usize;
     let surface = side * 16;
@@ -349,6 +350,19 @@ pub(crate) fn build(
             }
         }
     }
+    let proof = b.caves.proof_stats();
+    metrics.add(
+        crate::performance::Counter::cpu_density_air_proofs,
+        proof.air,
+    );
+    metrics.add(
+        crate::performance::Counter::cpu_density_solid_proofs,
+        proof.solid,
+    );
+    metrics.add(
+        crate::performance::Counter::cpu_density_scalar_points,
+        proof.scalar,
+    );
     if layered {
         words[base + 3] = runs.len() as u32;
         words.extend(runs);

@@ -51,6 +51,7 @@ impl Fields {
             }),
             grid: HashMap::new(),
             heights: HashMap::new(),
+            density_bounds: HashMap::new(),
         }
     }
 }
@@ -61,6 +62,7 @@ pub struct Sampler<'a> {
     evaluator: Option<Evaluator<'a>>,
     grid: HashMap<(usize, [u32; 3]), [f32; 6]>,
     heights: HashMap<[u32; 2], f32>,
+    density_bounds: HashMap<(usize, [u32; 3]), super::program::bounds::Bounds>,
 }
 impl Sampler<'_> {
     pub fn run(
@@ -159,6 +161,59 @@ impl Sampler<'_> {
             registry.terrain_cell[0],
         ];
         Ok(self.interpolated(program, point, cell, false)?[0])
+    }
+    pub(crate) fn density_certificate(
+        &mut self,
+        program: usize,
+        point: [i32; 3],
+    ) -> super::program::bounds::Bounds {
+        use super::program::bounds::Bounds;
+        let Some(registry) = self.profile.registry_program.as_ref() else {
+            return Bounds::UNKNOWN;
+        };
+        let step = [
+            registry.terrain_cell[0] as f32,
+            registry.terrain_cell[1] as f32,
+            registry.terrain_cell[0] as f32,
+        ];
+        if registry.density_composition && !self.evaluator.as_ref().unwrap().can_bound(program) {
+            return Bounds::UNKNOWN;
+        }
+        let lo =
+            std::array::from_fn::<_, 3, _>(|i| ((point[i] as f32) / step[i]).floor() * step[i]);
+        let key = (program, lo.map(f32::to_bits));
+        if let Some(bounds) = self.density_bounds.get(&key) {
+            return *bounds;
+        }
+        let hi = std::array::from_fn(|i| lo[i] + step[i]);
+        if !registry.density_composition
+            && lo.into_iter().chain(hi).any(|v: f32| v.abs() > 8388608.0)
+        {
+            return Bounds::UNKNOWN;
+        }
+        let bounds = if registry.density_composition {
+            self.evaluator.as_mut().unwrap().bounds(program, lo, hi)
+        } else {
+            let mut bounds = Bounds {
+                lo: f32::INFINITY,
+                hi: f32::NEG_INFINITY,
+            };
+            for index in 0..8 {
+                let offset = [index & 1, (index >> 1) & 1, (index >> 2) & 1];
+                let p = std::array::from_fn(|i| lo[i] + offset[i] as f32 * step[i]);
+                let Ok(value) = self.vertex(program, p) else {
+                    return Bounds::UNKNOWN;
+                };
+                bounds.lo = bounds.lo.min(value[0]);
+                bounds.hi = bounds.hi.max(value[0]);
+            }
+            bounds.widen()
+        };
+        if self.density_bounds.len() >= 32768 {
+            self.density_bounds.clear();
+        }
+        self.density_bounds.insert(key, bounds);
+        bounds
     }
     pub fn bounds(&self) -> [i32; 2] {
         let min = self.request.min_y;
@@ -338,6 +393,58 @@ impl Sampler<'_> {
 mod tests {
     use super::*;
     use crate::world_definition::{WorldDefinition, catalog::WorldCatalog};
+    #[test]
+    fn actual_density_certificates_enclose_every_block_in_sampled_cells() {
+        let catalog = WorldCatalog::read(std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../assets/world-definitions/26.3/vanilla-binary/retina-catalog.dat"
+        )))
+        .unwrap();
+        let d = WorldDefinition::from_gzip(
+            catalog.materialize("normal", 123456789).unwrap().as_slice(),
+        )
+        .unwrap();
+        let mut certified = 0;
+        for key in ["minecraft:overworld", "minecraft:the_nether"] {
+            let dimension = d.dimension(key).unwrap();
+            let profile = dimension.profile().unwrap();
+            let r = d.request(key, 1, 0, 0).unwrap();
+            let f = Fields::new(profile).unwrap();
+            let mut sampler = f.sampler(profile, r);
+            let cell = profile.registry_program.as_ref().unwrap().terrain_cell;
+            for point in [
+                [-17, -31, 19],
+                [0, 0, 0],
+                [11, 32, -23],
+                [31, 70, 31],
+                [8, 120, 8],
+            ] {
+                let bounds = sampler.density_certificate(1, point);
+                if !bounds.finite() {
+                    continue;
+                }
+                certified += 1;
+                let step = [cell[0] as i32, cell[1] as i32, cell[0] as i32];
+                let lo = std::array::from_fn::<_, 3, _>(|i| point[i].div_euclid(step[i]) * step[i]);
+                for y in 0..step[1] {
+                    for z in 0..step[2] {
+                        for x in 0..step[0] {
+                            let p = [(lo[0] + x) as f32, (lo[1] + y) as f32, (lo[2] + z) as f32];
+                            let value = sampler.density(1, p).unwrap();
+                            assert!(
+                                value >= bounds.lo && value <= bounds.hi,
+                                "{key} {p:?} value {value} outside {bounds:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        assert!(
+            certified > 0,
+            "actual vanilla density graph should yield useful conservative certificates"
+        );
+    }
     #[test]
     fn actual_vanilla_field_samples_are_finite_repeatable_and_globally_aligned() {
         let path = std::path::Path::new(concat!(
