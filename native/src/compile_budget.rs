@@ -52,9 +52,11 @@ pub(crate) fn with_driver_slot<T>(operation: impl FnOnce() -> T) -> T {
     if !parallel_enabled() { return operation(); }
     static BUDGET: LazyLock<Budget> = LazyLock::new(Budget::default);
     let start = std::time::Instant::now();
-    let _stage = crate::startup::Stage::new(format!("compiler admission priority={:?}", priority()));
+    let stage = crate::startup::Stage::new(format!("compiler admission priority={:?}", priority()));
     let _permit = BUDGET.acquire(priority());
-    crate::startup::message(format_args!("Compiler admission priority={:?} wait_ms={:.3}", priority(), start.elapsed().as_secs_f64()*1000.0));
+    let waited = start.elapsed();
+    drop(stage);
+    crate::startup::message(format_args!("Compiler admission priority={:?} wait_ms={:.3}", priority(), waited.as_secs_f64()*1000.0));
     operation()
 }
 

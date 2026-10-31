@@ -76,6 +76,7 @@ def main():
     parser.add_argument("--tiered-interpreter", choices=("enabled", "disabled"), help="Vulkan-only fast initial interpreter followed by optimized replacement")
     parser.add_argument("--incremental-specialization", choices=("enabled", "disabled"), help="Publish validated specialization groups before the complete bundle")
     parser.add_argument("--interpreter-compile-threads", type=int, choices=(1, 2), help="Sequential or bounded world/cave interpreter compilation")
+    parser.add_argument("--vulkan-spirv", choices=("naga", "tools"), help="Original SPIR-V or statically linked curated SPIRV-Tools processing")
     parser.add_argument("--interpreter-columns", choices=("enabled", "disabled"), help="Reuse resident X/Z expressions in compact interpreted density programs")
     parser.add_argument("--aquifer-columns", choices=("enabled", "disabled"), help="Reuse invocation-local X/Z expressions in registered aquifer surface searches")
     parser.add_argument("--material-dispatch", choices=("enabled", "disabled"), help="Share the specialized material count/emit pipeline")
@@ -110,6 +111,8 @@ def main():
         os.environ["RETINA_INCREMENTAL_SPECIALIZATION"] = "1" if args.incremental_specialization == "enabled" else "0"
     if args.interpreter_compile_threads:
         os.environ["RETINA_INTERPRETER_COMPILE_THREADS"] = str(args.interpreter_compile_threads)
+    if args.vulkan_spirv:
+        os.environ["RETINA_VULKAN_SPIRV"] = args.vulkan_spirv
     if args.interpreter_columns:
         os.environ["RETINA_INTERPRETER_COLUMNS"] = "1" if args.interpreter_columns == "enabled" else "0"
     if args.aquifer_columns:
@@ -256,6 +259,7 @@ def main():
                     lake_sparse_fields=args.lake_sparse_fields or os.environ.get("RETINA_LAKE_SPARSE_FIELDS"),
                     interpreter_columns=args.interpreter_columns or os.environ.get("RETINA_INTERPRETER_COLUMNS"),
                     interpreter_compile_threads=args.interpreter_compile_threads or os.environ.get("RETINA_INTERPRETER_COMPILE_THREADS", "1"),
+                    vulkan_spirv=args.vulkan_spirv or os.environ.get("RETINA_VULKAN_SPIRV", "naga"),
                     tiered_interpreter=args.tiered_interpreter or os.environ.get("RETINA_VULKAN_TIERED_INTERPRETER", "0"),
                     incremental_specialization=args.incremental_specialization or os.environ.get("RETINA_INCREMENTAL_SPECIALIZATION", "0"),
                     aquifer_columns=args.aquifer_columns or os.environ.get("RETINA_AQUIFER_COLUMNS"),

@@ -32,6 +32,14 @@ class StartupReportTest(unittest.TestCase):
         self.assertEqual(report["unfinished_stages"][0]["id"], 3)
         self.assertEqual(report["completed_stages"], [])
 
+    def test_compiler_input_processing_is_distinct_from_driver_creation(self):
+        report = summarize('''[Retina startup] Compiler input {"entry":"world","applied":true,"processing_ms":110.0,"input":{"words":100},"output":{"words":90}}
+[Retina startup] END #2 driver phase vkCreateComputePipelines pipeline_id=#1 entry=world [thread=compiler] elapsed=95.0s
+''')
+        self.assertEqual(report["regions"][0]["kind"], "Compiler input")
+        self.assertEqual(report["regions"][0]["processing_ms"], 110)
+        self.assertEqual(report["driver_phases"]["driver phase vkCreateComputePipelines"]["cumulative_ms"], 95000)
+
     def test_process_counters_without_resource_keep_unavailable_values_null(self):
         with patch.object(process_usage, "resource", None):
             before, after = process_usage.snapshot(), process_usage.snapshot()

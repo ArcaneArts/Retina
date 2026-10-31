@@ -2,6 +2,37 @@
 use super::*;
 
 #[test]
+#[ignore = "requires explicit backend and RETINA_STARTUP_DEFINITION; prints matched compiler-input fingerprints"]
+fn compiler_input_generation_fingerprints() {
+    use sha2::{Digest,Sha256};
+    crate::startup::retina_configure_debug(1);
+    let definition=crate::world_definition::WorldDefinition::read(std::env::var("RETINA_STARTUP_DEFINITION").unwrap()).unwrap();
+    let mut gpu=Gpu::new(Default::default()).unwrap(); let times=timings::Timings::default();
+    for (i,dimension) in ["minecraft:overworld","minecraft:the_nether"].into_iter().enumerate() {
+        let mut profile=(**definition.dimension(dimension).unwrap().profile().unwrap()).clone();
+        profile.program_execution=match std::env::var("RETINA_TEST_EXECUTION").as_deref() {
+            Ok("specialized")=>crate::specialize::Execution::Specialized,
+            Ok("auto")=>crate::specialize::Execution::Auto,
+            _=>crate::specialize::Execution::Interpreter,
+        };
+        let terrain_only=std::env::var("RETINA_TEST_TERRAIN_ONLY").as_deref()==Ok("1");
+        if terrain_only { profile.registry_program.as_mut().unwrap().material_layers=false; }
+        let id=i as u32+1;
+        for (case,(x,z,min_y,height,interior)) in [(-33,-33,-80,448,32),(255,-256,-64,384,1)].into_iter().enumerate() {
+            let mut request=GpuRequest::from(crate::ChunkRequest { seed:123456789,chunk_x:x,chunk_z:z,min_y,height,
+                base_height:64.,amplitude:48.,frequency:0.008,reserved:id });
+            request.padding=interior; request.tile_side=interior+2;
+            let pending=gpu.submit(&[request],Some(&profile),&times).unwrap(); let sample=gpu.complete(pending,&times).unwrap();
+            let mut hash=Sha256::new(); hash.update(bytemuck::cast_slice::<Column,u8>(&sample.columns));
+            if let Some(mask)=&sample.mask { hash.update(bytemuck::cast_slice::<u32,u8>(&mask.words)); }
+            eprintln!("COMPILER_INPUT_SAMPLE {}",serde_json::json!({"dimension":dimension,"case":case,
+                "columns":sample.columns.len(),"materials":!terrain_only,"sha256":format!("{:x}",hash.finalize())}));
+        }
+        gpu.retire(&[id]);
+    }
+}
+
+#[test]
 #[ignore = "requires RETINA_INTERPRETER_COMPILE_THREADS=2 and a real GPU/definition"]
 fn parallel_required_interpreter_matches_sequential_generation() {
     assert_eq!(std::env::var("RETINA_INTERPRETER_COMPILE_THREADS").as_deref(), Ok("2"));
@@ -49,6 +80,7 @@ fn storage_noise_profile_biome_pipeline_creates_on_vulkan() {
 #[test]
 #[ignore = "requires a real GPU with immediates and RETINA_STARTUP_DEFINITION"]
 fn common_policy_shared_dispatch_matches_independent_generation() {
+    crate::startup::retina_configure_debug(1);
     let definition = crate::world_definition::WorldDefinition::read(
         std::path::Path::new(&std::env::var("RETINA_STARTUP_DEFINITION").unwrap())).unwrap();
     let mut shared = Gpu::new_with_policy(std::sync::Arc::new(crate::pipeline::Metrics::default()), |features, size|

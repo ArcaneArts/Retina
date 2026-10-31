@@ -1,0 +1,14 @@
+[package]
+name = "retina-dxc-spirv-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+mach-dxcompiler-rs = { version = "=0.1.7+2026.10.26-141dd7f.1", default-features = false, features = ["cbindings"] }
+serde_json = "1"
+
+[profile.dev]
+debug = 0

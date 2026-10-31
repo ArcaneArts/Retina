@@ -15,6 +15,7 @@ mod column_program;
 mod nbt;
 mod program;
 mod specialize;
+mod spirv_input;
 mod structure_processors;
 pub mod structures;
 pub mod timings;

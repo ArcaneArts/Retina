@@ -7,7 +7,7 @@ license = "GPL-3.0-only"
 publish = false
 
 [features]
-default = ["scalable-allocator"]
+default = ["scalable-allocator", "spirv-tools"]
 # Developer-only Vulkan-on-Metal coverage; normal Apple builds remain Metal.
 vulkan-portability = ["wgpu/vulkan-portability"]
 scalable-allocator = ["dep:mimalloc"]
@@ -50,6 +50,7 @@ libdeflater = "1"
 lz4-sys = "1.11.1"
 xxhash-rust = { version = "0.8", features = ["xxh32"] }
 smallvec = { version = "1", features = ["union"] }
+spirv-tools = { version = "=0.13.3", optional = true, default-features = false, features = ["use-compiled-tools"] }
 sha2 = "0.10"
 fastnbt = "2.6.3"
 ctrlc = { version = "3", features = ["termination"] }

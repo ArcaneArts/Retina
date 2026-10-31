@@ -1,5 +1,6 @@
 //! Retina's scoped compute compilation policy and exact SPIR-V observer.
 use core::cell::Cell;
+use alloc::vec::Vec;
 use std::sync::OnceLock;
 
 /// Optimization is optional for the startup interpreter, which is replaced by
@@ -59,6 +60,18 @@ pub enum Event<'a> {
     ComputeEnd { error: Option<&'a str> },
 }
 static OBSERVER: OnceLock<for<'a> fn(Event<'a>)> = OnceLock::new();
+
+/// Explicit compiler-input hook, separate from read-only diagnostic observers.
+/// The embedding application owns validation, policy and safe fallback. `None`
+/// preserves the generated module without copying it.
+type SpirvTransform = fn(&[u32], &str) -> Option<Vec<u32>>;
+static SPIRV_TRANSFORM: OnceLock<SpirvTransform> = OnceLock::new();
+pub fn set_spirv_transform(transform: SpirvTransform) -> bool { SPIRV_TRANSFORM.set(transform).is_ok() }
+pub(super) fn transform_spirv(words: &mut Vec<u32>, entry: &str) {
+    if let Some(transform) = SPIRV_TRANSFORM.get() {
+        if let Some(replacement) = transform(words, entry) { *words = replacement; }
+    }
+}
 
 /// Install one observer before creating pipelines. Observer failure cannot
 /// change compilation inputs or prevent the real Vulkan operation.
