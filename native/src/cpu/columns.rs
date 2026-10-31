@@ -260,12 +260,15 @@ impl<'a> Columns<'a> {
         if self.profile.registry_program.is_some() {
             sample.height = self.raw_height([x as f32, z as f32])?.floor() as i32;
         }
-        if self
-            .profile
-            .registry_program
-            .as_ref()
-            .is_some_and(|r| !r.enclosed() && r.material_halo && r.surface[2] == 0)
-        {
+        if self.profile.registry_program.as_ref().is_some_and(|r| {
+            !r.enclosed()
+                && r.surface[2] == 0
+                && self
+                    .profile
+                    .climate_targets
+                    .iter()
+                    .any(|t| self.profile.biomes[t.biome as usize].flags & 64 != 0)
+        }) {
             let sea = self.profile.sea_level;
             let mut coastal = false;
             if (sea - 2..=sea + 3).contains(&sample.height) {
@@ -348,6 +351,21 @@ impl<'a> Columns<'a> {
         Ok(lake)
     }
     pub fn column(&mut self, x: i32, z: i32, include_lakes: bool) -> Result<Column, String> {
+        self.column_impl(x, z, include_lakes, true)
+    }
+    pub fn probe(&mut self, x: i32, z: i32, include_lakes: bool) -> Result<Column, String> {
+        self.column_impl(x, z, include_lakes, false)
+    }
+    pub fn underground_biome(&mut self, point: [i32; 3], column: Column) -> Result<u32, String> {
+        super::caves::biome_at(self.profile, self.request, &mut self.sampler, point, column)
+    }
+    fn column_impl(
+        &mut self,
+        x: i32,
+        z: i32,
+        include_lakes: bool,
+        materials: bool,
+    ) -> Result<Column, String> {
         let Sample { mut height, biome } = self.physical(x, z)?;
         let b = &self.profile.biomes[biome as usize];
         let point = [x as f32, z as f32];
@@ -442,6 +460,13 @@ impl<'a> Columns<'a> {
                     }
                 }
             }
+        }
+        if !materials {
+            return Ok(Column {
+                height,
+                packed: biome | (depth << 24) | flags,
+                materials: 0,
+            });
         }
         if b.flags & 8 != 0 && self.profile.terrain_features.band_frequency > 0.0 {
             let offset = if registered {

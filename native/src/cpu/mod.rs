@@ -7,3 +7,6 @@ pub(crate) mod features;
 pub mod fields;
 pub mod noise;
 pub mod program;
+
+pub(crate) mod materials;
+pub(crate) mod terrain;

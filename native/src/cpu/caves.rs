@@ -59,67 +59,7 @@ impl<'a> Caves<'a> {
             .ok_or_else(|| format!("CPU cave sample {x},{z} outside column halo"))
     }
     pub fn biome_at(&mut self, p: [i32; 3], column: Column) -> Result<u32, String> {
-        let surface = column.packed & 65535;
-        let [x, y, z] = p;
-        if self.enclosed() {
-            return self.sampler.underground_biome(p.map(|v| v as f32), surface);
-        }
-        if y >= column.height - 12 {
-            return Ok(surface);
-        }
-        if self.profile.registry_program.is_some() && self.sampler.has_underground() {
-            return self.sampler.underground_biome(p.map(|v| v as f32), surface);
-        }
-        let p = [x as f32, y as f32, z as f32];
-        let humidity = (0.5 + noise3([p[0] * 0.004, p[1] * 0.006, p[2] * 0.004], self.seed(2297)))
-            .clamp(-1.0, 1.0);
-        let continental = (0.5
-            + noise3([p[0] * 0.003, p[1] * 0.004, p[2] * 0.003], self.seed(3571)))
-        .clamp(-1.0, 1.0);
-        let erosion = noise3([p[0] * 0.002, p[1] * 0.005, p[2] * 0.002], self.seed(5573));
-        let depth = (0.2
-            + 0.7 * (column.height - y) as f32
-                / ((column.height - self.request.min_y) as f32).max(1.0))
-        .clamp(0.2, 0.9);
-        let (mut selected, mut best) = (surface, 1e20);
-        for (i, b) in self.profile.biomes.iter().enumerate() {
-            if b.cave_kind == 0 {
-                continue;
-            }
-            if b.cave_kind == 3 {
-                if y < -20 && erosion < b.climate[3] + 0.12 {
-                    return Ok(i as u32);
-                }
-                continue;
-            }
-            if depth < b.cave_depth[0] || depth > b.cave_depth[1] {
-                continue;
-            }
-            if b.cave_kind == 4 {
-                let temperature =
-                    noise3([p[0] * 0.003, p[1] * 0.004, p[2] * 0.003], self.seed(7919));
-                let actual = [temperature, humidity, continental, erosion];
-                let error = (0..4)
-                    .map(|j| (actual[j] - b.climate[j]).powi(2) * [2.0, 1.5, 1.0, 0.5][j])
-                    .sum::<f32>();
-                if error < best {
-                    best = error;
-                    selected = i as u32;
-                }
-                continue;
-            }
-            let channel = if b.cave_kind == 1 { 1 } else { 2 };
-            let value = if channel == 1 { humidity } else { continental };
-            if value < b.climate[channel] - 0.15 {
-                continue;
-            }
-            let error = (value - b.climate[channel]).abs();
-            if error < best {
-                best = error;
-                selected = i as u32;
-            }
-        }
-        Ok(selected)
+        biome_at(self.profile, self.request, &mut self.sampler, p, column)
     }
     pub fn biome(&mut self, p: [i32; 3]) -> Result<u32, String> {
         let p = p.map(|v| v.div_euclid(4) * 4);
@@ -342,3 +282,77 @@ impl<'a> Caves<'a> {
 
 #[cfg(test)]
 mod tests;
+
+pub(crate) fn biome_at(
+    profile: &WorldProfile,
+    request: ChunkRequest,
+    sampler: &mut Sampler<'_>,
+    p: [i32; 3],
+    column: Column,
+) -> Result<u32, String> {
+    let seed = |salt: u32| {
+        (request.seed as u32 ^ mix_hash((request.seed >> 32) as u32)).wrapping_add(salt)
+    };
+    let surface = column.packed & 65535;
+    let [x, y, z] = p;
+    if profile
+        .registry_program
+        .as_ref()
+        .is_some_and(|r| r.enclosed())
+    {
+        return sampler.underground_biome(p.map(|v| v as f32), surface);
+    }
+    if y >= column.height - 12 {
+        return Ok(surface);
+    }
+    if profile.registry_program.is_some() && sampler.has_underground() {
+        return sampler.underground_biome(p.map(|v| v as f32), surface);
+    }
+    let p = [x as f32, y as f32, z as f32];
+    let humidity =
+        (0.5 + noise3([p[0] * 0.004, p[1] * 0.006, p[2] * 0.004], seed(2297))).clamp(-1.0, 1.0);
+    let continental =
+        (0.5 + noise3([p[0] * 0.003, p[1] * 0.004, p[2] * 0.003], seed(3571))).clamp(-1.0, 1.0);
+    let erosion = noise3([p[0] * 0.002, p[1] * 0.005, p[2] * 0.002], seed(5573));
+    let depth = (0.2
+        + 0.7 * (column.height - y) as f32 / ((column.height - request.min_y) as f32).max(1.0))
+    .clamp(0.2, 0.9);
+    let (mut selected, mut best) = (surface, 1e20);
+    for (i, b) in profile.biomes.iter().enumerate() {
+        if b.cave_kind == 0 {
+            continue;
+        }
+        if b.cave_kind == 3 {
+            if y < -20 && erosion < b.climate[3] + 0.12 {
+                return Ok(i as u32);
+            }
+            continue;
+        }
+        if depth < b.cave_depth[0] || depth > b.cave_depth[1] {
+            continue;
+        }
+        if b.cave_kind == 4 {
+            let temperature = noise3([p[0] * 0.003, p[1] * 0.004, p[2] * 0.003], seed(7919));
+            let actual = [temperature, humidity, continental, erosion];
+            let error = (0..4)
+                .map(|j| (actual[j] - b.climate[j]).powi(2) * [2.0, 1.5, 1.0, 0.5][j])
+                .sum::<f32>();
+            if error < best {
+                best = error;
+                selected = i as u32;
+            }
+            continue;
+        }
+        let channel = if b.cave_kind == 1 { 1 } else { 2 };
+        let value = if channel == 1 { humidity } else { continental };
+        if value < b.climate[channel] - 0.15 {
+            continue;
+        }
+        let error = (value - b.climate[channel]).abs();
+        if error < best {
+            best = error;
+            selected = i as u32;
+        }
+    }
+    Ok(selected)
+}
