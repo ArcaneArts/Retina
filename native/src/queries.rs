@@ -159,7 +159,7 @@ impl TerrainEngine {
                     let metrics = self.timings(request.reserved);
                     let started = metrics.performance.start();
                     let ys: Vec<_> = missing.iter().map(|p| p.y).collect();
-                    let sample = self.cpu_sample(profile.as_deref(), &requests, 0, 0, mode, &ys, &missing)?;
+                    let sample = self.cpu_sample(profile.clone(), &requests, 0, 0, mode, &ys, &missing)?;
                     metrics.performance.elapsed(crate::performance::Counter::cpu_queries_nanos, started);
                     sample
                 } else {

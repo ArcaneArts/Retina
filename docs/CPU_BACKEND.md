@@ -54,6 +54,11 @@ Startup reports the actual split. Regions and worlds share these global pools;
 region concurrency does not allocate another full pool. Host/JVM threads are
 outside this budget. GPU assembly retains its previous control behavior.
 
+Single-chunk feature planning uses the same dependency lane. Terrain requests
+transfer owned profile/field references and input batches to the terrain lane;
+callers wait without stealing unrelated dependency tasks. This prevents recursive
+waits on an unfinished terrain cell when only a few workers are available.
+
 ## Shared data and execution
 
 CPU and GPU consume the same authoritative `retina.dat`, materialized catalogs,
@@ -139,3 +144,5 @@ The measured steps and excluded experiments are recorded in
 [worker budgets](reports/cpu-worker-budget-2026-10-31.md). A subsequent
 [column preparation pass](reports/cpu-column-parallelism-2026-10-31.md) reduced the
 complete Overworld diagnostic from 42.753 to 10.175 seconds with identical NBT.
+The [blocking handoff correction](reports/cpu-blocking-handoff-2026-10-31.md)
+records the subsequent small-pool deadlock, its fix and bounded validation.

@@ -16,6 +16,10 @@ java --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -Xmx768m \
   -cp dist/retina-26.3-<version>.jar scripts/UniversalCpuSmoke.java 26.3 disabled
 ```
 
+The workflow sets `RETINA_REGION_THREADS=4` and `RAYON_NUM_THREADS=2`, exercising
+small worker counts as well as backend selection. CPU dependency/terrain handoffs
+must not steal an unrelated feature task while holding a terrain initializer.
+
 This sets all three API permissions false while leaving the backend override on
 `auto`. It loads the embedded native image, materializes both actual packaged
 catalog snapshots with a negative 64-bit seed, generates two adjacent Overworld
@@ -33,7 +37,7 @@ Linux additionally runs the same JAR with all graphics APIs permitted in a JDK
 container without GPU devices or an installed graphics stack:
 
 ```sh
-docker run --rm --network none -e RETINA_REGION_THREADS=4 \
+docker run --rm --network none -e RETINA_REGION_THREADS=4 -e RAYON_NUM_THREADS=2 \
   -v "$PWD:/retina:ro" -w /retina eclipse-temurin:25-jdk-noble \
   java --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -Xmx768m \
   -cp dist/retina-26.3-<version>.jar scripts/UniversalCpuSmoke.java 26.3 auto

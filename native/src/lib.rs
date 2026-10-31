@@ -1358,12 +1358,12 @@ impl TerrainEngine {
     }
 
     pub(crate) fn cpu_sample(
-        &self, profile: Option<&WorldProfile>, requests: &[ChunkRequest],
+        &self, profile: Option<Arc<WorldProfile>>, requests: &[ChunkRequest],
         side: u32, cave_side: u32, mode: u32, probe_y: &[i32], points: &[queries::Point],
     ) -> Result<compute::Sample, String> {
         let id = requests[0].reserved;
         let metrics = self.timings(id);
-        let fields = if let Some(profile) = profile {
+        let fields = if let Some(profile) = profile.as_deref() {
             let cached = self.cpu_fields.lock().map_err(|_| "CPU field cache poisoned")?
                 .get(&id).cloned();
             Some(if let Some(fields) = cached { fields } else {
@@ -1374,8 +1374,11 @@ impl TerrainEngine {
                     .entry(id).or_insert(fields).clone()
             })
         } else { None };
-        cpu::terrain::sample(profile, fields.as_deref(), requests, side, cave_side,
-            mode, probe_y, points, &metrics)
+        let (requests, probe_y, points) = (requests.to_vec(), probe_y.to_vec(), points.to_vec());
+        cpu::pools::terrain_job(move || {
+            cpu::terrain::sample(profile.as_deref(), fields.as_deref(), &requests,
+                side, cave_side, mode, &probe_y, &points, &metrics)
+        })?
     }
 
     fn dispatch(&self, requests: Vec<ChunkRequest>, tile_side: u32) -> Result<Vec<Column>, String> {
@@ -1410,7 +1413,7 @@ impl TerrainEngine {
                 #[cfg(test)] host_phases: Default::default() });
         }
         if self.compute.is_none() {
-            return self.cpu_sample(profile.as_deref(), &requests, tile_side, cave_side, probe_mode, &probe_y, &[]);
+            return self.cpu_sample(profile, &requests, tile_side, cave_side, probe_mode, &probe_y, &[]);
         }
         let (reply, receiver) = mpsc::channel();
         let timing_profile = requests[0].reserved;
@@ -1466,8 +1469,9 @@ impl TerrainEngine {
         let timings = self.timings(request.reserved);
         if let Some(p) = profile.as_deref().filter(|p| p.decoration_source_order) {
             let (field, mask) = self.terrain_field(request, 1)?;
+            let pool = if self.compute.is_none() { Some(cpu::pools::roots()?) } else { None };
             let generation = timings.time(timings::VEGETATION_PLAN, || {
-                decoration::dependencies::generate(self, p, request, 1, None, None, true, Some(&field), None, false)
+                decoration::dependencies::generate(self, p, request, 1, None, None, true, Some(&field), pool, false)
             })?;
             let columns = field.chunk(request.chunk_x, request.chunk_z);
             let mut updates = decoration::pairs::Updates::default();
