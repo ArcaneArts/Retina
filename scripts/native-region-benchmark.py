@@ -75,6 +75,7 @@ def main():
     parser.add_argument("--interpreter-preload", choices=("enabled", "disabled"), help="Overlap compact density pipeline preparation with profile parsing")
     parser.add_argument("--tiered-interpreter", choices=("enabled", "disabled"), help="Vulkan-only fast initial interpreter followed by optimized replacement")
     parser.add_argument("--incremental-specialization", choices=("enabled", "disabled"), help="Publish validated specialization groups before the complete bundle")
+    parser.add_argument("--interpreter-compile-threads", type=int, choices=(1, 2), help="Sequential or bounded world/cave interpreter compilation")
     parser.add_argument("--interpreter-columns", choices=("enabled", "disabled"), help="Reuse resident X/Z expressions in compact interpreted density programs")
     parser.add_argument("--aquifer-columns", choices=("enabled", "disabled"), help="Reuse invocation-local X/Z expressions in registered aquifer surface searches")
     parser.add_argument("--material-dispatch", choices=("enabled", "disabled"), help="Share the specialized material count/emit pipeline")
@@ -107,6 +108,8 @@ def main():
         os.environ["RETINA_VULKAN_TIERED_INTERPRETER"] = "1" if args.tiered_interpreter == "enabled" else "0"
     if args.incremental_specialization:
         os.environ["RETINA_INCREMENTAL_SPECIALIZATION"] = "1" if args.incremental_specialization == "enabled" else "0"
+    if args.interpreter_compile_threads:
+        os.environ["RETINA_INTERPRETER_COMPILE_THREADS"] = str(args.interpreter_compile_threads)
     if args.interpreter_columns:
         os.environ["RETINA_INTERPRETER_COLUMNS"] = "1" if args.interpreter_columns == "enabled" else "0"
     if args.aquifer_columns:
@@ -247,12 +250,14 @@ def main():
                     library=str(args.library), parallel=args.parallel, seed=seed, dimension=args.dimension, request=request_context,
                     coordinates={"origin_x": args.origin_x, "origin_z": args.origin_z, "grid_width": args.grid_width},
                     request_order=args.request_order,
-                    tiered_interpreter=args.tiered_interpreter or os.environ.get("RETINA_VULKAN_TIERED_INTERPRETER"),
                     regions=regions, program_execution=args.program_execution, interpolation_cache=args.interpolation_cache, density_composition=definition.dimension["profile_metadata"].get("registry_program", {}).get("density_composition"), cached_density_masks=args.cached_density_masks, terrain_execution=args.terrain_execution, interpreter_dispatch=args.interpreter_dispatch, interpreter_preload=args.interpreter_preload,
                     lake_point_cache=args.lake_point_cache,
                     lake_primed_corners=args.lake_primed_corners,
                     lake_sparse_fields=args.lake_sparse_fields or os.environ.get("RETINA_LAKE_SPARSE_FIELDS"),
                     interpreter_columns=args.interpreter_columns or os.environ.get("RETINA_INTERPRETER_COLUMNS"),
+                    interpreter_compile_threads=args.interpreter_compile_threads or os.environ.get("RETINA_INTERPRETER_COMPILE_THREADS", "1"),
+                    tiered_interpreter=args.tiered_interpreter or os.environ.get("RETINA_VULKAN_TIERED_INTERPRETER", "0"),
+                    incremental_specialization=args.incremental_specialization or os.environ.get("RETINA_INCREMENTAL_SPECIALIZATION", "0"),
                     aquifer_columns=args.aquifer_columns or os.environ.get("RETINA_AQUIFER_COLUMNS"),
                     material_dispatch=args.material_dispatch or os.environ.get("RETINA_MATERIAL_DISPATCH"),
                     specialized_interpolation=args.specialized_interpolation or os.environ.get("RETINA_SPECIALIZED_INTERPOLATION"),

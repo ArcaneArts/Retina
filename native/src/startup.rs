@@ -35,6 +35,7 @@ pub(crate) fn with_interpreter_policy<T>(policy: InterpreterPolicy, operation: i
     let _restore = Restore(INTERPRETER_POLICY.replace(policy));
     operation()
 }
+pub(crate) fn interpreter_policy() -> InterpreterPolicy { INTERPRETER_POLICY.get() }
 pub(crate) fn debug_enabled() -> bool {
     DEBUG.load(std::sync::atomic::Ordering::Relaxed)
 }
@@ -186,6 +187,10 @@ fn compute_pipeline(
     descriptor: &wgpu::ComputePipelineDescriptor<'_>,
     interpreter: bool,
 ) -> wgpu::ComputePipeline {
+    crate::compile_budget::with_driver_slot(|| compute_pipeline_admitted(device, descriptor, interpreter))
+}
+
+fn compute_pipeline_admitted(device: &wgpu::Device, descriptor: &wgpu::ComputePipelineDescriptor<'_>, interpreter: bool) -> wgpu::ComputePipeline {
     #[cfg(any(not(target_vendor = "apple"), test, feature = "vulkan-portability"))]
     use wgpu::hal::vulkan::diagnostics::{with_compute_compilation, ComputeCompilation};
     #[cfg(any(not(target_vendor = "apple"), test, feature = "vulkan-portability"))]

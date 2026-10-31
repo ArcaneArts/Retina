@@ -1,4 +1,5 @@
 mod climate;
+mod compile_budget;
 mod compute;
 pub mod cpu;
 // Rust-owned buffers are released by this library, including the byte buffers

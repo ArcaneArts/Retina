@@ -2,6 +2,55 @@ use super::*;
 
 #[test]
 #[ignore = "requires Metal, RETINA_INCREMENTAL_SPECIALIZATION=1 and RETINA_STARTUP_DEFINITION"]
+fn retiring_last_owner_stops_later_cohorts_without_poisoning_generation() {
+    crate::startup::retina_configure_debug(1);
+    assert_eq!(std::env::var("RETINA_INCREMENTAL_SPECIALIZATION").as_deref(), Ok("1"));
+    let definition = crate::world_definition::WorldDefinition::read(std::env::var("RETINA_STARTUP_DEFINITION").unwrap()).unwrap();
+    let mut gpu = Gpu::new(Default::default()).unwrap();
+    let mut profile = (**definition.dimension("minecraft:overworld").unwrap().profile().unwrap()).clone();
+    profile.program_execution = crate::specialize::Execution::Auto;
+    let mut request = GpuRequest::from(crate::ChunkRequest {
+        seed: 123456789, chunk_x: -33, chunk_z: -33, min_y: -64, height: 384,
+        base_height: 64., amplitude: 48., frequency: 0.008, reserved: 1,
+    });
+    request.tile_side = 3; request.padding = 1;
+    let fields = crate::specialize::incremental::pause_at(1);
+    let pending = gpu.submit(&[request], Some(&profile), &timings::Timings::default()).unwrap();
+    gpu.complete(pending, &timings::Timings::default()).unwrap();
+    fields.reached.recv_timeout(Duration::from_secs(120)).unwrap();
+    if crate::compile_budget::parallel_enabled() {
+        // An optional bundle is paused, but a newly required interpreter must
+        // still complete on the dedicated startup lane.
+        let required = gpu.compiler.compact_interpreter(false).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while required.progress.snapshot().status == 1 {
+            assert!(Instant::now() < deadline); std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(required.ready(true).unwrap().is_some());
+    }
+    let state = &gpu.specialized[&1];
+    let weak = std::sync::Arc::downgrade(state);
+    let progress = state.progress.clone();
+    gpu.retire(&[1]); drop(fields);
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while progress.snapshot().status == 1 {
+        assert!(Instant::now() < deadline); std::thread::sleep(Duration::from_millis(1));
+    }
+    assert_eq!(progress.snapshot().status, 3);
+    assert_eq!(progress.group_snapshot().ready_groups, 1);
+    while weak.strong_count() != 0 {
+        assert!(Instant::now() < deadline); std::thread::yield_now();
+    }
+    profile.program_execution = crate::specialize::Execution::Interpreter;
+    request.profile = 2;
+    let pending = gpu.submit(&[request], Some(&profile), &timings::Timings::default()).unwrap();
+    gpu.complete(pending, &timings::Timings::default()).unwrap();
+    gpu.health.check().unwrap();
+    eprintln!("COMPILER_RETIREMENT ready_groups=1 later_cohorts_cancelled=true subsequent_generation=true");
+}
+
+#[test]
+#[ignore = "requires Metal, RETINA_INCREMENTAL_SPECIALIZATION=1 and RETINA_STARTUP_DEFINITION"]
 fn specialization_cohorts_match_interpreter_while_compilation_is_paused() {
     assert_eq!(std::env::var("RETINA_INCREMENTAL_SPECIALIZATION").as_deref(), Ok("1"));
     crate::startup::retina_configure_debug(1);

@@ -2,6 +2,38 @@
 use super::*;
 
 #[test]
+#[ignore = "requires RETINA_INTERPRETER_COMPILE_THREADS=2 and a real GPU/definition"]
+fn parallel_required_interpreter_matches_sequential_generation() {
+    assert_eq!(std::env::var("RETINA_INTERPRETER_COMPILE_THREADS").as_deref(), Ok("2"));
+    crate::startup::retina_configure_debug(1);
+    let definition = crate::world_definition::WorldDefinition::read(std::env::var("RETINA_STARTUP_DEFINITION").unwrap()).unwrap();
+    let mut parallel = Gpu::new(Default::default()).unwrap();
+    let mut sequential = Gpu::new(Default::default()).unwrap();
+    sequential.interpreter_preload = false;
+    sequential.compiler.sequential_interpreter_for_test();
+    let times = timings::Timings::default();
+    for (i, dimension) in ["minecraft:overworld", "minecraft:the_nether"].into_iter().enumerate() {
+        let mut profile = (**definition.dimension(dimension).unwrap().profile().unwrap()).clone();
+        profile.program_execution = crate::specialize::Execution::Interpreter;
+        let terrain_only = std::env::var("RETINA_TEST_TERRAIN_ONLY").as_deref() == Ok("1");
+        if terrain_only { profile.registry_program.as_mut().unwrap().material_layers = false; }
+        let id = i as u32 + 1;
+        let mut request = GpuRequest::from(crate::ChunkRequest {
+            seed: 123456789, chunk_x: -33, chunk_z: -33, min_y: -80, height: 448,
+            base_height: 64., amplitude: 48., frequency: 0.008, reserved: id,
+        });
+        request.tile_side = 3; request.padding = 1;
+        let a = parallel.submit(&[request], Some(&profile), &times).unwrap();
+        let b = sequential.submit(&[request], Some(&profile), &times).unwrap();
+        let a = parallel.complete(a, &times).unwrap();
+        let b = sequential.complete(b, &times).unwrap();
+        super::material_continuation_tests::equal(&a, &b);
+        eprintln!("PARALLEL_COMPILER_PARITY dimension={dimension} columns={} materials={}", a.columns.len(), !terrain_only);
+        parallel.retire(&[id]); sequential.retire(&[id]);
+    }
+}
+
+#[test]
 #[ignore = "requires an explicitly selected Vulkan runtime"]
 fn storage_noise_profile_biome_pipeline_creates_on_vulkan() {
     assert_eq!(std::env::var("RETINA_GPU_BACKEND").as_deref(), Ok("vulkan"));
