@@ -183,11 +183,12 @@ jobs:
       - name: Generate/reopen tiny CPU chunks, queries and lighting from the packaged JAR
         env:
           RETINA_REGION_THREADS: '4'
+          RAYON_NUM_THREADS: '2'
         run: java --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -Xmx768m -cp "dist/retina-${{ needs.assemble.outputs.minecraft }}-${{ needs.assemble.outputs.version }}.jar" scripts/UniversalCpuSmoke.java '${{ needs.assemble.outputs.minecraft }}' disabled
       - name: Exercise automatic no-GPU fallback in a driverless JDK container
         if: runner.os == 'Linux'
         run: |
-          docker run --rm --network none -e RETINA_REGION_THREADS=4 -v "$PWD:/retina:ro" -w /retina eclipse-temurin:25-jdk-noble \
+          docker run --rm --network none -e RETINA_REGION_THREADS=4 -e RAYON_NUM_THREADS=2 -v "$PWD:/retina:ro" -w /retina eclipse-temurin:25-jdk-noble \
             java --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -Xmx768m \
             -cp "dist/retina-${{ needs.assemble.outputs.minecraft }}-${{ needs.assemble.outputs.version }}.jar" \
             scripts/UniversalCpuSmoke.java '${{ needs.assemble.outputs.minecraft }}' auto

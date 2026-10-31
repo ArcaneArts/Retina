@@ -60,10 +60,92 @@ pub(crate) fn terrain() -> Result<&'static rayon::ThreadPool, String> {
         .map_err(Clone::clone)
 }
 
+/// A caller can hold a TerrainJob OnceLock initializer. Rayon `install` from a
+/// different pool may steal another dependency task and recursively wait on that
+/// same cell. Transfer an owned job and block without helping the caller's pool.
+/// Terrain jobs contain only pure kernels, so their internal parallel work can
+/// still cooperate freely within the terrain lane.
+pub(crate) fn terrain_job<T: Send + 'static>(
+    job: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, String> {
+    owned_job(terrain()?, job)
+}
+fn owned_job<T: Send + 'static>(
+    pool: &rayon::ThreadPool,
+    job: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, String> {
+    if pool.current_thread_index().is_some() {
+        return Ok(job());
+    }
+    let (send, receive) = std::sync::mpsc::sync_channel(1);
+    pool.spawn(move || {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(job));
+        let _ = send.send(result);
+    });
+    match receive
+        .recv()
+        .map_err(|_| "CPU terrain worker dropped its response")?
+    {
+        Ok(result) => Ok(result),
+        Err(panic) => std::panic::resume_unwind(panic),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use rayon::prelude::*;
+    #[test]
+    fn cross_pool_terrain_wait_never_reenters_queued_dependency_work() {
+        use std::sync::mpsc;
+        use std::time::Duration;
+        let roots = pool(1, "test-assembly").unwrap();
+        let terrain = pool(1, "test-terrain").unwrap();
+        let (started, entered) = mpsc::channel();
+        let (release, permission) = mpsc::channel();
+        let (queued, reentered) = mpsc::channel();
+        let caller = std::thread::spawn(move || {
+            roots.install(|| {
+                roots.scope(|scope| {
+                    scope.spawn(|_| {
+                        queued.send(()).unwrap();
+                    });
+                    assert_eq!(
+                        owned_job(&terrain, move || {
+                            started.send(()).unwrap();
+                            permission.recv().unwrap();
+                            42
+                        })
+                        .unwrap(),
+                        42
+                    );
+                })
+            });
+        });
+        entered.recv_timeout(Duration::from_secs(5)).unwrap();
+        // An install-based handoff steals the queued task while this job waits.
+        // Such a task could block on the caller's unfinished terrain cell.
+        let premature = reentered.recv_timeout(Duration::from_millis(100));
+        release.send(()).unwrap();
+        caller.join().unwrap();
+        assert!(matches!(premature, Err(mpsc::RecvTimeoutError::Timeout)));
+        reentered.recv_timeout(Duration::from_secs(5)).unwrap();
+    }
+    #[test]
+    fn owned_terrain_jobs_forward_panics_and_keep_the_worker_usable() {
+        let terrain = pool(1, "test-terrain").unwrap();
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                let _ = owned_job(&terrain, || panic!("controlled terrain panic"));
+            }))
+            .is_err()
+        );
+        assert_eq!(
+            owned_job(&terrain, || Err::<(), _>("original failure")).unwrap(),
+            Err("original failure")
+        );
+        assert_eq!(owned_job(&terrain, || 42).unwrap(), 42);
+    }
     #[test]
     fn cpu_lanes_share_one_bounded_budget() {
         for requested in 0..=64 {
