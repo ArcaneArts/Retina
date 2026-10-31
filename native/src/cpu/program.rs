@@ -4,6 +4,7 @@
 pub(crate) mod bounds;
 use super::noise::*;
 use crate::program::{Instruction, Program, RegistryProgram, opcode::Opcode};
+use crate::spatial_hash::SamplingMap as Map;
 use std::{collections::HashMap, sync::Arc};
 
 #[derive(Clone, Copy, Default)]
@@ -138,8 +139,8 @@ impl Prepared {
             sea_level,
             bands,
             frames: Vec::new(),
-            corners: HashMap::new(),
-            horizontal: HashMap::new(),
+            corners: Map::default(),
+            horizontal: Map::default(),
             bounds_scratch: Vec::new(),
             #[cfg(test)]
             eager: false,
@@ -235,8 +236,8 @@ pub struct Evaluator<'a> {
     sea_level: i32,
     bands: &'a [u16],
     frames: Vec<Frame>,
-    corners: HashMap<Corner, f32>,
-    horizontal: HashMap<(u32, u32, usize), f32>,
+    corners: Map<Corner, f32>,
+    horizontal: Map<(u32, u32, usize), f32>,
     bounds_scratch: Vec<bounds::Bounds>,
     /// Reference scheduling runs all reachable nodes in original forward order.
     #[cfg(test)]

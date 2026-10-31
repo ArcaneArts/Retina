@@ -4,8 +4,9 @@ use super::{
     noise::trilinear,
     program::{Context, Evaluator, Prepared},
 };
+use crate::spatial_hash::SamplingMap;
 use crate::{ChunkRequest, profile::WorldProfile};
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 pub struct Fields {
     program: Option<Prepared>,
@@ -49,9 +50,9 @@ impl Fields {
                     &profile.terrain_features.bands,
                 )
             }),
-            grid: HashMap::new(),
-            heights: HashMap::new(),
-            density_bounds: HashMap::new(),
+            grid: SamplingMap::default(),
+            heights: SamplingMap::default(),
+            density_bounds: SamplingMap::default(),
         }
     }
 }
@@ -60,9 +61,9 @@ pub struct Sampler<'a> {
     profile: &'a WorldProfile,
     request: ChunkRequest,
     evaluator: Option<Evaluator<'a>>,
-    grid: HashMap<(usize, [u32; 3]), [f32; 6]>,
-    heights: HashMap<[u32; 2], f32>,
-    density_bounds: HashMap<(usize, [u32; 3]), super::program::bounds::Bounds>,
+    grid: SamplingMap<(usize, [u32; 3]), [f32; 6]>,
+    heights: SamplingMap<[u32; 2], f32>,
+    density_bounds: SamplingMap<(usize, [u32; 3]), super::program::bounds::Bounds>,
 }
 impl Sampler<'_> {
     pub fn run(

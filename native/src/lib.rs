@@ -12,6 +12,7 @@ static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 mod material_blocks;
 mod column_cache;
 mod column_program;
+mod spatial_hash;
 mod nbt;
 mod program;
 mod specialize;

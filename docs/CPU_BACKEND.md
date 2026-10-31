@@ -213,3 +213,11 @@ certifying 247.8 million density decisions. See the
 Demand-driven execution subsequently halves the observed mask/material work while
 retaining the same complete region; see the
 [program scheduling comparison](reports/cpu-demand-evaluation-2026-10-31.md).
+
+CPU sampling caches now reuse Retina's internal coordinate hashing with a final
+avalanche for floating-point grid keys. These bounded lookup caches never choose
+generation order through iteration. Ordinary key equality and existing eviction
+limits remain unchanged. Integer placement caches keep their previous hashing.
+The [cache comparison](reports/cpu-sampling-caches-2026-10-31.md) observes another
+reduction from 58.4 to 38.1 seconds for the same complete diagnostic Nether region;
+thread utilization and final uncontended acceptance remain outstanding.
