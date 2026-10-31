@@ -107,80 +107,200 @@ fn tree(leaves: &mut [Node], dimensions: usize, output: &mut Vec<Node>) {
     output[at].escape = output.len() as u32;
 }
 
-pub fn bytes(profile: &WorldProfile) -> Vec<u8> {
-    let mut surface = Vec::new();
-    let mut underground = Vec::new();
-    let mut shores = Vec::new();
-    let mut seen = HashSet::new();
-    for (order, target) in profile.climate_targets.iter().enumerate() {
-        let flags = profile.biomes[target.biome as usize].flags;
-        let leaf = Node::leaf(target, order, flags);
-        underground.push(leaf);
-        if flags & 16 == 0 {
-            // Depth never participates in a surface query. Include biome and offset in the key.
-            let key: Vec<u32> = target
-                .min
-                .iter()
-                .chain(&target.max)
-                .chain(&target.weirdness)
-                .chain(std::iter::once(&target.offset))
-                .map(|x| x.to_bits())
-                .chain(std::iter::once(target.biome))
-                .collect();
-            if seen.insert(key) {
-                surface.push(leaf);
-                if flags & 64 != 0 {
-                    // Coastal selection projects only continentalness onto a
-                    // registered shore interval. Keep the other climate axes.
-                    let mut shore = leaf;
-                    shore.low[2] = 0.0;
-                    shore.high[2] = 0.0;
-                    shore.depth = [target.min[2], target.max[2]];
-                    shores.push(shore);
+/// One shared tree representation for CPU lookup and GPU table encoding.
+pub(crate) struct Index {
+    nodes: Vec<Node>,
+    surface_end: u32,
+    underground_end: u32,
+}
+impl Index {
+    pub fn new(profile: &WorldProfile) -> Self {
+        let mut surface = Vec::new();
+        let mut underground = Vec::new();
+        let mut shores = Vec::new();
+        let mut seen = HashSet::new();
+        for (order, target) in profile.climate_targets.iter().enumerate() {
+            let flags = profile.biomes[target.biome as usize].flags;
+            let leaf = Node::leaf(target, order, flags);
+            underground.push(leaf);
+            if flags & 16 == 0 {
+                // Depth never participates in a surface query. Include biome and offset in the key.
+                let key: Vec<u32> = target
+                    .min
+                    .iter()
+                    .chain(&target.max)
+                    .chain(&target.weirdness)
+                    .chain(std::iter::once(&target.offset))
+                    .map(|x| x.to_bits())
+                    .chain(std::iter::once(target.biome))
+                    .collect();
+                if seen.insert(key) {
+                    surface.push(leaf);
+                    if flags & 64 != 0 {
+                        // Coastal selection projects only continentalness onto a
+                        // registered shore interval. Keep the other climate axes.
+                        let mut shore = leaf;
+                        shore.low[2] = 0.0;
+                        shore.high[2] = 0.0;
+                        shore.depth = [target.min[2], target.max[2]];
+                        shores.push(shore);
+                    }
                 }
             }
         }
-    }
-    let mut nodes = Vec::new();
-    let indexed = matches!(profile.climate_lookup, Lookup::Indexed);
-    let mut append = |leaves: &mut Vec<Node>, dimensions| {
-        if leaves.is_empty() {
-            return;
-        }
-        if indexed {
-            tree(leaves, dimensions, &mut nodes);
-        } else {
-            for leaf in leaves.iter() {
-                let mut leaf = *leaf;
-                leaf.escape = nodes.len() as u32 + 1;
-                nodes.push(leaf);
+        let mut nodes = Vec::new();
+        let indexed = matches!(profile.climate_lookup, Lookup::Indexed);
+        let mut append = |leaves: &mut Vec<Node>, dimensions| {
+            if leaves.is_empty() {
+                return;
+            }
+            if indexed {
+                tree(leaves, dimensions, &mut nodes);
+            } else {
+                for leaf in leaves.iter() {
+                    let mut leaf = *leaf;
+                    leaf.escape = nodes.len() as u32 + 1;
+                    nodes.push(leaf);
+                }
+            }
+        };
+        append(&mut surface, 5);
+        let surface_end = nodes.len() as u32;
+        // End the mutable borrow before asking for the size of the surface tree.
+        if !underground.is_empty() {
+            if indexed {
+                tree(&mut underground, 6, &mut nodes);
+            } else {
+                for mut leaf in underground {
+                    leaf.escape = nodes.len() as u32 + 1;
+                    nodes.push(leaf);
+                }
             }
         }
+        let underground_end = nodes.len() as u32;
+        if !shores.is_empty() {
+            if indexed {
+                tree(&mut shores, 5, &mut nodes);
+            } else {
+                for mut leaf in shores {
+                    leaf.escape = nodes.len() as u32 + 1;
+                    nodes.push(leaf);
+                }
+            }
+        }
+
+        Self {
+            nodes,
+            surface_end,
+            underground_end,
+        }
+    }
+    pub fn has_surface(&self) -> bool {
+        self.surface_end > 0
+    }
+    pub fn has_underground(&self) -> bool {
+        self.underground_end > self.surface_end
+    }
+    pub fn search(
+        &self,
+        actual: [f32; 6],
+        weighted: bool,
+        underground: bool,
+        ocean_penalty: bool,
+        initial: u32,
+        initial_fitness: f32,
+        exclude_shores: bool,
+    ) -> u32 {
+        let mut at = if underground { self.surface_end } else { 0 } as usize;
+        let end = if underground {
+            self.underground_end
+        } else {
+            self.surface_end
+        } as usize;
+        let (mut best, mut selected, mut order) = (initial_fitness, initial, 0u32);
+        while at < end {
+            let entry = &self.nodes[at];
+            let branch = entry.order == u32::MAX;
+            let mut fitness = distance(entry, actual, weighted, underground);
+            let packed = entry.extra[3] as u32;
+            if !branch && exclude_shores && packed >> 16 & 64 != 0 {
+                at += 1;
+                continue;
+            }
+            if !branch
+                && ocean_penalty
+                && (packed >> 16 & 4 != if actual[2] < -0.25 { 4 } else { 0 })
+            {
+                fitness += 8.0;
+            }
+            if fitness > best {
+                at = entry.escape as usize;
+                continue;
+            }
+            if !branch && (fitness < best || fitness == best && entry.order + 1 < order) {
+                best = fitness;
+                selected = packed & 65535;
+                order = entry.order + 1;
+            }
+            at += 1;
+        }
+        selected
+    }
+    pub fn coastal(&self, actual: [f32; 6]) -> [f32; 6] {
+        let mut point = actual;
+        point[2] = 0.0;
+        let (mut at, mut best, mut order) = (self.underground_end as usize, 1e20, u32::MAX);
+        let mut result = actual;
+        while at < self.nodes.len() {
+            let entry = &self.nodes[at];
+            let branch = entry.order == u32::MAX;
+            let fitness = distance(entry, point, false, false);
+            if fitness > best {
+                at = entry.escape as usize;
+                continue;
+            }
+            if !branch && (fitness < best || fitness == best && entry.order < order) {
+                best = fitness;
+                order = entry.order;
+                result[2] = (entry.depth[0] + entry.depth[1]) * 0.5;
+            }
+            at += 1;
+        }
+        result
+    }
+}
+fn distance(node: &Node, actual: [f32; 6], weighted: bool, underground: bool) -> f32 {
+    let weights = if weighted {
+        [2.5, 1.5, 2.0, 0.5]
+    } else {
+        [1.0; 4]
     };
-    append(&mut surface, 5);
-    let surface_end = nodes.len() as u32;
-    // End the mutable borrow before asking for the size of the surface tree.
-    if !underground.is_empty() {
-        if indexed {
-            tree(&mut underground, 6, &mut nodes);
-        } else {
-            for mut leaf in underground {
-                leaf.escape = nodes.len() as u32 + 1;
-                nodes.push(leaf);
-            }
-        }
+    let mut result = 0.0;
+    for axis in 0..4 {
+        let difference = actual[axis] - actual[axis].clamp(node.low[axis], node.high[axis]);
+        result += difference * difference * weights[axis];
     }
-    let underground_end = nodes.len() as u32;
-    if !shores.is_empty() {
-        if indexed {
-            tree(&mut shores, 5, &mut nodes);
-        } else {
-            for mut leaf in shores {
-                leaf.escape = nodes.len() as u32 + 1;
-                nodes.push(leaf);
-            }
-        }
+    let ridge = actual[4] - actual[4].clamp(node.extra[0], node.extra[1]);
+    result += ridge * ridge;
+    if underground {
+        let depth = actual[5] - actual[5].clamp(node.depth[0], node.depth[1]);
+        result += depth * depth;
     }
+    result
+        + if node.order == u32::MAX {
+            node.extra[2]
+        } else {
+            node.extra[2] * node.extra[2]
+        }
+}
+
+pub fn bytes(profile: &WorldProfile) -> Vec<u8> {
+    let Index {
+        nodes,
+        surface_end,
+        underground_end,
+    } = Index::new(profile);
+    let indexed = matches!(profile.climate_lookup, Lookup::Indexed);
     let mut bytes = bytemuck::cast_slice(&[
         surface_end,
         surface_end,
@@ -292,6 +412,111 @@ mod tests {
                     assert_eq!(order, expected);
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod cpu_index_tests {
+    use super::*;
+    #[test]
+    fn native_index_matches_linear_targets_with_flags_depth_and_registry_order() {
+        let leaves: Vec<_> = (0..101)
+            .map(|i| {
+                Node::leaf(
+                    &ClimateTarget {
+                        biome: i,
+                        min: [i as f32 * 0.02 - 1.0, -0.5, -0.5, -0.5],
+                        max: [i as f32 * 0.02 - 0.8, 0.5, 0.5, 0.5],
+                        weirdness: [-0.5, 0.5],
+                        depth: [i as f32 * 0.01, 1.0],
+                        offset: 0.01 * (i % 3) as f32,
+                    },
+                    i as usize,
+                    if i % 5 == 0 {
+                        64
+                    } else if i % 3 == 0 {
+                        4
+                    } else {
+                        0
+                    },
+                )
+            })
+            .collect();
+        let mut sorted = leaves.clone();
+        let mut nodes = Vec::new();
+        tree(&mut sorted, 6, &mut nodes);
+        let index = Index {
+            surface_end: nodes.len() as u32,
+            underground_end: nodes.len() as u32,
+            nodes,
+        };
+        for weighted in [false, true] {
+            for underground in [false, true] {
+                for exclude in [false, true] {
+                    for sample in 0..513 {
+                        let point = [
+                            sample as f32 * 0.005 - 1.2,
+                            0.1,
+                            -0.3,
+                            0.7,
+                            -0.7,
+                            (sample % 31) as f32 * 0.05,
+                        ];
+                        let oracle = leaves
+                            .iter()
+                            .filter(|leaf| !exclude || leaf.extra[3] as u32 >> 16 & 64 == 0)
+                            .min_by(|a, b| {
+                                distance(a, point, weighted, underground)
+                                    .total_cmp(&distance(b, point, weighted, underground))
+                                    .then(a.order.cmp(&b.order))
+                            })
+                            .unwrap();
+                        // Underground uses the same tree appended after the surface tree.
+                        let actual = if underground {
+                            Index {
+                                surface_end: 0,
+                                underground_end: index.nodes.len() as u32,
+                                nodes: index.nodes.clone(),
+                            }
+                            .search(point, weighted, true, false, 0, 1e20, exclude)
+                        } else {
+                            index.search(point, weighted, false, false, 0, 1e20, exclude)
+                        };
+                        assert_eq!(actual, oracle.extra[3] as u32 & 65535);
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn coastal_projection_preserves_other_axes_and_selects_interval_interior() {
+        let mut leaf = Node::leaf(
+            &ClimateTarget {
+                biome: 7,
+                min: [-1.0; 4],
+                max: [1.0; 4],
+                weirdness: [-1.0, 1.0],
+                depth: [0.0, 0.0],
+                offset: 0.0,
+            },
+            0,
+            64,
+        );
+        leaf.low[2] = 0.0;
+        leaf.high[2] = 0.0;
+        leaf.depth = [-0.2, 0.1];
+        leaf.escape = 1;
+        let index = Index {
+            surface_end: 0,
+            underground_end: 0,
+            nodes: vec![leaf],
+        };
+        let actual = [0.1, 0.2, 0.7, 0.4, 0.5, 0.6];
+        let projected = index.coastal(actual);
+        assert_eq!(projected[2], -0.05);
+        for i in [0, 1, 3, 4, 5] {
+            assert_eq!(projected[i], actual[i]);
         }
     }
 }

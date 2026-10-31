@@ -3,3 +3,4 @@
 pub mod noise;
 pub mod program;
 pub(crate) mod features;
+pub mod fields;
