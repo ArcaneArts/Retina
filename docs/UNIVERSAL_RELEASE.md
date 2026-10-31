@@ -73,6 +73,12 @@ same actual JAR on a JDK-only classpath. It loads the embedded library, material
 and reopens both vanilla snapshots, verifies dimensions/seed and unchanged saved
 bytes, then deletes its temporary definitions. This is a CPU-side native loading
 check; it does not claim GPU-generation or game-loader acceptance.
+`UniversalCpuSmoke.java` additionally generates a few adjacent/End chunks through
+the packaged library, exercises biome/height queries and lighting, then compares
+reopen/reverse-order output for both snapshots. All native platforms run with all
+graphics APIs disabled. Linux also runs `auto` in a JDK container without GPU
+access. CPU opcode/shader-contract checks execute in the Linux native job. See
+[CPU acceptance](CPU_ACCEPTANCE.md) for the commands and evidence boundaries.
 
 ## Publishing
 
@@ -126,7 +132,7 @@ the bounded save check. No GUI or client settings are involved.
 
 The same universal JAR is also a Java 25 CLI. Its manifest enables native access;
 no Minecraft installation, mod loader or GUI is needed. Loaders still select their
-normal entry points. The native GPU engine does the batch region generation and
+normal entry points. The native engine does the batch region generation and
 file publication; Java does not transfer individual blocks.
 
 ```sh
@@ -158,7 +164,9 @@ writing, preventing another Java server or Java CLI from opening that world.
 Do not concurrently run the standalone Rust CLI against the same output; its
 separate locking protocol is unchanged. The command writes generation data and
 MCA files, not `level.dat`, player data, or a fully initialized playable save.
-GPU generation requires a supported device/driver; init and inspect are CPU-only.
+Generation prefers a supported GPU and uses native CPU when none is available.
+Set `RETINA_GPU_BACKEND=cpu` or `-Dretina.gpuBackend=cpu` for explicit CPU execution.
+Initialization and inspection do not initialize a generation backend.
 Ctrl-C/SIGTERM requests stopping after the active region and closes the definition.
 Progress goes to stderr, final JSON to stdout; argument errors exit 2 and operation
 failures exit 1. Signal exits retain the JVM/platform's signal exit status.

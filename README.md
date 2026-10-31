@@ -1,7 +1,7 @@
 # Retina
 
-**Retina accelerates Minecraft world generation using your GPU and a native Rust
-engine.** It generates terrain, biomes, supported decorations and structures in
+**Retina accelerates Minecraft world generation with a native Rust engine,
+preferring your GPU and automatically using CPU when needed.** It generates terrain, biomes, supported decorations and structures in
 large batches so Minecraft can spend more time loading and displaying the world.
 
 Retina currently targets **Minecraft 26.3** and **Java 25**. The
@@ -33,14 +33,15 @@ server. Other installed mods or datapacks may impose their own client requiremen
 
 | System | Packaged architectures | GPU backend |
 | --- | --- | --- |
-| macOS | ARM64, x64 | Metal |
-| Windows | x64, ARM64 | DirectX 12 or Vulkan |
-| Linux | x64, ARM64 | Vulkan |
+| macOS | ARM64 | Metal or native CPU |
+| Windows | x64 | DirectX 12, Vulkan or native CPU |
+| Linux | x64 | Vulkan or native CPU |
 
 Packaged natives do not mean every device/driver combination has been tested.
-Generation needs an accessible compute-capable GPU and working drivers, including
-on dedicated servers. OpenGL/OpenGL ES is not included. There is no CPU terrain
-fallback when an enabled Retina generator fails to initialize its GPU.
+A usable permitted GPU and working drivers enable GPU acceleration. Without one,
+Retina uses native CPU generation, including on dedicated servers. Disabling all
+three graphics APIs also selects CPU and keeps Retina active. CPU execution needs
+no graphics driver or software graphics renderer. OpenGL/OpenGL ES is not included.
 
 | World generation | Fabric / NeoForge | Bukkit |
 | --- | --- | --- |
@@ -114,8 +115,8 @@ the plugin or its configuration; hot reload is not supported.
    compressed NBT definition containing the seed and supported generation rules
    for all dimensions. Eligible normal vanilla worlds use data bundled in the
    JAR; modded or datapack worlds use the loaded game's registries.
-2. **Generate from that file.** Rust reads the saved definition. The GPU handles
-   density, climate, surfaces and other suitable calculations; Rust handles
+2. **Generate from that file.** Rust reads the saved definition. GPU or native CPU
+   execution handles density, climate, surfaces and other calculations; Rust handles
    feature planning, block assembly and metadata. CPU, GPU and disk all matter.
 3. **Deliver chunks to the host.** The mod/headless path writes standard Anvil
    region files (`.mca`). Bukkit delivers blocks and supported metadata through
@@ -283,7 +284,7 @@ terrain is not counted again. Region latency and Minecraft's loaded/rendered
 chunks per second measure different things, so they need not agree with Chunky
 or DH's counters.
 
-First startup includes GPU pipeline preparation. Progress logs show completed
+GPU startup includes pipeline preparation. Progress logs show completed
 and pending work; a waiting driver call does not have a reliable percentage or
 ETA. If startup stalls, enable `debug`, restart, and include the complete log,
 Retina version, GPU and selected backend in your report. See
@@ -299,7 +300,8 @@ see [performance evidence](docs/POST_INVESTIGATION_INTEGRATION.md) and
 ## Generate offline from the terminal
 
 The universal JAR is also a headless generator. These commands require Java 25;
-`init` and `inspect` are CPU-only, while `generate` needs a GPU:
+`init` and `inspect` need no generation backend. `generate` selects GPU or native
+CPU automatically; use `-Dretina.gpuBackend=cpu` to select CPU explicitly:
 
 ```sh
 java -jar retina-26.3-<version>.jar init --world ./world --seed 12345
