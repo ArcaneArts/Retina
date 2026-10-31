@@ -175,9 +175,9 @@ fn compute_pipeline(
     descriptor: &wgpu::ComputePipelineDescriptor<'_>,
     interpreter: bool,
 ) -> wgpu::ComputePipeline {
-    #[cfg(any(not(target_vendor = "apple"), test))]
+    #[cfg(any(not(target_vendor = "apple"), test, feature = "vulkan-portability"))]
     use wgpu::hal::vulkan::diagnostics::{with_compute_compilation, ComputeCompilation};
-    #[cfg(any(not(target_vendor = "apple"), test))]
+    #[cfg(any(not(target_vendor = "apple"), test, feature = "vulkan-portability"))]
     let policy = if interpreter {
         ComputeCompilation::Interpreter { fast_compile: match std::env::var("RETINA_VULKAN_FAST_COMPILE").as_deref() {
             Ok("0") => Some(false),
@@ -191,7 +191,7 @@ fn compute_pipeline(
         descriptor.entry_point.unwrap_or("auto")
     ), true);
     driver::observe(&stage, descriptor.entry_point.unwrap_or("auto"), || {
-        #[cfg(any(not(target_vendor = "apple"), test))]
+        #[cfg(any(not(target_vendor = "apple"), test, feature = "vulkan-portability"))]
         {
             wgpu::hal::vulkan::diagnostics::take_feedback();
             let result = with_compute_compilation(policy, || device.create_compute_pipeline(descriptor));
@@ -203,7 +203,7 @@ fn compute_pipeline(
             }
             result
         }
-        #[cfg(all(target_vendor = "apple", not(test)))]
+        #[cfg(all(target_vendor = "apple", not(test), not(feature = "vulkan-portability")))]
         { device.create_compute_pipeline(descriptor) }
     })
 }

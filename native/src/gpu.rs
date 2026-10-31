@@ -1,4 +1,6 @@
 mod execution_trace;
+#[cfg(all(test, feature = "vulkan-portability"))]
+mod portability_tests;
 use crate::timings;
 mod base_pipeline;
 mod policy;
