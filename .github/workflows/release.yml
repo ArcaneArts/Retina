@@ -75,6 +75,24 @@ jobs:
         run: python scripts/native-release.py build '${{ matrix.target }}'
       - name: Verify actual native bytes and inputs
         run: python scripts/native-release.py verify '${{ matrix.target }}'
+      - name: Restore CPU contract compilation work
+        if: runner.os == 'Linux'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            build/cpu-contract-target
+          key: retina-cpu-contracts-v1-1.93.0-${{ hashFiles('native/Cargo.lock') }}-${{ steps.inputs.outputs.key }}
+          restore-keys: |
+            retina-cpu-contracts-v1-1.93.0-${{ hashFiles('native/Cargo.lock') }}-
+      - name: Execute CPU operations and shared shader contracts without a GPU
+        if: runner.os == 'Linux'
+        env:
+          RETINA_REGION_THREADS: '2'
+        run: |
+          cargo test --manifest-path native/Cargo.toml --locked --no-default-features --lib --target-dir build/cpu-contract-target cpu:: -- --test-threads=2
+          cargo test --manifest-path native/Cargo.toml --locked --no-default-features --lib --target-dir build/cpu-contract-target program::opcode::tests
       - uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.target }}-${{ github.sha }}
@@ -130,6 +148,7 @@ jobs:
   native-smoke:
     name: Packaged native / ${{ matrix.platform }}
     needs: assemble
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -160,6 +179,17 @@ jobs:
         run: |
           java -jar "dist/retina-${{ needs.assemble.outputs.minecraft }}-${{ needs.assemble.outputs.version }}.jar" --help
           java --enable-native-access=ALL-UNNAMED -cp "dist/retina-${{ needs.assemble.outputs.minecraft }}-${{ needs.assemble.outputs.version }}.jar" scripts/UniversalNativeSmoke.java '${{ needs.assemble.outputs.minecraft }}'
+      - name: Generate/reopen tiny CPU chunks, queries and lighting from the packaged JAR
+        env:
+          RETINA_REGION_THREADS: '4'
+        run: java --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -Xmx768m -cp "dist/retina-${{ needs.assemble.outputs.minecraft }}-${{ needs.assemble.outputs.version }}.jar" scripts/UniversalCpuSmoke.java '${{ needs.assemble.outputs.minecraft }}' disabled
+      - name: Exercise automatic no-GPU fallback in a driverless JDK container
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm --network none -e RETINA_REGION_THREADS=4 -v "$PWD:/retina:ro" -w /retina eclipse-temurin:25-jdk-noble \
+            java --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -Xmx768m \
+            -cp "dist/retina-${{ needs.assemble.outputs.minecraft }}-${{ needs.assemble.outputs.version }}.jar" \
+            scripts/UniversalCpuSmoke.java '${{ needs.assemble.outputs.minecraft }}' auto
 
   publish:
     name: Publish universal release

@@ -22,6 +22,7 @@ class PackagedCatalogTest(unittest.TestCase):
             result[directory + 'manifest.json'] = json.dumps({
                 'minecraft_version': '26.3', 'catalog_version': 2,
                 'materialization_version': 1, 'generation_version': 1,
+                'runtime_snapshot': snapshot,
                 'asset': 'retina-catalog.dat', 'compressed_bytes': len(data),
                 'sha256': hashlib.sha256(data).hexdigest(),
                 'variants': dict.fromkeys(['normal', 'normal-bonus-chest', 'normal-no-structures',
