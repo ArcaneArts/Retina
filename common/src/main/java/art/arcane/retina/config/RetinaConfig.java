@@ -21,7 +21,8 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
         this(mcaParallelism, debug, f3Overlay, compression, true, true, true);
     }
 
-    public boolean worldgenEnabled() { return allowDirectx || allowMetal || allowVulkan; }
+    /** Supported worlds use Retina with either GPU or native CPU execution. */
+    public boolean worldgenEnabled() { return true; }
 
     public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay) {
         this(mcaParallelism, debug, f3Overlay, McaCompression.ZLIB);

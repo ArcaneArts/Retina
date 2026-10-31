@@ -45,7 +45,7 @@ public enum ConfigFormat implements ConfigCodec {
         writer.write("""
                 # Retina configuration. Restart the game/server after changing this file.
                 """);
-        writer.write("# Allowed GPU backends. DirectX means DirectX 12. All false disables Retina worldgen.\n");
+        writer.write("# Allowed GPU backends. DirectX means DirectX 12. All false selects native CPU generation.\n");
         writer.write("allow_directx" + separator + settings.allowDirectx() + "\n");
         writer.write("allow_metal" + separator + settings.allowMetal() + "\n");
         writer.write("allow_vulkan" + separator + settings.allowVulkan() + "\n\n");

@@ -3,7 +3,7 @@
 Implementation is in progress. Native engine construction now selects CPU when
 no permitted hardware adapter/device can initialize or the requested API set is empty. GPU handles and the worker are now isolated in `compute::GpuResources`;
 engine-owned definitions, caches and lifecycle can exist without graphics resources.
-Loader configuration and headless Java selection integration remain pending. The goal includes all operations below, all three
+Loader configuration and headless Java overrides now keep CPU generation active. The goal includes all operations below, all three
 dimensions, and every existing supported registry program and adapter capability.
 
 | Operation boundary | Current source | Shared input/output | CPU implementation and proof |
@@ -167,3 +167,24 @@ attempts adapter initialization. This is not yet proof on a GPU-free machine; th
 remains a required platform/CI acceptance check. The normal Metal terrain/material
 and world-retirement regression checks also pass. Loader all-APIs-disabled
 activation and Java CPU override support are the next integration pass.
+
+## Loader/configuration activation
+
+Disabling all three graphics APIs now keeps supported Fabric/NeoForge generators
+and Bukkit generator/biome-provider selection active. Server definition opening
+runs normally. The retired disabled-generator recovery branch is removed; existing
+Retina generators remain Retina generators. Native CPU behavior consumes the same
+saved definition and settings. Unsupported generator adapters retain their existing
+capability handling.
+
+The Java override accepts `cpu`, including `-Dretina.gpuBackend=cpu` for the
+executable JAR. `RETINA_GPU_BACKEND=cpu` is shared by Java and Rust headless entry
+points. Both help texts document automatic CPU selection. The in-game report labels
+the selected compute backend rather than assuming it is always a GPU.
+
+Real TOML/YAML combination round trips, Java override intersections and a headless
+six-case normal/superflat dimension-adapter fixture pass with all APIs disabled.
+Fabric, NeoForge and Bukkit Java compilation succeeds. A Java/native CPU-override
+catalog initialization wrote a seed-bound definition containing all three
+Minecraft dimensions. This is focused integration evidence, not final installed
+loader, packaged-artifact or performance acceptance.

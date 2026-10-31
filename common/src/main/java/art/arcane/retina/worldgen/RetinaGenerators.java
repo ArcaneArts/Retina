@@ -15,7 +15,6 @@ public final class RetinaGenerators {
 
     public static ChunkGenerator adapt(net.minecraft.server.MinecraftServer server, ResourceKey<Level> dimension,
                                        LevelStem stem, ChunkGenerator generator) {
-        if (!art.arcane.retina.config.RetinaConfiguration.get().worldgenEnabled()) return disabled(generator);
         var saved = WorldDefinitions.get(server).dimension(dimension);
         if (saved.unsupportedReason() != null) {
             if (generator instanceof RetinaChunkGenerator) throw new IllegalArgumentException(
@@ -30,7 +29,6 @@ public final class RetinaGenerators {
     }
 
     public static ChunkGenerator adapt(ResourceKey<Level> dimension, LevelStem stem, ChunkGenerator generator) {
-        if (!art.arcane.retina.config.RetinaConfiguration.get().worldgenEnabled()) return disabled(generator);
         if (generator instanceof RetinaChunkGenerator) return generator;
         String unsupported = unsupportedReason(dimension, generator);
         if (unsupported != null) {
@@ -42,14 +40,6 @@ public final class RetinaGenerators {
         Retina.LOGGER.info("Retina automatically activated for dimension {} using {}", dimension.identifier(),
                 generator.getClass().getName());
         return result;
-    }
-
-    private static ChunkGenerator disabled(ChunkGenerator generator) {
-        if (generator instanceof RetinaChunkGenerator retina) {
-            if (retina.selectedSource() != null) return retina.selectedSource().generator();
-            throw new IllegalStateException("This legacy save explicitly uses a Retina generator. Enable a GPU backend to load it; no original Minecraft generator is saved.");
-        }
-        return generator;
     }
 
     static String unsupportedReason(ResourceKey<Level> dimension, ChunkGenerator generator) {

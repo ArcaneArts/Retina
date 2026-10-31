@@ -14,18 +14,17 @@ import java.nio.file.*;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
-class DisabledWorldgenTest {
+class CpuWorldgenTest {
     @TempDir Path folder;
 
-    @Test void disabledBackendsKeepOriginalGeneratorsWithoutOpeningDefinitions() throws Exception {
+    @Test void disabledGraphicsApisKeepRetinaAdaptersActive() throws Exception {
         EndFixtureBootstrap.initialize();
         Path config = folder.resolve("retina.toml");
         Files.writeString(config, "allow_directx=false\nallow_metal=false\nallow_vulkan=false\n");
         RetinaConfiguration.initialize(folder);
         try (var resources = new MultiPackResourceManager(PackType.SERVER_DATA,
                 List.of(ServerPacksSource.createVanillaPackSource().fullResources()))) {
-            // A null server cannot supply a path or registries: disabled startup must not touch either.
-            assertNull(WorldDefinitions.initialize(null));
+            assertTrue(RetinaConfiguration.get().worldgenEnabled());
             var builtin = net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY);
             net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources, builtin)
                     .forEach(net.minecraft.core.Registry.PendingTags::apply);
@@ -37,16 +36,15 @@ class DisabledWorldgenTest {
                     var dimension = entry.getKey().equals(LevelStem.OVERWORLD) ? Level.OVERWORLD
                             : entry.getKey().equals(LevelStem.NETHER) ? Level.NETHER : Level.END;
                     var stem = entry.getValue();
-                    assertSame(stem.generator(), RetinaGenerators.adapt(null, dimension, stem, stem.generator()));
-                    assertSame(stem.generator(), RetinaGenerators.adapt(dimension, stem, stem.generator()));
+                    var adapted = assertInstanceOf(RetinaChunkGenerator.class,
+                            RetinaGenerators.adapt(dimension, stem, stem.generator()));
+                    assertSame(stem.generator(), adapted.selectedSource().generator());
                 }
             }
             var biome = registry.lookupOrThrow(Registries.BIOME).getOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS);
             var legacy = new RetinaChunkGenerator(new net.minecraft.world.level.biome.FixedBiomeSource(biome),
                     -64, 384, 64, 48, .008F, "mca");
-            var error = assertThrows(IllegalStateException.class,
-                    () -> RetinaGenerators.adapt(null, Level.OVERWORLD, null, legacy));
-            assertTrue(error.getMessage().contains("legacy save"));
+            assertSame(legacy, RetinaGenerators.adapt(Level.OVERWORLD, null, legacy));
             assertFalse(Files.exists(folder.resolve("retina.dat")));
         } finally {
             Files.writeString(config, "");

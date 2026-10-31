@@ -28,6 +28,8 @@ public final class RetinaCli {
             Missing chunks are generated; existing records are preserved. Use offline worlds
             with matching definitions. Output is region data, not a complete playable save.
             Ctrl-C finishes the active region before stopping. Progress: stderr; result JSON: stdout.
+            A usable GPU is preferred; native CPU generation is automatic when unavailable.
+            Select CPU explicitly with java -Dretina.gpuBackend=cpu -jar retina.jar generate ...
             Exit codes: 0 success, 1 operation failed, 2 invalid arguments.
             """;
 

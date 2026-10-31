@@ -34,7 +34,7 @@ public final class NativeLibrary {
 
     static int backendSelection(int allowed, String override) {
         int selected = override == null ? 0 : backendCode(override);
-        int mask = selected == 0 ? 7 : 1 << (selected - 1);
+        int mask = selected == 0 ? 7 : selected == 4 ? 0 : 1 << (selected - 1);
         // Empty is intentional: never enable a backend excluded by configuration.
         return 0x100 | (allowed & mask);
     }
@@ -81,8 +81,9 @@ public final class NativeLibrary {
             case "vulkan" -> 1;
             case "dx12" -> 2;
             case "metal" -> 3;
+            case "cpu" -> 4;
             default -> throw new IllegalArgumentException("Unknown retina.gpuBackend: " + value
-                    + "; use auto, vulkan, dx12 or metal");
+                    + "; use auto, cpu, vulkan, dx12 or metal");
         };
     }
 

@@ -9,8 +9,10 @@ public final class RetinaCliTest {
         if (NativeLibrary.backendCode(" DX12 ") != 2
                 || NativeLibrary.backendCode("Vulkan") != 1
                 || NativeLibrary.backendCode("metal") != 3
-                || NativeLibrary.backendCode("auto") != 0) throw new AssertionError("Backend selection");
+                || NativeLibrary.backendCode("auto") != 0
+                || NativeLibrary.backendCode(" CPU ") != 4) throw new AssertionError("Backend selection");
         for (int allowed = 0; allowed < 8; allowed++) {
+            if (NativeLibrary.backendSelection(allowed, "cpu") != 0x100) throw new AssertionError("Explicit CPU");
             if (NativeLibrary.backendSelection(allowed, null) != (0x100 | allowed)) throw new AssertionError("Allowed set");
             if (NativeLibrary.backendSelection(allowed, "auto") != (0x100 | allowed)) throw new AssertionError("Auto set");
             for (String backend : List.of("vulkan", "dx12", "metal")) {
