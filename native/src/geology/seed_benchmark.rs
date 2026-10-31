@@ -66,7 +66,7 @@ fn seeded_ore_planning_comparison() {
                     }
                 });
                 let prepared = Instant::now();
-                let mut gpu = engine.ore_gpu.lock().unwrap();
+                let mut gpu = engine.gpu().unwrap().ore_gpu.lock().unwrap();
                 let acquired = Instant::now();
                 let result = gpu.run(&batch).unwrap();
                 let retained_gpu_bytes = gpu

@@ -788,8 +788,7 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
 ) -> Result<(), String> {
     let start = Instant::now();
     let mut consuming = Duration::ZERO;
-    let gpu = engine
-        .light_gpu
+    let gpu = engine.gpu()?.light_gpu
         .lock()
         .map_err(|_| "lighting GPU lock poisoned")?;
     let core = [10usize, 6, 5, 3, 2, 1]
@@ -861,8 +860,7 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
                     .collect();
                 palettes::Layout::new(&materials, core + 2, 1, core)
             });
-            let pending = engine
-                .light_gpu
+            let pending = engine.gpu()?.light_gpu
                 .lock()
                 .map_err(|_| "lighting GPU lock poisoned")?
                 .submit_payload(
@@ -887,8 +885,7 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
         drop(pending.mapping);
         drop(pending.timing_map);
         {
-            let mut gpu = engine
-                .light_gpu
+            let mut gpu = engine.gpu()?.light_gpu
                 .lock()
                 .map_err(|_| "lighting GPU lock poisoned")?;
             if gpu.readbacks.len() < 2 {
@@ -986,7 +983,7 @@ mod tests {
     #[ignore = "requires a supported GPU"]
     fn pipeline_slots_survive_growth_interleaving_and_abandonment() {
         let engine = crate::TerrainEngine::new().unwrap();
-        let mut gpu = engine.light_gpu.lock().unwrap();
+        let mut gpu = engine.gpu().unwrap().light_gpu.lock().unwrap();
         gpu.compact_input = false;
         let profiles = [fixture_profile(true), fixture_profile(false)];
         let small = fixture_blocks(3, 32, 3);
@@ -1044,7 +1041,7 @@ mod tests {
         let chunks: Vec<_> = (0..1024).map(|i| fixture_blocks(1, 32, i)).collect();
         let mut expected = vec![None; 1024];
         {
-            let mut gpu = engine.light_gpu.lock().unwrap();
+            let mut gpu = engine.gpu().unwrap().light_gpu.lock().unwrap();
             gpu.compact_input = false;
             for cz in (1..31).step_by(10) {
                 for cx in (1..31).step_by(10) {
@@ -1068,8 +1065,8 @@ mod tests {
             }
         }
         let job = crate::timings::Timings::default();
-        engine.light_gpu.lock().unwrap().compact_input = true;
-        engine.light_gpu.lock().unwrap().compact_output = true;
+        engine.gpu().unwrap().light_gpu.lock().unwrap().compact_input = true;
+        engine.gpu().unwrap().light_gpu.lock().unwrap().compact_output = true;
         assert!(
             region(&engine, request, &profile, &chunks, &job, |_| Err(
                 "consumer failure".into()
@@ -1079,7 +1076,7 @@ mod tests {
         let mut seen = vec![false; 1024];
         region(&engine, request, &profile, &chunks, &job, |tile| {
             assert!(
-                engine.light_gpu.try_lock().is_ok(),
+                engine.gpu().unwrap().light_gpu.try_lock().is_ok(),
                 "consumer must not hold GPU mutex"
             );
             for (index, &slot) in tile.slots.iter().enumerate() {
@@ -1102,7 +1099,7 @@ mod tests {
     #[ignore = "bounded exact constant-light output and descriptor ownership check"]
     fn compact_output_preserves_every_channel_and_pending_layout() {
         let engine = crate::TerrainEngine::new().unwrap();
-        let mut gpu = engine.light_gpu.lock().unwrap();
+        let mut gpu = engine.gpu().unwrap().light_gpu.lock().unwrap();
         let mut pending = Vec::new();
         for (case, (side, height, crop, core)) in [
             (1usize, 16u32, 0usize, 1usize),
@@ -1211,7 +1208,7 @@ mod tests {
     #[ignore = "bounded lossless compact-material GPU comparison"]
     fn compact_materials_preserve_light_with_faces_padding_and_uniform_sections() {
         let engine = crate::TerrainEngine::new().unwrap();
-        let mut gpu = engine.light_gpu.lock().unwrap();
+        let mut gpu = engine.gpu().unwrap().light_gpu.lock().unwrap();
         for sky in [false, true] {
             let mut profile = fixture_profile(sky);
             profile.faces = 2;
@@ -1272,7 +1269,7 @@ mod tests {
     #[ignore = "bounded GPU replay timing; not a world-generation benchmark"]
     fn pipeline_replay_timing() {
         let engine = crate::TerrainEngine::new().unwrap();
-        let mut gpu = engine.light_gpu.lock().unwrap();
+        let mut gpu = engine.gpu().unwrap().light_gpu.lock().unwrap();
         let (profiles, inputs, height): (Vec<Profile>, Vec<Vec<u16>>, u32) = if let Ok(directory) =
             std::env::var("RETINA_LIGHTING_FIXTURES")
         {
@@ -1350,7 +1347,7 @@ mod tests {
     #[ignore = "requires a supported GPU"]
     fn section_packing_matches_voxels_with_crop_padding_and_reuse() {
         let engine = crate::TerrainEngine::new().unwrap();
-        let mut gpu = engine.light_gpu.lock().unwrap();
+        let mut gpu = engine.gpu().unwrap().light_gpu.lock().unwrap();
         for sky in [true, false] {
             let mut states = vec![[0; 8]; 4];
             states[1][0] = 15;
