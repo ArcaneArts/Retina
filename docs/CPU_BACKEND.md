@@ -33,6 +33,11 @@ Both executors consume RegistryProgram, its noise/spline/interpolation data, and
 the existing material/feature palettes. CPU preparation uses the same dependency
 and horizontal-column analysis as GPU specialization. Job-local evaluators own
 scratch frames and bounded caches; no sampled data changes saved definitions.
+CPU scheduling uses a reusable explicit dependency stack: conditional rules and
+splines request only the selected values, and cached expressions return before
+walking their children. The same scalar/kernel operation match supplies results.
+Test-only eager scheduling remains a reference, including actual vanilla graphs,
+variable branch fixtures, deep graphs, context changes and scratch-epoch wrap.
 
 Numerical CPU/GPU equality is not required, but shared rules, integer seed/hash
 behavior, valid metadata and repeatability within CPU execution are required.
@@ -205,3 +210,6 @@ sampled vanilla cells. Full Metal material/cavity fixtures still match. One
 complete CPU Nether region retained all 1,024 chunk NBT records exactly while
 certifying 247.8 million density decisions. See the
 [bounded diagnostic comparison](reports/cpu-density-certificates-2026-10-31.md).
+Demand-driven execution subsequently halves the observed mask/material work while
+retaining the same complete region; see the
+[program scheduling comparison](reports/cpu-demand-evaluation-2026-10-31.md).
