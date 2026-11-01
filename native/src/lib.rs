@@ -1369,7 +1369,7 @@ impl TerrainEngine {
                 .get(&id).cloned();
             Some(if let Some(fields) = cached { fields } else {
                 let started = metrics.performance.start();
-                let fields = Arc::new(cpu::fields::Fields::new(profile)?);
+                let fields = Arc::new(cpu::fields::Fields::new(profile)?.with_timings(metrics.clone()));
                 metrics.performance.elapsed(performance::Counter::cpu_prepare_nanos, started);
                 self.cpu_fields.lock().map_err(|_| "CPU field cache poisoned")?
                     .entry(id).or_insert(fields).clone()

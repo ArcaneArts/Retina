@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 pub struct Fields {
     program: Option<Prepared>,
+    sampling_timings: Option<Arc<crate::timings::Timings>>,
     pub(crate) climate: crate::climate::Index,
     unplaced: Vec<usize>,
 }
@@ -22,6 +23,7 @@ impl Fields {
             .transpose()?;
         Ok(Self {
             program,
+            sampling_timings: None,
             climate: crate::climate::Index::new(profile),
             unplaced: profile
                 .biomes
@@ -38,6 +40,12 @@ impl Fields {
                 .collect(),
         })
     }
+    pub(crate) fn with_timings(mut self, timings: Arc<crate::timings::Timings>) -> Self {
+        if crate::performance::enabled() {
+            self.sampling_timings = Some(timings);
+        }
+        self
+    }
     pub fn sampler<'a>(&'a self, profile: &'a WorldProfile, request: ChunkRequest) -> Sampler<'a> {
         Sampler {
             fields: self,
@@ -49,6 +57,7 @@ impl Fields {
                     profile.sea_level,
                     &profile.terrain_features.bands,
                 )
+                .with_timings(self.sampling_timings.clone())
             }),
             grid: SamplingMap::default(),
             heights: SamplingMap::default(),
