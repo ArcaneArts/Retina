@@ -43,7 +43,7 @@ Separate A/B/B/A runs compare the previous compact-corner library against this l
 
 Median throughput difference +3.74%, bootstrap interval −4.75% to +13.86%; median CPU work +1.27%. These noisy small samples do not establish a speedup or a material overhead. They are not production tail estimates. This Mac was on AC with normal power mode; unrelated desktop workloads were left running. Absolute times are not comparable to earlier busier runs or the user's unspecified CPU.
 
-Validation: 64 CPU tests passed, 5 optional hardware tests ignored; all 47 registered opcodes compare instrumented/uninstrumented/reference output bits in both surface modes; exact primitive-noise and cache-reuse counts and Send/Sync checked. Portable ordinary release build passed.
+Validation: 64 CPU tests passed, 5 opt-in tests ignored: four GPU comparisons and one full CPU chunk acceptance; all 47 registered opcodes compare instrumented/uninstrumented/reference output bits in both surface modes; exact primitive-noise and cache-reuse counts and Send/Sync checked. Portable ordinary release build passed.
 
 ## Reproduction and retained evidence
 

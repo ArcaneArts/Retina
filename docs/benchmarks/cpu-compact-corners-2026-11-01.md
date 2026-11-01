@@ -30,7 +30,7 @@ All replayed baseline and candidate records matched exactly, including lighting,
 features and metadata. Additional complete custom-datapack and second-seed regions
 at negative coordinates each matched 1,024 baseline records. Every candidate
 definition reopen generated zero replacements and preserved all 1,024 chunks.
-The 63 CPU checks pass (five hardware-only comparisons ignored), covering all
+The 63 CPU checks pass (five opt-in tests ignored: four GPU comparisons and one full CPU chunk acceptance), covering all
 opcodes, context changes, the cache bound, nested interpolation, deep graphs,
 worker-count output parity, and small-pool handoffs. The new context fixture also
 compares reused evaluation against fresh evaluators.

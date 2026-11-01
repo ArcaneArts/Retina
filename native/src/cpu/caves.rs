@@ -12,6 +12,7 @@ use crate::{
     profile::{Column, WorldProfile},
 };
 mod carvers;
+pub(crate) mod biomes;
 #[derive(Clone, Copy, Default)]
 pub(crate) struct ProofStats {
     pub air: u64,
@@ -26,6 +27,7 @@ pub struct Caves<'a> {
     nodes: SamplingMap<[i32; 3], [f32; 4]>,
     exterior: SamplingMap<[i32; 2], [f32; 2]>,
     biomes: SamplingMap<[i32; 3], u32>,
+    shared_biomes: Option<biomes::Grid>,
     proof_stats: ProofStats,
 }
 impl<'a> Caves<'a> {
@@ -43,8 +45,13 @@ impl<'a> Caves<'a> {
             nodes: SamplingMap::default(),
             exterior: SamplingMap::default(),
             biomes: SamplingMap::default(),
+            shared_biomes: None,
             proof_stats: ProofStats::default(),
         }
+    }
+    pub(crate) fn with_biomes(mut self, grid: biomes::Grid) -> Self {
+        self.shared_biomes = Some(grid);
+        self
     }
     fn enclosed(&self) -> bool {
         self.profile
@@ -71,6 +78,9 @@ impl<'a> Caves<'a> {
     }
     pub fn biome(&mut self, p: [i32; 3]) -> Result<u32, String> {
         let p = p.map(|v| v.div_euclid(4) * 4);
+        if let Some(value) = self.shared_biomes.as_ref().and_then(|grid| grid.get(p)) {
+            return Ok(value);
+        }
         if let Some(value) = self.biomes.get(&p) {
             return Ok(*value);
         }
