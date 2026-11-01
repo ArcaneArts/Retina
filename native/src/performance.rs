@@ -17,6 +17,13 @@ macro_rules! counters {
     };
 }
 counters! {
+    cpu_vm_samplers, cpu_vm_calls, cpu_vm_node_visits, cpu_vm_ready_hits,
+    cpu_vm_terrain_calls, cpu_vm_material_calls, cpu_vm_auxiliary_calls, cpu_vm_field_calls,
+    cpu_vm_computed_nodes, cpu_vm_constant_hits,
+    cpu_vm_horizontal_lookups, cpu_vm_horizontal_hits, cpu_vm_horizontal_clears,
+    cpu_vm_interpolations, cpu_vm_corner_lookups, cpu_vm_corner_hits,
+    cpu_vm_plain_corner_lookups, cpu_vm_plain_corner_hits, cpu_vm_corner_clears,
+    cpu_vm_noise_profiles, cpu_vm_blended_profiles, cpu_vm_noise3_calls,
     cpu_density_air_proofs, cpu_density_solid_proofs, cpu_density_scalar_points,
     cpu_prepare_nanos, cpu_columns_nanos, cpu_masks_nanos, cpu_queries_nanos, cpu_tiles,
     end_columns_nanos, end_query_nanos, end_terrain_nanos,

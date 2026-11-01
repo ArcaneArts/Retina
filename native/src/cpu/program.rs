@@ -2,9 +2,11 @@
 //! constant folding happen once; scratch frames and spatial caches belong to a
 //! bounded sampling job, never the global engine or saved world definition.
 pub(crate) mod bounds;
+mod statistics;
 use super::noise::*;
 use crate::program::{Instruction, Program, RegistryProgram, opcode::Opcode};
 use crate::spatial_hash::SamplingMap as Map;
+use statistics::{Event, Event::*, Statistics};
 use std::{collections::HashMap, sync::Arc};
 
 #[derive(Clone, Copy, Default)]
@@ -143,6 +145,7 @@ impl Prepared {
             plain_corners: Map::default(),
             horizontal: Map::default(),
             bounds_scratch: Vec::new(),
+            statistics: None,
             #[cfg(test)]
             eager: false,
         }
@@ -246,11 +249,27 @@ pub struct Evaluator<'a> {
     plain_corners: Map<PlainCorner, f32>,
     horizontal: Map<(u32, u32, usize), f32>,
     bounds_scratch: Vec<bounds::Bounds>,
+    statistics: Option<Box<Statistics>>,
     /// Reference scheduling runs all reachable nodes in original forward order.
     #[cfg(test)]
     eager: bool,
 }
 impl Evaluator<'_> {
+    pub(crate) fn with_timings(mut self, timings: Option<Arc<crate::timings::Timings>>) -> Self {
+        self.statistics = timings.map(|t| Box::new(Statistics::new(t)));
+        self
+    }
+    #[inline]
+    fn record<const TRACK: bool>(&self, event: Event, amount: u64) {
+        if TRACK && let Some(statistics) = &self.statistics {
+            statistics.add(event, amount);
+        }
+    }
+    #[inline]
+    fn sample_noise<const TRACK: bool>(&self, point: [f32; 3], seed: u32) -> f32 {
+        self.record::<TRACK>(cpu_vm_noise3_calls, 1);
+        noise3(point, seed)
+    }
     pub fn run(
         &mut self,
         program: usize,
@@ -260,9 +279,21 @@ impl Evaluator<'_> {
         if program >= self.prepared.registry.programs.len() {
             return Err(format!("unknown CPU program {program}"));
         }
-        Ok(self.evaluate(program, point, context, 0))
+        Ok(if self.statistics.is_some() {
+            self.evaluate::<true>(program, point, context, 0)
+        } else {
+            self.evaluate::<false>(program, point, context, 0)
+        })
     }
     pub fn noise(&self, point: [f32; 3], index: usize) -> f32 {
+        if self.statistics.is_some() {
+            self.noise_profile::<true>(point, index)
+        } else {
+            self.noise_profile::<false>(point, index)
+        }
+    }
+    fn noise_profile<const TRACK: bool>(&self, point: [f32; 3], index: usize) -> f32 {
+        self.record::<TRACK>(cpu_vm_noise_profiles, 1);
         let n = &self.prepared.registry.noises[index];
         let seed = self.seed as u32 ^ mix_hash((self.seed >> 32) as u32) ^ n.salt as u32;
         let point = [
@@ -273,10 +304,10 @@ impl Evaluator<'_> {
         let (mut frequency, mut sum) = (n.frequency, 0.0);
         for (i, &weight) in n.coefficients.iter().enumerate() {
             if weight != 0.0 {
-                sum += (noise3(
+                sum += (self.sample_noise::<TRACK>(
                     point.map(|v| v * frequency),
                     seed.wrapping_add(i as u32 * 1013),
-                ) + noise3(
+                ) + self.sample_noise::<TRACK>(
                     point.map(|v| v * (frequency * 1.0181268882175227_f32)),
                     (seed ^ 0xa511e9b3).wrapping_add(i as u32 * 1013),
                 )) * weight;
@@ -285,7 +316,8 @@ impl Evaluator<'_> {
         }
         sum * n.amplitude * 0.625
     }
-    fn blended(&self, point: [f32; 3], p: [f32; 4]) -> f32 {
+    fn blended<const TRACK: bool>(&self, point: [f32; 3], p: [f32; 4]) -> f32 {
+        self.record::<TRACK>(cpu_vm_blended_profiles, 1);
         let limit = [
             point[0] * 684.412 * p[0] / 32768.0,
             point[1] * 684.412 * p[1] / 32768.0,
@@ -300,12 +332,14 @@ impl Evaluator<'_> {
         let (mut lower, mut upper, mut blend, mut weights, mut weight) = (0.0, 0.0, 0.0, 0.0, 1.0);
         for octave in 0..8 {
             let scale = (1u32 << octave) as f32;
-            lower += noise3(limit.map(|v| v * scale), seed.wrapping_add(octave * 1013)) * weight;
-            upper += noise3(
+            lower += self
+                .sample_noise::<TRACK>(limit.map(|v| v * scale), seed.wrapping_add(octave * 1013))
+                * weight;
+            upper += self.sample_noise::<TRACK>(
                 limit.map(|v| v * scale),
                 seed.wrapping_add(7919 + octave * 1013),
             ) * weight;
-            blend += noise3(
+            blend += self.sample_noise::<TRACK>(
                 main.map(|v| v * scale),
                 seed.wrapping_add(15838 + octave * 1013),
             ) * weight;
@@ -314,13 +348,14 @@ impl Evaluator<'_> {
         }
         mix(lower, upper, (blend / weights * 0.5 + 0.5).clamp(0.0, 1.0)) / weights
     }
-    fn interpolate(
+    fn interpolate<const TRACK: bool>(
         &mut self,
         field: usize,
         point: [f32; 3],
         context: Context,
         depth: usize,
     ) -> f32 {
+        self.record::<TRACK>(cpu_vm_interpolations, 1);
         let f = &self.prepared.registry.interpolations[field];
         let size = [f.cell[0] as f32, f.cell[1] as f32, f.cell[0] as f32];
         let lower = std::array::from_fn::<_, 3, _>(|i| (point[i] / size[i]).floor() * size[i]);
@@ -332,7 +367,7 @@ impl Evaluator<'_> {
                 continue;
             }
             let p = std::array::from_fn(|i| lower[i] + upper[i] as f32 * size[i]);
-            *value = self.corner(field, p, context, depth);
+            *value = self.corner_inner::<TRACK>(field, p, context, depth);
             if alpha == [0.0; 3] {
                 return *value;
             }
@@ -340,6 +375,20 @@ impl Evaluator<'_> {
         trilinear(corners, alpha)
     }
     fn corner(&mut self, field: usize, point: [f32; 3], context: Context, depth: usize) -> f32 {
+        if self.statistics.is_some() {
+            self.corner_inner::<true>(field, point, context, depth)
+        } else {
+            self.corner_inner::<false>(field, point, context, depth)
+        }
+    }
+    fn corner_inner<const TRACK: bool>(
+        &mut self,
+        field: usize,
+        point: [f32; 3],
+        context: Context,
+        depth: usize,
+    ) -> f32 {
+        self.record::<TRACK>(cpu_vm_corner_lookups, 1);
         let spatial = PlainCorner {
             field,
             point: point.map(f32::to_bits),
@@ -355,21 +404,29 @@ impl Evaluator<'_> {
             surface,
             detail,
         });
+        if contextual.is_none() {
+            self.record::<TRACK>(cpu_vm_plain_corner_lookups, 1);
+        }
         let cached = if let Some(key) = &contextual {
             self.corners.get(key)
         } else {
             self.plain_corners.get(&spatial)
         };
         if let Some(value) = cached {
+            self.record::<TRACK>(cpu_vm_corner_hits, 1);
+            if contextual.is_none() {
+                self.record::<TRACK>(cpu_vm_plain_corner_hits, 1);
+            }
             return *value;
         }
-        let value = self.evaluate(
+        let value = self.evaluate::<TRACK>(
             self.prepared.registry.programs.len() + field,
             point,
             context,
             depth,
         )[0];
         if self.corners.len() + self.plain_corners.len() >= 32768 {
+            self.record::<TRACK>(cpu_vm_corner_clears, 1);
             self.corners.clear();
             self.plain_corners.clear();
         }
@@ -380,13 +437,38 @@ impl Evaluator<'_> {
         }
         value
     }
-    fn evaluate(
+    fn evaluate<const TRACK: bool>(
         &mut self,
         pid: usize,
         point: [f32; 3],
         context: Context,
         depth: usize,
     ) -> [f32; 6] {
+        self.record::<TRACK>(cpu_vm_calls, 1);
+        if TRACK {
+            let root_count = self.prepared.registry.programs.len();
+            let extra = if self
+                .prepared
+                .registry
+                .aquifer
+                .as_ref()
+                .is_some_and(|a| a.enabled)
+            {
+                5
+            } else {
+                0
+            };
+            let scope = if pid < 3 {
+                cpu_vm_terrain_calls
+            } else if pid < root_count - extra {
+                cpu_vm_material_calls
+            } else if pid < root_count {
+                cpu_vm_auxiliary_calls
+            } else {
+                cpu_vm_field_calls
+            };
+            self.record::<TRACK>(scope, 1);
+        }
         if self.frames.len() <= depth {
             self.frames.resize_with(depth + 1, Frame::default);
         }
@@ -415,7 +497,9 @@ impl Evaluator<'_> {
             );
         }
         while let Some(&index) = frame.work.last() {
+            self.record::<TRACK>(cpu_vm_node_visits, 1);
             if !frame.missing(index) {
+                self.record::<TRACK>(cpu_vm_ready_hits, 1);
                 frame.work.pop();
                 continue;
             }
@@ -427,12 +511,17 @@ impl Evaluator<'_> {
             let c = n.c as usize;
             let p = n.p;
             if let Some(value) = step.constant {
+                self.record::<TRACK>(cpu_vm_constant_hits, 1);
                 frame.store(index, value);
                 continue;
             }
             let cache = self.prepared.columns.slots[pid][index]
                 .map(|slot| (point[0].to_bits(), point[2].to_bits(), slot));
+            if cache.is_some() {
+                self.record::<TRACK>(cpu_vm_horizontal_lookups, 1);
+            }
             if let Some(value) = cache.and_then(|key| self.horizontal.get(&key)) {
+                self.record::<TRACK>(cpu_vm_horizontal_hits, 1);
                 frame.store(index, *value);
                 continue;
             }
@@ -440,6 +529,7 @@ impl Evaluator<'_> {
                 frame.work.push(dependency);
                 continue;
             }
+            self.record::<TRACK>(cpu_vm_computed_nodes, 1);
             let values = &mut frame.values;
             use Opcode::*;
             let value = if let Some(value) = step.constant {
@@ -452,7 +542,7 @@ impl Evaluator<'_> {
                     | Lerp | And | Or | Not | InRange | ValueGradient => {
                         scalar(step.opcode, n, |i| values[i as usize])
                     }
-                    Noise => self.noise(
+                    Noise => self.noise_profile::<TRACK>(
                         [
                             point[0] * p[1] + values[a],
                             point[1] * p[2] + values[b],
@@ -466,7 +556,7 @@ impl Evaluator<'_> {
                             2 => [point[2], point[0], 0.0],
                             _ => point,
                         };
-                        self.noise(q.map(|v| v * 0.25), a) * 4.0
+                        self.noise_profile::<TRACK>(q.map(|v| v * 0.25), a) * 4.0
                     }
                     AxisGradient => gradient(point[a], b, p),
                     Spline => {
@@ -493,12 +583,17 @@ impl Evaluator<'_> {
                                     * mix(left[1] * span - delta, -right[1] * span + delta, t)
                         }
                     }
-                    OldBlended => self.blended(point, p),
-                    ShiftedOldBlended => self.blended([values[a], values[b], values[c]], p),
-                    ShiftedNoise => {
-                        self.noise([values[a], values[b], values[c]], p[0] as usize) * p[1]
+                    OldBlended => self.blended::<TRACK>(point, p),
+                    ShiftedOldBlended => {
+                        self.blended::<TRACK>([values[a], values[b], values[c]], p)
                     }
-                    Interpolate => self.interpolate(
+                    ShiftedNoise => {
+                        self.noise_profile::<TRACK>(
+                            [values[a], values[b], values[c]],
+                            p[0] as usize,
+                        ) * p[1]
+                    }
+                    Interpolate => self.interpolate::<TRACK>(
                         p[0] as usize,
                         [values[a], values[b], values[c]],
                         context,
@@ -559,15 +654,19 @@ impl Evaluator<'_> {
                         let mut temperature = p[0];
                         let line = self.sea_level as f32 + 17.0;
                         if point[1] > line {
-                            temperature -=
-                                (noise3([point[0] * 0.125, 0.0, point[2] * 0.125], 1234) * 8.0
-                                    + point[1]
-                                    - line)
-                                    * 0.00125;
+                            temperature -= (self.sample_noise::<TRACK>(
+                                [point[0] * 0.125, 0.0, point[2] * 0.125],
+                                1234,
+                            ) * 8.0
+                                + point[1]
+                                - line)
+                                * 0.00125;
                         }
                         truth(temperature < 0.15)
                     }
-                    NoiseCount => ((noise3([point[0] / p[0], 0.0, point[2] / p[0]], 2345) * 0.625
+                    NoiseCount => ((self
+                        .sample_noise::<TRACK>([point[0] / p[0], 0.0, point[2] / p[0]], 2345)
+                        * 0.625
                         + p[1])
                         * p[2])
                         .ceil(),
@@ -590,7 +689,7 @@ impl Evaluator<'_> {
                             let coverage = 1.0
                                 - (-values[a] * area * (eligible / range).min(1.0) / 256.0).exp();
                             let divisor = (p[2] * 2.0).max(2.0);
-                            let field = noise3(
+                            let field = self.sample_noise::<TRACK>(
                                 [point[0] / divisor, 0.0, point[2] / divisor],
                                 self.seed as u32 ^ mix_hash((self.seed >> 32) as u32) ^ n.b,
                             ) * 0.625;
@@ -607,6 +706,7 @@ impl Evaluator<'_> {
             frame.store(index, value);
             if let Some(key) = cache {
                 if self.horizontal.len() >= 32768 {
+                    self.record::<TRACK>(cpu_vm_horizontal_clears, 1);
                     self.horizontal.clear();
                 }
                 self.horizontal.insert(key, value);

@@ -95,13 +95,62 @@ fn every_registered_opcode_executes_in_both_surface_modes() {
                 let mut reference = direct.evaluator(u64::MAX, 63, &[4, 5, 6]);
                 reference.eager = true;
                 let b = reference.run(0, point, context).unwrap();
+                let traced = prepared
+                    .evaluator(u64::MAX, 63, &[4, 5, 6])
+                    .with_timings(Some(Arc::new(crate::timings::Timings::default())))
+                    .run(0, point, context)
+                    .unwrap();
                 assert!(a[0].is_finite(), "{opcode:?}: {a:?}");
                 assert_eq!(a.map(f32::to_bits), b.map(f32::to_bits), "{opcode:?}");
+                assert_eq!(
+                    a.map(f32::to_bits),
+                    traced.map(f32::to_bits),
+                    "traced {opcode:?}"
+                );
             }
             visited.insert(opcode as u32);
         }
     }
     assert_eq!(visited.len(), 47);
+}
+
+#[test]
+fn sampling_counts_observe_real_reuse_and_exact_noise_calls() {
+    fn require_send_sync<T: Send + Sync>() {}
+    require_send_sync::<Evaluator<'static>>();
+    let p = Prepared::new(Arc::new(one(28))).unwrap();
+    let mut traced = p
+        .evaluator(1, 63, &[])
+        .with_timings(Some(Arc::new(crate::timings::Timings::default())));
+    for _ in 0..3 {
+        traced
+            .run(0, [-17.5, -63.0, 31.25], Context::default())
+            .unwrap();
+    }
+    let expected = p.evaluator(1, 63, &[]).noise([1.0, 2.0, 3.0], 0);
+    assert_eq!(
+        traced.noise([1.0, 2.0, 3.0], 0).to_bits(),
+        expected.to_bits()
+    );
+    let counts = traced.statistics.as_ref().unwrap();
+    assert_eq!(counts.get(cpu_vm_samplers), 1);
+    assert!(counts.get(cpu_vm_calls) > 3);
+    assert_eq!(
+        counts.get(cpu_vm_calls),
+        counts.get(cpu_vm_terrain_calls)
+            + counts.get(cpu_vm_material_calls)
+            + counts.get(cpu_vm_auxiliary_calls)
+            + counts.get(cpu_vm_field_calls)
+    );
+    assert!(counts.get(cpu_vm_node_visits) > 0);
+    assert!(counts.get(cpu_vm_corner_lookups) > counts.get(cpu_vm_corner_hits));
+    assert!(counts.get(cpu_vm_corner_hits) > 0);
+    assert_eq!(
+        counts.get(cpu_vm_corner_lookups),
+        counts.get(cpu_vm_plain_corner_lookups)
+    );
+    assert_eq!(counts.get(cpu_vm_noise_profiles), 1);
+    assert_eq!(counts.get(cpu_vm_noise3_calls), 4); // two nonzero octaves, two samples each
 }
 #[test]
 fn scalar_rules_cover_negative_gradients_splines_and_signed_zero() {
