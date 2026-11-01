@@ -28,6 +28,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline-library", type=Path, required=True)
     parser.add_argument("--candidate-library", type=Path, required=True)
+    parser.add_argument("--backend", choices=("auto", "cpu", "metal", "vulkan", "dx12"))
+    parser.add_argument("--assembly-threads", type=int, choices=range(1, 17),
+                        help="Shared native worker budget; CPU clamps to 2–16 and splits it into two lanes")
+    parser.add_argument("--preservation-check", action="store_true")
+    parser.add_argument("--timeout", type=float, default=900, help="Actual process timeout per trial, seconds")
     parser.add_argument("--baseline-revision")
     parser.add_argument("--candidate-revision")
     parser.add_argument("--definition", type=Path, required=True)
@@ -61,12 +66,15 @@ def main() -> None:
                    "--lighting", args.lighting, "--readiness", args.readiness,
                    "--origin-x", str(args.origin_x), "--origin-z", str(args.origin_z),
                    "--grid-width", str(args.grid_width)]
+        if args.backend: command += ["--backend", args.backend]
+        if args.assembly_threads: command += ["--assembly-threads", str(args.assembly_threads)]
+        if args.preservation_check: command += ["--preservation-check"]
         revision = args.baseline_revision if variant == "baseline" else args.candidate_revision
         if revision:
             command.extend(["--library-revision", revision])
-        if variant == "candidate" and first_baseline is not None:
+        if first_baseline is not None:
             command.extend(["--compare", str(first_baseline)])
-        subprocess.run(command, check=True)
+        subprocess.run(command, check=True, timeout=args.timeout)
         if variant == "baseline" and first_baseline is None:
             first_baseline = destination
         measurement = json.loads((destination / "measurements.json").read_text())
@@ -75,6 +83,10 @@ def main() -> None:
                         "median_region_ms": measurement["median_ms"],
                         "p95_region_ms": measurement["p95_region_ms"],
                         "peak_rss_bytes": measurement["peak_rss_bytes"],
+                        "backend": measurement["backend_selected"],
+                        "cpu_ms_per_region": measurement["measured_process_usage"]["cpu_ms_per_region"],
+                        "average_scheduled_cores": measurement["measured_process_usage"]["average_scheduled_cores"],
+                        "sample_regions": len(measurement["regions"]),
                         "region_file_bytes": measurement["region_file_bytes"]})
     grouped = {variant: [item for item in results if item["variant"] == variant]
                for variant in ("baseline", "candidate")}
@@ -88,6 +100,8 @@ def main() -> None:
     baseline_rates = [item["chunks_per_second"] for item in grouped["baseline"]]
     candidate_rates = [item["chunks_per_second"] for item in grouped["candidate"]]
     comparison = {"schema": "retina.native-region-benchmark-ab", "schema_version": 1,
+                  "backend_requested": args.backend, "assembly_threads": args.assembly_threads,
+                  "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
                   "scope": scope, "lighting": args.lighting, "readiness": args.readiness,
                   "order": order, "results": results,
                   "summary": summary, "median_throughput_change_percent": 100.0 * (candidate / baseline - 1.0),

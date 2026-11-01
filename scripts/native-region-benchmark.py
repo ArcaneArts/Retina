@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repeatable real-GPU MCA benchmark. Outputs are private temporary regions, never live saves.
+"""Repeatable native CPU/GPU MCA benchmark. Outputs are private temporary regions, never live saves.
 Use a saved retina.dat and --library to compare retained native builds.
 """
 import argparse
@@ -40,10 +40,14 @@ class SpecializationSnapshot(c.Structure):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--library", type=Path, required=True)
+    parser.add_argument("--backend", choices=("auto", "cpu", "metal", "vulkan", "dx12"),
+                        help="Select before native initialization; otherwise retain the existing environment")
     parser.add_argument("--definition", type=Path, required=True)
     parser.add_argument("--dimension", required=True)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--compare", type=Path, help="A matched baseline output directory; fail on any changed chunk NBT")
+    parser.add_argument("--preservation-check", action="store_true",
+                        help="After timing, close/reopen the definition and require an existing region to remain unchanged")
     parser.add_argument("--startup-debug", action="store_true",
                         help="Enable detailed startup and region pipeline logs; keep separate from headline timings")
     parser.add_argument("--diagnostics", action="store_true",
@@ -84,6 +88,8 @@ def main():
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
+    if args.backend:
+        os.environ["RETINA_GPU_BACKEND"] = args.backend
     if args.assembly_threads:
         os.environ["RETINA_REGION_THREADS"] = str(args.assembly_threads)
     if args.diagnostics:
@@ -163,6 +169,14 @@ def main():
     startup = time.perf_counter()
     check(lib.retina_initialize())
     initialize_ms = (time.perf_counter()-startup)*1000
+    lib.retina_backend.argtypes = [c.c_void_p, c.c_uint64]
+    lib.retina_backend.restype = c.c_uint64
+    backend_buffer = c.create_string_buffer(4096)
+    lib.retina_backend(backend_buffer, len(backend_buffer))
+    actual_backend = backend_buffer.value.decode()
+    cpu = actual_backend.startswith("CPU:")
+    if args.backend == "cpu" and not cpu:
+        raise RuntimeError(f"Requested CPU but actual backend is {actual_backend}")
     loading = time.perf_counter()
     with SavedDefinition(lib, args.definition, args.dimension, args.mca_compression, args.program_execution) as definition:
         load_and_bind_ms = (time.perf_counter()-loading)*1000
@@ -192,11 +206,12 @@ def main():
             status=None
             if program:
                 snapshot=ProgramSnapshot();check(program(profile,c.byref(snapshot)));status=snapshot.status
-            return dict(name=name, x=x, z=z, ms=elapsed_ms, generated=report.generated, program_status=status,
+            return dict(name=name, x=x, z=z, ms=elapsed_ms, generated=report.generated,
+                        preserved=report.preserved, program_status=status, terrain_host_ms=report.gpu/1e6,
                         gpu_ms=report.gpu/1e6, assembly_ms=report.assembly/1e6, write_ms=report.write/1e6)
         warmups = [generate((f"warm{i}",8+i,8)) for i in range(args.warmups)]
         readiness_wait_ms = 0.0
-        if args.readiness != "driver-warm":
+        if not cpu and args.readiness != "driver-warm":
             readiness_probe = interpreter if args.readiness == "optimized-interpreter" else program
             if not readiness_probe:
                 raise RuntimeError("The loaded library does not expose program readiness diagnostics")
@@ -252,6 +267,10 @@ def main():
         except (OSError, subprocess.CalledProcessError):
             revision, dirty, dirty_fingerprint = None, None, None
         data = dict(schema=RESULT_SCHEMA, schema_version=RESULT_SCHEMA_VERSION,
+                    backend_requested=args.backend or os.environ.get("RETINA_GPU_BACKEND", "auto"),
+                    backend_selected=actual_backend,
+                    readiness_effective="cpu" if cpu else args.readiness,
+                    legacy_gpu_ms_scope="Legacy name for host terrain preparation, including CPU work; not device execution",
                     mca_compression=args.mca_compression,
                     benchmark_scope=args.scope, lighting=args.lighting,
                     readiness=args.readiness, readiness_wait_ms=readiness_wait_ms,
@@ -260,6 +279,8 @@ def main():
                            "library_revision": args.library_revision, "library": str(args.library.resolve()),
                            "library_sha256": hashlib.sha256(args.library.read_bytes()).hexdigest()},
                     host={"system": platform.system(), "release": platform.release(), "machine": platform.machine(),
+                          "logical_processors": os.cpu_count(), "processor": platform.processor(),
+                          "rayon_global_threads": os.environ.get("RAYON_NUM_THREADS", "auto"),
                           "python": platform.python_version()},
                     library=str(args.library), parallel=args.parallel, seed=seed, dimension=args.dimension, request=request_context,
                     assembly_threads=args.assembly_threads or os.environ.get("RETINA_REGION_THREADS", "auto"),
@@ -318,6 +339,8 @@ def main():
                 "device_span_ms": (after_pipeline.device_span_nanos-before_pipeline.device_span_nanos)/1e6,
                 "device_gap_ms": (after_pipeline.device_gap_nanos-before_pipeline.device_gap_nanos)/1e6,
                 "unavailable_timestamp_pairs": after_pipeline.unavailable_timestamp_pairs-before_pipeline.unavailable_timestamp_pairs}
+            if cpu and after_pipeline.completed != 0:
+                raise AssertionError("CPU benchmark recorded GPU jobs")
         if program:
             after_program=ProgramSnapshot();check(program(profile,c.byref(after_program)))
             data["gpu_program"]={name:getattr(after_program,name) for name,_ in ProgramSnapshot._fields_ if name != "version"}
@@ -336,7 +359,9 @@ def main():
         if args.compare:
             data["comparison"] = compare_corpora(args.compare, args.out, names)
             data["identical_nbt_chunks"] = data["comparison"]["identical_nbt_chunks"]
-        if args.await_specialization:
+        if cpu and args.await_specialization:
+            data["specialization_warmup_check"] = {"applicable": False, "reason": "Native CPU has no GPU specialization"}
+        if not cpu and args.await_specialization:
             if not program: raise RuntimeError("The loaded library does not expose program diagnostics")
             awaited=ProgramSnapshot();check(program(profile,c.byref(awaited)))
             status_before_wait=awaited.status
@@ -352,7 +377,25 @@ def main():
             if old != new: raise AssertionError("Compilation changed region NBT")
             data["specialization_warmup_check"]={"status_before_wait":status_before_wait,"wait_after_measurement_ms":wait_after_measurement_ms,
                 "compile_ms":awaited.compile_nanos/1e6,"identical_nbt_chunks":1024,"regenerated_region":regenerated}
-        data["peak_rss_bytes"]=process_usage.peak_rss_bytes(process_usage.snapshot())
-        write_json(args.out/"measurements.json", data)
-        print(json.dumps(data, indent=2))
+    if args.preservation_check:
+        name, x, z = coords[0]
+        path = args.out / f"{name}.mca"
+        original = mca_records(path)
+        started = time.perf_counter()
+        with SavedDefinition(lib, args.definition, args.dimension, args.mca_compression, args.program_execution) as reopened:
+            req = reopened.request(x * 32, z * 32)
+            encoded = str(path.resolve()).encode()
+            fallback = reopened.fallback_biome.encode()
+            report = Report()
+            check(lib.retina_generate_region(c.byref(req), encoded, len(encoded), reopened.metadata["data_version"],
+                                             fallback, len(fallback), c.byref(report)))
+        elapsed = (time.perf_counter() - started) * 1000
+        if report.generated != 0 or report.preserved != 1024 or mca_records(path) != original:
+            raise AssertionError("Definition reopen did not preserve every existing chunk")
+        data["preservation_check"] = {"scope": "Same process, closed/reopened world definition; outside measured generation",
+                                      "elapsed_ms": elapsed, "generated": report.generated,
+                                      "preserved": report.preserved, "identical_nbt_chunks": len(original)}
+    data["peak_rss_bytes"]=process_usage.peak_rss_bytes(process_usage.snapshot())
+    write_json(args.out/"measurements.json", data)
+    print(json.dumps(data, indent=2))
 if __name__ == "__main__": main()
