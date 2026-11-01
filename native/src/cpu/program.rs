@@ -140,12 +140,18 @@ impl Prepared {
             bands,
             frames: Vec::new(),
             corners: Map::default(),
+            plain_corners: Map::default(),
             horizontal: Map::default(),
             bounds_scratch: Vec::new(),
             #[cfg(test)]
             eager: false,
         }
     }
+}
+#[derive(Hash, PartialEq, Eq)]
+struct PlainCorner {
+    field: usize,
+    point: [u32; 3],
 }
 #[derive(Hash, PartialEq, Eq)]
 struct Corner {
@@ -237,6 +243,7 @@ pub struct Evaluator<'a> {
     bands: &'a [u16],
     frames: Vec<Frame>,
     corners: Map<Corner, f32>,
+    plain_corners: Map<PlainCorner, f32>,
     horizontal: Map<(u32, u32, usize), f32>,
     bounds_scratch: Vec<bounds::Bounds>,
     /// Reference scheduling runs all reachable nodes in original forward order.
@@ -333,13 +340,27 @@ impl Evaluator<'_> {
         trilinear(corners, alpha)
     }
     fn corner(&mut self, field: usize, point: [f32; 3], context: Context, depth: usize) -> f32 {
-        let key = Corner {
+        let spatial = PlainCorner {
             field,
             point: point.map(f32::to_bits),
-            surface: context.surface.map(f32::to_bits),
-            detail: context.detail.map(f32::to_bits),
         };
-        if let Some(value) = self.corners.get(&key) {
+        let surface = context.surface.map(f32::to_bits);
+        let detail = context.detail.map(f32::to_bits);
+        // Most density/interpolation samples use the exact default context.
+        // Keep those keys small; non-default contexts retain every original bit,
+        // including negative zero. Both maps share the original entry budget.
+        let contextual = (surface != [0; 4] || detail != [0; 4]).then(|| Corner {
+            field,
+            point: spatial.point,
+            surface,
+            detail,
+        });
+        let cached = if let Some(key) = &contextual {
+            self.corners.get(key)
+        } else {
+            self.plain_corners.get(&spatial)
+        };
+        if let Some(value) = cached {
             return *value;
         }
         let value = self.evaluate(
@@ -348,10 +369,15 @@ impl Evaluator<'_> {
             context,
             depth,
         )[0];
-        if self.corners.len() >= 32768 {
+        if self.corners.len() + self.plain_corners.len() >= 32768 {
             self.corners.clear();
+            self.plain_corners.clear();
         }
-        self.corners.insert(key, value);
+        if let Some(key) = contextual {
+            self.corners.insert(key, value);
+        } else {
+            self.plain_corners.insert(spatial, value);
+        }
         value
     }
     fn evaluate(

@@ -173,7 +173,50 @@ fn nested_interpolation_reuses_global_corners_and_preserves_a_linear_field() {
                 < 0.00001
         );
     }
-    assert!(!evaluator.corners.is_empty());
+    assert!(!evaluator.plain_corners.is_empty());
+}
+
+#[test]
+fn compact_interpolation_corners_preserve_context_changes_and_share_the_bound() {
+    let mut r = one(28);
+    r.material_layers = true;
+    r.interpolations[0].input = Program {
+        nodes: vec![n(Opcode::StoneDepth as u32, 1, 1, 0, [0.0; 4])],
+        roots: vec![0],
+    };
+    let p = Prepared::new(Arc::new(r)).unwrap();
+    let mut reused = p.evaluator(123, 63, &[]);
+    let contexts = [
+        Context::default(),
+        Context {
+            surface: [5.0, 2.0, 0.0, 0.0],
+            detail: [0.0; 4],
+        },
+        Context {
+            surface: [-0.0, 0.0, 0.0, 0.0],
+            detail: [0.0; 4],
+        },
+    ];
+    for index in 0..32772 {
+        let context = contexts[index % contexts.len()];
+        let point = [index as f32 * 4.0, -8.0, -16.0];
+        let actual = reused.corner(0, point, context, 0);
+        let expected = if index % contexts.len() == 1 {
+            0.0
+        } else {
+            1.0
+        };
+        assert_eq!(actual, expected);
+        assert!(reused.corners.len() + reused.plain_corners.len() <= 32768);
+    }
+    for context in contexts.into_iter().chain(contexts.into_iter().rev()) {
+        let point = [-17.25, -63.5, 31.125];
+        let expected = p.evaluator(123, 63, &[]).run(0, point, context).unwrap();
+        assert_eq!(
+            reused.run(0, point, context).unwrap().map(f32::to_bits),
+            expected.map(f32::to_bits)
+        );
+    }
 }
 #[test]
 fn dead_branches_are_pruned_and_large_programs_reuse_scratch() {
