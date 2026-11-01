@@ -77,6 +77,10 @@ pub struct Sampler<'a> {
     climate_hints: [Option<usize>; 2],
 }
 impl Sampler<'_> {
+    #[inline]
+    pub(crate) fn material_is_zero(&self, program: usize, y: f32, preliminary: f32) -> bool {
+        self.evaluator.as_ref().is_some_and(|e| e.material_is_zero(program, y, preliminary))
+    }
     pub fn run(
         &mut self,
         program: usize,

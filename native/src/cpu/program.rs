@@ -3,6 +3,7 @@
 //! bounded sampling job, never the global engine or saved world definition.
 pub(crate) mod bounds;
 mod statistics;
+mod material_zero;
 use super::noise::*;
 use crate::program::{Instruction, Program, RegistryProgram, opcode::Opcode};
 use crate::spatial_hash::SamplingMap as Map;
@@ -31,6 +32,8 @@ pub struct Prepared {
     registry: Arc<RegistryProgram>,
     plans: Vec<Plan>,
     columns: crate::column_program::Plan,
+    material_zero: Vec<Option<f32>>,
+    material_zero_minimum: f32,
 }
 impl Prepared {
     pub fn new(registry: Arc<RegistryProgram>) -> Result<Self, String> {
@@ -46,7 +49,8 @@ impl Prepared {
             .ok_or("CPU registry has fewer than three base programs")?;
         registry.validate(biomes)?;
         let mut plans = Vec::new();
-        for program in registry.all_programs() {
+        let mut material_zero = vec![None; biomes];
+        for (pid, program) in registry.all_programs().enumerate() {
             let mut live = vec![false; program.nodes.len()];
             let mut pending = program.roots.clone();
             pending.push(0);
@@ -121,18 +125,16 @@ impl Prepared {
             for (position, step) in steps.iter().enumerate() {
                 indices[step.index] = position;
             }
-            plans.push(Plan {
-                steps,
-                boundable,
-                indices,
-            });
+            let plan = Plan { steps, boundable, indices };
+            if registry.material_layers && pid >= 3 && pid < 3 + biomes {
+                material_zero[pid - 3] = material_zero::prepare(program, &plan);
+            }
+            plans.push(plan);
         }
         let columns = crate::column_program::Plan::new(&registry);
-        Ok(Self {
-            registry,
-            plans,
-            columns,
-        })
+        let material_zero_minimum = material_zero.iter().flatten().copied()
+            .fold(f32::INFINITY, f32::min);
+        Ok(Self { registry, plans, columns, material_zero, material_zero_minimum })
     }
     pub fn evaluator<'a>(&'a self, seed: u64, sea_level: i32, bands: &'a [u16]) -> Evaluator<'a> {
         Evaluator {
@@ -255,6 +257,12 @@ pub struct Evaluator<'a> {
     eager: bool,
 }
 impl Evaluator<'_> {
+    #[inline]
+    pub(crate) fn material_is_zero(&self, program: usize, y: f32, preliminary: f32) -> bool {
+        y < preliminary && y >= self.prepared.material_zero_minimum
+            && program.checked_sub(3).and_then(|i| self.prepared.material_zero.get(i))
+                .copied().flatten().is_some_and(|lower| y >= lower)
+    }
     pub(crate) fn with_timings(mut self, timings: Option<Arc<crate::timings::Timings>>) -> Self {
         self.statistics = timings.map(|t| Box::new(Statistics::new(t)));
         self
