@@ -1,0 +1,68 @@
+[
+  {
+    "case": "overworld-16",
+    "baseline": {
+      "median_region_ms": 33780.747562414035,
+      "median_cpu_ms": 140816.604,
+      "median_generation_rss": 1140572160.0,
+      "trials": 2,
+      "corpus_sha256": "8634e04bfa736a0537dbb2148f3b93ade710d92a31272a6597c2f7595880e8dc"
+    },
+    "candidate": {
+      "median_region_ms": 22707.934479229152,
+      "median_cpu_ms": 125727.631,
+      "median_generation_rss": 1087799296.0,
+      "trials": 2,
+      "corpus_sha256": "8634e04bfa736a0537dbb2148f3b93ade710d92a31272a6597c2f7595880e8dc"
+    },
+    "delta_percent": {
+      "median_region_ms": -32.77847259811677,
+      "median_cpu_ms": -10.71533652380936,
+      "median_generation_rss": -4.626876391582268
+    }
+  },
+  {
+    "case": "overworld-4",
+    "baseline": {
+      "median_region_ms": 57034.989999607205,
+      "median_cpu_ms": 123983.01549999998,
+      "median_generation_rss": 983457792.0,
+      "trials": 2,
+      "corpus_sha256": "8634e04bfa736a0537dbb2148f3b93ade710d92a31272a6597c2f7595880e8dc"
+    },
+    "candidate": {
+      "median_region_ms": 53032.802667003125,
+      "median_cpu_ms": 113579.718,
+      "median_generation_rss": 971481088.0,
+      "trials": 2,
+      "corpus_sha256": "8634e04bfa736a0537dbb2148f3b93ade710d92a31272a6597c2f7595880e8dc"
+    },
+    "delta_percent": {
+      "median_region_ms": -7.017073786866002,
+      "median_cpu_ms": -8.390905365582102,
+      "median_generation_rss": -1.2178157616346441
+    }
+  },
+  {
+    "case": "nether-16",
+    "baseline": {
+      "median_region_ms": 29791.319166775793,
+      "median_cpu_ms": 116716.26550000001,
+      "median_generation_rss": 1598136320.0,
+      "trials": 2,
+      "corpus_sha256": "2d98866a9abf049e77c4bdd7a438dc93c0493bd40c5456392301a844b8dba225"
+    },
+    "candidate": {
+      "median_region_ms": 30416.444416856393,
+      "median_cpu_ms": 114161.0895,
+      "median_generation_rss": 1570635776.0,
+      "trials": 2,
+      "corpus_sha256": "2d98866a9abf049e77c4bdd7a438dc93c0493bd40c5456392301a844b8dba225"
+    },
+    "delta_percent": {
+      "median_region_ms": 2.0983469935690557,
+      "median_cpu_ms": -2.189220147726545,
+      "median_generation_rss": -1.7207883742983876
+    }
+  }
+]
