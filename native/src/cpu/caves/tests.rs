@@ -16,6 +16,54 @@ fn carver(kind: u32, probability: f32) -> Carver {
     serde_json::from_value(serde_json::json!({"id":"test:carver","kind":kind,"probability":probability,"height":{"min":-30,"max":80,"triangle":true,"plateau":5},"count":2.0,"thickness":3.0,"horizontal":2.0,"vertical":1.5,"floor":-0.7,"room":2.0,"thickness_range":[2.0,5.0],"horizontal_range":[1.0,2.0],"distance_range":[0.5,1.0],"vertical_range":[1.0,2.0],"rotation_range":[-0.2,0.2],"width_smoothness":3.0,"vertical_default":1.0,"vertical_center":0.5})).unwrap()
 }
 #[test]
+fn shared_saved_biomes_match_resampling_and_keep_outside_tile_fallback() {
+    let d = definition();
+    for key in ["minecraft:overworld", "minecraft:the_nether"] {
+        let profile = d.dimension(key).unwrap().profile().unwrap();
+        let fields = Fields::new(profile).unwrap();
+        for seed in [1, u64::MAX] {
+            for min_y in [-64, -63, 1] {
+                let mut request = d.request(key, 1, -2, -2).unwrap();
+                request.seed = seed;
+                request.min_y = min_y;
+                let halo = ColumnHalo {
+                    origin_x: -2, origin_z: -2, side: 4,
+                    columns: Arc::new(vec![Column {height:70,packed:0,materials:0};4096]),
+                };
+                let origin = [-16, min_y.div_euclid(4) * 4, -16];
+                let (width, layers) = (2,6);
+                let mut words = vec![0; width * width * layers / 2];
+                let mut source = Caves::new(profile, &fields, request, &halo);
+                for y in 0..layers {
+                    for z in 0..width {
+                        for x in 0..width {
+                            let index = (y * width + z) * width + x;
+                            let value = source.biome([origin[0]+x as i32*4,origin[1]+y as i32*4,origin[2]+z as i32*4]).unwrap();
+                            words[index / 2] |= value << ((index % 2) * 16);
+                        }
+                    }
+                }
+                let grid = biomes::Grid::new(origin, width, layers, &words);
+                let mut fast = Caves::new(profile, &fields, request, &halo).with_biomes(grid);
+                let mut reference = Caves::new(profile, &fields, request, &halo);
+                for y in (0..layers * 4).rev() {
+                    for z in 0..width * 4 {
+                        for x in 0..width * 4 {
+                            let point = [origin[0]+x as i32,origin[1]+y as i32,origin[2]+z as i32];
+                            assert_eq!(fast.biome(point).unwrap(), reference.biome(point).unwrap());
+                        }
+                    }
+                }
+                assert!(fast.biomes.is_empty(), "in-grid samples must not use or populate the resampling map");
+                for point in [[-17,origin[1],-16],[-8,origin[1],-16],[-16,origin[1]-1,-16],[-16,origin[1]+24,-16]] {
+                    assert_eq!(fast.biome(point).unwrap(), reference.biome(point).unwrap());
+                }
+                assert!(!fast.biomes.is_empty(), "outside samples keep the existing cache");
+            }
+        }
+    }
+}
+#[test]
 fn zero_probability_and_finite_carver_settings_remain_active_contracts() {
     let c = carver(0, 0.0);
     for point in [

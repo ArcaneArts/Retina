@@ -33,6 +33,10 @@ impl<'a> Builder<'a> {
             aquifers: Aquifers::new(profile, request),
         }
     }
+    fn with_biomes(mut self, grid: super::caves::biomes::Grid) -> Self {
+        self.caves = self.caves.with_biomes(grid);
+        self
+    }
     fn voxel(&mut self, p: [i32; 3], c: Column) -> Result<Voxel, String> {
         let y = p[1];
         let [min, max] = self.caves.sampler().bounds();
@@ -333,7 +337,16 @@ pub(super) fn build_in_pool(
             words[offset..offset + len].copy_from_slice(&packed[y * len..(y + 1) * len]);
         }
     }
-    let mut b = Builder::new(profile, fields, request, columns);
+    // The complete immutable biome plane is already authoritative output for
+    // this profile/seed/tile. Share it with the later passes instead of sampling
+    // those same quart coordinates again in each worker's separate cache.
+    let started = metrics.start();
+    let shared_biomes = super::caves::biomes::Grid::new(
+        [ox, bottom, oz], quart, layers, &words[biome_offset..base],
+    );
+    metrics.elapsed(crate::performance::Counter::cpu_biome_grid_prepare_nanos, started);
+    metrics.add(crate::performance::Counter::cpu_biome_grid_bytes, ((base - biome_offset) * 4) as u64);
+    let mut b = Builder::new(profile, fields, request, columns).with_biomes(shared_biomes.clone());
     for z in 0..surface {
         for x in 0..surface {
             let c = columns
@@ -363,7 +376,7 @@ pub(super) fn build_in_pool(
             .map_init(
                 || {
                     (
-                        Builder::new(profile, fields, request, columns),
+                        Builder::new(profile, fields, request, columns).with_biomes(shared_biomes.clone()),
                         Vec::with_capacity(request.height as usize),
                         Vec::with_capacity(request.height as usize),
                     )

@@ -26,7 +26,7 @@ A separate diagnostic region matches all 1,024 original source-baseline chunk re
 
 ## Validation and reproduction
 
-66 CPU tests passed; 5 optional hardware comparisons ignored. New reference comparisons cover two seeds, both registered dimensions, fractional/negative/far coordinates, clipped/expanded height ranges, thin islands, exact zero, tiny positive density, unusual non-power-of-two cells and invalid returned roots. Existing pool handoff/panic recovery, worker-order/material equality, profile retirement, full-feature chunk and lighting tests passed.
+66 CPU tests passed; 5 opt-in tests ignored: four GPU comparisons and one full CPU chunk acceptance. New reference comparisons cover two seeds, both registered dimensions, fractional/negative/far coordinates, clipped/expanded height ranges, thin islands, exact zero, tiny positive density, unusual non-power-of-two cells and invalid returned roots. Existing pool handoff/panic recovery, worker-order/material equality, profile retirement and lighting tests passed; the separate complete-region comparisons below exercise full feature generation.
 
 Every baseline/candidate trial compares complete decompressed NBT against the first baseline: blocks, biomes, heightmaps, light, block entities, structures and metadata remain identical. Additional full-region checks match retained original custom-datapack, negative-coordinate second-seed, central End and outer End outputs with native budget 8/global Rayon 1 and reverse request order. All tested outputs preserve 1,024 records on same-process definition reopen, with zero GPU jobs. Reopen is not a cold-process test.
 
