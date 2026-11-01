@@ -223,7 +223,7 @@ impl Evaluator<'_> {
         let all_finite =
             (0..6).all(|i| values[program.roots.get(i).copied().unwrap_or(0) as usize].finite());
         let result = if all_finite {
-            values[program.roots[0] as usize]
+            values[program.roots.first().copied().unwrap_or(0) as usize]
         } else {
             Bounds::UNKNOWN
         };

@@ -18,6 +18,7 @@ struct Builder<'a> {
     request: ChunkRequest,
     caves: Caves<'a>,
     aquifers: Aquifers<'a>,
+    material_zero_proofs: u64,
 }
 impl<'a> Builder<'a> {
     fn new(
@@ -31,6 +32,7 @@ impl<'a> Builder<'a> {
             request,
             caves: Caves::new(profile, fields, request, columns),
             aquifers: Aquifers::new(profile, request),
+            material_zero_proofs: 0,
         }
     }
     fn with_biomes(mut self, grid: super::caves::biomes::Grid) -> Self {
@@ -208,7 +210,11 @@ impl<'a> Builder<'a> {
                     } else {
                         c.packed & 65535
                     };
-                    let selected = self.caves.sampler().run(
+                    let sampler = self.caves.sampler();
+                    let selected = if sampler.material_is_zero(3 + biome as usize, y as f32, preliminary) {
+                        self.material_zero_proofs += 1;
+                        0.0
+                    } else { sampler.run(
                         3 + biome as usize,
                         [x as f32, y as f32, z as f32],
                         Context {
@@ -220,7 +226,7 @@ impl<'a> Builder<'a> {
                                 preliminary,
                             ],
                         },
-                    )?[0];
+                    )?[0] };
                     if selected > 0.0 && c.packed & (1 << 29) == 0 {
                         let selected = (selected - 1.0) as u32;
                         if selected >= self.profile.materials.len() as u32 {
@@ -385,6 +391,7 @@ pub(super) fn build_in_pool(
                     let start = strip * 16;
                     let end = (start + 16).min(width);
                     let before = b.caves.proof_stats();
+                    let before_zero = b.material_zero_proofs;
                     let mut descriptors = Vec::new();
                     let mut runs = Vec::new();
                     for z in start..end {
@@ -442,6 +449,7 @@ pub(super) fn build_in_pool(
                             solid: after.solid - before.solid,
                             scalar: after.scalar - before.scalar,
                         },
+                        b.material_zero_proofs - before_zero,
                     ))
                 },
             )
@@ -452,7 +460,8 @@ pub(super) fn build_in_pool(
     }
     let mut runs = Vec::new();
     // Indexed collection retains z-major order regardless of worker scheduling.
-    for (first, descriptors, strip_runs, stats) in strips {
+    for (first, descriptors, strip_runs, stats, zero) in strips {
+        metrics.add(crate::performance::Counter::cpu_material_zero_proofs, zero);
         let offset = runs.len() as u32;
         for (i, [len, start]) in descriptors.into_iter().enumerate() {
             words[base + 4 + (first + i) * 2] = len;

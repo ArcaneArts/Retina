@@ -17,6 +17,7 @@ macro_rules! counters {
     };
 }
 counters! {
+    cpu_material_zero_proofs,
     cpu_biome_grid_prepare_nanos, cpu_biome_grid_bytes,
     cpu_height_scalar_points, cpu_height_air_points_skipped, cpu_height_interval_queries,
     cpu_vm_samplers, cpu_vm_calls, cpu_vm_node_visits, cpu_vm_ready_hits,
