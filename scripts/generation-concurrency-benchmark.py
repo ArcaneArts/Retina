@@ -45,11 +45,11 @@ def main():
     parser.add_argument("--library", type=Path, required=True)
     parser.add_argument("--definition", type=Path, required=True)
     parser.add_argument("--dimension", default="minecraft:overworld")
-    parser.add_argument("--backend", choices=("metal", "vulkan", "dx12"), required=True)
+    parser.add_argument("--backend", choices=("cpu", "metal", "vulkan", "dx12"), required=True)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--region-concurrency", nargs="+", type=int, choices=(1,2,4,8), default=[2,4,8])
-    parser.add_argument("--assembly-threads", nargs="+", type=int, choices=range(1,17), default=[1,2,4])
-    parser.add_argument("--compiler-threads", nargs="+", type=int, choices=(1,2), default=[1,2])
+    parser.add_argument("--region-concurrency", nargs="+", type=int, choices=(1,2,4,8))
+    parser.add_argument("--assembly-threads", nargs="+", type=int, choices=range(1,17))
+    parser.add_argument("--compiler-threads", nargs="+", type=int, choices=(1,2))
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--warmups", type=int, default=5)
@@ -58,6 +58,9 @@ def main():
     parser.add_argument("--timeout", type=float, default=600)
     parser.add_argument("--diagnostics", action="store_true", help="Stage/debug summaries; separate these from headline timing sweeps")
     args = parser.parse_args()
+    args.region_concurrency = args.region_concurrency or ([1,2] if args.backend == "cpu" else [2,4,8])
+    args.assembly_threads = args.assembly_threads or ([4,8,16] if args.backend == "cpu" else [1,2,4])
+    args.compiler_threads = args.compiler_threads or ([1] if args.backend == "cpu" else [1,2])
     if args.repeats < 1 or args.count < 1 or args.warmups < 1 or args.timeout <= 0:
         parser.error("positive repeats, count, warmups and timeout required")
     args.out.mkdir(parents=True, exist_ok=False)
@@ -67,6 +70,7 @@ def main():
     metadata = {"schema":"retina.generation-concurrency", "schema_version":1,
                 "backend":args.backend, "dimension":args.dimension, "readiness":args.readiness,
                 "diagnostic":args.diagnostics, "logical_processors":os.cpu_count(),
+                "compiler_scope":"Not applicable: native CPU does not compile shaders" if args.backend == "cpu" else "Required interpreter compiler budget",
                 "scope":"Fresh native processes, fixed definition/seed/coordinates. Hash/NBT checks are outside measured batches. Does not model Java or rendering; driver cache uncontrolled. No production budgets or GPU depth changed."}
     for index, (repeat, regions, assembly, compiler) in enumerate(plan):
         destination = args.out/f"{index:02d}-r{regions}-a{assembly}-c{compiler}"
