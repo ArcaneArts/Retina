@@ -4,6 +4,7 @@
 pub(crate) mod bounds;
 mod statistics;
 mod material_zero;
+mod cell;
 use super::noise::*;
 use crate::program::{Instruction, Program, RegistryProgram, opcode::Opcode};
 use crate::spatial_hash::SamplingMap as Map;
@@ -145,6 +146,7 @@ impl Prepared {
             frames: Vec::new(),
             corners: Map::default(),
             plain_corners: Map::default(),
+            cells: None,
             horizontal: Map::default(),
             bounds_scratch: Vec::new(),
             statistics: None,
@@ -249,6 +251,7 @@ pub struct Evaluator<'a> {
     frames: Vec<Frame>,
     corners: Map<Corner, f32>,
     plain_corners: Map<PlainCorner, f32>,
+    cells: Option<Box<cell::Cells>>,
     horizontal: Map<(u32, u32, usize), f32>,
     bounds_scratch: Vec<bounds::Bounds>,
     statistics: Option<Box<Statistics>>,
@@ -368,6 +371,12 @@ impl Evaluator<'_> {
         let size = [f.cell[0] as f32, f.cell[1] as f32, f.cell[0] as f32];
         let lower = std::array::from_fn::<_, 3, _>(|i| (point[i] / size[i]).floor() * size[i]);
         let alpha = std::array::from_fn::<_, 3, _>(|i| (point[i] - lower[i]) / size[i]);
+        let plain = context.surface.map(f32::to_bits) == [0; 4]
+            && context.detail.map(f32::to_bits) == [0; 4];
+        // The eager reference keeps the preceding corner-map-only path.
+        #[cfg(test)]
+        let plain = plain && !self.eager;
+        if plain { return self.interpolate_cell::<TRACK>(field, lower, size, alpha, context, depth); }
         let mut corners = [0.0; 8];
         for (index, value) in corners.iter_mut().enumerate() {
             let upper = [index & 1, (index >> 1) & 1, (index >> 2) & 1];

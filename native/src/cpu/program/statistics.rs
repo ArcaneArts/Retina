@@ -19,7 +19,8 @@ events! {
     cpu_vm_terrain_calls, cpu_vm_material_calls, cpu_vm_auxiliary_calls, cpu_vm_field_calls,
     cpu_vm_computed_nodes, cpu_vm_constant_hits,
     cpu_vm_horizontal_lookups, cpu_vm_horizontal_hits, cpu_vm_horizontal_clears,
-    cpu_vm_interpolations, cpu_vm_corner_lookups, cpu_vm_corner_hits,
+    cpu_vm_interpolations, cpu_vm_cell_lookups, cpu_vm_cell_hits, cpu_vm_cell_vertices_reused,
+    cpu_vm_corner_lookups, cpu_vm_corner_hits,
     cpu_vm_plain_corner_lookups, cpu_vm_plain_corner_hits, cpu_vm_corner_clears,
     cpu_vm_noise_profiles, cpu_vm_blended_profiles, cpu_vm_noise3_calls,
 }

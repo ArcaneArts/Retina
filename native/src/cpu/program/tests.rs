@@ -144,7 +144,7 @@ fn sampling_counts_observe_real_reuse_and_exact_noise_calls() {
     );
     assert!(counts.get(cpu_vm_node_visits) > 0);
     assert!(counts.get(cpu_vm_corner_lookups) > counts.get(cpu_vm_corner_hits));
-    assert!(counts.get(cpu_vm_corner_hits) > 0);
+    assert!(counts.get(cpu_vm_corner_hits) + counts.get(cpu_vm_cell_vertices_reused) > 0);
     assert_eq!(
         counts.get(cpu_vm_corner_lookups),
         counts.get(cpu_vm_plain_corner_lookups)
