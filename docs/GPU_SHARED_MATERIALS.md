@@ -12,9 +12,10 @@ It adds no dispatch, CPU spatial noise, resident buffer, upload, copy or readbac
 Returned material runs, cave masks, assembly and final chunk metadata keep their
 existing formats. The existing F3 material-run timer includes both scans.
 
-The measured default enables sharing on Metal adapters with the actual immediate
-capability and at least four bytes. Other backends retain independent specialized
-material pipelines. `RETINA_MATERIAL_DISPATCH=0/1`, or
+The default enables sharing on Metal and Vulkan adapters with the actual immediate
+capability and at least four bytes. DX12 retains independent specialized material
+pipelines for [compiler compatibility](WINDOWS_GPU_COMPATIBILITY.md).
+`RETINA_MATERIAL_DISPATCH=0/1`, or
 `scripts/native-region-benchmark.py --material-dispatch disabled/enabled`, selects
 the diagnostic alternative. An explicit request adds that feature to the real
 device request; unsupported requests receive its actual error.
