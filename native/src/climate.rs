@@ -211,14 +211,109 @@ impl Index {
         initial_fitness: f32,
         exclude_shores: bool,
     ) -> u32 {
-        let mut at = if underground { self.surface_end } else { 0 } as usize;
+        self.search_inner::<false, false>(
+            actual,
+            weighted,
+            underground,
+            ocean_penalty,
+            initial,
+            initial_fitness,
+            exclude_shores,
+            None,
+        )
+        .0
+    }
+    pub(crate) fn search_with_hint(
+        &self,
+        actual: [f32; 6],
+        weighted: bool,
+        underground: bool,
+        ocean_penalty: bool,
+        initial: u32,
+        initial_fitness: f32,
+        exclude_shores: bool,
+        hint: Option<usize>,
+    ) -> (u32, Option<usize>) {
+        let start = if underground { self.surface_end } else { 0 } as usize;
+        let end = if underground {
+            self.underground_end
+        } else {
+            self.surface_end
+        } as usize;
+        if end - start <= 9 || self.nodes[start].order != u32::MAX {
+            return (
+                self.search(
+                    actual,
+                    weighted,
+                    underground,
+                    ocean_penalty,
+                    initial,
+                    initial_fitness,
+                    exclude_shores,
+                ),
+                None,
+            );
+        }
+        let (biome, hint, _) = self.search_inner::<true, false>(
+            actual,
+            weighted,
+            underground,
+            ocean_penalty,
+            initial,
+            initial_fitness,
+            exclude_shores,
+            hint,
+        );
+        (biome, hint)
+    }
+    fn search_inner<const HINT: bool, const COUNT: bool>(
+        &self,
+        actual: [f32; 6],
+        weighted: bool,
+        underground: bool,
+        ocean_penalty: bool,
+        initial: u32,
+        initial_fitness: f32,
+        exclude_shores: bool,
+        hint: Option<usize>,
+    ) -> (u32, Option<usize>, usize) {
+        let start = if underground { self.surface_end } else { 0 } as usize;
+        let mut at = start;
         let end = if underground {
             self.underground_end
         } else {
             self.surface_end
         } as usize;
         let (mut best, mut selected, mut order) = (initial_fitness, initial, 0u32);
+        let (mut selected_hint, mut visits) = (None, 0);
+        // A linear table or one leaf group cannot prune any extra distance
+        // calculations, so do not pay to evaluate a hint there.
+        let coherent = HINT && end - start > 9 && self.nodes[start].order == u32::MAX;
+        if coherent && let Some(index) = hint.filter(|&i| i >= start && i < end) {
+            let entry = &self.nodes[index];
+            let packed = entry.extra[3] as u32;
+            if entry.order != u32::MAX && !(exclude_shores && packed >> 16 & 64 != 0) {
+                if COUNT {
+                    visits += 1;
+                }
+                let mut fitness = distance(entry, actual, weighted, underground);
+                if ocean_penalty && (packed >> 16 & 4 != if actual[2] < -0.25 { 4 } else { 0 }) {
+                    fitness += 8.0;
+                }
+                // Equality must keep the caller's initial candidate and its
+                // original tie precedence. Every hint is re-evaluated exactly.
+                if fitness < best {
+                    best = fitness;
+                    selected = packed & 65535;
+                    order = entry.order + 1;
+                    selected_hint = Some(index);
+                }
+            }
+        }
         while at < end {
+            if COUNT {
+                visits += 1;
+            }
             let entry = &self.nodes[at];
             let branch = entry.order == u32::MAX;
             let mut fitness = distance(entry, actual, weighted, underground);
@@ -241,10 +336,13 @@ impl Index {
                 best = fitness;
                 selected = packed & 65535;
                 order = entry.order + 1;
+                if coherent {
+                    selected_hint = Some(at);
+                }
             }
             at += 1;
         }
-        selected
+        (selected, selected_hint, visits)
     }
     pub fn coastal(&self, actual: [f32; 6]) -> [f32; 6] {
         let mut point = actual;
@@ -419,6 +517,210 @@ mod tests {
 #[cfg(test)]
 mod cpu_index_tests {
     use super::*;
+    #[test]
+    fn coherent_search_preserves_initial_ties_flags_and_arbitrary_hint_safety() {
+        let leaves: Vec<_> = (0..101)
+            .map(|i| {
+                Node::leaf(
+                    &ClimateTarget {
+                        biome: i,
+                        min: [i as f32 * 0.02 - 1.0, -0.5, -0.5, -0.5],
+                        max: [i as f32 * 0.02 - 0.8, 0.5, 0.5, 0.5],
+                        weirdness: [-0.5, 0.5],
+                        depth: [i as f32 * 0.01, 1.5],
+                        offset: 0.01 * (i % 3) as f32,
+                    },
+                    i as usize,
+                    if i % 5 == 0 {
+                        64
+                    } else if i % 3 == 0 {
+                        4
+                    } else {
+                        0
+                    },
+                )
+            })
+            .collect();
+        let mut nodes = Vec::new();
+        tree(&mut leaves.clone(), 5, &mut nodes);
+        let surface_end = nodes.len() as u32;
+        tree(&mut leaves.clone(), 6, &mut nodes);
+        let index = Index {
+            underground_end: nodes.len() as u32,
+            surface_end,
+            nodes,
+        };
+        for weighted in [false, true] {
+            for underground in [false, true] {
+                for ocean in [false, true] {
+                    for exclude in [false, true] {
+                        for initial_fitness in [-0.03, 0.0, 1e20] {
+                            let mut hint = None;
+                            for sample in 0..257 {
+                                let point = [
+                                    sample as f32 * 0.01 - 1.2,
+                                    0.1,
+                                    -0.3,
+                                    0.7,
+                                    -0.7,
+                                    (sample % 31) as f32 * 0.05,
+                                ];
+                                let (mut best, mut expected, mut order) = (initial_fitness, 900, 0);
+                                for leaf in &leaves {
+                                    let packed = leaf.extra[3] as u32;
+                                    if exclude && packed >> 16 & 64 != 0 {
+                                        continue;
+                                    }
+                                    let mut fitness = distance(leaf, point, weighted, underground);
+                                    if ocean
+                                        && (packed >> 16 & 4
+                                            != if point[2] < -0.25 { 4 } else { 0 })
+                                    {
+                                        fitness += 8.0;
+                                    }
+                                    if fitness < best || fitness == best && leaf.order + 1 < order {
+                                        best = fitness;
+                                        expected = packed & 65535;
+                                        order = leaf.order + 1;
+                                    }
+                                }
+                                assert_eq!(
+                                    index.search(
+                                        point,
+                                        weighted,
+                                        underground,
+                                        ocean,
+                                        900,
+                                        initial_fitness,
+                                        exclude
+                                    ),
+                                    expected
+                                );
+                                let (actual, next) = index.search_with_hint(
+                                    point,
+                                    weighted,
+                                    underground,
+                                    ocean,
+                                    900,
+                                    initial_fitness,
+                                    exclude,
+                                    hint,
+                                );
+                                assert_eq!(actual, expected);
+                                hint = next;
+                                for bad in [Some(usize::MAX), Some(0), Some(surface_end as usize)] {
+                                    assert_eq!(
+                                        index
+                                            .search_with_hint(
+                                                point,
+                                                weighted,
+                                                underground,
+                                                ocean,
+                                                900,
+                                                initial_fitness,
+                                                exclude,
+                                                bad
+                                            )
+                                            .0,
+                                        expected
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            let point = [value; 6];
+            assert_eq!(
+                index
+                    .search_with_hint(
+                        point,
+                        false,
+                        true,
+                        false,
+                        900,
+                        1e20,
+                        false,
+                        Some(index.nodes.len() - 1)
+                    )
+                    .0,
+                index.search(point, false, true, false, 900, 1e20, false)
+            );
+        }
+        // A linear lookup and a one-group tree must never retain/use a hint.
+        for indexed in [false, true] {
+            let mut nodes = Vec::new();
+            if indexed {
+                tree(&mut leaves[..5].to_vec(), 6, &mut nodes);
+            } else {
+                for leaf in &leaves {
+                    let mut n = *leaf;
+                    n.escape = nodes.len() as u32 + 1;
+                    nodes.push(n);
+                }
+            }
+            let small = Index {
+                surface_end: 0,
+                underground_end: nodes.len() as u32,
+                nodes,
+            };
+            assert_eq!(
+                small
+                    .search_with_hint([0.0; 6], false, true, false, 900, 1e20, false, Some(1))
+                    .1,
+                None
+            );
+        }
+    }
+    #[test]
+    fn actual_cpu_climate_sequence_reuses_only_an_exact_distance_bound() {
+        use crate::world_definition::{WorldDefinition, catalog::WorldCatalog};
+        let catalog = WorldCatalog::read(std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../assets/world-definitions/26.3/vanilla-binary/retina-catalog.dat"
+        )))
+        .unwrap();
+        let d = WorldDefinition::from_gzip(
+            catalog.materialize("normal", 123456789).unwrap().as_slice(),
+        )
+        .unwrap();
+        let profile = d
+            .dimension("minecraft:overworld")
+            .unwrap()
+            .profile()
+            .unwrap();
+        let fields = crate::cpu::fields::Fields::new(profile).unwrap();
+        let request = d.request("minecraft:overworld", 1, -1, -1).unwrap();
+        let mut sampler = fields.sampler(profile, request);
+        let index = Index::new(profile);
+        let (mut hint, mut baseline, mut coherent) = (None, 0, 0);
+        for x in [-16, -12, 0, 12] {
+            for z in [-16, -12, 0, 12] {
+                for y in (-64..320).step_by(4) {
+                    let point = sampler
+                        .climate([x as f32, y as f32, z as f32], false)
+                        .unwrap();
+                    let (a, _, old) = index.search_inner::<false, true>(
+                        point, false, true, false, 0, 1e20, false, None,
+                    );
+                    let (b, next, new) = index.search_inner::<true, true>(
+                        point, false, true, false, 0, 1e20, false, hint,
+                    );
+                    assert_eq!(a, b);
+                    hint = next;
+                    baseline += old;
+                    coherent += new;
+                }
+            }
+        }
+        eprintln!(
+            "Actual climate query distance evaluations: unseeded={baseline}, coherent={coherent} (includes hint reevaluation)"
+        );
+        assert!(coherent < baseline);
+    }
+
     #[test]
     fn native_index_matches_linear_targets_with_flags_depth_and_registry_order() {
         let leaves: Vec<_> = (0..101)

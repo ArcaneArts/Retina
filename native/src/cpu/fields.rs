@@ -62,6 +62,7 @@ impl Fields {
             grid: SamplingMap::default(),
             heights: SamplingMap::default(),
             density_bounds: SamplingMap::default(),
+            climate_hints: [None; 2],
         }
     }
 }
@@ -73,6 +74,7 @@ pub struct Sampler<'a> {
     grid: SamplingMap<(usize, [u32; 3]), [f32; 6]>,
     heights: SamplingMap<[u32; 2], f32>,
     density_bounds: SamplingMap<(usize, [u32; 3]), super::program::bounds::Bounds>,
+    climate_hints: [Option<usize>; 2],
 }
 impl Sampler<'_> {
     pub fn run(
@@ -377,17 +379,14 @@ impl Sampler<'_> {
         let actual = self.climate([x as f32, 0.0, z as f32], true)?;
         Ok(self.registered_biome(actual, initial, exclude_shores))
     }
-    pub fn registered_biome(&self, actual: [f32; 6], initial: u32, exclude_shores: bool) -> u32 {
+    pub fn registered_biome(&mut self, actual: [f32; 6], initial: u32, exclude_shores: bool) -> u32 {
         if self
             .profile
             .registry_program
             .as_ref()
             .is_some_and(|r| r.enclosed())
         {
-            return self
-                .fields
-                .climate
-                .search(actual, false, true, false, initial, 1e20, false);
+            return self.climate_search(actual, true, initial, 1e20, false);
         }
         if !self.fields.climate.has_surface() {
             return initial;
@@ -404,9 +403,7 @@ impl Sampler<'_> {
                 biome = index as u32;
             }
         }
-        self.fields
-            .climate
-            .search(actual, false, false, false, biome, best, exclude_shores)
+        self.climate_search(actual, false, biome, best, exclude_shores)
     }
     pub fn has_underground(&self) -> bool {
         self.fields.climate.has_underground()
@@ -416,10 +413,15 @@ impl Sampler<'_> {
             return Ok(surface);
         }
         let actual = self.climate(point, false)?;
-        Ok(self
-            .fields
-            .climate
-            .search(actual, false, true, false, surface, 1e20, false))
+        Ok(self.climate_search(actual, true, surface, 1e20, false))
+    }
+    fn climate_search(&mut self, actual: [f32; 6], underground: bool,
+        initial: u32, fitness: f32, exclude_shores: bool) -> u32 {
+        let slot = usize::from(underground);
+        let (biome, hint) = self.fields.climate.search_with_hint(actual, false, underground,
+            false, initial, fitness, exclude_shores, self.climate_hints[slot]);
+        self.climate_hints[slot] = hint;
+        biome
     }
     pub fn coastal_biome(&mut self, x: i32, z: i32, initial: u32) -> Result<u32, String> {
         let actual = self.climate([x as f32, 0.0, z as f32], true)?;
