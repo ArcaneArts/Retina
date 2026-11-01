@@ -1,0 +1,1965 @@
+{
+  "schema": "retina.cpu-optimization-results",
+  "schema_version": 1,
+  "baseline_revision": "60c6f7e196b14ea5fae1747211240a7d5d5a7d69",
+  "code_revision": "b9db5cfbb3f2ac3439763180a9e3de737babd91e",
+  "native_tree": "dc5128299a6942fe2397f3cfc977453b2ce8d597",
+  "baseline_native_sha256": "db15ec64e8d9ce7a4ca1308142e989f4d81c4bd6ca26dce32fc7dc9f27090c16",
+  "timed_final_native_sha256": "cf1ec1d3d597ae08b93f107d8ad18268982be42b2725897767b5923175f206a5",
+  "published_baseline_jar": "retina-26.3-1.1.481.jar",
+  "published_baseline_jar_sha256": "d5a162c24269cea543b12f81172f88a2681ecac98f48b4c21c287d2e1093dcfc",
+  "cases": {
+    "overworld-16": {
+      "variants": {
+        "baseline": {
+          "trials": 4,
+          "median_wall_seconds": 18.9665506251622,
+          "descriptive_p95_seconds": 19.21895458404906,
+          "median_cpu_seconds": 134.027581,
+          "median_completed_chunks_per_second": 53.984491042964045,
+          "median_generation_high_water_bytes": 1131446272.0,
+          "maximum_generation_high_water_bytes": 1136705536,
+          "median_scheduled_cores": 7.072116820036104
+        },
+        "candidate": {
+          "trials": 4,
+          "median_wall_seconds": 6.217047416837886,
+          "descriptive_p95_seconds": 6.71027133113239,
+          "median_cpu_seconds": 35.2693625,
+          "median_completed_chunks_per_second": 164.83221386105498,
+          "median_generation_high_water_bytes": 1083129856.0,
+          "maximum_generation_high_water_bytes": 1091715072,
+          "median_scheduled_cores": 5.679531781242475
+        }
+      },
+      "comparison": {
+        "assembly_threads": 16,
+        "backend_requested": "cpu",
+        "lighting": "enabled",
+        "median_throughput_change_percent": 205.33253287480616,
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline",
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+        "readiness": "shader-ready",
+        "results": [
+          {
+            "average_scheduled_cores": 7.0406887899840385,
+            "backend": "CPU: native",
+            "chunks_per_second": 53.721058427177034,
+            "cpu_ms_per_region": 134205.571,
+            "median_region_ms": 19059.0192922391,
+            "p95_region_ms": 19059.0192922391,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-16/00-baseline",
+            "peak_rss_bytes": 1369014272,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 0,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 5.231989297987586,
+            "backend": "CPU: native",
+            "chunks_per_second": 151.42072080241888,
+            "cpu_ms_per_region": 35381.928,
+            "median_region_ms": 6760.220124851912,
+            "p95_region_ms": 6760.220124851912,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-16/01-candidate",
+            "peak_rss_bytes": 1416822784,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 1,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 5.508294238545237,
+            "backend": "CPU: native",
+            "chunks_per_second": 159.25107101858927,
+            "cpu_ms_per_region": 35418.872,
+            "median_region_ms": 6427.228166721761,
+            "p95_region_ms": 6427.228166721761,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-16/02-candidate",
+            "peak_rss_bytes": 1413218304,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 2,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 6.954842837987155,
+            "backend": "CPU: native",
+            "chunks_per_second": 53.18474775095545,
+            "cpu_ms_per_region": 133906.04200000002,
+            "median_region_ms": 19247.17845907435,
+            "p95_region_ms": 19247.17845907435,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-16/03-baseline",
+            "peak_rss_bytes": 1526710272,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 3,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 7.103544850088171,
+            "backend": "CPU: native",
+            "chunks_per_second": 54.247923658751056,
+            "cpu_ms_per_region": 134088.633,
+            "median_region_ms": 18874.0819580853,
+            "p95_region_ms": 18874.0819580853,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-16/04-baseline",
+            "peak_rss_bytes": 1498529792,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 4,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 6.059160492903921,
+            "backend": "CPU: native",
+            "chunks_per_second": 176.84000129549733,
+            "cpu_ms_per_region": 35085.842,
+            "median_region_ms": 5787.861959077418,
+            "p95_region_ms": 5787.861959077418,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-16/05-candidate",
+            "peak_rss_bytes": 1383514112,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 5,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 5.850769323939713,
+            "backend": "CPU: native",
+            "chunks_per_second": 170.41335670352072,
+            "cpu_ms_per_region": 35156.797,
+            "median_region_ms": 6006.866666954011,
+            "p95_region_ms": 6006.866666954011,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-16/06-candidate",
+            "peak_rss_bytes": 1473921024,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 6,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 7.344014717971214,
+            "backend": "CPU: native",
+            "chunks_per_second": 56.1354476176846,
+            "cpu_ms_per_region": 133966.52899999998,
+            "median_region_ms": 18239.555166102946,
+            "p95_region_ms": 18239.555166102946,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-16/07-baseline",
+            "peak_rss_bytes": 1457078272,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 7,
+            "variant": "baseline"
+          }
+        ],
+        "schema": "retina.native-region-benchmark-ab",
+        "schema_version": 1,
+        "scope": "lit-mca",
+        "summary": {
+          "baseline": {
+            "maximum_chunks_per_second": 56.1354476176846,
+            "median_chunks_per_second": 53.984491042964045,
+            "minimum_chunks_per_second": 53.18474775095545,
+            "trials": 4
+          },
+          "candidate": {
+            "maximum_chunks_per_second": 176.84000129549733,
+            "median_chunks_per_second": 164.83221386105498,
+            "minimum_chunks_per_second": 151.42072080241888,
+            "trials": 4
+          }
+        },
+        "throughput_change_confidence_95": {
+          "high_percent": 227.5755645352989,
+          "low_percent": 179.1272192368828,
+          "method": "independent median bootstrap",
+          "samples": 10000
+        }
+      }
+    },
+    "overworld-4": {
+      "variants": {
+        "baseline": {
+          "trials": 4,
+          "median_wall_seconds": 42.78027891647071,
+          "descriptive_p95_seconds": 48.38957935252692,
+          "median_cpu_seconds": 104.67981549999999,
+          "median_completed_chunks_per_second": 23.99656359904811,
+          "median_generation_high_water_bytes": 982687744.0,
+          "maximum_generation_high_water_bytes": 985726976,
+          "median_scheduled_cores": 2.449944396693799
+        },
+        "candidate": {
+          "trials": 4,
+          "median_wall_seconds": 12.56615685368888,
+          "descriptive_p95_seconds": 16.488989196601324,
+          "median_cpu_seconds": 27.7850325,
+          "median_completed_chunks_per_second": 81.47706020487854,
+          "median_generation_high_water_bytes": 980041728.0,
+          "maximum_generation_high_water_bytes": 983793664,
+          "median_scheduled_cores": 2.17911310700069
+        }
+      },
+      "comparison": {
+        "assembly_threads": 4,
+        "backend_requested": "cpu",
+        "lighting": "enabled",
+        "median_throughput_change_percent": 239.53636681591593,
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline",
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+        "readiness": "shader-ready",
+        "results": [
+          {
+            "average_scheduled_cores": 2.5122587036585116,
+            "backend": "CPU: native",
+            "chunks_per_second": 25.2120561047836,
+            "cpu_ms_per_region": 102036.617,
+            "median_region_ms": 40613.246750086546,
+            "p95_region_ms": 40613.246750086546,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-4/00-baseline",
+            "peak_rss_bytes": 1260781568,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 0,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 2.393007221078403,
+            "backend": "CPU: native",
+            "chunks_per_second": 87.28784021938037,
+            "cpu_ms_per_region": 28073.09,
+            "median_region_ms": 11728.662250097841,
+            "p95_region_ms": 11728.662250097841,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-4/01-candidate",
+            "peak_rss_bytes": 1297891328,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 1,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 2.1927649625630483,
+            "backend": "CPU: native",
+            "chunks_per_second": 82.31134710568084,
+            "cpu_ms_per_region": 27279.244000000002,
+            "median_region_ms": 12438.170832581818,
+            "p95_region_ms": 12438.170832581818,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-4/02-candidate",
+            "peak_rss_bytes": 1308966912,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 2,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 2.5191322148036126,
+            "backend": "CPU: native",
+            "chunks_per_second": 25.5270206677913,
+            "cpu_ms_per_region": 101053.367,
+            "median_region_ms": 40112.37508384511,
+            "p95_region_ms": 40112.37508384511,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-4/03-baseline",
+            "peak_rss_bytes": 1353547776,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 3,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 2.387630089729087,
+            "backend": "CPU: native",
+            "chunks_per_second": 22.781071093312615,
+            "cpu_ms_per_region": 107323.01399999998,
+            "median_region_ms": 44947.31108285487,
+            "p95_region_ms": 44947.31108285487,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-4/04-baseline",
+            "peak_rss_bytes": 1257160704,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 4,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 1.926540946344361,
+            "backend": "CPU: native",
+            "chunks_per_second": 59.66100836568789,
+            "cpu_ms_per_region": 33066.453,
+            "median_region_ms": 17158.66795927286,
+            "p95_region_ms": 17158.66795927286,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-4/05-candidate",
+            "peak_rss_bytes": 1298317312,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 5,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 2.1654612514383325,
+            "backend": "CPU: native",
+            "chunks_per_second": 80.64277330407626,
+            "cpu_ms_per_region": 27496.975000000002,
+            "median_region_ms": 12694.142874795943,
+            "p95_region_ms": 12694.142874795943,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-4/06-candidate",
+            "peak_rss_bytes": 1276395520,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 6,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 2.3368143877965206,
+            "backend": "CPU: native",
+            "chunks_per_second": 20.89801046911526,
+            "cpu_ms_per_region": 114503.624,
+            "median_region_ms": 48997.03845893964,
+            "p95_region_ms": 48997.03845893964,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-overworld-4/07-baseline",
+            "peak_rss_bytes": 1305018368,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 7,
+            "variant": "baseline"
+          }
+        ],
+        "schema": "retina.native-region-benchmark-ab",
+        "schema_version": 1,
+        "scope": "lit-mca",
+        "summary": {
+          "baseline": {
+            "maximum_chunks_per_second": 25.5270206677913,
+            "median_chunks_per_second": 23.99656359904811,
+            "minimum_chunks_per_second": 20.89801046911526,
+            "trials": 4
+          },
+          "candidate": {
+            "maximum_chunks_per_second": 87.28784021938037,
+            "median_chunks_per_second": 81.47706020487854,
+            "minimum_chunks_per_second": 59.66100836568789,
+            "trials": 4
+          }
+        },
+        "throughput_change_confidence_95": {
+          "high_percent": 293.87169045267296,
+          "low_percent": 148.6231335559001,
+          "method": "independent median bootstrap",
+          "samples": 10000
+        }
+      }
+    },
+    "nether-16": {
+      "variants": {
+        "baseline": {
+          "trials": 2,
+          "median_wall_seconds": 34.21810702048242,
+          "descriptive_p95_seconds": 45.20015963893384,
+          "median_cpu_seconds": 119.07358099999999,
+          "median_completed_chunks_per_second": 34.280717404185935,
+          "median_generation_high_water_bytes": 1585020928.0,
+          "maximum_generation_high_water_bytes": 1590591488,
+          "median_scheduled_cores": 4.019662950301132
+        },
+        "candidate": {
+          "trials": 2,
+          "median_wall_seconds": 19.854457791661844,
+          "descriptive_p95_seconds": 20.95391500436235,
+          "median_cpu_seconds": 108.39337499999999,
+          "median_completed_chunks_per_second": 51.76118919563015,
+          "median_generation_high_water_bytes": 1593442304.0,
+          "maximum_generation_high_water_bytes": 1596850176,
+          "median_scheduled_cores": 5.477165864591392
+        }
+      },
+      "comparison": {
+        "assembly_threads": 16,
+        "backend_requested": "cpu",
+        "lighting": "enabled",
+        "median_throughput_change_percent": 50.992141107612056,
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+        "readiness": "shader-ready",
+        "results": [
+          {
+            "average_scheduled_cores": 5.534821169818487,
+            "backend": "CPU: native",
+            "chunks_per_second": 46.50504984825194,
+            "cpu_ms_per_region": 121871.85899999998,
+            "median_region_ms": 22015.82633331418,
+            "p95_region_ms": 22015.82633331418,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-nether-16/00-baseline",
+            "peak_rss_bytes": 1761820672,
+            "region_file_bytes": 5431296,
+            "sample_regions": 1,
+            "trial": 0,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 5.171359906071792,
+            "backend": "CPU: native",
+            "chunks_per_second": 48.57924929215263,
+            "cpu_ms_per_region": 109006.883,
+            "median_region_ms": 21076.07691688463,
+            "p95_region_ms": 21076.07691688463,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-nether-16/01-candidate",
+            "peak_rss_bytes": 1831075840,
+            "region_file_bytes": 5431296,
+            "sample_regions": 1,
+            "trial": 1,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 5.782971823110992,
+            "backend": "CPU: native",
+            "chunks_per_second": 54.94312909910768,
+            "cpu_ms_per_region": 107779.867,
+            "median_region_ms": 18632.838666439056,
+            "p95_region_ms": 18632.838666439056,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-nether-16/02-candidate",
+            "peak_rss_bytes": 1823850496,
+            "region_file_bytes": 5431296,
+            "sample_regions": 1,
+            "trial": 2,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 2.504504730783777,
+            "backend": "CPU: native",
+            "chunks_per_second": 22.056384960119928,
+            "cpu_ms_per_region": 116275.303,
+            "median_region_ms": 46420.38770765066,
+            "p95_region_ms": 46420.38770765066,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-nether-16/03-baseline",
+            "peak_rss_bytes": 1774796800,
+            "region_file_bytes": 5431296,
+            "sample_regions": 1,
+            "trial": 3,
+            "variant": "baseline"
+          }
+        ],
+        "schema": "retina.native-region-benchmark-ab",
+        "schema_version": 1,
+        "scope": "lit-mca",
+        "summary": {
+          "baseline": {
+            "maximum_chunks_per_second": 46.50504984825194,
+            "median_chunks_per_second": 34.280717404185935,
+            "minimum_chunks_per_second": 22.056384960119928,
+            "trials": 2
+          },
+          "candidate": {
+            "maximum_chunks_per_second": 54.94312909910768,
+            "median_chunks_per_second": 51.76118919563015,
+            "minimum_chunks_per_second": 48.57924929215263,
+            "trials": 2
+          }
+        },
+        "throughput_change_confidence_95": {
+          "high_percent": 149.10305654553162,
+          "low_percent": 4.460159597009139,
+          "method": "independent median bootstrap",
+          "samples": 10000
+        }
+      }
+    },
+    "custom-16": {
+      "variants": {
+        "baseline": {
+          "trials": 2,
+          "median_wall_seconds": 21.216066604014486,
+          "descriptive_p95_seconds": 22.552847310481592,
+          "median_cpu_seconds": 118.94689249999999,
+          "median_completed_chunks_per_second": 48.49234569046389,
+          "median_generation_high_water_bytes": 772677632.0,
+          "maximum_generation_high_water_bytes": 782041088,
+          "median_scheduled_cores": 5.636457703856917
+        },
+        "candidate": {
+          "trials": 2,
+          "median_wall_seconds": 7.23598527116701,
+          "descriptive_p95_seconds": 7.623519890056923,
+          "median_cpu_seconds": 33.605748500000004,
+          "median_completed_chunks_per_second": 141.95889928361393,
+          "median_generation_high_water_bytes": 728522752.0,
+          "maximum_generation_high_water_bytes": 728694784,
+          "median_scheduled_cores": 4.660061685926808
+        }
+      },
+      "comparison": {
+        "assembly_threads": 16,
+        "backend_requested": "cpu",
+        "lighting": "enabled",
+        "median_throughput_change_percent": 192.74496265815907,
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+        "readiness": "shader-ready",
+        "results": [
+          {
+            "average_scheduled_cores": 5.190254012620379,
+            "backend": "CPU: native",
+            "chunks_per_second": 45.097638920157706,
+            "cpu_ms_per_region": 117851.405,
+            "median_region_ms": 22701.37850008905,
+            "p95_region_ms": 22701.37850008905,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-custom-16/00-baseline",
+            "peak_rss_bytes": 1039777792,
+            "region_file_bytes": 8241152,
+            "sample_regions": 1,
+            "trial": 0,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 4.958029837128518,
+            "backend": "CPU: native",
+            "chunks_per_second": 150.40397383544166,
+            "cpu_ms_per_region": 33755.90700000001,
+            "median_region_ms": 6805.391250178218,
+            "p95_region_ms": 6805.391250178218,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-custom-16/01-candidate",
+            "peak_rss_bytes": 1064681472,
+            "region_file_bytes": 8241152,
+            "sample_regions": 1,
+            "trial": 1,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 4.362093534725097,
+            "backend": "CPU: native",
+            "chunks_per_second": 133.5138247317862,
+            "cpu_ms_per_region": 33455.590000000004,
+            "median_region_ms": 7666.579292155802,
+            "p95_region_ms": 7666.579292155802,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-custom-16/02-candidate",
+            "peak_rss_bytes": 1072250880,
+            "region_file_bytes": 8241152,
+            "sample_regions": 1,
+            "trial": 2,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 6.082661395093455,
+            "backend": "CPU: native",
+            "chunks_per_second": 51.887052460770086,
+            "cpu_ms_per_region": 120042.37999999999,
+            "median_region_ms": 19730.754707939923,
+            "p95_region_ms": 19730.754707939923,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-custom-16/03-baseline",
+            "peak_rss_bytes": 1064615936,
+            "region_file_bytes": 8241152,
+            "sample_regions": 1,
+            "trial": 3,
+            "variant": "baseline"
+          }
+        ],
+        "schema": "retina.native-region-benchmark-ab",
+        "schema_version": 1,
+        "scope": "lit-mca",
+        "summary": {
+          "baseline": {
+            "maximum_chunks_per_second": 51.887052460770086,
+            "median_chunks_per_second": 48.49234569046389,
+            "minimum_chunks_per_second": 45.097638920157706,
+            "trials": 2
+          },
+          "candidate": {
+            "maximum_chunks_per_second": 150.40397383544166,
+            "median_chunks_per_second": 141.95889928361393,
+            "minimum_chunks_per_second": 133.5138247317862,
+            "trials": 2
+          }
+        },
+        "throughput_change_confidence_95": {
+          "high_percent": 233.50742397339613,
+          "low_percent": 157.31626369166213,
+          "method": "independent median bootstrap",
+          "samples": 10000
+        }
+      }
+    },
+    "end-central": {
+      "variants": {
+        "baseline": {
+          "trials": 2,
+          "median_wall_seconds": 0.39406556240282953,
+          "descriptive_p95_seconds": 0.4473930557491258,
+          "median_cpu_seconds": 0.38043450000000006,
+          "median_completed_chunks_per_second": 2637.048227782583,
+          "median_generation_high_water_bytes": 551878656.0,
+          "maximum_generation_high_water_bytes": 557170688,
+          "median_scheduled_cores": 0.9711467158577658
+        },
+        "candidate": {
+          "trials": 2,
+          "median_wall_seconds": 0.21261610463261604,
+          "descriptive_p95_seconds": 0.2503561605233699,
+          "median_cpu_seconds": 0.19856849999999998,
+          "median_completed_chunks_per_second": 4927.1359517724295,
+          "median_generation_high_water_bytes": 542900224.0,
+          "maximum_generation_high_water_bytes": 547831808,
+          "median_scheduled_cores": 0.9382897673660653
+        }
+      },
+      "comparison": {
+        "assembly_threads": 16,
+        "backend_requested": "cpu",
+        "lighting": "enabled",
+        "median_throughput_change_percent": 86.84284571903768,
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+        "readiness": "shader-ready",
+        "results": [
+          {
+            "average_scheduled_cores": 1.062176528305632,
+            "backend": "CPU: native",
+            "chunks_per_second": 3034.8747592984373,
+            "cpu_ms_per_region": 358.39000000000004,
+            "median_region_ms": 334.8127920180559,
+            "p95_region_ms": 334.8127920180559,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-end-central/00-baseline",
+            "peak_rss_bytes": 739885056,
+            "region_file_bytes": 4202496,
+            "sample_regions": 1,
+            "trial": 0,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 0.8408497595354637,
+            "backend": "CPU: native",
+            "chunks_per_second": 3969.5089403687016,
+            "cpu_ms_per_region": 216.91099999999986,
+            "median_region_ms": 254.549500066787,
+            "p95_region_ms": 254.549500066787,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-end-central/01-candidate",
+            "peak_rss_bytes": 812515328,
+            "region_file_bytes": 4202496,
+            "sample_regions": 1,
+            "trial": 1,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 1.035729775196667,
+            "backend": "CPU: native",
+            "chunks_per_second": 5884.762963176157,
+            "cpu_ms_per_region": 180.22600000000014,
+            "median_region_ms": 170.68270919844508,
+            "p95_region_ms": 170.68270919844508,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-end-central/02-candidate",
+            "peak_rss_bytes": 810958848,
+            "region_file_bytes": 4202496,
+            "sample_regions": 1,
+            "trial": 2,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 0.8801169034098996,
+            "backend": "CPU: native",
+            "chunks_per_second": 2239.2216962667294,
+            "cpu_ms_per_region": 402.4790000000001,
+            "median_region_ms": 453.31833278760314,
+            "p95_region_ms": 453.31833278760314,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-end-central/03-baseline",
+            "peak_rss_bytes": 782860288,
+            "region_file_bytes": 4202496,
+            "sample_regions": 1,
+            "trial": 3,
+            "variant": "baseline"
+          }
+        ],
+        "schema": "retina.native-region-benchmark-ab",
+        "schema_version": 1,
+        "scope": "lit-mca",
+        "summary": {
+          "baseline": {
+            "maximum_chunks_per_second": 3034.8747592984373,
+            "median_chunks_per_second": 2637.048227782583,
+            "minimum_chunks_per_second": 2239.2216962667294,
+            "trials": 2
+          },
+          "candidate": {
+            "maximum_chunks_per_second": 5884.762963176157,
+            "median_chunks_per_second": 4927.1359517724295,
+            "minimum_chunks_per_second": 3969.5089403687016,
+            "trials": 2
+          }
+        },
+        "throughput_change_confidence_95": {
+          "high_percent": 162.80394536134318,
+          "low_percent": 30.796466253069397,
+          "method": "independent median bootstrap",
+          "samples": 10000
+        }
+      }
+    },
+    "end-outer": {
+      "variants": {
+        "baseline": {
+          "trials": 2,
+          "median_wall_seconds": 3.0358613750431687,
+          "descriptive_p95_seconds": 3.1636123997857792,
+          "median_cpu_seconds": 2.8617049999999997,
+          "median_completed_chunks_per_second": 337.7409274640753,
+          "median_generation_high_water_bytes": 558022656.0,
+          "maximum_generation_high_water_bytes": 562757632,
+          "median_scheduled_cores": 0.9425416344183921
+        },
+        "candidate": {
+          "trials": 2,
+          "median_wall_seconds": 1.1857575417961925,
+          "descriptive_p95_seconds": 1.325418229191564,
+          "median_cpu_seconds": 1.1211675,
+          "median_completed_chunks_per_second": 876.3176518204587,
+          "median_generation_high_water_bytes": 554819584.0,
+          "maximum_generation_high_water_bytes": 560906240,
+          "median_scheduled_cores": 0.9459787154415773
+        }
+      },
+      "comparison": {
+        "assembly_threads": 16,
+        "backend_requested": "cpu",
+        "lighting": "enabled",
+        "median_throughput_change_percent": 159.46445353848046,
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+        "readiness": "shader-ready",
+        "results": [
+          {
+            "average_scheduled_cores": 0.9583917960524508,
+            "backend": "CPU: native",
+            "chunks_per_second": 353.52424368835966,
+            "cpu_ms_per_region": 2776.028,
+            "median_region_ms": 2893.9157919958234,
+            "p95_region_ms": 2893.9157919958234,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-end-outer/00-baseline",
+            "peak_rss_bytes": 722731008,
+            "region_file_bytes": 4202496,
+            "sample_regions": 1,
+            "trial": 0,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 0.9677989609448776,
+            "backend": "CPU: native",
+            "chunks_per_second": 990.6784078863864,
+            "cpu_ms_per_region": 1000.3510000000002,
+            "median_region_ms": 1030.5790002457798,
+            "p95_region_ms": 1030.5790002457798,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-end-outer/01-candidate",
+            "peak_rss_bytes": 775503872,
+            "region_file_bytes": 4202496,
+            "sample_regions": 1,
+            "trial": 1,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 0.9241584699382769,
+            "backend": "CPU: native",
+            "chunks_per_second": 761.956895754531,
+            "cpu_ms_per_region": 1241.984,
+            "median_region_ms": 1340.9360833466053,
+            "p95_region_ms": 1340.9360833466053,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-end-outer/02-candidate",
+            "peak_rss_bytes": 754368512,
+            "region_file_bytes": 4202496,
+            "sample_regions": 1,
+            "trial": 2,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 0.9266914727843334,
+            "backend": "CPU: native",
+            "chunks_per_second": 321.95761123979094,
+            "cpu_ms_per_region": 2947.3819999999996,
+            "median_region_ms": 3177.806958090514,
+            "p95_region_ms": 3177.806958090514,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-original-abba-end-outer/03-baseline",
+            "peak_rss_bytes": 749191168,
+            "region_file_bytes": 4202496,
+            "sample_regions": 1,
+            "trial": 3,
+            "variant": "baseline"
+          }
+        ],
+        "schema": "retina.native-region-benchmark-ab",
+        "schema_version": 1,
+        "scope": "lit-mca",
+        "summary": {
+          "baseline": {
+            "maximum_chunks_per_second": 353.52424368835966,
+            "median_chunks_per_second": 337.7409274640753,
+            "minimum_chunks_per_second": 321.95761123979094,
+            "trials": 2
+          },
+          "candidate": {
+            "maximum_chunks_per_second": 990.6784078863864,
+            "median_chunks_per_second": 876.3176518204587,
+            "minimum_chunks_per_second": 761.956895754531,
+            "trials": 2
+          }
+        },
+        "throughput_change_confidence_95": {
+          "high_percent": 207.704608712772,
+          "low_percent": 115.53172359692958,
+          "method": "independent median bootstrap",
+          "samples": 10000
+        }
+      }
+    }
+  },
+  "secondary": {
+    "final-baseline-minimum-2": {
+      "total_ms": 125753.76920774579,
+      "measured_process_usage": {
+        "average_scheduled_cores": 0.9011556926996653,
+        "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+        "counter_source": "RUSAGE_SELF",
+        "cpu_ms_per_region": 113323.72499999999,
+        "end_unix": 1793569739.483146,
+        "involuntary_context_switches": 296728,
+        "major_faults": 0,
+        "minor_faults": 29948,
+        "schema_version": 1,
+        "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+        "start_unix": 1793569613.729082,
+        "system_ms": 1580.0339999999999,
+        "total_ms": 113323.72499999999,
+        "user_ms": 111743.69099999999,
+        "voluntary_context_switches": 5
+      },
+      "startup": {
+        "initialize_ms": 0.1955418847501278,
+        "load_and_bind_ms": 1332.0553749799728,
+        "warmups": []
+      },
+      "request": {
+        "amplitude": 48.0,
+        "base_height": 64.0,
+        "data_version": 5023,
+        "fallback_biome": "minecraft:badlands",
+        "frequency": 0.00800000037997961,
+        "height": 384,
+        "min_y": -64,
+        "storage": {
+          "height": 384,
+          "min_y": -64
+        }
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": 0,
+        "origin_z": 0
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "preservation_check": {
+        "elapsed_ms": 1336.5985001437366,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      }
+    },
+    "final-minimum-2": {
+      "total_ms": 33666.10325034708,
+      "measured_process_usage": {
+        "average_scheduled_cores": 0.9102478766883741,
+        "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+        "counter_source": "RUSAGE_SELF",
+        "cpu_ms_per_region": 30644.499,
+        "end_unix": 1793569776.522608,
+        "involuntary_context_switches": 71870,
+        "major_faults": 0,
+        "minor_faults": 30025,
+        "schema_version": 1,
+        "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+        "start_unix": 1793569742.8564029,
+        "system_ms": 426.81699999999995,
+        "total_ms": 30644.499,
+        "user_ms": 30217.682,
+        "voluntary_context_switches": 8
+      },
+      "startup": {
+        "initialize_ms": 0.17587468028068542,
+        "load_and_bind_ms": 1300.4715419374406,
+        "warmups": []
+      },
+      "request": {
+        "amplitude": 48.0,
+        "base_height": 64.0,
+        "data_version": 5023,
+        "fallback_biome": "minecraft:badlands",
+        "frequency": 0.00800000037997961,
+        "height": 384,
+        "min_y": -64,
+        "storage": {
+          "height": 384,
+          "min_y": -64
+        }
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": 0,
+        "origin_z": 0
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 1349.3498750030994,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      }
+    },
+    "final-warm-neighbor": {
+      "total_ms": 20510.824917349964,
+      "measured_process_usage": {
+        "average_scheduled_cores": 3.688430928782677,
+        "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+        "counter_source": "RUSAGE_SELF",
+        "cpu_ms_per_region": 37826.3805,
+        "end_unix": 1793569809.490106,
+        "involuntary_context_switches": 268291,
+        "major_faults": 0,
+        "minor_faults": 17237,
+        "schema_version": 1,
+        "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+        "start_unix": 1793569788.97918,
+        "system_ms": 1640.991,
+        "total_ms": 75652.761,
+        "user_ms": 74011.77,
+        "voluntary_context_switches": 27
+      },
+      "startup": {
+        "initialize_ms": 0.1760409213602543,
+        "load_and_bind_ms": 1422.036541160196,
+        "warmups": [
+          {
+            "assembly_ms": 2569.49075,
+            "generated": 1024,
+            "gpu_ms": 6323.7705,
+            "ms": 8908.977332990617,
+            "name": "warm0",
+            "preserved": 0,
+            "program_status": 0,
+            "terrain_host_ms": 6323.7705,
+            "write_ms": 15.53475,
+            "x": 8,
+            "z": 8
+          }
+        ]
+      },
+      "request": {
+        "amplitude": 48.0,
+        "base_height": 64.0,
+        "data_version": 5023,
+        "fallback_biome": "minecraft:badlands",
+        "frequency": 0.00800000037997961,
+        "height": 384,
+        "min_y": -64,
+        "storage": {
+          "height": 384,
+          "min_y": -64
+        }
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -2,
+        "origin_z": 1
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "comparison": {
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 1229.8752502538264,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      }
+    },
+    "final-parallel-regions": {
+      "total_ms": 17846.59037506208,
+      "measured_process_usage": {
+        "average_scheduled_cores": 4.429452816402473,
+        "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+        "counter_source": "RUSAGE_SELF",
+        "cpu_ms_per_region": 39525.315,
+        "end_unix": 1793569830.8214998,
+        "involuntary_context_switches": 172141,
+        "major_faults": 0,
+        "minor_faults": 51263,
+        "schema_version": 1,
+        "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+        "start_unix": 1793569812.974837,
+        "system_ms": 1208.4009999999998,
+        "total_ms": 79050.63,
+        "user_ms": 77842.229,
+        "voluntary_context_switches": 12
+      },
+      "startup": {
+        "initialize_ms": 0.16445806249976158,
+        "load_and_bind_ms": 1209.2731660231948,
+        "warmups": []
+      },
+      "request": {
+        "amplitude": 48.0,
+        "base_height": 64.0,
+        "data_version": 5023,
+        "fallback_biome": "minecraft:badlands",
+        "frequency": 0.00800000037997961,
+        "height": 384,
+        "min_y": -64,
+        "storage": {
+          "height": 384,
+          "min_y": -64
+        }
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": 0,
+        "origin_z": 0
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "comparison": {
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 1194.8108337819576,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      }
+    },
+    "final-far": {
+      "total_ms": 16364.387749694288,
+      "measured_process_usage": {
+        "average_scheduled_cores": 5.976172374785423,
+        "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+        "counter_source": "RUSAGE_SELF",
+        "cpu_ms_per_region": 97796.402,
+        "end_unix": 1793569850.826184,
+        "involuntary_context_switches": 192371,
+        "major_faults": 0,
+        "minor_faults": 44769,
+        "schema_version": 1,
+        "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+        "start_unix": 1793569834.461728,
+        "system_ms": 1198.692,
+        "total_ms": 97796.402,
+        "user_ms": 96597.71,
+        "voluntary_context_switches": 9
+      },
+      "startup": {
+        "initialize_ms": 0.23424997925758362,
+        "load_and_bind_ms": 1298.6545413732529,
+        "warmups": []
+      },
+      "request": {
+        "amplitude": 48.0,
+        "base_height": 64.0,
+        "data_version": 5023,
+        "fallback_biome": "minecraft:badlands",
+        "frequency": 0.00800000037997961,
+        "height": 384,
+        "min_y": -64,
+        "storage": {
+          "height": 384,
+          "min_y": -64
+        }
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": 55000,
+        "origin_z": -55000
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 1300.698374863714,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      }
+    },
+    "final-expanded-storage": {
+      "total_ms": 8394.672625232488,
+      "measured_process_usage": {
+        "average_scheduled_cores": 4.714174306339196,
+        "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+        "counter_source": "RUSAGE_SELF",
+        "cpu_ms_per_region": 39573.95,
+        "end_unix": 1793569862.91121,
+        "involuntary_context_switches": 82582,
+        "major_faults": 0,
+        "minor_faults": 40983,
+        "schema_version": 1,
+        "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+        "start_unix": 1793569854.516495,
+        "system_ms": 600.546,
+        "total_ms": 39573.95,
+        "user_ms": 38973.403999999995,
+        "voluntary_context_switches": 8
+      },
+      "startup": {
+        "initialize_ms": 0.3321249969303608,
+        "load_and_bind_ms": 1450.6977088749409,
+        "warmups": []
+      },
+      "request": {
+        "amplitude": 48.0,
+        "base_height": 64.0,
+        "data_version": 5023,
+        "fallback_biome": "minecraft:badlands",
+        "frequency": 0.00800000037997961,
+        "height": 384,
+        "min_y": -64,
+        "storage": {
+          "height": 416,
+          "min_y": -80
+        }
+      },
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": 0,
+        "origin_z": 0
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 1192.05804169178,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      }
+    }
+  },
+  "checks": {
+    "concurrent_worlds_baseline": {
+      "scope": "Two concurrent full regions in different worlds/seeds, shared16worker budget/globalRayon1; real I/O error followed by valid work; one world retired before querying the other",
+      "backend": "CPU: native",
+      "gpu_jobs": 0,
+      "definition_hashes": [
+        "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "20225e8f1cff8f960ce5557272fcf5a9738d2c557ad8fed8db3a9e8272ed0eb0"
+      ],
+      "results": [
+        {
+          "world": 0,
+          "region": [
+            0,
+            0
+          ],
+          "seconds": 33.17202987521887,
+          "generated": 1024,
+          "profile": 1
+        },
+        {
+          "world": 1,
+          "region": [
+            -1,
+            -1
+          ],
+          "seconds": 33.64674241701141,
+          "generated": 1024,
+          "profile": 4
+        }
+      ],
+      "identical_nbt_chunks": 2048,
+      "after_retirement_chunk_sha256": "754a8e321915ce69d8dba9c9c7b09e59dbe2794ab2971d69c9a10ab07e478c62",
+      "io_error": "read region /Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-worlds-baseline/bad-parent/region.mca: Not a directory (os error 20)",
+      "reference": null
+    },
+    "concurrent_worlds_candidate": {
+      "scope": "Two concurrent full regions in different worlds/seeds, shared16worker budget/globalRayon1; real I/O error followed by valid work; one world retired before querying the other",
+      "backend": "CPU: native",
+      "gpu_jobs": 0,
+      "definition_hashes": [
+        "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "20225e8f1cff8f960ce5557272fcf5a9738d2c557ad8fed8db3a9e8272ed0eb0"
+      ],
+      "results": [
+        {
+          "world": 0,
+          "region": [
+            0,
+            0
+          ],
+          "seconds": 8.738486708141863,
+          "generated": 1024,
+          "profile": 1
+        },
+        {
+          "world": 1,
+          "region": [
+            -1,
+            -1
+          ],
+          "seconds": 11.683054749853909,
+          "generated": 1024,
+          "profile": 4
+        }
+      ],
+      "identical_nbt_chunks": 2048,
+      "after_retirement_chunk_sha256": "754a8e321915ce69d8dba9c9c7b09e59dbe2794ab2971d69c9a10ab07e478c62",
+      "io_error": "read region /Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-worlds-candidate/bad-parent/region.mca: Not a directory (os error 20)",
+      "reference": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-worlds-baseline"
+    },
+    "cold_process_reopen": {
+      "scope": "New process on pre-existing complete MCA",
+      "backend": "CPU: native",
+      "gpu_jobs": 0,
+      "generated": 0,
+      "preserved": 1024,
+      "identical_nbt_chunks": 1024,
+      "file_sha256": "8d835f2b9e18fcd2c3fc44d3b0843597a371169fecf0b65df70257d523094adb",
+      "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+      "elapsed_seconds": 0.0007442086935043335
+    },
+    "rust_cli_cancel_resume": {
+      "kind": "rust",
+      "command": [
+        "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/build/native-target/release/retina",
+        "generate",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--output",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-rust-cli-world",
+        "--region-min=0,0",
+        "--region-max=3,0"
+      ],
+      "exit_code": 130,
+      "cancelled": {
+        "backend": "CPU: native",
+        "data_version": 5023,
+        "dimension": "minecraft:overworld",
+        "generated_chunks": 1024,
+        "preserved_chunks": 0,
+        "regions": 1,
+        "seconds": 13.320528792,
+        "seed": 123456789,
+        "status": "cancelled"
+      },
+      "resume_command": [
+        "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/build/native-target/release/retina",
+        "generate",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--output",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-rust-cli-world",
+        "--region-min=0,0",
+        "--region-max=0,0"
+      ],
+      "resumed": {
+        "backend": "CPU: native",
+        "data_version": 5023,
+        "dimension": "minecraft:overworld",
+        "generated_chunks": 0,
+        "preserved_chunks": 1024,
+        "regions": 1,
+        "seconds": 0.818132709,
+        "seed": 123456789,
+        "status": "complete"
+      },
+      "identical_nbt_chunks": 1024,
+      "region_sha256": "071fabe39f611f969d35cecc9fa80e36798c7cc9fe4a0cbdfe7325a8cd16e277",
+      "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+      "artifact_sha256": "9dd999d0b541aec6e00122b7a339afa2afcf6ec8d1008143c0e51560e3ae1bf4",
+      "scope": "Own process SIGINT after actual generation marker; active region completes, stops before next region; new-process resume preserves all bytes"
+    },
+    "metal_guard": {
+      "assembly_threads": 16,
+      "backend_requested": "metal",
+      "lighting": "enabled",
+      "median_throughput_change_percent": -6.986932506985322,
+      "order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+      "readiness": "shader-ready",
+      "results": [
+        {
+          "average_scheduled_cores": 2.311995779339968,
+          "backend": "Metal: Apple M4 Max",
+          "chunks_per_second": 2206.6456871958003,
+          "cpu_ms_per_region": 1072.888,
+          "median_region_ms": 461.12016635015607,
+          "p95_region_ms": 461.12016635015607,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-metal-guard/00-baseline",
+          "peak_rss_bytes": 1504804864,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 0,
+          "variant": "baseline"
+        },
+        {
+          "average_scheduled_cores": 2.006112770765632,
+          "backend": "Metal: Apple M4 Max",
+          "chunks_per_second": 2175.82269101078,
+          "cpu_ms_per_region": 944.1299999999998,
+          "median_region_ms": 467.59712509810925,
+          "p95_region_ms": 467.59712509810925,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-metal-guard/01-candidate",
+          "peak_rss_bytes": 1639055360,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 1,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 2.0707929842941666,
+          "backend": "Metal: Apple M4 Max",
+          "chunks_per_second": 2288.065345706047,
+          "cpu_ms_per_region": 926.7619999999995,
+          "median_region_ms": 442.21529085189104,
+          "p95_region_ms": 442.21529085189104,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-metal-guard/02-candidate",
+          "peak_rss_bytes": 1584463872,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 2,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 2.665087955993758,
+          "backend": "Metal: Apple M4 Max",
+          "chunks_per_second": 2592.5595825928426,
+          "cpu_ms_per_region": 1052.6470000000002,
+          "median_region_ms": 392.0713751576841,
+          "p95_region_ms": 392.0713751576841,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-metal-guard/03-baseline",
+          "peak_rss_bytes": 1653309440,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 3,
+          "variant": "baseline"
+        }
+      ],
+      "schema": "retina.native-region-benchmark-ab",
+      "schema_version": 1,
+      "scope": "lit-mca",
+      "summary": {
+        "baseline": {
+          "maximum_chunks_per_second": 2592.5595825928426,
+          "median_chunks_per_second": 2399.6026348943215,
+          "minimum_chunks_per_second": 2206.6456871958003,
+          "trials": 2
+        },
+        "candidate": {
+          "maximum_chunks_per_second": 2288.065345706047,
+          "median_chunks_per_second": 2231.944018358414,
+          "minimum_chunks_per_second": 2175.82269101078,
+          "trials": 2
+        }
+      },
+      "throughput_change_confidence_95": {
+        "high_percent": 3.6897477008968504,
+        "low_percent": -16.074341912145375,
+        "method": "independent median bootstrap",
+        "samples": 10000
+      }
+    },
+    "large_768_height_profiled": {
+      "definition_sha256": "96a1cc33d8dc6dda511be96a62dec6d915063504648745867242e4344dc8f527",
+      "request": {
+        "amplitude": 48.0,
+        "base_height": 64.0,
+        "data_version": 5023,
+        "fallback_biome": "iris_export:carving/amethyst",
+        "frequency": 0.00800000037997961,
+        "height": 768,
+        "min_y": -256,
+        "storage": {
+          "height": 768,
+          "min_y": -256
+        }
+      },
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 1402.7741672471166,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      }
+    }
+  },
+  "native_tests": {
+    "final-cpu-tests": {
+      "passed": 75,
+      "failed": 0,
+      "ignored": 5
+    },
+    "final-world-definition-tests": {
+      "passed": 29,
+      "failed": 0,
+      "ignored": 16
+    },
+    "final-opcode-tests": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    "final-full-cpu-acceptance": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    },
+    "final-ffi-retirement-tests": {
+      "passed": 1,
+      "failed": 0,
+      "ignored": 0
+    }
+  },
+  "final_vm_diagnostic_counts": {
+    "cpu_height_air_points_skipped": 121840984,
+    "cpu_material_zero_proofs": 15870517,
+    "cpu_vm_auxiliary_calls": 378572,
+    "cpu_vm_blended_profiles": 2706672,
+    "cpu_vm_calls": 53558925,
+    "cpu_vm_cell_hits": 43816051,
+    "cpu_vm_cell_lookups": 56462852,
+    "cpu_vm_cell_vertices_reused": 245150774,
+    "cpu_vm_computed_nodes": 680660712,
+    "cpu_vm_constant_hits": 152025793,
+    "cpu_vm_corner_clears": 359,
+    "cpu_vm_corner_hits": 118459847,
+    "cpu_vm_corner_lookups": 131734529,
+    "cpu_vm_field_calls": 13274682,
+    "cpu_vm_horizontal_clears": 4,
+    "cpu_vm_horizontal_hits": 12793420,
+    "cpu_vm_horizontal_lookups": 14843689,
+    "cpu_vm_interpolations": 56462852,
+    "cpu_vm_material_calls": 24053195,
+    "cpu_vm_node_visits": 1824680912,
+    "cpu_vm_noise3_calls": 189580560,
+    "cpu_vm_noise_profiles": 40454302,
+    "cpu_vm_plain_corner_hits": 118459847,
+    "cpu_vm_plain_corner_lookups": 131734529,
+    "cpu_vm_ready_hits": 227537306,
+    "cpu_vm_samplers": 118,
+    "cpu_vm_terrain_calls": 15852476
+  },
+  "rejected_identity_map_experiment": {
+    "overworld-16": {
+      "assembly_threads": 16,
+      "backend_requested": "cpu",
+      "lighting": "enabled",
+      "median_throughput_change_percent": -1.7068829611265657,
+      "order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+      "readiness": "shader-ready",
+      "results": [
+        {
+          "average_scheduled_cores": 6.067337974915919,
+          "backend": "CPU: native",
+          "chunks_per_second": 171.8037677957417,
+          "cpu_ms_per_region": 36163.083999999995,
+          "median_region_ms": 5958.003333304077,
+          "p95_region_ms": 5958.003333304077,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-16/00-baseline",
+          "peak_rss_bytes": 1350909952,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 0,
+          "variant": "baseline"
+        },
+        {
+          "average_scheduled_cores": 5.803758113220869,
+          "backend": "CPU: native",
+          "chunks_per_second": 166.97263480221335,
+          "cpu_ms_per_region": 35592.948,
+          "median_region_ms": 6129.960041958839,
+          "p95_region_ms": 6129.960041958839,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-16/01-candidate",
+          "peak_rss_bytes": 1402454016,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 1,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 5.8720384926264355,
+          "backend": "CPU: native",
+          "chunks_per_second": 173.3423258632986,
+          "cpu_ms_per_region": 34688.397000000004,
+          "median_region_ms": 5905.188042204827,
+          "p95_region_ms": 5905.188042204827,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-16/02-candidate",
+          "peak_rss_bytes": 1475526656,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 2,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 5.8219650046706235,
+          "backend": "CPU: native",
+          "chunks_per_second": 171.6577985119051,
+          "cpu_ms_per_region": 34730.098,
+          "median_region_ms": 5963.231959380209,
+          "p95_region_ms": 5963.231959380209,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-16/03-baseline",
+          "peak_rss_bytes": 1406271488,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 3,
+          "variant": "baseline"
+        },
+        {
+          "average_scheduled_cores": 5.925587262821023,
+          "backend": "CPU: native",
+          "chunks_per_second": 173.05395927020425,
+          "cpu_ms_per_region": 35063.06,
+          "median_region_ms": 5915.001709014177,
+          "p95_region_ms": 5915.001709014177,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-16/04-baseline",
+          "peak_rss_bytes": 1421000704,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 4,
+          "variant": "baseline"
+        },
+        {
+          "average_scheduled_cores": 5.593582957036632,
+          "backend": "CPU: native",
+          "chunks_per_second": 166.47839285439656,
+          "cpu_ms_per_region": 34405.84,
+          "median_region_ms": 6148.720541968942,
+          "p95_region_ms": 6148.720541968942,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-16/05-candidate",
+          "peak_rss_bytes": 1471905792,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 5,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 5.90004574244933,
+          "backend": "CPU: native",
+          "chunks_per_second": 171.99877448031563,
+          "cpu_ms_per_region": 35126.10400000001,
+          "median_region_ms": 5950.279667042196,
+          "p95_region_ms": 5950.279667042196,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-16/06-candidate",
+          "peak_rss_bytes": 1437351936,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 6,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 6.148997953654233,
+          "backend": "CPU: native",
+          "chunks_per_second": 178.31819257062415,
+          "cpu_ms_per_region": 35310.889,
+          "median_region_ms": 5740.156709216535,
+          "p95_region_ms": 5740.156709216535,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-16/07-baseline",
+          "peak_rss_bytes": 1437188096,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 7,
+          "variant": "baseline"
+        }
+      ],
+      "schema": "retina.native-region-benchmark-ab",
+      "schema_version": 1,
+      "scope": "lit-mca",
+      "summary": {
+        "baseline": {
+          "maximum_chunks_per_second": 178.31819257062415,
+          "median_chunks_per_second": 172.42886353297297,
+          "minimum_chunks_per_second": 171.6577985119051,
+          "trials": 4
+        },
+        "candidate": {
+          "maximum_chunks_per_second": 173.3423258632986,
+          "median_chunks_per_second": 169.48570464126448,
+          "minimum_chunks_per_second": 166.47839285439656,
+          "trials": 4
+        }
+      },
+      "throughput_change_confidence_95": {
+        "high_percent": 0.5723314914413136,
+        "low_percent": -5.100325706044229,
+        "method": "independent median bootstrap",
+        "samples": 10000
+      }
+    },
+    "overworld-4": {
+      "assembly_threads": 4,
+      "backend_requested": "cpu",
+      "lighting": "enabled",
+      "median_throughput_change_percent": 0.8676001535177891,
+      "order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline",
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+      "readiness": "shader-ready",
+      "results": [
+        {
+          "average_scheduled_cores": 2.2383932587735687,
+          "backend": "CPU: native",
+          "chunks_per_second": 81.55066221851654,
+          "cpu_ms_per_region": 28106.635000000002,
+          "median_region_ms": 12553.62404230982,
+          "p95_region_ms": 12553.62404230982,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-4/00-baseline",
+          "peak_rss_bytes": 1232584704,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 0,
+          "variant": "baseline"
+        },
+        {
+          "average_scheduled_cores": 2.3611863320858317,
+          "backend": "CPU: native",
+          "chunks_per_second": 88.02300807883096,
+          "cpu_ms_per_region": 27468.441000000003,
+          "median_region_ms": 11630.53133385256,
+          "p95_region_ms": 11630.53133385256,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-4/01-candidate",
+          "peak_rss_bytes": 1351057408,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 1,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 2.227657627965927,
+          "backend": "CPU: native",
+          "chunks_per_second": 85.22258539969766,
+          "cpu_ms_per_region": 26766.63,
+          "median_region_ms": 12013.56237474829,
+          "p95_region_ms": 12013.56237474829,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-4/02-candidate",
+          "peak_rss_bytes": 1356939264,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 2,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 2.336384850976428,
+          "backend": "CPU: native",
+          "chunks_per_second": 88.82483400231375,
+          "cpu_ms_per_region": 26934.563000000002,
+          "median_region_ms": 11526.272458024323,
+          "p95_region_ms": 11526.272458024323,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-4/03-baseline",
+          "peak_rss_bytes": 1310195712,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 3,
+          "variant": "baseline"
+        },
+        {
+          "average_scheduled_cores": 2.231167047930128,
+          "backend": "CPU: native",
+          "chunks_per_second": 82.93060898914584,
+          "cpu_ms_per_region": 27549.72,
+          "median_region_ms": 12344.914707820863,
+          "p95_region_ms": 12344.914707820863,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-4/04-baseline",
+          "peak_rss_bytes": 1351368704,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 4,
+          "variant": "baseline"
+        },
+        {
+          "average_scheduled_cores": 2.369605841141054,
+          "backend": "CPU: native",
+          "chunks_per_second": 88.28701623650744,
+          "cpu_ms_per_region": 27483.954999999998,
+          "median_region_ms": 11596.5143754147,
+          "p95_region_ms": 11596.5143754147,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-4/05-candidate",
+          "peak_rss_bytes": 1338834944,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 5,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 2.179755744722806,
+          "backend": "CPU: native",
+          "chunks_per_second": 82.17735042215833,
+          "cpu_ms_per_region": 27161.619000000002,
+          "median_region_ms": 12458.759875036776,
+          "p95_region_ms": 12458.759875036776,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-4/06-candidate",
+          "peak_rss_bytes": 1309818880,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 6,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 2.3651484377399337,
+          "backend": "CPU: native",
+          "chunks_per_second": 88.8940470443396,
+          "cpu_ms_per_region": 27244.929,
+          "median_region_ms": 11516.784458886832,
+          "p95_region_ms": 11516.784458886832,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-overworld-4/07-baseline",
+          "peak_rss_bytes": 1285783552,
+          "region_file_bytes": 9326592,
+          "sample_regions": 1,
+          "trial": 7,
+          "variant": "baseline"
+        }
+      ],
+      "schema": "retina.native-region-benchmark-ab",
+      "schema_version": 1,
+      "scope": "lit-mca",
+      "summary": {
+        "baseline": {
+          "maximum_chunks_per_second": 88.8940470443396,
+          "median_chunks_per_second": 85.87772149572979,
+          "minimum_chunks_per_second": 81.55066221851654,
+          "trials": 4
+        },
+        "candidate": {
+          "maximum_chunks_per_second": 88.28701623650744,
+          "median_chunks_per_second": 86.62279673926432,
+          "minimum_chunks_per_second": 82.17735042215833,
+          "trials": 4
+        }
+      },
+      "throughput_change_confidence_95": {
+        "high_percent": 7.191550150863013,
+        "low_percent": -5.806330291989914,
+        "method": "independent median bootstrap",
+        "samples": 10000
+      }
+    },
+    "nether-16": {
+      "assembly_threads": 16,
+      "backend_requested": "cpu",
+      "lighting": "enabled",
+      "median_throughput_change_percent": 0.6849161785167812,
+      "order": [
+        "baseline",
+        "candidate",
+        "candidate",
+        "baseline"
+      ],
+      "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+      "readiness": "shader-ready",
+      "results": [
+        {
+          "average_scheduled_cores": 6.668121689993199,
+          "backend": "CPU: native",
+          "chunks_per_second": 64.79316126480974,
+          "cpu_ms_per_region": 105383.909,
+          "median_region_ms": 15801.867082715034,
+          "p95_region_ms": 15801.867082715034,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-nether-16/00-baseline",
+          "peak_rss_bytes": 1781612544,
+          "region_file_bytes": 5431296,
+          "sample_regions": 1,
+          "trial": 0,
+          "variant": "baseline"
+        },
+        {
+          "average_scheduled_cores": 6.807770521839678,
+          "backend": "CPU: native",
+          "chunks_per_second": 66.10746643605624,
+          "cpu_ms_per_region": 105451.886,
+          "median_region_ms": 15487.293625250459,
+          "p95_region_ms": 15487.293625250459,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-nether-16/01-candidate",
+          "peak_rss_bytes": 1833189376,
+          "region_file_bytes": 5431296,
+          "sample_regions": 1,
+          "trial": 1,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 6.930115524702505,
+          "backend": "CPU: native",
+          "chunks_per_second": 66.97142790200853,
+          "cpu_ms_per_region": 105962.177,
+          "median_region_ms": 15287.427000235766,
+          "p95_region_ms": 15287.427000235766,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-nether-16/02-candidate",
+          "peak_rss_bytes": 1845280768,
+          "region_file_bytes": 5431296,
+          "sample_regions": 1,
+          "trial": 2,
+          "variant": "candidate"
+        },
+        {
+          "average_scheduled_cores": 6.852990066468552,
+          "backend": "CPU: native",
+          "chunks_per_second": 67.38045459450397,
+          "cpu_ms_per_region": 104146.84599999999,
+          "median_region_ms": 15194.711749907583,
+          "p95_region_ms": 15194.711749907583,
+          "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle11-abba-nether-16/03-baseline",
+          "peak_rss_bytes": 1808105472,
+          "region_file_bytes": 5431296,
+          "sample_regions": 1,
+          "trial": 3,
+          "variant": "baseline"
+        }
+      ],
+      "schema": "retina.native-region-benchmark-ab",
+      "schema_version": 1,
+      "scope": "lit-mca",
+      "summary": {
+        "baseline": {
+          "maximum_chunks_per_second": 67.38045459450397,
+          "median_chunks_per_second": 66.08680792965686,
+          "minimum_chunks_per_second": 64.79316126480974,
+          "trials": 2
+        },
+        "candidate": {
+          "maximum_chunks_per_second": 66.97142790200853,
+          "median_chunks_per_second": 66.53944716903239,
+          "minimum_chunks_per_second": 66.10746643605624,
+          "trials": 2
+        }
+      },
+      "throughput_change_confidence_95": {
+        "high_percent": 3.361877387485701,
+        "low_percent": -1.8892543336321843,
+        "method": "independent median bootstrap",
+        "samples": 10000
+      }
+    }
+  },
+  "evidence_root": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101",
+  "delivery_record": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/final-windows-jar-verification.json",
+  "delivery_runtime_scope": "Windows DLL cross-build/PE/JAR inspection; CPU executable-JAR checks available on macOS use a same-source native image or a labeled resource fixture, not Windows runtime execution."
+}
