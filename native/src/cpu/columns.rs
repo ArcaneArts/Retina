@@ -37,6 +37,7 @@ pub struct Columns<'a> {
     targeted: Vec<bool>,
     sites: HashMap<[i32; 2], Site>,
     lakes: HashMap<[i32; 2], Lake>,
+    climate_hint: Option<usize>,
 }
 impl<'a> Columns<'a> {
     pub fn new(profile: &'a WorldProfile, fields: &'a Fields, request: ChunkRequest) -> Self {
@@ -51,6 +52,7 @@ impl<'a> Columns<'a> {
             targeted,
             sites: HashMap::new(),
             lakes: HashMap::new(),
+            climate_hint: None,
         }
     }
     fn seed(&self, salt: u32) -> u32 {
@@ -131,10 +133,10 @@ impl<'a> Columns<'a> {
             }
         }
         if self.fields.climate.has_surface() {
-            biome =
-                self.fields
-                    .climate
-                    .search(actual, true, false, !registered, biome, best, false);
+            let (selected, hint) = self.fields.climate.search_with_hint(actual, true, false,
+                !registered, biome, best, false, self.climate_hint);
+            biome = selected;
+            self.climate_hint = hint;
         }
         let site = Site {
             point,
