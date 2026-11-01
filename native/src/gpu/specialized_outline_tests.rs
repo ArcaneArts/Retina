@@ -6,9 +6,9 @@ use super::*;
 fn outlined_specialization_matches_original_generation() {
     let definition = crate::world_definition::WorldDefinition::read(
         std::path::Path::new(&std::env::var("RETINA_STARTUP_DEFINITION").unwrap())).unwrap();
-    let mut actual = Gpu::new_with_policy(Default::default(), |features, size|
+    let mut actual = Gpu::new_with_policy(Default::default(), |features, size, _|
         Policy::resolve(features, size, |_| None)).unwrap();
-    let mut reference = Gpu::new_with_policy(Default::default(), |features, size|
+    let mut reference = Gpu::new_with_policy(Default::default(), |features, size, _|
         Policy::resolve(features, size, |_| None)).unwrap();
     reference.compiler.reference_specialization = true;
     let times = timings::Timings::default();

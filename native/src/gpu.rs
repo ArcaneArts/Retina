@@ -193,7 +193,7 @@ impl Gpu {
         Self::new_with_policy(metrics, Policy::from_env)
     }
 
-    fn new_with_policy(metrics: std::sync::Arc<crate::pipeline::Metrics>, resolve: fn(wgpu::Features, u32) -> Policy) -> Result<Self, crate::compute::InitError> {
+    fn new_with_policy(metrics: std::sync::Arc<crate::pipeline::Metrics>, resolve: fn(wgpu::Features, u32, wgpu::Backend) -> Policy) -> Result<Self, crate::compute::InitError> {
         let backends = crate::gpu_backend::selected()?;
         let init::Device {device,queue,info,policy}=init::open(backends,resolve)?;
         let backend=format!("{:?}: {}",info.backend,info.name);
@@ -2049,7 +2049,7 @@ impl Gpu {
             // Append mapped runs directly; avoid an intermediate run vector.
             let mask = pending.mask.as_mut().ok_or("missing material mask")?;
             mask.words
-                .extend_from_slice(bytemuck::cast_slice::<u8, u32>(&view));
+                .extend_from_slice(&crate::gpu_readback::pod_slice::<u32>(&view)?);
             mask.validate_material_runs()?;
         }
         if let Some(m) = &mut pending.query {
@@ -2063,7 +2063,7 @@ impl Gpu {
                 .slice(..16)
                 .get_mapped_range()
                 .map_err(|e| e.to_string())?;
-            let values = bytemuck::cast_slice::<u8, u64>(&view);
+            let values = crate::gpu_readback::pod_slice::<u64>(&view)?;
             if values[0] != 0 && values[1] >= values[0] {
                 let nanos = ((values[1] - values[0]) as f64
                     * self.queue.get_timestamp_period() as f64) as u64;
@@ -2253,7 +2253,7 @@ impl Gpu {
                 .slice(..pending.size)
                 .get_mapped_range()
                 .map_err(|e| e.to_string())?;
-            bytemuck::cast_slice::<u8, Column>(&mapped).to_vec()
+            crate::gpu_readback::pod_slice::<Column>(&mapped)?.into_owned()
         };
         let mask = if let Some(mapping) = &mut pending.mask_map {
             mapping.check()?;
@@ -2266,7 +2266,7 @@ impl Gpu {
                     .slice(..pending.mask_size)
                     .get_mapped_range()
                     .map_err(|e| e.to_string())?;
-                bytemuck::cast_slice::<u8, u32>(&mapped).to_vec()
+                crate::gpu_readback::pod_slice::<u32>(&mapped)?.into_owned()
             };
             if pending.underground_probe {
                 for (column, biome) in columns.iter_mut().zip(words) {
@@ -2299,7 +2299,7 @@ impl Gpu {
                 .slice(..pending.query_bytes)
                 .get_mapped_range()
                 .map_err(|e| e.to_string())?;
-            let values = bytemuck::cast_slice::<u8, u64>(&mapped);
+            let values = crate::gpu_readback::pod_slice::<u64>(&mapped)?;
             let period = self.queue.get_timestamp_period() as f64;
             let mut first = u64::MAX;
             let mut last = 0;

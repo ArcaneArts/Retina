@@ -20,10 +20,11 @@ jobs and profile changes cannot select another stage accidentally. Specialized
 pipelines and reused base pipelines have no selector. Source-generation failures
 also unwind the actual wgpu validation scope.
 
-Default selection enables sharing on Metal adapters advertising the required
-immediate capability and at least four immediate bytes. Other backends and wide
-1,024-slot interpreters retain independent pipelines. This is execution selection
-from actual adapter capabilities, with no profile-readiness gate. An explicit
+Default selection enables sharing on Metal and Vulkan adapters advertising the
+required immediate capability and at least four immediate bytes. DX12 and wide
+1,024-slot interpreters retain independent pipelines. The
+[Windows compatibility correction](WINDOWS_GPU_COMPATIBILITY.md) explains the
+DX12 driver-reset mitigation; stage algorithms and formats remain shared. An explicit
 `RETINA_INTERPRETER_DISPATCH=1` requests the shared compact path; `0` selects the
 independent reference. If an explicitly requested GPU capability is unavailable,
 the actual device request returns its error. No Retina job falls back to normal

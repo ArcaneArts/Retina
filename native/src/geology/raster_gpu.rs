@@ -389,7 +389,7 @@ impl Gpu {
                     .slice(..)
                     .get_mapped_range()
                     .map_err(|e| e.to_string())?;
-                let ticks: &[u64] = bytemuck::cast_slice(&range);
+                let ticks = crate::gpu_readback::pod_slice::<u64>(&range)?;
                 let nanos = (ticks[1].saturating_sub(ticks[0]) as f64
                     * self.queue.get_timestamp_period() as f64) as u64;
                 // Reject stale/reversed pairs; a device pass cannot outlast the
@@ -399,7 +399,7 @@ impl Gpu {
             } else {
                 None
             };
-            let words = bytemuck::cast_slice::<u8, u32>(&mapped).to_vec();
+            let words = crate::gpu_readback::pod_slice::<u32>(&mapped)?.into_owned();
             Ok(ResultMasks {
                 words,
                 device_nanos,

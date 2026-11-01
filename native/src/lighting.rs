@@ -132,7 +132,7 @@ impl Pending {
                 .slice(..)
                 .get_mapped_range()
                 .map_err(|e| e.to_string())?;
-            let ticks: &[u64] = bytemuck::cast_slice(&data);
+            let ticks = crate::gpu_readback::pod_slice::<u64>(&data)?;
             Some(std::array::from_fn(|i| {
                 (ticks[i * 2 + 1].saturating_sub(ticks[i * 2]) as f64
                     * queue.get_timestamp_period() as f64) as u64

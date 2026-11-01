@@ -3,6 +3,9 @@
 pub(super) const ENTRY: &str = "retina_material_runs";
 
 pub(super) fn source(source: String) -> Result<String, String> {
+    // include_str! follows checkout line endings. Windows release sources can
+    // contain CRLF even though the generated fragments and patterns use LF.
+    let source = source.replace("\r\n", "\n");
     let declaration = "@compute @workgroup_size(64)\nfn material_counts(@builtin(global_invocation_id) id:vec3<u32>)";
     let header = "if id.x==0u {let base=material_base_offset(r);";
     let call = "material_column(id.x,false,r);";
@@ -34,7 +37,8 @@ mod tests {
             include_str!("../aquifers.wgsl"),
             include_str!("../materials.wgsl")
         );
-        let shared = super::source(source).unwrap();
+        let shared = super::source(source.clone()).unwrap();
+        assert_eq!(shared, super::source(source.replace('\n', "\r\n")).unwrap());
         let module = wgpu::naga::front::wgsl::parse_str(&shared).unwrap();
         wgpu::naga::valid::Validator::new(
             wgpu::naga::valid::ValidationFlags::all(),

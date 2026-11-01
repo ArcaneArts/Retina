@@ -90,11 +90,10 @@ fn common_policy_shared_dispatch_matches_independent_generation() {
     crate::startup::retina_configure_debug(1);
     let definition = crate::world_definition::WorldDefinition::read(
         std::path::Path::new(&std::env::var("RETINA_STARTUP_DEFINITION").unwrap())).unwrap();
-    let mut shared = Gpu::new_with_policy(std::sync::Arc::new(crate::pipeline::Metrics::default()), |features, size|
+    let mut shared = Gpu::new_with_policy(std::sync::Arc::new(crate::pipeline::Metrics::default()), |features, size, _|
         Policy::resolve(features, size, |_| None)).unwrap();
-    let mut independent = Gpu::new_with_policy(std::sync::Arc::new(crate::pipeline::Metrics::default()), |features, size|
-        Policy::resolve(features, size, |key|
-            matches!(key, "RETINA_INTERPRETER_DISPATCH" | "RETINA_MATERIAL_DISPATCH").then(|| "0".into()))).unwrap();
+    let mut independent = Gpu::new_with_policy(std::sync::Arc::new(crate::pipeline::Metrics::default()), |features, size, _|
+        Policy::resolve_for_backend(features, size, wgpu::Backend::Dx12, |_| None)).unwrap();
     assert!(shared.device.features().contains(wgpu::Features::IMMEDIATES), "test needs a real immediate-capable adapter");
     assert!(shared.preloaded_interpreters.is_empty(), "no speculative bundles before a profile exists");
     assert!(independent.preloaded_interpreters.is_empty());

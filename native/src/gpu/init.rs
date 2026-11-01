@@ -10,7 +10,7 @@ pub(super) struct Device {
 }
 pub(super) fn open(
     backends: wgpu::Backends,
-    resolve: fn(wgpu::Features, u32) -> Policy,
+    resolve: fn(wgpu::Features, u32, wgpu::Backend) -> Policy,
 ) -> Result<Device, InitError> {
     if backends.is_empty() {
         return Err(InitError::Unavailable(
@@ -43,7 +43,7 @@ pub(super) fn open(
             software = true;
             continue;
         }
-        let policy = resolve(adapter.features(), adapter.limits().max_immediate_size);
+        let policy = resolve(adapter.features(), adapter.limits().max_immediate_size, info.backend);
         let immediate = policy.interpreter_dispatch || policy.material_dispatch;
         let stage = crate::startup::Stage::new(format!(
             "GPU device creation {:?}: {}",
