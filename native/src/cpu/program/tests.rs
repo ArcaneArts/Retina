@@ -25,6 +25,57 @@ fn registry(program: Program) -> RegistryProgram {
         aquifer: None,
     }
 }
+#[test]
+fn inline_dependencies_cover_every_opcode_without_truncating_spline_knots() {
+    eprintln!("CPU_VM_STEP_BYTES={}", std::mem::size_of::<Step>());
+    for &opcode in Opcode::ALL {
+        let prepared = Prepared::new(Arc::new(one(opcode as u32))).unwrap();
+        for (program, plan) in prepared.registry.all_programs().zip(&prepared.plans) {
+            for step in &plan.steps {
+                let original = program.nodes[step.index].dependencies(&prepared.registry.points);
+                if step.opcode == Opcode::Spline {
+                    assert_eq!(step.dependency_count, 0);
+                } else {
+                    assert!(original.len() <= 3, "{opcode:?}");
+                    assert_eq!(
+                        &step.dependencies[..step.dependency_count as usize],
+                        &original
+                    );
+                }
+            }
+        }
+    }
+    let mut r = registry(Program {
+        nodes: vec![
+            n(29, 0, 0, 0, [0.0; 4]),
+            n(0, 0, 0, 0, [2.0; 4]),
+            n(0, 0, 0, 0, [4.0; 4]),
+            n(25, 0, 0, 32, [0.0; 4]),
+        ],
+        roots: vec![3],
+    });
+    r.points = (0..32)
+        .map(|i| [i as f32 - 16.0, 0.0, (1 + i % 2) as f32, 0.0])
+        .collect();
+    let prepared = Prepared::new(Arc::new(r)).unwrap();
+    let mut actual = prepared.evaluator(1, 63, &[]);
+    let mut reference = prepared.evaluator(1, 63, &[]);
+    reference.eager = true;
+    for i in -40..=40 {
+        let point = [i as f32 * 0.5, 0.0, 0.0];
+        assert_eq!(
+            actual
+                .run(0, point, Context::default())
+                .unwrap()
+                .map(f32::to_bits),
+            reference
+                .run(0, point, Context::default())
+                .unwrap()
+                .map(f32::to_bits)
+        );
+    }
+}
+
 pub(super) fn one(op: u32) -> RegistryProgram {
     let mut r = registry(Program {
         nodes: vec![
