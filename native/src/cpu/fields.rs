@@ -177,6 +177,13 @@ impl Sampler<'_> {
         program: usize,
         point: [i32; 3],
     ) -> super::program::bounds::Bounds {
+        self.density_certificate_at(program, point.map(|v| v as f32))
+    }
+    fn density_certificate_at(
+        &mut self,
+        program: usize,
+        point: [f32; 3],
+    ) -> super::program::bounds::Bounds {
         use super::program::bounds::Bounds;
         let Some(registry) = self.profile.registry_program.as_ref() else {
             return Bounds::UNKNOWN;
@@ -190,12 +197,17 @@ impl Sampler<'_> {
             return Bounds::UNKNOWN;
         }
         let lo =
-            std::array::from_fn::<_, 3, _>(|i| ((point[i] as f32) / step[i]).floor() * step[i]);
+            std::array::from_fn::<_, 3, _>(|i| (point[i] / step[i]).floor() * step[i]);
         let key = (program, lo.map(f32::to_bits));
+        let hi = std::array::from_fn(|i| lo[i] + step[i]);
+        // Rounding at very large coordinates or unusual cell sizes must never
+        // certify a box that does not enclose the point being skipped.
+        if (0..3).any(|i| !point[i].is_finite() || lo[i] > point[i] || hi[i] < point[i]) {
+            return Bounds::UNKNOWN;
+        }
         if let Some(bounds) = self.density_bounds.get(&key) {
             return *bounds;
         }
-        let hi = std::array::from_fn(|i| lo[i] + step[i]);
         if !registry.density_composition
             && lo.into_iter().chain(hi).any(|v: f32| v.abs() > 8388608.0)
         {
@@ -296,21 +308,63 @@ impl Sampler<'_> {
             }
             found.unwrap_or(empty)
         } else {
-            // Composed graphs are evaluated at actual blocks. Conservative
-            // interval acceleration will be added after complete-backend profiling.
-            let mut height = empty;
-            for y in (min..max).rev() {
-                if self.density(1, [x as f32, y as f32, z as f32])? > 0.0 {
-                    height = (y + 1) as f32;
-                    break;
-                }
-            }
-            height
+            self.scanned_surface_height([x, z], [min, max], empty, registry.density_composition)?
         };
         if self.heights.len() >= 32768 {
             self.heights.clear();
         }
         self.heights.insert([x.to_bits(), z.to_bits()], height);
+        Ok(height)
+    }
+    fn scanned_surface_height(
+        &mut self,
+        [x, z]: [f32; 2],
+        [min, max]: [i32; 2],
+        empty: f32,
+        certificates: bool,
+    ) -> Result<f32, String> {
+        let registry = self.profile.registry_program.as_ref().unwrap();
+        let step = i64::from(registry.terrain_cell[1]);
+        let certificates = certificates && self.evaluator.as_ref().unwrap().can_bound(1)
+            && x.abs() <= 8388608.0 && z.abs() <= 8388608.0
+            && min >= -8388608 && max <= 8388608;
+        let (mut sampled, mut skipped, mut intervals) = (0, 0, 0);
+        let mut height = empty;
+        let mut top = max;
+        'height: while top > min {
+            let bottom = if certificates {
+                ((i64::from(top) - 1).div_euclid(step) * step).max(i64::from(min)) as i32
+            } else {
+                min
+            };
+            if certificates {
+                intervals += 1;
+                let lo = (((top - 1) as f32) / step as f32).floor() * step as f32;
+                let encloses = lo <= bottom as f32 && lo + step as f32 >= (top - 1) as f32;
+                let bounds = self.density_certificate_at(1, [x, (top - 1) as f32, z]);
+                if encloses && bounds.finite() && bounds.hi <= 0.0 {
+                    skipped += (top - bottom) as u64;
+                    top = bottom;
+                    continue;
+                }
+            }
+            // Visit uncertain cells in the original descending integer order.
+            // Bounds never choose a crossing or hide islands/overhangs.
+            for y in (bottom..top).rev() {
+                sampled += 1;
+                if self.density(1, [x, y as f32, z])? > 0.0 {
+                    height = (y + 1) as f32;
+                    break 'height;
+                }
+            }
+            top = bottom;
+        }
+        if let Some(timings) = &self.fields.sampling_timings {
+            use crate::performance::Counter::*;
+            timings.performance.add(cpu_height_scalar_points, sampled);
+            timings.performance.add(cpu_height_air_points_skipped, skipped);
+            timings.performance.add(cpu_height_interval_queries, intervals);
+        }
         Ok(height)
     }
     pub fn surface_biome(
@@ -403,6 +457,77 @@ impl Sampler<'_> {
 mod tests {
     use super::*;
     use crate::world_definition::{WorldDefinition, catalog::WorldCatalog};
+    #[test]
+    fn certified_height_matches_scalar_scan_across_dimensions_and_clipped_heights() {
+        let catalog = WorldCatalog::read(std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../assets/world-definitions/26.3/vanilla-binary/retina-catalog.dat"
+        ))).unwrap();
+        for seed in [123456789, -726381] {
+            let d = WorldDefinition::from_gzip(catalog.materialize("normal", seed).unwrap().as_slice()).unwrap();
+            // End uses its dedicated terrain kernel, not registered height scans.
+            for key in ["minecraft:overworld", "minecraft:the_nether"] {
+                let profile = d.dimension(key).unwrap().profile().unwrap();
+                let request = d.request(key, 1, 0, 0).unwrap();
+                let fields = Fields::new(profile).unwrap();
+                let mut accelerated = fields.sampler(profile, request);
+                let mut reference = fields.sampler(profile, request);
+                for point in [[0.0, 0.0], [-17.25, 31.5], [-512.0, 511.0],
+                    [8388608.0, -8388608.0], [16777216.0, -16777216.0]] {
+                    for range in [accelerated.bounds(), [-1536, 1536], [-31, 71], [71, 72], [0, 0]] {
+                        let a = accelerated.scanned_surface_height(point, range, -1536.0, true).unwrap();
+                        let b = reference.scanned_surface_height(point, range, -1536.0, false).unwrap();
+                        assert_eq!(a.to_bits(), b.to_bits(), "{seed} {key} {point:?} {range:?}");
+                    }
+                }
+            }
+        }
+    }
+    #[test]
+    fn certified_height_retains_thin_islands_zero_density_and_invalid_roots() {
+        use crate::program::{Instruction, Program};
+        let catalog = WorldCatalog::read(std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../assets/world-definitions/26.3/vanilla-binary/retina-catalog.dat"
+        ))).unwrap();
+        let d = WorldDefinition::from_gzip(catalog.materialize("normal", 1).unwrap().as_slice()).unwrap();
+        for (outside, inside, expected) in [(-1.0, 1.0, 72.0), (-1.0, 0.0, -64.0),
+            (-0.0, 1e-30, 72.0), (1.0, 1.0, 320.0)] {
+            let mut profile = d.dimension("minecraft:overworld").unwrap().profile().unwrap().as_ref().clone();
+            let registry = profile.registry_program.as_mut().unwrap();
+            registry.programs[1] = Program { nodes: vec![
+                Instruction {op:0,a:0,b:0,c:0,p:[outside;4]},
+                Instruction {op:29,a:1,b:0,c:0,p:[0.0;4]},
+                Instruction {op:0,a:0,b:0,c:0,p:[inside;4]},
+                Instruction {op:23,a:1,b:2,c:0,p:[71.0,72.0,0.0,0.0]},
+            ], roots: vec![3,0,0,0,0,0] };
+            for cell in [[4,8], [3,7]] {
+                profile.registry_program.as_mut().unwrap().terrain_cell = cell;
+                let fields = Fields::new(&profile).unwrap();
+                let request = d.request("minecraft:overworld", 1, 0, 0).unwrap();
+                let mut a = fields.sampler(&profile, request);
+                let mut b = fields.sampler(&profile, request);
+                let one = a.scanned_surface_height([-17.25, 31.5], [-64,320], -64.0, true).unwrap();
+                let two = b.scanned_surface_height([-17.25, 31.5], [-64,320], -64.0, false).unwrap();
+                assert_eq!(one.to_bits(), two.to_bits());
+                assert_eq!(one, expected);
+            }
+            // An invalid returned root must still report the scalar error even
+            // when root zero's density would otherwise certify the cell as air.
+            let registry = profile.registry_program.as_mut().unwrap();
+            registry.programs[1].nodes.push(Instruction {op:0,a:0,b:0,c:0,p:[f32::MAX;4]});
+            registry.programs[1].nodes.push(Instruction {op:12,a:4,b:0,c:0,p:[0.0;4]});
+            registry.programs[1].roots[1] = 5;
+            if outside < 0.0 {
+                let fields = Fields::new(&profile).unwrap();
+                let request = d.request("minecraft:overworld", 1, 0, 0).unwrap();
+                let mut a = fields.sampler(&profile, request);
+                let mut b = fields.sampler(&profile, request);
+                assert_eq!(a.scanned_surface_height([0.0,0.0], [100,120], 0.0, true).unwrap_err(),
+                    b.scanned_surface_height([0.0,0.0], [100,120], 0.0, false).unwrap_err());
+            }
+        }
+    }
     #[test]
     fn actual_density_certificates_enclose_every_block_in_sampled_cells() {
         let catalog = WorldCatalog::read(std::path::Path::new(concat!(
