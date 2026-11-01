@@ -22,7 +22,8 @@ struct Step {
     index: usize,
     opcode: Opcode,
     constant: Option<f32>,
-    dependencies: Box<[u32]>,
+    dependencies: [u32; 3],
+    dependency_count: u8,
 }
 struct Plan {
     steps: Vec<Step>,
@@ -112,7 +113,10 @@ impl Prepared {
                     index,
                     opcode,
                     constant,
-                    dependencies: deps.into_boxed_slice(),
+                    // Spline dependencies are selected directly from its knots
+                    // in pending(); every other wire opcode has at most three.
+                    dependencies: std::array::from_fn(|i| deps.get(i).copied().unwrap_or(0)),
+                    dependency_count: if opcode == Opcode::Spline { 0 } else { deps.len() as u8 },
                 });
             }
             let mut possible = vec![false; program.nodes.len()];
@@ -197,6 +201,7 @@ impl Frame {
 impl Step {
     /// Select dependencies using the scalar operation's actual branch rules.
     /// Programs are validated DAGs; the explicit stack also handles deep graphs.
+    #[inline(always)]
     fn pending(&self, node: &Instruction, frame: &Frame, points: &[[f32; 4]]) -> Option<u32> {
         use Opcode::*;
         if matches!(self.opcode, RangeChoice | And | Or | Spline) {
@@ -237,7 +242,7 @@ impl Step {
                 _ => unreachable!(),
             }
         }
-        self.dependencies
+        self.dependencies[..self.dependency_count as usize]
             .iter()
             .copied()
             .find(|&node| frame.missing(node))
