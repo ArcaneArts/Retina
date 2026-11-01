@@ -84,6 +84,18 @@ pub(crate) fn run(
     format: OutputFormat,
     read: impl Fn(usize) -> u16,
 ) -> Result<ResultLight, String> {
+    run_impl::<true>(profile, chunks, height, crop, core, format, read)
+}
+
+fn run_impl<const FRONTIERS: bool>(
+    profile: &Profile,
+    chunks: usize,
+    height: usize,
+    crop: usize,
+    core: usize,
+    format: OutputFormat,
+    read: impl Fn(usize) -> u16,
+) -> Result<ResultLight, String> {
     if chunks == 0 || height == 0 || core == 0 || crop.checked_add(core).is_none_or(|v| v > chunks)
     {
         return Err("invalid CPU lighting volume".into());
@@ -117,6 +129,14 @@ pub(crate) fn run(
         }
     }
     let mut light = vec![0u8; count];
+    // Direct sun is a contiguous suffix of every column. Retain its lowest Y
+    // rather than treating every voxel in that suffix as a propagation source.
+    let mut lowest_sun = if FRONTIERS {
+        vec![padded; plane]
+    } else {
+        Vec::new()
+    };
+    let mut emitters = false;
     for z in 0..side {
         for x in 0..side {
             let mut sun = profile.sky;
@@ -127,15 +147,19 @@ pub(crate) fn run(
                 let traits = profile.states[material as usize][0];
                 sun = sun && traits & 15 == 0 && !occludes(profile, above, material, 0);
                 light[index] = ((traits >> 4) & 15) as u8 | if sun { 240 } else { 0 };
+                if FRONTIERS {
+                    if sun {
+                        lowest_sun[z * side + x] = y;
+                    }
+                    emitters |= (traits >> 4) & 15 > 1;
+                }
                 above = material;
             }
         }
     }
     let mut queued = vec![false; count];
     let mut queue = VecDeque::new();
-    // Only transitions that can raise another voxel enter the queue. Open sky
-    // never creates a frontier for every air voxel at every propagation step.
-    for index in 0..count {
+    let mut seed = |index| {
         spread(
             index,
             side,
@@ -146,6 +170,52 @@ pub(crate) fn run(
             &mut queued,
             &mut queue,
         );
+    };
+    if FRONTIERS {
+        // Only the bottom sun voxel and the sun-to-shadow horizontal edges can
+        // raise sky light. Interior sun already has the maximum value at each
+        // neighbor. Omitted dark cells still enter the unchanged queue whenever
+        // raised. Positive attenuation and monotone max updates give the same
+        // integer fixed point regardless of initial source order.
+        for z in 0..side {
+            for x in 0..side {
+                let column = z * side + x;
+                let low = lowest_sun[column];
+                if low == padded {
+                    continue;
+                }
+                let mut highest_neighbor = low;
+                if z > 0 {
+                    highest_neighbor = highest_neighbor.max(lowest_sun[column - side]);
+                }
+                if z + 1 < side {
+                    highest_neighbor = highest_neighbor.max(lowest_sun[column + side]);
+                }
+                if x > 0 {
+                    highest_neighbor = highest_neighbor.max(lowest_sun[column - 1]);
+                }
+                if x + 1 < side {
+                    highest_neighbor = highest_neighbor.max(lowest_sun[column + 1]);
+                }
+                let high = low.max(highest_neighbor.saturating_sub(1));
+                for y in low..=high {
+                    seed(y * plane + column);
+                }
+            }
+        }
+        if emitters {
+            for (index, &material) in materials.iter().enumerate() {
+                // Use original emission, never mutable propagated light.
+                if (profile.states[material as usize][0] >> 4) & 15 > 1 {
+                    seed(index);
+                }
+            }
+        }
+    } else {
+        // Independent old full-volume source scan retained for exact tests.
+        for index in 0..count {
+            seed(index);
+        }
     }
     while let Some(index) = queue.pop_front() {
         queued[index] = false;
@@ -283,6 +353,75 @@ mod tests {
                 [1, 0, 0, 0, 0, 0, 0, 0],
             ],
             blocked: vec![0],
+        }
+    }
+    #[test]
+    fn frontier_sources_match_full_scan_across_faces_emitters_and_tall_columns() {
+        let mut random = 0x1234_5678u32;
+        for case in 0..24 {
+            let chunks = 1 + case % 3;
+            let height = [16, 32, 80][case % 3];
+            let side = chunks * 16;
+            let mut p = profile(case & 1 != 0);
+            // Include emission 1 (cannot propagate), partial opacity, and
+            // distinct directional faces with arbitrary loaded occlusion.
+            p.states
+                .extend([[16, 0, 0, 0, 0, 0, 0, 0], [98, 0, 1, 0, 1, 0, 1, 0]]);
+            p.faces = 2;
+            p.blocked = if case & 2 == 0 {
+                vec![0, 0]
+            } else {
+                vec![2, 1]
+            };
+            let mut blocks = vec![0u16; chunks * chunks * height * 256];
+            for (index, m) in blocks.iter_mut().enumerate() {
+                random ^= random << 13;
+                random ^= random >> 17;
+                random ^= random << 5;
+                let chunk = index / (height * 256);
+                let y = index / 256 % height;
+                let x = chunk % chunks * 16 + index % 16;
+                let z = chunk / chunks * 16 + index / 16 % 16;
+                *m = match case / 6 {
+                    0 => 0, // Open sky and emitter-free dark volumes.
+                    1 => {
+                        if y < (x * 7 + z * 13) % height {
+                            1
+                        } else {
+                            0
+                        }
+                    }
+                    2 => {
+                        if random % 31 == 0 {
+                            (random % 6) as u16
+                        } else {
+                            0
+                        }
+                    }
+                    _ => {
+                        if y < height / 2 && random % 7 != 0 {
+                            1
+                        } else {
+                            (random % 6) as u16
+                        }
+                    }
+                };
+                if case >= 6 && x == side / 2 && z == side / 2 && y == height / 2 {
+                    *m = 2;
+                }
+            }
+            let crop = usize::from(chunks == 3);
+            let core = chunks - crop * 2;
+            for format in [OutputFormat::Voxels, OutputFormat::Sections] {
+                let expected =
+                    run_impl::<false>(&p, chunks, height, crop, core, format, |i| blocks[i])
+                        .unwrap();
+                let actual = run(&p, chunks, height, crop, core, format, |i| blocks[i]).unwrap();
+                assert_eq!(
+                    actual.bytes, expected.bytes,
+                    "case={case} chunks={chunks} height={height}"
+                );
+            }
         }
     }
     #[test]

@@ -1,0 +1,575 @@
+{
+  "schema": "retina.cpu-lighting-frontiers",
+  "schema_version": 1,
+  "base": "9de4ba374b114bed84f0a6befc66a0f2382bb6aa",
+  "native_sha256": "dedce0edb8725d78ee99492f6a6517186152c9e7589bf49316e4af261b7e7908",
+  "cases": {
+    "overworld-16": {
+      "medians": {
+        "baseline": {
+          "wall_seconds": 8.529845124809071,
+          "cpu_seconds": 41.313725000000005,
+          "generation_peak_rss_bytes": 1077157888.0
+        },
+        "candidate": {
+          "wall_seconds": 6.380195041187108,
+          "cpu_seconds": 39.195949,
+          "generation_peak_rss_bytes": 1080918016.0
+        }
+      },
+      "comparison": {
+        "assembly_threads": 16,
+        "backend_requested": "cpu",
+        "lighting": "enabled",
+        "median_throughput_change_percent": 33.66834240494325,
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline",
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+        "readiness": "shader-ready",
+        "results": [
+          {
+            "average_scheduled_cores": 4.53546901794036,
+            "backend": "CPU: native",
+            "chunks_per_second": 111.81474821907277,
+            "cpu_ms_per_region": 41535.846999999994,
+            "median_region_ms": 9155.151959042996,
+            "p95_region_ms": 9155.151959042996,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-16/00-baseline",
+            "peak_rss_bytes": 1340981248,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 0,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 5.607767585742402,
+            "backend": "CPU: native",
+            "chunks_per_second": 146.43401620794114,
+            "cpu_ms_per_region": 39214.617999999995,
+            "median_region_ms": 6986.435041762888,
+            "p95_region_ms": 6986.435041762888,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-16/01-candidate",
+            "peak_rss_bytes": 1384873984,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 1,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 6.167488775059415,
+            "backend": "CPU: native",
+            "chunks_per_second": 160.5252100661217,
+            "cpu_ms_per_region": 39342.782999999996,
+            "median_region_ms": 6376.823582686484,
+            "p95_region_ms": 6376.823582686484,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-16/02-candidate",
+            "peak_rss_bytes": 1450983424,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 2,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 4.881488211952028,
+            "backend": "CPU: native",
+            "chunks_per_second": 121.64635993973943,
+            "cpu_ms_per_region": 41091.603,
+            "median_region_ms": 8415.586916264147,
+            "p95_region_ms": 8415.586916264147,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-16/03-baseline",
+            "peak_rss_bytes": 1417543680,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 3,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 4.885777913572029,
+            "backend": "CPU: native",
+            "chunks_per_second": 118.89793055655322,
+            "cpu_ms_per_region": 42078.416,
+            "median_region_ms": 8610.202666837722,
+            "p95_region_ms": 8610.202666837722,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-16/04-baseline",
+            "peak_rss_bytes": 1409335296,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 4,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 6.314053876790571,
+            "backend": "CPU: native",
+            "chunks_per_second": 168.06331458795634,
+            "cpu_ms_per_region": 38471.163,
+            "median_region_ms": 6090.977457817644,
+            "p95_region_ms": 6090.977457817644,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-16/05-candidate",
+            "peak_rss_bytes": 1376862208,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 5,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 6.135186387039106,
+            "backend": "CPU: native",
+            "chunks_per_second": 160.3590361640227,
+            "cpu_ms_per_region": 39177.280000000006,
+            "median_region_ms": 6383.566499687731,
+            "p95_region_ms": 6383.566499687731,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-16/06-candidate",
+            "peak_rss_bytes": 1427963904,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 6,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 4.830972957589777,
+            "backend": "CPU: native",
+            "chunks_per_second": 121.16208698899067,
+            "cpu_ms_per_region": 40828.913,
+            "median_region_ms": 8449.48758278042,
+            "p95_region_ms": 8449.48758278042,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-16/07-baseline",
+            "peak_rss_bytes": 1434550272,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 7,
+            "variant": "baseline"
+          }
+        ],
+        "schema": "retina.native-region-benchmark-ab",
+        "schema_version": 1,
+        "scope": "lit-mca",
+        "summary": {
+          "baseline": {
+            "maximum_chunks_per_second": 121.64635993973943,
+            "median_chunks_per_second": 120.03000877277194,
+            "minimum_chunks_per_second": 111.81474821907277,
+            "trials": 4
+          },
+          "candidate": {
+            "maximum_chunks_per_second": 168.06331458795634,
+            "median_chunks_per_second": 160.4421231150722,
+            "minimum_chunks_per_second": 146.43401620794114,
+            "trials": 4
+          }
+        },
+        "throughput_change_confidence_95": {
+          "high_percent": 43.56353935673412,
+          "low_percent": 21.9978384615088,
+          "method": "independent median bootstrap",
+          "samples": 10000
+        }
+      }
+    },
+    "overworld-4": {
+      "medians": {
+        "baseline": {
+          "wall_seconds": 14.49125368706882,
+          "cpu_seconds": 32.1792815,
+          "generation_peak_rss_bytes": 977321984.0
+        },
+        "candidate": {
+          "wall_seconds": 13.177012604661286,
+          "cpu_seconds": 30.3489605,
+          "generation_peak_rss_bytes": 980606976.0
+        }
+      },
+      "comparison": {
+        "assembly_threads": 4,
+        "backend_requested": "cpu",
+        "lighting": "enabled",
+        "median_throughput_change_percent": 10.008990342905943,
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline",
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+        "readiness": "shader-ready",
+        "results": [
+          {
+            "average_scheduled_cores": 2.150425334998334,
+            "backend": "CPU: native",
+            "chunks_per_second": 70.13593165794698,
+            "cpu_ms_per_region": 31396.682,
+            "median_region_ms": 14597.918458282948,
+            "p95_region_ms": 14597.918458282948,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-4/00-baseline",
+            "peak_rss_bytes": 1210187776,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 0,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 2.4082367518691825,
+            "backend": "CPU: native",
+            "chunks_per_second": 79.16645734870495,
+            "cpu_ms_per_region": 31149.990999999998,
+            "median_region_ms": 12932.809417136014,
+            "p95_region_ms": 12932.809417136014,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-4/01-candidate",
+            "peak_rss_bytes": 1381957632,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 1,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 2.2308753350020005,
+            "backend": "CPU: native",
+            "chunks_per_second": 75.36259139898903,
+            "cpu_ms_per_region": 30312.338,
+            "median_region_ms": 13584.545750170946,
+            "p95_region_ms": 13584.545750170946,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-4/02-candidate",
+            "peak_rss_bytes": 1299218432,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 2,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 2.2540715932357966,
+            "backend": "CPU: native",
+            "chunks_per_second": 72.18868260418695,
+            "cpu_ms_per_region": 31974.116,
+            "median_region_ms": 14182.140375021845,
+            "p95_region_ms": 14182.140375021845,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-4/03-baseline",
+            "peak_rss_bytes": 1362034688,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 3,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 2.1282194085889983,
+            "backend": "CPU: native",
+            "chunks_per_second": 66.47553381814521,
+            "cpu_ms_per_region": 32783.44,
+            "median_region_ms": 15402.020083274692,
+            "p95_region_ms": 15402.020083274692,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-4/04-baseline",
+            "peak_rss_bytes": 1346338816,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 4,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 2.263672874140686,
+            "backend": "CPU: native",
+            "chunks_per_second": 76.28621188937078,
+            "cpu_ms_per_region": 30385.583,
+            "median_region_ms": 13421.215792186558,
+            "p95_region_ms": 13421.215792186558,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-4/05-candidate",
+            "peak_rss_bytes": 1373634560,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 5,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 2.379938678349106,
+            "backend": "CPU: native",
+            "chunks_per_second": 81.78137076284571,
+            "cpu_ms_per_region": 29799.661999999997,
+            "median_region_ms": 12519.211458042264,
+            "p95_region_ms": 12519.211458042264,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-4/06-candidate",
+            "peak_rss_bytes": 1375977472,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 6,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 2.250881225792342,
+            "backend": "CPU: native",
+            "chunks_per_second": 71.17312749578086,
+            "cpu_ms_per_region": 32384.447,
+            "median_region_ms": 14384.588915854692,
+            "p95_region_ms": 14384.588915854692,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-overworld-4/07-baseline",
+            "peak_rss_bytes": 1342111744,
+            "region_file_bytes": 9326592,
+            "sample_regions": 1,
+            "trial": 7,
+            "variant": "baseline"
+          }
+        ],
+        "schema": "retina.native-region-benchmark-ab",
+        "schema_version": 1,
+        "scope": "lit-mca",
+        "summary": {
+          "baseline": {
+            "maximum_chunks_per_second": 72.18868260418695,
+            "median_chunks_per_second": 70.65452957686392,
+            "minimum_chunks_per_second": 66.47553381814521,
+            "trials": 4
+          },
+          "candidate": {
+            "maximum_chunks_per_second": 81.78137076284571,
+            "median_chunks_per_second": 77.72633461903786,
+            "minimum_chunks_per_second": 75.36259139898903,
+            "trials": 4
+          }
+        },
+        "throughput_change_confidence_95": {
+          "high_percent": 18.826249354263492,
+          "low_percent": 5.780474718206596,
+          "method": "independent median bootstrap",
+          "samples": 10000
+        }
+      }
+    },
+    "nether-16": {
+      "medians": {
+        "baseline": {
+          "wall_seconds": 17.72874777088873,
+          "cpu_seconds": 124.832999,
+          "generation_peak_rss_bytes": 1595564032.0
+        },
+        "candidate": {
+          "wall_seconds": 17.77739187492989,
+          "cpu_seconds": 125.508943,
+          "generation_peak_rss_bytes": 1576263680.0
+        }
+      },
+      "comparison": {
+        "assembly_threads": 16,
+        "backend_requested": "cpu",
+        "lighting": "enabled",
+        "median_throughput_change_percent": -0.2648541717443109,
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "percentile_scope": "Per-process region percentiles; small sample counts are descriptive, not production tail estimates",
+        "readiness": "shader-ready",
+        "results": [
+          {
+            "average_scheduled_cores": 7.0375855207121,
+            "backend": "CPU: native",
+            "chunks_per_second": 58.05522041964761,
+            "cpu_ms_per_region": 124131.603,
+            "median_region_ms": 17636.23824995011,
+            "p95_region_ms": 17636.23824995011,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-nether-16/00-baseline",
+            "peak_rss_bytes": 1754710016,
+            "region_file_bytes": 5431296,
+            "sample_regions": 1,
+            "trial": 0,
+            "variant": "baseline"
+          },
+          {
+            "average_scheduled_cores": 6.995155852422956,
+            "backend": "CPU: native",
+            "chunks_per_second": 56.94419844321882,
+            "cpu_ms_per_region": 125790.50700000001,
+            "median_region_ms": 17980.44545762241,
+            "p95_region_ms": 17980.44545762241,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-nether-16/01-candidate",
+            "peak_rss_bytes": 1806598144,
+            "region_file_bytes": 5431296,
+            "sample_regions": 1,
+            "trial": 1,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 7.124432803059179,
+            "backend": "CPU: native",
+            "chunks_per_second": 58.257381481509725,
+            "cpu_ms_per_region": 125227.37899999999,
+            "median_region_ms": 17574.33829223737,
+            "p95_region_ms": 17574.33829223737,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-nether-16/02-candidate",
+            "peak_rss_bytes": 1772109824,
+            "region_file_bytes": 5431296,
+            "sample_regions": 1,
+            "trial": 2,
+            "variant": "candidate"
+          },
+          {
+            "average_scheduled_cores": 7.043201131495504,
+            "backend": "CPU: native",
+            "chunks_per_second": 57.452285954390405,
+            "cpu_ms_per_region": 125534.39499999999,
+            "median_region_ms": 17821.25729182735,
+            "p95_region_ms": 17821.25729182735,
+            "path": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/cycle9-abba-nether-16/03-baseline",
+            "peak_rss_bytes": 1849376768,
+            "region_file_bytes": 5431296,
+            "sample_regions": 1,
+            "trial": 3,
+            "variant": "baseline"
+          }
+        ],
+        "schema": "retina.native-region-benchmark-ab",
+        "schema_version": 1,
+        "scope": "lit-mca",
+        "summary": {
+          "baseline": {
+            "maximum_chunks_per_second": 58.05522041964761,
+            "median_chunks_per_second": 57.75375318701901,
+            "minimum_chunks_per_second": 57.452285954390405,
+            "trials": 2
+          },
+          "candidate": {
+            "maximum_chunks_per_second": 58.257381481509725,
+            "median_chunks_per_second": 57.600789962364274,
+            "minimum_chunks_per_second": 56.94419844321882,
+            "trials": 2
+          }
+        },
+        "throughput_change_confidence_95": {
+          "high_percent": 1.4013289701970466,
+          "low_percent": -1.9137331120230971,
+          "method": "independent median bootstrap",
+          "samples": 10000
+        }
+      }
+    }
+  },
+  "parity": {
+    "diagnostic": {
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 946.8016671016812,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e"
+    },
+    "parity-custom": {
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 43.27654233202338,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "definition_sha256": "6645433bc7e995d91d7440f8cce1dcdb74b415333514a43ec535d8ab9e75aede"
+    },
+    "parity-second-seed": {
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 896.2886659428477,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "definition_sha256": "20225e8f1cff8f960ce5557272fcf5a9738d2c557ad8fed8db3a9e8272ed0eb0"
+    },
+    "parity-end-central": {
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 898.1784591451287,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e"
+    },
+    "parity-end-outer": {
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "preservation_check": {
+        "elapsed_ms": 899.0652086213231,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "backend_selected": "CPU: native",
+      "gpu_pipeline": {
+        "completed": 0,
+        "device_gap_ms": 0.0,
+        "device_span_ms": 0.0,
+        "peak_in_flight": 0,
+        "unavailable_timestamp_pairs": 0
+      },
+      "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e"
+    }
+  },
+  "tests": {
+    "cpu_passed": 74,
+    "cpu_optin_ignored": 5,
+    "lighting_passed": 4,
+    "old_new_complete_volume_comparisons": 48,
+    "actual_metal_integer_light_cases": 6
+  },
+  "evidence_root": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101"
+}
