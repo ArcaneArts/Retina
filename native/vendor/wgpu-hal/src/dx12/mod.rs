@@ -670,6 +670,7 @@ enum MemoryArchitecture {
 
 #[derive(Debug, Clone, Copy)]
 struct PrivateCapabilities {
+    vendor: u32,
     instance_flags: wgt::InstanceFlags,
     workarounds: Workarounds,
     #[allow(unused)]

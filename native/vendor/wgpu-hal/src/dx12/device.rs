@@ -381,7 +381,8 @@ impl super::Device {
                         .unwrap()
                         .map_err(|e| crate::PipelineError::Linkage(stage_bit, format!("{e}")))?;
 
-                    let outlined = crate::auxil::retina_functions::hlsl(&mut source);
+                    let outlined = crate::auxil::retina_functions::hlsl(
+                        &mut source, self.shared.private_caps.vendor);
                     if outlined != 0 { log::info!("Retina retained {outlined} interpreter function boundaries in HLSL"); }
                     (source, entry_point)
                 };
@@ -2235,10 +2236,17 @@ impl crate::Device for super::Device {
             }
         };
 
-        let diagnostic_error = pair.as_ref().err().map(alloc::string::ToString::to_string);
+        let diagnostic_error = pair.as_ref().err().map(|error| {
+            let reason = match unsafe { self.raw.GetDeviceRemovedReason() } {
+                Ok(()) => "S_OK (device is not removed)".to_owned(),
+                Err(reason) => reason.to_string(),
+            };
+            alloc::format!("{error}; GetDeviceRemovedReason: {reason}")
+        });
         super::diagnostics::emit(super::diagnostics::Event::ComputeEnd { error: diagnostic_error.as_deref() });
         let raw: Direct3D12::ID3D12PipelineState = pair.map_err(|err| {
-            crate::PipelineError::Linkage(wgt::ShaderStages::COMPUTE, err.to_string())
+            crate::PipelineError::Linkage(wgt::ShaderStages::COMPUTE,
+                diagnostic_error.unwrap_or_else(|| err.to_string()))
         })?;
 
         if let Some(label) = desc.label {

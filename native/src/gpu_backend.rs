@@ -79,6 +79,28 @@ pub extern "C" fn retina_configure_gpu_backend(code: u32) -> i32 {
 mod tests {
     use super::*;
     #[test]
+    fn dx12_amd_keeps_generated_hlsl_and_other_vendors_retain_calls() {
+        use wgpu::naga::{self, back::hlsl};
+        let wgsl = "@group(0) @binding(0) var<storage,read_write> output:array<f32>;\nfn retina_noinline_program(x:f32,result:ptr<function,f32>){*result=x*(-0.0);}\n@compute @workgroup_size(1) fn main(){var value:f32;retina_noinline_program(1.0,&value);output[0]=value;}";
+        let module = naga::front::wgsl::parse_str(wgsl).unwrap();
+        let info = naga::valid::Validator::new(naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::all()).validate(&module).unwrap();
+        let mut source = String::new();
+        let options = hlsl::Options { fake_missing_bindings: true, ..Default::default() };
+        let pipeline = hlsl::PipelineOptions { entry_point: Some((naga::ShaderStage::Compute, "main".into())) };
+        hlsl::Writer::new(&mut source, &options, &pipeline).write(&module, &info, None).unwrap();
+        assert!(source.contains("void retina_noinline_program("));
+        let original = source.clone();
+        let functions = &wgpu::hal::auxil::retina_functions::hlsl;
+        assert_eq!(functions(&mut source, 0x1002), 0); // actual AMD PCI vendor
+        assert_eq!(source, original);
+        for vendor in [0x10de, 0x8086] { // NVIDIA and Intel keep the existing policy
+            let mut source = original.clone();
+            assert_eq!(functions(&mut source, vendor), 1);
+            assert_eq!(source.replace("[noinline] ", ""), original);
+        }
+    }
+    #[test]
     fn allowed_sets_preserve_every_combination_including_disabled() {
         for mask in 0..8 {
             let set = from_code(0x100 | mask).unwrap();

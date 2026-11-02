@@ -436,6 +436,7 @@ impl super::Adapter {
             naga::back::hlsl::ShaderModel::V5_1
         };
         let private_caps = super::PrivateCapabilities {
+            vendor: desc.VendorId,
             instance_flags,
             workarounds,
             heterogeneous_resource_heaps: options.ResourceHeapTier

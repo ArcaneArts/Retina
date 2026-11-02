@@ -899,6 +899,7 @@ dependencies = [
  "libdeflater",
  "lz4-sys",
  "mimalloc",
+ "naga",
  "pollster",
  "profiling",
  "rayon",
