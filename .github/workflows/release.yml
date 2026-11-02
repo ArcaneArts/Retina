@@ -96,6 +96,7 @@ jobs:
           cargo test --manifest-path native/Cargo.toml --locked --no-default-features --lib --target-dir build/cpu-contract-target gpu_readback::tests
           cargo test --manifest-path native/Cargo.toml --locked --no-default-features --lib --target-dir build/cpu-contract-target specialize::material_dispatch::tests
           cargo test --manifest-path native/Cargo.toml --locked --no-default-features --lib --target-dir build/cpu-contract-target gpu::policy::tests
+          cargo test --manifest-path native/Cargo.toml --locked --no-default-features --lib --target-dir build/cpu-contract-target gpu_backend::tests
           cargo test --manifest-path native/Cargo.toml --locked --no-default-features --bin retina --target-dir build/cpu-contract-target
       - uses: actions/upload-artifact@v7
         with:
@@ -139,6 +140,7 @@ jobs:
         run: ./gradlew universalJar --build-cache --no-daemon --no-watch-fs "-PretinaNativeDirectory=$PWD/build/release-natives"
       - name: Inspect and stage the actual JAR
         run: |
+          python3 scripts/test-release.py
           python3 scripts/test-merge-universal.py
           python3 scripts/stage-release.py '${{ steps.version.outputs.minecraft }}' '${{ steps.version.outputs.version }}'
       - uses: actions/upload-artifact@v7

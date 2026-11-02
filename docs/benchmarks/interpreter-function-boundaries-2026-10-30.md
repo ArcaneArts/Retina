@@ -1,5 +1,9 @@
 # Preserve interpreter function boundaries
 
+Historical measurements: AMD DX12 now uses normal DXC inlining after the RX 9070
+XT capture. Other vendors retain this policy. See
+[Windows GPU compatibility](../WINDOWS_GPU_COMPATIBILITY.md).
+
 The reported Windows run explicitly selected DX12 on an RTX 3060. Its first
 compact `retina_world_dispatch` source was 80,249 bytes with one entry point.
 DXC took 40.918 seconds; NVIDIA's subsequent pipeline creation was still running

@@ -1,5 +1,9 @@
 # Specialized function boundaries and device-loss handling
 
+Historical measurements: AMD DX12 now uses normal DXC inlining after the RX 9070
+XT capture. Other vendors retain this policy. See
+[Windows GPU compatibility](../WINDOWS_GPU_COMPATIBILITY.md).
+
 ## Reported Windows runs
 
 Retina 1.1.441 on DX12 / RTX 3060 reached the world. The compact world pipeline

@@ -52,6 +52,48 @@ class ReleaseTest(unittest.TestCase):
         self.assertEqual(native.build_environment({**fields, 'GITHUB_SHA': 'next'}), fields)
         self.assertEqual(native.build_environment({'VCToolsVersion': '14.44'}), {'VCTOOLSVERSION': '14.44'})
 
+    def test_native_cache_rejects_changed_vendored_backend(self):
+        spec = importlib.util.spec_from_file_location('native_release', Path(__file__).with_name('native-release.py'))
+        native = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(native)
+        target = 'aarch64-apple-darwin'
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            for name in ('native/Cargo.toml', 'native/Cargo.lock', 'native/src/lib.rs',
+                         'native/vendor/wgpu-hal/src/dx12/device.rs', 'scripts/native-release.py'):
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(name)
+            with patch.object(native, 'ROOT', root), \
+                 patch.object(native, '__file__', str(root / 'scripts/native-release.py')), \
+                 patch.object(native, 'output', return_value='test toolchain'):
+                original = native.fingerprint(target)
+                directory, library, manifest = native.paths(target)
+                library.parent.mkdir(parents=True)
+                library.write_bytes(b'compiled native')
+                manifest.parent.mkdir(parents=True)
+                manifest.write_text(json.dumps({**original, 'bytes': library.stat().st_size,
+                                               'sha256': native.digest(library.read_bytes())}))
+                # Packaging-only files do not invalidate reusable natives.
+                (root / 'version.json').write_text('{"major":1,"minor":2}')
+                self.assertEqual(native.fingerprint(target), original)
+                with patch('builtins.print'):
+                    native.verify(target)
+                backend = root / 'native/vendor/wgpu-hal/src/dx12/device.rs'
+                backend.write_text('changed HLSL lowering')
+                self.assertNotEqual(native.fingerprint(target)['key'], original['key'])
+                with self.assertRaisesRegex(ValueError, 'native inputs differ'):
+                    native.verify(target)
+                backend.write_text('native/vendor/wgpu-hal/src/dx12/device.rs')
+                self.assertEqual(native.fingerprint(target), original)
+                added = backend.with_name('new_shader_pass.rs')
+                added.write_text('new compiler input')
+                self.assertNotEqual(native.fingerprint(target)['key'], original['key'])
+                added.unlink()
+                self.assertEqual(native.fingerprint(target), original)
+                backend.unlink()
+                self.assertNotEqual(native.fingerprint(target)['key'], original['key'])
+
     def test_major_minor_and_real_commit_count(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

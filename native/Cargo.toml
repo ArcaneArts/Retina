@@ -73,6 +73,8 @@ wgpu = { version = "=30.0.1", default-features = false, features = ["static-dxc"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
 [dev-dependencies]
+# Exercise the real DX12 source lowering on non-Windows development/CI hosts.
+naga = { version = "=30.0.1", default-features = false, features = ["hlsl-out"] }
 # Exercise the real scoped Vulkan policy on the Metal development host too.
 wgpu-hal = { version = "=30.0.1", default-features = false, features = ["vulkan"] }
 libc = "0.2"

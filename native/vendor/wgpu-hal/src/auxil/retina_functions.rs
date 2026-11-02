@@ -12,7 +12,10 @@ pub fn has_bodies(module: &naga::Module) -> bool {
 
 /// Naga emits these declarations on their own unindented line.
 /// Match the complete shape so call statements / other functions are untouched.
-pub fn hlsl(source: &mut String) -> usize {
+pub fn hlsl(source: &mut String, vendor: u32) -> usize {
+    // The captured RX 9070 XT interpreter removes the device before dispatch
+    // when DXIL retains these calls. Other vendors retain their startup policy.
+    if vendor == crate::auxil::db::amd::VENDOR { return 0; }
     let mut patched = String::with_capacity(source.len());
     let mut count = 0;
     for line in source.split_inclusive('\n') {
@@ -82,10 +85,10 @@ mod tests {
     #[test]
     fn hlsl_only_marks_void_interpreter_definitions() {
         let mut source = String::from("void ordinary()\n{\n    retina_noinline_run_program();\n}\nvoid retina_noinline_run_program()\n{\n}\nfloat retina_noinline_other()\n");
-        assert_eq!(hlsl(&mut source), 1);
+        assert_eq!(hlsl(&mut source, crate::auxil::db::nvidia::VENDOR), 1);
         assert!(source.contains("[noinline] void retina_noinline_run_program()"));
         assert_eq!(source.matches("[noinline]").count(), 1);
-        assert_eq!(hlsl(&mut source), 0);
+        assert_eq!(hlsl(&mut source, crate::auxil::db::nvidia::VENDOR), 0);
     }
     #[test]
     fn msl_only_marks_opted_in_large_definitions() {

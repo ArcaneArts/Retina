@@ -36,7 +36,8 @@ def build_environment(environment):
 
 def fingerprint(target):
     files = [ROOT / 'native/Cargo.toml', ROOT / 'native/Cargo.lock', Path(__file__).resolve()]
-    files += [p for directory in ('native/src', '.cargo') for p in (ROOT / directory).rglob('*') if p.is_file()]
+    files += [p for directory in ('native/src', 'native/vendor', '.cargo')
+              for p in (ROOT / directory).rglob('*') if p.is_file()]
     if (ROOT / 'native/build.rs').exists():
         files.append(ROOT / 'native/build.rs')
     toolchain = {'rustc': output('rustc', '-Vv'), 'cargo': output('cargo', '-V')}
