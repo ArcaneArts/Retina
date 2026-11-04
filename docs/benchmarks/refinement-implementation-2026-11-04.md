@@ -6,13 +6,13 @@ Starting main is `8e37896e219e9ef49eed7fc2509c3c39fa1c0602`. A frozen copy of it
 
 | Area | Disposition |
 | --- | --- |
-| O1 CPU registry execution | Pending profiling and implementation |
+| O1 CPU registry execution | Cycle 4: three prepared arithmetic block prototypes rejected after actual profiling/screens; runtime code discarded |
 | O2 Nether dependency/planning | Pending attribution and implementation |
 | O3 CPU lighting | Cycle 2: row-staging prototype rejected as inconclusive; runtime code discarded. Scratch lifetime and tile size remain separate pending experiments. |
 | O4 Windows Vulkan transport/palettes | Pending real Windows validation; no Windows GPU runner is configured for this repository; defaults unchanged |
 | O5 Bounded overlap | Pending matched concurrency and fairness experiments |
 | O6 Encoding/compression | Pending allocation and end-to-end decode measurements |
-| O7 Definition loading/binding | Cycle 3: validated loader memory/CPU improvement; [PR #416](https://github.com/ArcaneArts/Retina/pull/416) |
+| O7 Definition loading/binding | Cycle 3: merged loader memory/CPU improvement in [PR #416](https://github.com/ArcaneArts/Retina/pull/416), commit `3d7c83b2` |
 | O8 Interval diagnostics | Cycle 1: merged in [PR #414](https://github.com/ArcaneArts/Retina/pull/414), commit `c62bff79` |
 | O9 Java/Bukkit delivery | Pending actual decode/JFR profiling |
 
@@ -97,3 +97,27 @@ Internal attribution used a separate temporary instrumented baseline, followed b
 Eleven complete-region guards cover CPU normal Overworld, Nether, central/outer End, second seed, custom data, expanded storage, far coordinates, Metal Overworld/End and the actual tall pack: **11,264 strict same-backend decompressed NBT comparisons pass**. Each also preserves all 1,024 records after definition close/reopen in the same process. An additional fresh native process opens the saved normal region, generates zero replacements, preserves all 1,024 records, and verifies exact NBT and membership. Input definitions remain authoritative and unchanged.
 
 Decision: retain for the demonstrated tall-input startup CPU and memory reduction, with no deferred preparation and exact profile/generation equivalence. This is not a claim of faster steady-state generation or complete Minecraft startup. There is no JAR build, release or Windows performance claim. The cycle also corrects cycle 2's preservation wording: its standard helper reopens in the same process, rather than starting a fresh one.
+
+## Cycle 4 — prepared CPU arithmetic blocks (rejected)
+
+Branch: `codex/refinement-cpu-kernels`. PR: [#417](https://github.com/ArcaneArts/Retina/pull/417). Based on merged cycle 3. Fresh native baseline SHA-256 `76437e0d177cb691fc91cc922f955af9f3acd0ef2ce3016a164add9530a01a94`; Rust 1.93.0, locked release, default features, thin LTO, codegen units 2. [Machine-readable evidence](refinement-cycle-04-cpu-kernels-2026-11-04.json) includes all per-process results and hashes; source variants, full traces, binaries and MCA remain outside Git.
+
+A fresh six-region CPU workload completed under a separate 20-second OS stack sample with no per-node counters. The evaluator has 28,228 top-of-stack observations versus 12,024 in primitive noise. Parked threads are separate; these are observations, not CPU percentages. Inlined arithmetic is part of the evaluator symbol, so its whole count is not attributed to scheduling overhead.
+
+The prototypes prepared private arithmetic/coordinate/gradient subgraphs while keeping lazy branches, spline references, shared/returned values (including implicit node zero), interpolation and cached nodes as boundaries. They retained original scalar operations. Three concrete variants were built and screened:
+
+| Variant | Baseline median chunks/s | Candidate median chunks/s | Nominal throughput change | CPU-time reduction | Throughput bootstrap interval |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Private arithmetic body with ordinary global frame storage | 121.87 | 123.88 | +1.65% | +1.37% | -8.40% to +13.96% |
+| Pre-bound operands and local scratch | 74.92 | 87.18 | +16.37% | +1.20% | -9.14% to +58.89% |
+| Local scratch with original prepared-step size | 186.53 | 181.16 | -2.88% | -0.10% | -12.85% to +8.68% |
+
+Every screen uses four interleaved processes (ABBA), one warmup and one measured complete lit-MCA region, the same saved input/seed/coordinates, assembly budget 16 and global Rayon 2. Each actual owner gets the same scoped process activity. Shared-host scheduling/load varies materially; individual results and competing-process snapshots are retained. Small-sample p95 is descriptive. No unfavorable trial is silently removed.
+
+The third variant addressed an introduced layout cost: a same-definition layout probe grows prepared steps from 32 to 40 bytes with a 32-bit kernel reference; a 16-bit reference fits in the original size. Excess kernel references fall back to scalar evaluation rather than rejecting generation. Restoring that size still did not establish a speed win.
+
+A separate diagnostic pair reports work-stack visits **1,824,680,912 → 1,407,450,982 (-22.87%)**, with 252,192,696 operations handled in prepared bodies. Computed nodes, constant hits, primitive-noise calls and corner/interpolation reuse counts match exactly. Its timing is excluded: per-node instrumentation is enabled and our next variant was compiling concurrently. Counter reduction alone does not establish lower total CPU cost.
+
+All three production release builds succeeded. Across the screens, diagnostic pair and sampled workload, 15 fresh native processes generated 33 regions including warmups, and **10,240 strict same-backend NBT chunk comparisons passed**. The code did not advance to the broader retention suite: reference unit-test drafts and all source variants are archived, but those drafts were not executed and are not claimed as passing tests. No runtime code is retained, so no Metal/Windows or custom-dimension acceptance is claimed for these prototypes.
+
+Decision: reject the implementation. The measured benefit does not justify the added execution representation and scratch state. This rejects the investigated private arithmetic designs under these workloads; it does not prove every prepared-kernel or exact-certificate approach ineffective. Distinct entry-root scheduling remains an unmeasured lead, and the previously rejected identity-index shortcut remains rejected. Nether dependency/query work and host/GPU delivery remain separate tasks.
