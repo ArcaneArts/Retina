@@ -57,7 +57,8 @@
       "area": "O3",
       "branch": "codex/refinement-cpu-light-rows",
       "status": "rejected_inconclusive",
-      "evidence": "refinement-cycle-02-cpu-light-rows-2026-11-04.json"
+      "evidence": "refinement-cycle-02-cpu-light-rows-2026-11-04.json",
+      "pr": "https://github.com/ArcaneArts/Retina/pull/415"
     }
   ],
   "raw_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",

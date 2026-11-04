@@ -57,7 +57,7 @@ No source optimization, backend-default change, JAR build or release is part of 
 
 ## Cycle 2 — CPU lighting row staging (rejected)
 
-Branch: `codex/refinement-cpu-light-rows`, based on merged cycle 1. The prototype loaded immutable Y-layer views once, validated the maximum material index, copied contiguous X runs or filled uniform rows, and left proven zero rows in fresh zeroed scratch. Propagation, tile size and publication were unchanged. The runtime patch and native binaries are retained outside Git for reproduction; **no runtime change is merged**.
+Branch: `codex/refinement-cpu-light-rows`. PR: [#415](https://github.com/ArcaneArts/Retina/pull/415). Based on merged cycle 1. The prototype loaded immutable Y-layer views once, validated the maximum material index, copied contiguous X runs or filled uniform rows, and left proven zero rows in fresh zeroed scratch. Propagation, tile size and publication were unchanged. The runtime patch and native binaries are retained outside Git for reproduction; **no runtime change is merged**.
 
 | Qualification | Baseline median chunks/s | Candidate median chunks/s | Nominal change | 95% bootstrap interval |
 | --- | ---: | ---: | ---: | --- |

@@ -13199,5 +13199,6 @@
     ]
   },
   "raw_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
-  "future": "Scratch reuse and tile sizes remain separate pending experiments. Rows can be revisited only with new controlled end-to-end evidence."
+  "future": "Scratch reuse and tile sizes remain separate pending experiments. Rows can be revisited only with new controlled end-to-end evidence.",
+  "pr": "https://github.com/ArcaneArts/Retina/pull/415"
 }
