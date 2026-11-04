@@ -12,7 +12,7 @@ Starting main is `8e37896e219e9ef49eed7fc2509c3c39fa1c0602`. A frozen copy of it
 | O4 Windows Vulkan transport/palettes | Pending real Windows validation; no Windows GPU runner is configured for this repository; defaults unchanged |
 | O5 Bounded overlap | Pending matched concurrency and fairness experiments |
 | O6 Encoding/compression | Pending allocation and end-to-end decode measurements |
-| O7 Definition loading/binding | Pending phase attribution and ownership experiments |
+| O7 Definition loading/binding | Cycle 3: validated loader memory/CPU improvement; PR delivery pending |
 | O8 Interval diagnostics | Cycle 1: merged in [PR #414](https://github.com/ArcaneArts/Retina/pull/414), commit `c62bff79` |
 | O9 Java/Bukkit delivery | Pending actual decode/JFR profiling |
 
@@ -66,10 +66,34 @@ Branch: `codex/refinement-cpu-light-rows`. PR: [#415](https://github.com/ArcaneA
 
 The initial primary lighting host time falls 824 → 560ms/region, and median process work falls 24.47 → 23.48 CPU-seconds/region. In the second series lighting falls 1,125 → 812ms, but process work only falls 33.97 → 33.58 CPU-seconds. All individual results remain in [the cycle evidence](refinement-cycle-02-cpu-light-rows-2026-11-04.json), including the second series' severely delayed first baseline batch. Neither interval proves an overall generation-speed gain.
 
-Twenty secondary processes cover Nether, central and outer End, a second seed, custom data, expanded storage, far/negative coordinates, Metal Overworld/End and the actual 768-height datapack. Candidate strict NBT comparisons and fresh-process preservation checks pass. A first tall-world pair looked slower (70.98 → 91.28s); the same-manifest ABBA control reverses the result (baseline 102.43/126.84s versus candidate 63.83/74.79s). This reinforces the host-variability limitation; it is not a claimed 65% tall-world speedup. Metal ABBA is nominally +4.01%, within a broad interval containing no change.
+Twenty secondary processes cover Nether, central and outer End, a second seed, custom data, expanded storage, far/negative coordinates, Metal Overworld/End and the actual 768-height datapack. Candidate strict NBT comparisons and same-process definition-close/reopen preservation checks pass. A first tall-world pair looked slower (70.98 → 91.28s); the same-manifest ABBA control reverses the result (baseline 102.43/126.84s versus candidate 63.83/74.79s). This reinforces the host-variability limitation; it is not a claimed 65% tall-world speedup. Metal ABBA is nominally +4.01%, within a broad interval containing no change.
 
 Five CPU lighting unit tests pass, including 24 scalar/full-scan/reference fixtures in both output formats and invalid-row/material handling. The actual Metal integer-light comparison passes all six cases exactly. No terrain or lighting difference was found.
 
 A final extension applied the same scoped macOS activity token to each actual benchmark owner. It completed one baseline and one candidate process (38.83 versus 30.17 chunks/s), then was stopped during its third process because competing game, compiler, VM and desktop work made it uninformative. Completed results and the incomplete directory are retained. No unrelated process was stopped, no machine setting was changed, and no claim is made that the token normalizes scheduling.
 
 Decision: reject the implementation under the goal's rule for inconclusive end-to-end gains. Reduced lighting-stage time is promising, but does not justify claiming a retained whole-region performance improvement. Scratch reuse and tile sizes remain independent experiments; row staging can be revisited with new, controlled evidence. This cycle publishes only the experiment record.
+
+## Cycle 3 — borrow the saved structural profile (validated)
+
+Branch: `codex/refinement-definition-borrow`, based on `985c0e02` (cycle 2 changes only documentation). The loader keeps its authoritative wire document while converting each supported profile, so cloning the complete NBT subtree before conversion is unnecessary. The prototype builds the owned JSON conversion directly from an immutable borrow; validation, initialization, profile identities, metadata, binding and generation remain eager and unchanged. The consuming converter remains an independent reference and serves existing diagnostic callers.
+
+Fresh processes use the same saved inputs, Rust 1.93.0 release settings and scoped process context in ABBA order, five baseline and five candidate processes for each input. The production C API is measured at separate initialize/open/metadata/copy/host-decode/binding/close boundaries. No GPU or terrain preparation is moved into the first request. OS caches are retained, so this is not a physical cold-disk measurement.
+
+| Definition open | Baseline | Candidate | Reduction |
+| --- | ---: | ---: | ---: |
+| Tall 768-height datapack, process CPU | 1,366.9ms | 1,109.7ms | 18.82% |
+| Tall datapack, elapsed | 1,377.4ms | 1,118.0ms | 18.83% |
+| Tall datapack, process high-water RSS at open | 4.034 GiB | 2.345 GiB | 41.87% / 1.689 GiB |
+| Vanilla, process CPU | 1,145.7ms | 1,091.5ms | 4.73% (small timing difference) |
+| Vanilla, process high-water RSS at open | 410.14 MiB | 397.11 MiB | 3.18% |
+
+The tall-input effect is clear across all five pairs. Vanilla timing is not treated as a robust speed claim. These are definition-open observations, not steady-state generation RSS or Minecraft world-startup timings. Metadata hashes are identical across all 20 processes. Large logs and process snapshots remain outside Git.
+
+Thirty focused Rust tests pass. Standalone tests confirm definition I/O never starts the GPU and all execution-mode bindings preserve the saved file and retire runtime profiles. The complete Java fixture suite passes seven cases including vanilla, custom, flat, legacy, procedural and cropped ranges plus embedded typed NBT fidelity. The first attempt used an older incomplete fixture set: all seven generation cases passed, then the absent embedded codec case failed. That failed log is retained; the successful rerun used an owned copy of the complete fixture collection without weakening the test.
+
+Internal attribution used a separate temporary instrumented baseline, followed by exact restoration of the candidate sources. For the tall file it observes gzip 44ms, NBT parse 524ms, raw NBT clone 292ms, structural conversion 206ms, typed conversion 39ms and semantic validation 3ms. This single process is attribution, not another headline speed trial. Fingerprinting and shared/dimension checks are outside those named spans. Vanilla immutable preparation dominates its much smaller clone cost, so that remains a future profiling lead. CPU VM preparation and GPU compilation were already execution work and have not been moved by this patch.
+
+Eleven complete-region guards cover CPU normal Overworld, Nether, central/outer End, second seed, custom data, expanded storage, far coordinates, Metal Overworld/End and the actual tall pack: **11,264 strict same-backend decompressed NBT comparisons pass**. Each also preserves all 1,024 records after definition close/reopen in the same process. An additional fresh native process opens the saved normal region, generates zero replacements, preserves all 1,024 records, and verifies exact NBT and membership. Input definitions remain authoritative and unchanged.
+
+Decision: retain for the demonstrated tall-input startup CPU and memory reduction, with no deferred preparation and exact profile/generation equivalence. This is not a claim of faster steady-state generation or complete Minecraft startup. There is no JAR build, release or Windows performance claim. The cycle also corrects cycle 2's preservation wording: its standard helper reopens in the same process, rather than starting a fresh one.

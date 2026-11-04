@@ -34,7 +34,7 @@
     "global_rayon_threads": 2,
     "completion": "complete decorated lit zlib MCA",
     "primary": "one warmup, three measured fresh regions (0,0),(1,0),(2,0), five processes per variant, ABBA repeated",
-    "correctness": "Strict same-backend decompressed NBT, no cross-backend equality requirement; comparisons occur after generation measurement",
+    "correctness": "Strict same-backend decompressed NBT, no cross-backend equality requirement; comparisons occur after generation measurement. Secondary preservation uses definition close/reopen in the same process, not a fresh process.",
     "compiler": "rustc1.93.0, release locked lib default features codegen2 thin LTO no RUSTFLAGS",
     "cache": "private retained application GPU pipeline cache; OS/driver disk caches uncontrolled"
   },

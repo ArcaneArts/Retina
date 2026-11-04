@@ -182,7 +182,7 @@ impl Dimension {
             (Some(profile), None) => Some(Arc::new(load_profile(
                 world,
                 dimension,
-                profile.clone(),
+                profile,
                 identity,
             )?)),
             _ => return Err("dimension requires either a profile or an unsupported reason".into()),
@@ -250,10 +250,10 @@ impl Dimension {
 fn load_profile(
     world: &wire::Document,
     dimension: &wire::Dimension,
-    raw: fastnbt::Value,
+    raw: &fastnbt::Value,
     identity: Vec<u8>,
 ) -> Result<WorldProfile, String> {
-    let mut data = value::decode(raw)?;
+    let mut data = value::decode_borrowed(raw)?;
     let object = data
         .as_object_mut()
         .ok_or("profile must be an NBT compound")?;

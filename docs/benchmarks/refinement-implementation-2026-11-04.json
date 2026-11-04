@@ -29,7 +29,11 @@
       "status": "pending"
     },
     "O7": {
-      "status": "pending"
+      "status": "validated_pending_PR",
+      "cycle": 3,
+      "candidate": "borrow structural NBT profile instead of cloning its complete subtree",
+      "qualification": "Five pairs per input; tall open CPU-18.82%, peakRSS-41.87%; complete Java profile/NBT codec parity;11CPU/Metal guards+freshprocess preservation; no moved initialization",
+      "follow_up": "Vanilla immutable profile preparation remains a measured lead, not an implemented optimization."
     },
     "O8": {
       "status": "merged",
@@ -58,7 +62,16 @@
       "branch": "codex/refinement-cpu-light-rows",
       "status": "rejected_inconclusive",
       "evidence": "refinement-cycle-02-cpu-light-rows-2026-11-04.json",
-      "pr": "https://github.com/ArcaneArts/Retina/pull/415"
+      "pr": "https://github.com/ArcaneArts/Retina/pull/415",
+      "delivery_status": "merged",
+      "merge_commit": "985c0e02c949387eb362de0ea4605f91939365eb"
+    },
+    {
+      "cycle": 3,
+      "area": "O7",
+      "branch": "codex/refinement-definition-borrow",
+      "status": "validated_pending_PR",
+      "evidence": "refinement-cycle-03-definition-borrow-2026-11-04.json"
     }
   ],
   "raw_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
