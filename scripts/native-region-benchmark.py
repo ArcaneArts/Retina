@@ -52,6 +52,8 @@ def main():
                         help="Enable detailed startup and region pipeline logs; keep separate from headline timings")
     parser.add_argument("--diagnostics", action="store_true",
                         help="Opt-in workload/wait attribution; keep these runs separate from headline timings")
+    parser.add_argument("--gpu-interval", action="store_true",
+                        help="Opt-in bounded submission timeline; separates warmup/boundary work from the measured batch")
     parser.add_argument("--parallel", type=int, choices=(1,2,4,8), default=1,
                         help="Concurrent callers; CPU worker limits remain separate")
     parser.add_argument("--assembly-threads", type=int, choices=range(1,17), help="Existing shared native assembly pool budget; leaves its default/environment unchanged when omitted")
@@ -177,6 +179,18 @@ def main():
     cpu = actual_backend.startswith("CPU:")
     if args.backend == "cpu" and not cpu:
         raise RuntimeError(f"Requested CPU but actual backend is {actual_backend}")
+    interval_capture = getattr(lib, "retina_gpu_interval_capture", None) if args.gpu_interval else None
+    interval_begin = getattr(lib, "retina_gpu_interval_begin", None) if args.gpu_interval else None
+    interval_end = getattr(lib, "retina_gpu_interval_end", None) if args.gpu_interval else None
+    interval_available = bool(interval_capture and interval_begin and interval_end)
+    if interval_available:
+        interval_capture.argtypes = [c.c_int]
+        interval_begin.argtypes = [c.POINTER(c.c_uint64)]
+        interval_end.argtypes = [c.c_uint64, c.POINTER(c.c_void_p), c.POINTER(c.c_uint64)]
+        lib.retina_free_bytes.argtypes = [c.c_void_p, c.c_uint64]
+        lib.retina_free_bytes.restype = None
+        check(interval_capture(1))
+        atexit.register(interval_capture, 0)
     loading = time.perf_counter()
     with SavedDefinition(lib, args.definition, args.dimension, args.mca_compression, args.program_execution) as definition:
         load_and_bind_ms = (time.perf_counter()-loading)*1000
@@ -243,6 +257,9 @@ def main():
         # Adjacent tiles exercise shared structure halos and cold full-region terrain.
         coords = region_coordinates(args.count, args.origin_x, args.origin_z, args.grid_width,
                                     args.request_order, seed)
+        interval_id = c.c_uint64()
+        if interval_available:
+            check(interval_begin(c.byref(interval_id)))
         batch_start_unix = time.time()
         usage_before = process_usage.snapshot()
         start = time.perf_counter()
@@ -254,6 +271,15 @@ def main():
         user_seconds = usage_after.ru_utime - usage_before.ru_utime
         system_seconds = usage_after.ru_stime - usage_before.ru_stime
         generation_peak_rss_bytes = process_usage.peak_rss_bytes(usage_after)
+        interval_data = {"available": False, "reason": "Native library has no interval capture API"}
+        if interval_available:
+            pointer, length = c.c_void_p(), c.c_uint64()
+            check(interval_end(interval_id.value, c.byref(pointer), c.byref(length)))
+            try:
+                interval_data = json.loads(c.string_at(pointer, length.value))
+            finally:
+                lib.retina_free_bytes(pointer, length)
+                check(interval_capture(0))
         after = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(after)))
         after_performance = performance_snapshot()
         chunks = after.chunks-before.chunks
@@ -332,6 +358,8 @@ def main():
                     stage_ms_chunk={name:(after.nanos[i]-before.nanos[i])/max(chunks,1)/1e6 for i,name in enumerate(STAGES)})
         if after_performance:
             data["performance_diagnostics"] = performance_interval(before_performance, after_performance)
+        if args.gpu_interval:
+            data["gpu_interval"] = interval_data
         if pipeline:
             after_pipeline = PipelineSnapshot(); check(pipeline(c.byref(after_pipeline)))
             data["gpu_pipeline"] = {"peak_in_flight": after_pipeline.peak_in_flight,

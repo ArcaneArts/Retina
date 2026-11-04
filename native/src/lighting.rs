@@ -52,6 +52,7 @@ fn section_palettes_enabled(selected: Option<&str>, backend: &str) -> bool {
 }
 
 pub(crate) struct Gpu {
+    metrics: std::sync::Arc<crate::pipeline::Metrics>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     pipelines: Option<Pipelines>,
@@ -94,6 +95,7 @@ struct Readback {
     timing: Option<Timing>,
 }
 struct Pending {
+    observation: Option<crate::pipeline::interval::Submission>,
     slot: Readback,
     submission: wgpu::SubmissionIndex,
     mapping: crate::gpu::Mapping,
@@ -133,6 +135,11 @@ impl Pending {
                 .get_mapped_range()
                 .map_err(|e| e.to_string())?;
             let ticks = crate::gpu_readback::pod_slice::<u64>(&data)?;
+            if let Some(observation) = &mut self.observation {
+                for (i, stage) in ["light_sky", "light_spread", "light_pack"].into_iter().enumerate() {
+                    observation.pass(stage, ticks[i*2], ticks[i*2+1], queue.get_timestamp_period() as f64);
+                }
+            }
             Some(std::array::from_fn(|i| {
                 (ticks[i * 2 + 1].saturating_sub(ticks[i * 2]) as f64
                     * queue.get_timestamp_period() as f64) as u64
@@ -140,6 +147,7 @@ impl Pending {
         } else {
             None
         };
+        if let Some(observation) = &mut self.observation { observation.finish(); }
         Ok(ResultLight {
             bytes,
             device_nanos,
@@ -167,8 +175,9 @@ impl Gpu {
         self.bind_groups.retain(|id, _| !ids.contains(id));
     }
 
-    pub(crate) fn new(device: wgpu::Device, queue: wgpu::Queue, backend: &str) -> Self {
+    pub(crate) fn new(device: wgpu::Device, queue: wgpu::Queue, backend: &str, metrics: std::sync::Arc<crate::pipeline::Metrics>) -> Self {
         Self {
+            metrics,
             device,
             queue,
             pipelines: None,
@@ -714,6 +723,7 @@ impl Gpu {
             encoder.resolve_query_set(q, 0..6, resolve, 0);
             encoder.copy_buffer_to_buffer(resolve, 0, readback, 0, 48);
         }
+        let observation = self.metrics.interval.submit("lighting", handle);
         let submission = self.queue.submit([encoder.finish()]);
         let mapping = crate::gpu::Mapping::new(&slot.buffer, sizes[2]);
         let timing_map = slot
@@ -721,6 +731,7 @@ impl Gpu {
             .as_ref()
             .map(|t| crate::gpu::Mapping::new(&t.readback, 48));
         Ok(Pending {
+            observation,
             slot,
             submission,
             mapping,

@@ -1,6 +1,7 @@
 //! Device timeline diagnostics. Gaps include readback copies and unmeasured GPU
 //! commands as well as idle time; they must not be presented as pure GPU idle.
 use std::collections::HashMap;
+pub(crate) mod interval;
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicU64, Ordering},
@@ -48,6 +49,7 @@ pub struct Snapshot {
 }
 #[derive(Default)]
 pub(crate) struct Metrics {
+    pub(crate) interval: interval::Recorder,
     #[cfg(test)]
     pub(crate) gpu_buffer_probe: crate::gpu_buffer_probe::Probe,
     peak: AtomicU64,
