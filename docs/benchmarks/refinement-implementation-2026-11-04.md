@@ -8,7 +8,7 @@ Starting main is `8e37896e219e9ef49eed7fc2509c3c39fa1c0602`. A frozen copy of it
 | --- | --- |
 | O1 CPU registry execution | Cycle 4: three prepared arithmetic block prototypes rejected after actual profiling/screens; runtime code discarded |
 | O2 Nether dependency/planning | Pending attribution and implementation |
-| O3 CPU lighting | Cycle 2: row-staging prototype rejected as inconclusive; runtime code discarded. Scratch lifetime and tile size remain separate pending experiments. |
+| O3 CPU lighting | Cycles 2/6: row staging and region-lifetime scratch prototypes rejected as inconclusive; runtime code discarded. Tile sizes remain a separate pending experiment. |
 | O4 Windows Vulkan transport/palettes | Cycle 5 prepares a portable Windows matrix bundle; real Windows qualification remains pending, defaults unchanged |
 | O5 Bounded overlap | Pending matched concurrency and fairness experiments |
 | O6 Encoding/compression | Pending allocation and end-to-end decode measurements |
@@ -127,3 +127,9 @@ Decision: reject the implementation. The measured benefit does not justify the a
 PR: [#418](https://github.com/ArcaneArts/Retina/pull/418). Branch: `codex/refinement-windows-transport-qa`.
 
 The [cycle report](refinement-cycle-05-windows-transport-2026-11-04.md) describes the offline factorial transport controller, portable CPython/native packaging, exact same-backend output checks and private cache policy. The stable Windows ZIP is a test artifact only. Local CPU/Metal validation verifies runner behavior; real Windows Vulkan/DX12 results remain pending. No transport default or generation change is part of this cycle.
+
+## Cycle 6 — CPU lighting scratch reuse (rejected)
+
+PR: [#419](https://github.com/ArcaneArts/Retina/pull/419). Branch: `codex/refinement-cpu-light-scratch`.
+
+The [cycle report](refinement-cycle-06-cpu-light-scratch-2026-11-04.md) records a tested region-owned scratch prototype, four fresh production-native ABBA processes, 6,144 exact NBT comparisons and a separate 40-sample component experiment. Scratch capacity growths disappear in the synthetic reused case, but its whole-helper timing changes only about 0.6%; complete-region results are inconclusive under substantial host-load changes. All runtime and temporary benchmark code is discarded. This cycle publishes evidence only; tile sizes and the other pending areas remain active work.
