@@ -1,6 +1,6 @@
 # Cycle 7 — CPU lighting tile sizes
 
-Based on main `4a89afe45f409ad1ecd2bf7ae1d907a4c4c57d4d`. Two variants change only the CPU lighting core width from 5 to 6 or 10. Both still divide the 30x30 interior, use one chunk of halo, keep the existing propagation and seeding algorithms and leave the outer-ring seam path unchanged. No row-staging, scratch-reuse, scheduling or worker-budget changes are combined with this experiment.
+PR: [#420](https://github.com/ArcaneArts/Retina/pull/420). Branch: `codex/refinement-cpu-light-tiles`. Based on main `4a89afe45f409ad1ecd2bf7ae1d907a4c4c57d4d`. Two variants change only the CPU lighting core width from 5 to 6 or 10. Both still divide the 30x30 interior, use one chunk of halo, keep the existing propagation and seeding algorithms and leave the outer-ring seam path unchanged. No row-staging, scratch-reuse, scheduling or worker-budget changes are combined with this experiment.
 
 Larger tiles reduce overlapping halo volume when every tile is nonconstant: 1,764 staged chunk-equivalents at core 5, 1,600 at core 6 and 1,296 at core 10. These are theoretical all-nonconstant counts, not observed tile inventories. Larger volumes also increase scratch, can change constant-tile skips and change encoding callback batch sizes.
 

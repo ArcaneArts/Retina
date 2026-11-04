@@ -6,7 +6,7 @@
   "date": "2026-11-04",
   "base": "4a89afe45f409ad1ecd2bf7ae1d907a4c4c57d4d",
   "branch": "codex/refinement-cpu-light-tiles",
-  "pr": null,
+  "pr": "https://github.com/ArcaneArts/Retina/pull/420",
   "decision": "Retain current core5; discard core6 and core10 variants",
   "baseline": {
     "file": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle06-baseline-50c375c1.dylib",

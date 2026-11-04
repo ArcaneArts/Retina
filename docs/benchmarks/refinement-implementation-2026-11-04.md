@@ -136,4 +136,6 @@ The [cycle report](refinement-cycle-06-cpu-light-scratch-2026-11-04.md) records 
 
 ## Cycle 7 — CPU lighting tile widths (rejected)
 
+PR: [#420](https://github.com/ArcaneArts/Retina/pull/420). Branch: `codex/refinement-cpu-light-tiles`.
+
 The [cycle report](refinement-cycle-07-cpu-light-tiles-2026-11-04.md) evaluates core widths 6 and 10 independently of row/scratch changes. Eight actual native processes generate 24 regions including warmups; 12,288 strict NBT comparisons pass. Core 6 is inconclusive, while core 10 is slower and uses more memory in its screen. Both runtime edits are discarded. Current core 5 remains, with no JAR/release changes. The next mandatory area is Nether dependency/query attribution.
