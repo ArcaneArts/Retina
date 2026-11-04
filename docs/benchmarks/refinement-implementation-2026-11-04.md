@@ -8,12 +8,12 @@ Starting main is `8e37896e219e9ef49eed7fc2509c3c39fa1c0602`. A frozen copy of it
 | --- | --- |
 | O1 CPU registry execution | Pending profiling and implementation |
 | O2 Nether dependency/planning | Pending attribution and implementation |
-| O3 CPU lighting | Next bounded implementation experiments: bulk row staging, scratch lifetime and tile size separately |
+| O3 CPU lighting | Cycle 2: row-staging prototype rejected as inconclusive; runtime code discarded. Scratch lifetime and tile size remain separate pending experiments. |
 | O4 Windows Vulkan transport/palettes | Pending real Windows validation; no Windows GPU runner is configured for this repository; defaults unchanged |
 | O5 Bounded overlap | Pending matched concurrency and fairness experiments |
 | O6 Encoding/compression | Pending allocation and end-to-end decode measurements |
 | O7 Definition loading/binding | Pending phase attribution and ownership experiments |
-| O8 Interval diagnostics | Cycle 1: validated in [PR #414](https://github.com/ArcaneArts/Retina/pull/414); merge state is authoritative on GitHub |
+| O8 Interval diagnostics | Cycle 1: merged in [PR #414](https://github.com/ArcaneArts/Retina/pull/414), commit `c62bff79` |
 | O9 Java/Bukkit delivery | Pending actual decode/JFR profiling |
 
 ## Cycle 1 — opt-in submission windows
@@ -54,3 +54,22 @@ Validation passed: six Rust interval unit tests; real CPU, Metal Overworld and M
 A real three-region window illustrates the distinction: legacy deltas report roughly 2.05s of summed spans and 1.19s of gaps during an approximately 0.85s host batch, while contained stage ranges union to approximately 0.36s. The new data also includes lighting submissions absent from the legacy terrain-job count. None of these ranges is labeled an idle percentage.
 
 No source optimization, backend-default change, JAR build or release is part of this cycle. The pre-review measurements without `final-` in their names are exploratory and excluded after correcting abandoned-versus-completed attribution. The full nine-area goal remains active.
+
+## Cycle 2 — CPU lighting row staging (rejected)
+
+Branch: `codex/refinement-cpu-light-rows`, based on merged cycle 1. The prototype loaded immutable Y-layer views once, validated the maximum material index, copied contiguous X runs or filled uniform rows, and left proven zero rows in fresh zeroed scratch. Propagation, tile size and publication were unchanged. The runtime patch and native binaries are retained outside Git for reproduction; **no runtime change is merged**.
+
+| Qualification | Baseline median chunks/s | Candidate median chunks/s | Nominal change | 95% bootstrap interval |
+| --- | ---: | ---: | ---: | --- |
+| Initial primary, five processes each | 260.64 | 287.83 | +10.43% | -0.59% to +17.84% |
+| Same-manifest rebuild, five processes each | 148.74 | 145.06 | -2.47% | -46.11% to +853.74% |
+
+The initial primary lighting host time falls 824 → 560ms/region, and median process work falls 24.47 → 23.48 CPU-seconds/region. In the second series lighting falls 1,125 → 812ms, but process work only falls 33.97 → 33.58 CPU-seconds. All individual results remain in [the cycle evidence](refinement-cycle-02-cpu-light-rows-2026-11-04.json), including the second series' severely delayed first baseline batch. Neither interval proves an overall generation-speed gain.
+
+Twenty secondary processes cover Nether, central and outer End, a second seed, custom data, expanded storage, far/negative coordinates, Metal Overworld/End and the actual 768-height datapack. Candidate strict NBT comparisons and fresh-process preservation checks pass. A first tall-world pair looked slower (70.98 → 91.28s); the same-manifest ABBA control reverses the result (baseline 102.43/126.84s versus candidate 63.83/74.79s). This reinforces the host-variability limitation; it is not a claimed 65% tall-world speedup. Metal ABBA is nominally +4.01%, within a broad interval containing no change.
+
+Five CPU lighting unit tests pass, including 24 scalar/full-scan/reference fixtures in both output formats and invalid-row/material handling. The actual Metal integer-light comparison passes all six cases exactly. No terrain or lighting difference was found.
+
+A final extension applied the same scoped macOS activity token to each actual benchmark owner. It completed one baseline and one candidate process (38.83 versus 30.17 chunks/s), then was stopped during its third process because competing game, compiler, VM and desktop work made it uninformative. Completed results and the incomplete directory are retained. No unrelated process was stopped, no machine setting was changed, and no claim is made that the token normalizes scheduling.
+
+Decision: reject the implementation under the goal's rule for inconclusive end-to-end gains. Reduced lighting-stage time is promising, but does not justify claiming a retained whole-region performance improvement. Scratch reuse and tile sizes remain independent experiments; row staging can be revisited with new, controlled evidence. This cycle publishes only the experiment record.
