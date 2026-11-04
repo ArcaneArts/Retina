@@ -12,7 +12,7 @@ Starting main is `8e37896e219e9ef49eed7fc2509c3c39fa1c0602`. A frozen copy of it
 | O4 Windows Vulkan transport/palettes | Pending real Windows validation; no Windows GPU runner is configured for this repository; defaults unchanged |
 | O5 Bounded overlap | Pending matched concurrency and fairness experiments |
 | O6 Encoding/compression | Pending allocation and end-to-end decode measurements |
-| O7 Definition loading/binding | Cycle 3: validated loader memory/CPU improvement; PR delivery pending |
+| O7 Definition loading/binding | Cycle 3: validated loader memory/CPU improvement; [PR #416](https://github.com/ArcaneArts/Retina/pull/416) |
 | O8 Interval diagnostics | Cycle 1: merged in [PR #414](https://github.com/ArcaneArts/Retina/pull/414), commit `c62bff79` |
 | O9 Java/Bukkit delivery | Pending actual decode/JFR profiling |
 
@@ -76,7 +76,7 @@ Decision: reject the implementation under the goal's rule for inconclusive end-t
 
 ## Cycle 3 — borrow the saved structural profile (validated)
 
-Branch: `codex/refinement-definition-borrow`, based on `985c0e02` (cycle 2 changes only documentation). The loader keeps its authoritative wire document while converting each supported profile, so cloning the complete NBT subtree before conversion is unnecessary. The prototype builds the owned JSON conversion directly from an immutable borrow; validation, initialization, profile identities, metadata, binding and generation remain eager and unchanged. The consuming converter remains an independent reference and serves existing diagnostic callers.
+Branch: `codex/refinement-definition-borrow`. PR: [#416](https://github.com/ArcaneArts/Retina/pull/416). Based on `985c0e02` (cycle 2 changes only documentation). The loader keeps its authoritative wire document while converting each supported profile, so cloning the complete NBT subtree before conversion is unnecessary. The prototype builds the owned JSON conversion directly from an immutable borrow; validation, initialization, profile identities, metadata, binding and generation remain eager and unchanged. The consuming converter remains an independent reference and serves existing diagnostic callers.
 
 Fresh processes use the same saved inputs, Rust 1.93.0 release settings and scoped process context in ABBA order, five baseline and five candidate processes for each input. The production C API is measured at separate initialize/open/metadata/copy/host-decode/binding/close boundaries. No GPU or terrain preparation is moved into the first request. OS caches are retained, so this is not a physical cold-disk measurement.
 

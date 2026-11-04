@@ -2,7 +2,7 @@
   "schema_version": 1,
   "cycle": 3,
   "area": "O7",
-  "status": "validated_pending_PR",
+  "status": "validated_pending_merge",
   "base": "985c0e02c949387eb362de0ea4605f91939365eb",
   "baseline_native_source": "c62bff79 native tree identical to985c0e02; fresh baseline processes measured this cycle",
   "builds": {
@@ -1787,7 +1787,7 @@
     "historical_incomplete_fixture_attempt": "all7 generation cases passed but missing template_nbt codec data caused unwrap; retained failed log, no test weakened"
   },
   "remaining": [
-    "final review,PR,automerge"
+    "automerge observation and cleanup"
   ],
   "decision": "Retain for demonstrated18.82% lower open CPU work and41.87% lower definition-open peakRSS on actual tall datapack, with exact profile/generation equivalence and no deferred work. Vanilla timing is small/inconclusive; no generation-throughput or Windows claim.",
   "internal_phase_attribution": {
@@ -7395,5 +7395,6 @@
   "source_proof": {
     "candidate_patch_sha256": "49c2820db50f180ddbfe081983213d6adff564fddbed586cdd00df96a8f17db5",
     "expected_patch_sha256": "49c2820db50f180ddbfe081983213d6adff564fddbed586cdd00df96a8f17db5"
-  }
+  },
+  "pr": "https://github.com/ArcaneArts/Retina/pull/416"
 }
