@@ -35,6 +35,8 @@ def main() -> None:
     parser.add_argument("--timeout", type=float, default=900, help="Actual process timeout per trial, seconds")
     parser.add_argument("--baseline-revision")
     parser.add_argument("--candidate-revision")
+    parser.add_argument("--baseline-gpu-interval", action="store_true")
+    parser.add_argument("--candidate-gpu-interval", action="store_true")
     parser.add_argument("--definition", type=Path, required=True)
     parser.add_argument("--dimension", required=True)
     parser.add_argument("--out", type=Path, required=True)
@@ -69,6 +71,8 @@ def main() -> None:
         if args.backend: command += ["--backend", args.backend]
         if args.assembly_threads: command += ["--assembly-threads", str(args.assembly_threads)]
         if args.preservation_check: command += ["--preservation-check"]
+        if (args.baseline_gpu_interval if variant == "baseline" else args.candidate_gpu_interval):
+            command += ["--gpu-interval"]
         revision = args.baseline_revision if variant == "baseline" else args.candidate_revision
         if revision:
             command.extend(["--library-revision", revision])

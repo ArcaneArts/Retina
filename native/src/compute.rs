@@ -44,9 +44,10 @@ impl GpuResources {
         }
         let (sender, receiver) = mpsc::sync_channel::<GpuCommand>(256);
         let (ready_sender, ready_receiver) = mpsc::sync_channel(1);
+        let worker_metrics = metrics.clone();
         std::thread::Builder::new()
             .name("retina-gpu".into())
-            .spawn(move || gpu_worker::run(receiver, ready_sender, metrics, depth))
+            .spawn(move || gpu_worker::run(receiver, ready_sender, worker_metrics, depth))
             .map_err(|error| error.to_string())?;
         let (backend, ores, counts) = {
             let _wait = crate::startup::Stage::new("waiting for GPU worker readiness");
@@ -62,7 +63,7 @@ impl GpuResources {
         crate::startup::info(format_args!("GPU worker ready: {backend}"));
         let (device, queue) = ores.shared_device();
         let vines = decoration::vine_gpu::Gpu::new(device.clone(), queue.clone(), &backend);
-        let light = lighting::Gpu::new(device, queue, &backend);
+        let light = lighting::Gpu::new(device, queue, &backend, metrics);
         Ok(Some(Self {
             sender,
             backend,

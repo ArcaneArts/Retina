@@ -1619,6 +1619,37 @@ pub unsafe extern "C" fn retina_gpu_pipeline_snapshot(output: *mut pipeline::Sna
         Ok(())
     })
 }
+/// Opt-in bounded submission capture. Enable before warmup; does not wait for GPU work.
+#[unsafe(no_mangle)]
+pub extern "C" fn retina_gpu_interval_capture(enabled: i32) -> i32 {
+    boundary(|| {
+        shared_engine()?.pipeline.interval.configure(enabled != 0);
+        Ok(())
+    })
+}
+/// # Safety
+/// output is writable. Returns a host sequence window identity, not a GPU timestamp.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_gpu_interval_begin(output: *mut u64) -> i32 {
+    boundary(|| {
+        if output.is_null() { return Err("null GPU interval identity".into()); }
+        unsafe { *output = shared_engine()?.pipeline.interval.begin()?; }
+        Ok(())
+    })
+}
+/// # Safety
+/// output and length are writable. Free returned JSON using retina_free_bytes.
+/// Closes the observation window without waiting for pending GPU submissions.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_gpu_interval_end(id: u64, output: *mut *mut u8, length: *mut u64) -> i32 {
+    boundary(|| {
+        if output.is_null() || length.is_null() { return Err("null GPU interval buffer".into()); }
+        let value = shared_engine()?.pipeline.interval.end(id)?;
+        let bytes = serde_json::to_vec(&value).map_err(|e|e.to_string())?.into_boxed_slice();
+        unsafe { *length = bytes.len() as u64; *output = Box::into_raw(bytes) as *mut u8; }
+        Ok(())
+    })
+}
 /// # Safety
 /// output points to a writable 64-byte version-1 program diagnostic snapshot.
 #[unsafe(no_mangle)]

@@ -1814,6 +1814,7 @@ impl Gpu {
         self.health.check()?;
         self.health.submission(format!("terrain backend={} profile={world_profile} requests={} tile_side={} columns={} y={}..{} specialized={} interpolation_items={interpolation_dispatch} interpolation_depth={interpolation_depth} density_grid={}x{} surface_items={surface_dispatch} lake_cells={lake_dispatch} cave_side={cave_side}",
             self.backend, requests.len(), requests[0].tile_side, count * if sparse { 1 } else { COLUMNS }, requests[0].min_y, requests[0].max_y, specialized.is_some(), density_dispatch.0, density_dispatch.1));
+        let observation = self.pipeline.interval.submit("terrain", world_profile);
         let submission = self.queue.submit([encoder.finish()]);
         // Procedural worlds share shader/buffer slot zero but retain distinct diagnostics.
         self.pipeline.transfer(
@@ -1853,6 +1854,7 @@ impl Gpu {
         Ok(PendingSample {
             execution,
             stage: PendingStage::Terrain(TerrainReadback {
+                observation,
                 slot,
                 submission,
                 columns_map,
@@ -2010,6 +2012,7 @@ impl Gpu {
         timings.add(timings::ENCODE, encode);
         trace.nanos[timings::ENCODE] += encode;
         self.health.submission(format!("material emission backend={} profile={} columns={} bytes={size}",self.backend, request.profile, (request.padding * 16).pow(2)));
+        let observation = self.pipeline.interval.submit("materials", request.profile);
         let submission = self.queue.submit([encoder.finish()]);
         let mapping = Mapping::new(out, size);
         let query = timestamps.as_ref().map(|t| Mapping::new(&t.readback, 16));
@@ -2019,6 +2022,7 @@ impl Gpu {
             size + if timestamps.is_some() { 16 } else { 0 },
         );
         MaterialReadback {
+            observation,
             slot,
             submission,
             mapping,
@@ -2064,6 +2068,9 @@ impl Gpu {
                 .get_mapped_range()
                 .map_err(|e| e.to_string())?;
             let values = crate::gpu_readback::pod_slice::<u64>(&view)?;
+            if let Some(observation) = &mut pending.observation {
+                observation.pass("materials", values[0], values[1], self.queue.get_timestamp_period() as f64);
+            }
             if values[0] != 0 && values[1] >= values[0] {
                 let nanos = ((values[1] - values[0]) as f64
                     * self.queue.get_timestamp_period() as f64) as u64;
@@ -2079,6 +2086,7 @@ impl Gpu {
                 self.pipeline.unavailable();
             }
         }
+        if let Some(observation) = &mut pending.observation { observation.finish(); }
         drop(pending.mapping);
         drop(pending.query);
         if self.retained_pool.len() < 2 {
@@ -2306,6 +2314,9 @@ impl Gpu {
             for (i, stage) in pending.measured.iter().enumerate() {
                 let start = values[i * 2];
                 let end = values[i * 2 + 1];
+                if let Some(observation) = &mut pending.observation {
+                    observation.pass(timings::NAMES[*stage], start, end, period);
+                }
                 // Some Metal samples are unavailable or stale. Never treat a
                 // zero/old endpoint as an enormous device idle interval.
                 if start == 0 || end < start {
@@ -2333,6 +2344,7 @@ impl Gpu {
                 );
             }
         }
+        if let Some(observation) = &mut pending.observation { observation.finish(); }
         drop(pending.columns_map);
         drop(pending.mask_map);
         drop(pending.query_map);
@@ -2417,6 +2429,7 @@ enum PendingStage {
     Materials(MaterialReadback),
 }
 struct TerrainReadback {
+    observation: Option<crate::pipeline::interval::Submission>,
     slot: ReadbackSlot,
     submission: wgpu::SubmissionIndex,
     columns_map: Mapping,
@@ -2439,6 +2452,7 @@ struct MaterialSlot {
     timestamps: Option<Timestamps>,
 }
 struct MaterialReadback {
+    observation: Option<crate::pipeline::interval::Submission>,
     slot: MaterialSlot,
     submission: wgpu::SubmissionIndex,
     mapping: Mapping,
