@@ -338,7 +338,7 @@ def main():
                         "involuntary_context_switches": process_usage.difference(usage_after, usage_before, "ru_nivcsw"),
                         "minor_faults": process_usage.difference(usage_after, usage_before, "ru_minflt"),
                         "major_faults": process_usage.difference(usage_after, usage_before, "ru_majflt"),
-                        "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+                        "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
                         "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
                     },
                     p95_region_ms=percentile(durations, 95), maximum_region_ms=max(durations),
@@ -351,7 +351,7 @@ def main():
                     memory_peak_scope={
                         "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
                         "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field",
-                        "note": "High-water marks, not current RSS or isolated phase allocations; neither field proves sustained memory stability",
+                        "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
                     },
                     gpu_timestamps=bool(after.flags & 1),
                     timing_version=after.version, columns_include_lakes=after.version < 7,
