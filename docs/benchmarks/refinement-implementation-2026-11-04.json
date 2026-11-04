@@ -8,7 +8,8 @@
       "status": "investigated_rejected",
       "cycle": 4,
       "approach": "Three prepared private arithmetic block variants",
-      "disposition": "No demonstrated whole-region win; all runtime code discarded; alternatives remain future opportunities"
+      "disposition": "No demonstrated whole-region win; all runtime code discarded; alternatives remain future opportunities",
+      "pr": "https://github.com/ArcaneArts/Retina/pull/417"
     },
     "O2": {
       "status": "pending"
@@ -85,7 +86,8 @@
       "area": "O1",
       "branch": "codex/refinement-cpu-kernels",
       "status": "rejected_inconclusive",
-      "evidence": "refinement-cycle-04-cpu-kernels-2026-11-04.json"
+      "evidence": "refinement-cycle-04-cpu-kernels-2026-11-04.json",
+      "pr": "https://github.com/ArcaneArts/Retina/pull/417"
     }
   ],
   "raw_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",

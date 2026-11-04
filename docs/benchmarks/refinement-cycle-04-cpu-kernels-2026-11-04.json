@@ -2673,5 +2673,6 @@
     "A distinct-root entry schedule is still unmeasured; observed ready hits are high, but implicit nodezero and six returned roots must remain intact",
     "Target richer prepared kernels or exact certificates only after new workload-specific evidence; do not repeat the rejected identity-index shortcut",
     "Nether dependency/query batching and GPU-host encoding/lighting transport remain independent areas to evaluate"
-  ]
+  ],
+  "pr": "https://github.com/ArcaneArts/Retina/pull/417"
 }

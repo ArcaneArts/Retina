@@ -100,7 +100,7 @@ Decision: retain for the demonstrated tall-input startup CPU and memory reductio
 
 ## Cycle 4 — prepared CPU arithmetic blocks (rejected)
 
-Branch: `codex/refinement-cpu-kernels`, based on merged cycle 3. Fresh native baseline SHA-256 `76437e0d177cb691fc91cc922f955af9f3acd0ef2ce3016a164add9530a01a94`; Rust 1.93.0, locked release, default features, thin LTO, codegen units 2. [Machine-readable evidence](refinement-cycle-04-cpu-kernels-2026-11-04.json) includes all per-process results and hashes; source variants, full traces, binaries and MCA remain outside Git.
+Branch: `codex/refinement-cpu-kernels`. PR: [#417](https://github.com/ArcaneArts/Retina/pull/417). Based on merged cycle 3. Fresh native baseline SHA-256 `76437e0d177cb691fc91cc922f955af9f3acd0ef2ce3016a164add9530a01a94`; Rust 1.93.0, locked release, default features, thin LTO, codegen units 2. [Machine-readable evidence](refinement-cycle-04-cpu-kernels-2026-11-04.json) includes all per-process results and hashes; source variants, full traces, binaries and MCA remain outside Git.
 
 A fresh six-region CPU workload completed under a separate 20-second OS stack sample with no per-node counters. The evaluator has 28,228 top-of-stack observations versus 12,024 in primitive noise. Parked threads are separate; these are observations, not CPU percentages. Inlined arithmetic is part of the evaluator symbol, so its whole count is not attributed to scheduling overhead.
 
