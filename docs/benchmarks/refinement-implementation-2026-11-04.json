@@ -11,7 +11,12 @@
       "status": "pending"
     },
     "O3": {
-      "status": "pending"
+      "status": "in_progress",
+      "experiments": [
+        "bulk row staging: rejected, whole-region benefit inconclusive despite lower lighting-stage time; runtime patch discarded",
+        "scratch reuse: pending separate experiment",
+        "tile size: pending separate experiment"
+      ]
     },
     "O4": {
       "status": "pending_hardware_validation",
@@ -27,10 +32,11 @@
       "status": "pending"
     },
     "O8": {
-      "status": "validated_implementation",
+      "status": "merged",
       "cycle": 1,
       "pr": "https://github.com/ArcaneArts/Retina/pull/414",
-      "merge_state_source": "GitHub PR"
+      "merge_state_source": "GitHub PR",
+      "merge_commit": "c62bff79bd4a15608d80df5804b7c5615167087f"
     },
     "O9": {
       "status": "pending"
@@ -42,8 +48,17 @@
       "area": "O8",
       "branch": "codex/refinement-gpu-intervals",
       "pr": "https://github.com/ArcaneArts/Retina/pull/414",
-      "status": "validated_implementation",
-      "evidence": "refinement-cycle-01-intervals-2026-11-04.json"
+      "status": "merged",
+      "evidence": "refinement-cycle-01-intervals-2026-11-04.json",
+      "merge_commit": "c62bff79bd4a15608d80df5804b7c5615167087f"
+    },
+    {
+      "cycle": 2,
+      "area": "O3",
+      "branch": "codex/refinement-cpu-light-rows",
+      "status": "rejected_inconclusive",
+      "evidence": "refinement-cycle-02-cpu-light-rows-2026-11-04.json",
+      "pr": "https://github.com/ArcaneArts/Retina/pull/415"
     }
   ],
   "raw_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
