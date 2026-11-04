@@ -130,4 +130,6 @@ The [cycle report](refinement-cycle-05-windows-transport-2026-11-04.md) describe
 
 ## Cycle 6 — CPU lighting scratch reuse (rejected)
 
+PR: [#419](https://github.com/ArcaneArts/Retina/pull/419). Branch: `codex/refinement-cpu-light-scratch`.
+
 The [cycle report](refinement-cycle-06-cpu-light-scratch-2026-11-04.md) records a tested region-owned scratch prototype, four fresh production-native ABBA processes, 6,144 exact NBT comparisons and a separate 40-sample component experiment. Scratch capacity growths disappear in the synthetic reused case, but its whole-helper timing changes only about 0.6%; complete-region results are inconclusive under substantial host-load changes. All runtime and temporary benchmark code is discarded. This cycle publishes evidence only; tile sizes and the other pending areas remain active work.

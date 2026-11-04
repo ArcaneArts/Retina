@@ -1,6 +1,6 @@
 # Cycle 6 — CPU lighting scratch reuse experiment
 
-Based on main `50c375c1f746c5a504cfdbd5bc873789dac94070`. This evaluates bounded scratch reuse independently of row staging and tile sizes. The previous row prototype remains rejected; core size remains 5 and propagation/source ordering remain unchanged.
+PR: [#419](https://github.com/ArcaneArts/Retina/pull/419). Branch: `codex/refinement-cpu-light-scratch`. Based on main `50c375c1f746c5a504cfdbd5bc873789dac94070`. This evaluates bounded scratch reuse independently of row staging and tile sizes. The previous row prototype remains rejected; core size remains 5 and propagation/source ordering remain unchanged.
 
 The prototype gives one CPU region call its own material, light, sunlight-frontier, queued-bit and queue buffers, reused across nonconstant tiles and dropped with the call. It retains no world/global/thread-local cache, changes no worker budgets, and leaves each output tile independently owned. Material padding slabs are reset; every interior material and light cell is overwritten; frontier and queue state are reset. Error recovery and changing volume/profile shapes are exercised against fresh output. Output nibble packing still starts from zeroed bytes.
 
