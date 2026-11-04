@@ -13,12 +13,12 @@ Starting main is `8e37896e219e9ef49eed7fc2509c3c39fa1c0602`. A frozen copy of it
 | O5 Bounded overlap | Pending matched concurrency and fairness experiments |
 | O6 Encoding/compression | Pending allocation and end-to-end decode measurements |
 | O7 Definition loading/binding | Pending phase attribution and ownership experiments |
-| O8 Interval diagnostics | Cycle 1: validated; awaiting PR merge |
+| O8 Interval diagnostics | Cycle 1: validated in [PR #414](https://github.com/ArcaneArts/Retina/pull/414); merge state is authoritative on GitHub |
 | O9 Java/Bukkit delivery | Pending actual decode/JFR profiling |
 
 ## Cycle 1 — opt-in submission windows
 
-Branch: `codex/refinement-gpu-intervals`.
+Branch: `codex/refinement-gpu-intervals`. PR: [#414](https://github.com/ArcaneArts/Retina/pull/414).
 
 The existing snapshot ABI remains unchanged. New bounded capture records identify terrain, material-emission and lighting submissions on the shared device. Capture begins before warmup; a measured window then separates fully contained successful submissions, incoming completed work, outgoing pending work, and aborted observations. Dropped records, missing/invalid timestamps, interval peaks and saturated duration sums are explicit. Pending work is not awaited to manufacture a complete trace.
 
@@ -34,7 +34,7 @@ C ABI:
 
 The benchmark harness exposes `--gpu-interval`, and the paired harness accepts `--baseline-gpu-interval` / `--candidate-gpu-interval`. Older natives without the API still generate and report diagnostic unavailability rather than failing a capability precheck.
 
-Validation covers warmup boundaries, overlapping stages, unavailable/reversed timestamps, pending work, errors/abandonment, stale handles, bounded capture, concurrent submitters and large-duration saturation. Real-native integration exercises CPU, Metal Overworld terrain/material/lighting, and CPU End substrate with Metal lighting. Final paired benchmark results are recorded below; the PR link will be added before merge.
+Validation covers warmup boundaries, overlapping stages, unavailable/reversed timestamps, pending work, errors/abandonment, stale handles, bounded capture, concurrent submitters and large-duration saturation. Real-native integration exercises CPU, Metal Overworld terrain/material/lighting, and CPU End substrate with Metal lighting. Final paired benchmark results are recorded below.
 
 ### Cycle 1 results
 

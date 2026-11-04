@@ -3,8 +3,8 @@
   "cycle": 1,
   "area": "O8",
   "branch": "codex/refinement-gpu-intervals",
-  "pr": null,
-  "status": "validated_pending_merge",
+  "pr": "https://github.com/ArcaneArts/Retina/pull/414",
+  "status": "validated_implementation",
   "builds": {
     "source": "8e37896e219e9ef49eed7fc2509c3c39fa1c0602",
     "baseline_sha256": "ccd7084444c80737a5d582cf710773ffcfa6383fb58f72558e9cc1bfa44a1c0a",
@@ -7898,5 +7898,6 @@
     "Preliminary artifacts named without final- were superseded by explicit aborted-versus-completed observation semantics and are excluded from retained statistics.",
     "No Windows GPU result."
   ],
-  "raw_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104"
+  "raw_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
+  "merge_state_source": "GitHub PR"
 }

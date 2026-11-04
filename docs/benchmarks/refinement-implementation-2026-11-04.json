@@ -27,8 +27,10 @@
       "status": "pending"
     },
     "O8": {
-      "status": "validated_pending_merge",
-      "cycle": 1
+      "status": "validated_implementation",
+      "cycle": 1,
+      "pr": "https://github.com/ArcaneArts/Retina/pull/414",
+      "merge_state_source": "GitHub PR"
     },
     "O9": {
       "status": "pending"
@@ -39,8 +41,8 @@
       "cycle": 1,
       "area": "O8",
       "branch": "codex/refinement-gpu-intervals",
-      "pr": null,
-      "status": "validated_pending_merge",
+      "pr": "https://github.com/ArcaneArts/Retina/pull/414",
+      "status": "validated_implementation",
       "evidence": "refinement-cycle-01-intervals-2026-11-04.json"
     }
   ],
