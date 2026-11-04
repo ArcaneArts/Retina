@@ -1,6 +1,6 @@
 # Cycle 5 — reproducible Windows transport experiment
 
-Area O4 remains **pending real Windows results**. This cycle adds an offline experiment runner and a separately built Windows x64 ZIP. It changes no generation code, transport defaults, release workflow, or ordinary mod JAR. Local controller validation establishes the experiment's behavior; it is not Windows Vulkan acceptance or a performance optimization claim.
+PR: [#418](https://github.com/ArcaneArts/Retina/pull/418). Area O4 remains **pending real Windows results**. This cycle adds an offline experiment runner and a separately built Windows x64 ZIP. It changes no generation code, transport defaults, release workflow, or ordinary mod JAR. Local controller validation establishes the experiment's behavior; it is not Windows Vulkan acceptance or a performance optimization claim.
 
 The native comes from main `47f9488ac875727eba4d427e3ce0ba804f59bdca`, native SHA-256 `0050a1ca30152486b3e02f7672ff4fd0cfe0b0b7a0cbd49431588b1870de4c28`. The Windows x64 MSVC cross-build completed in 1m46s using Rust 1.93.0, the existing cargo-xwin pathway, locked release settings and static CRT. The resulting PE is AMD64; its imports are Windows system libraries. This is build evidence, not successful Windows execution.
 

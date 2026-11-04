@@ -6,7 +6,7 @@
   "date": "2026-11-04",
   "base_revision": "47f9488ac875727eba4d427e3ce0ba804f59bdca",
   "branch": "codex/refinement-windows-transport-qa",
-  "pr": null,
+  "pr": "https://github.com/ArcaneArts/Retina/pull/418",
   "decision": "Retain reproducible offline experiment runner; actual Windows qualification pending. No production generation/default changes.",
   "evidence_root": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
   "local_native_processes": 80,
@@ -41,7 +41,10 @@
     "runtime_sha256": "90905e64a840557d8c1bc4f5b74db3d7ee85e3ffb217611cac1c7813acea4159",
     "fixture_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
     "file_manifest_verified": 54,
-    "final_handoff_record": "cycle05-final-handoff.json outside Git; BUNDLE.json pins every packaged file"
+    "final_handoff_record": "cycle05-final-handoff.json outside Git; BUNDLE.json pins every packaged file",
+    "handoff_sha256": "61558928869b8609baabb956bbab92405bce8b0f505b2272f7c2c1ad9ebdcc12",
+    "handoff_bytes": 30226418,
+    "harness_commit": "33df6dc2e3a8d848d626365c60c59c6d2edfd44d"
   },
   "tests": [
     {

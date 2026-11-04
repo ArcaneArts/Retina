@@ -124,4 +124,6 @@ Decision: reject the implementation. The measured benefit does not justify the a
 
 ## Cycle 5 — Windows transport test bundle
 
+PR: [#418](https://github.com/ArcaneArts/Retina/pull/418). Branch: `codex/refinement-windows-transport-qa`.
+
 The [cycle report](refinement-cycle-05-windows-transport-2026-11-04.md) describes the offline factorial transport controller, portable CPython/native packaging, exact same-backend output checks and private cache policy. The stable Windows ZIP is a test artifact only. Local CPU/Metal validation verifies runner behavior; real Windows Vulkan/DX12 results remain pending. No transport default or generation change is part of this cycle.
