@@ -9,7 +9,7 @@ Starting main is `8e37896e219e9ef49eed7fc2509c3c39fa1c0602`. A frozen copy of it
 | O1 CPU registry execution | Cycle 4: three prepared arithmetic block prototypes rejected after actual profiling/screens; runtime code discarded |
 | O2 Nether dependency/planning | Pending attribution and implementation |
 | O3 CPU lighting | Cycle 2: row-staging prototype rejected as inconclusive; runtime code discarded. Scratch lifetime and tile size remain separate pending experiments. |
-| O4 Windows Vulkan transport/palettes | Pending real Windows validation; no Windows GPU runner is configured for this repository; defaults unchanged |
+| O4 Windows Vulkan transport/palettes | Cycle 5 prepares a portable Windows matrix bundle; real Windows qualification remains pending, defaults unchanged |
 | O5 Bounded overlap | Pending matched concurrency and fairness experiments |
 | O6 Encoding/compression | Pending allocation and end-to-end decode measurements |
 | O7 Definition loading/binding | Cycle 3: merged loader memory/CPU improvement in [PR #416](https://github.com/ArcaneArts/Retina/pull/416), commit `3d7c83b2` |
@@ -121,3 +121,7 @@ A separate diagnostic pair reports work-stack visits **1,824,680,912 → 1,407,4
 All three production release builds succeeded. Across the screens, diagnostic pair and sampled workload, 15 fresh native processes generated 33 regions including warmups, and **10,240 strict same-backend NBT chunk comparisons passed**. The code did not advance to the broader retention suite: reference unit-test drafts and all source variants are archived, but those drafts were not executed and are not claimed as passing tests. No runtime code is retained, so no Metal/Windows or custom-dimension acceptance is claimed for these prototypes.
 
 Decision: reject the implementation. The measured benefit does not justify the added execution representation and scratch state. This rejects the investigated private arithmetic designs under these workloads; it does not prove every prepared-kernel or exact-certificate approach ineffective. Distinct entry-root scheduling remains an unmeasured lead, and the previously rejected identity-index shortcut remains rejected. Nether dependency/query work and host/GPU delivery remain separate tasks.
+
+## Cycle 5 — Windows transport test bundle
+
+The [cycle report](refinement-cycle-05-windows-transport-2026-11-04.md) describes the offline factorial transport controller, portable CPython/native packaging, exact same-backend output checks and private cache policy. The stable Windows ZIP is a test artifact only. Local CPU/Metal validation verifies runner behavior; real Windows Vulkan/DX12 results remain pending. No transport default or generation change is part of this cycle.
