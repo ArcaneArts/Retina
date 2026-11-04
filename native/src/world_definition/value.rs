@@ -49,6 +49,44 @@ pub(super) fn decode(value: Nbt) -> Result<Value, String> {
     })
 }
 
+/// Decode a saved profile while its authoritative wire document remains owned
+/// by the world. Only the output tree is allocated; no temporary NBT clone.
+pub(super) fn decode_borrowed(value: &Nbt) -> Result<Value, String> {
+    Ok(match value {
+        Nbt::Byte(-1) => Value::Null,
+        Nbt::Byte(0) => Value::Bool(false),
+        Nbt::Byte(1) => Value::Bool(true),
+        Nbt::Byte(_) => return Err("profile byte must represent null or a boolean".into()),
+        Nbt::Short(v) => (*v).into(),
+        Nbt::Int(v) => (*v).into(),
+        Nbt::Long(v) => (*v).into(),
+        Nbt::Float(v) => finite(f64::from(*v))?,
+        Nbt::Double(v) => finite(*v)?,
+        Nbt::String(v) => Value::String(v.clone()),
+        Nbt::ByteArray(v) => Value::Array(v.iter().map(|&v| Value::from(v as u8)).collect()),
+        Nbt::IntArray(v) => Value::Array(v.iter().map(|&v| Value::from(v)).collect()),
+        Nbt::LongArray(v) => Value::Array(v.iter().map(|&v| Value::from(v)).collect()),
+        Nbt::Compound(v) => Value::Object(
+            v.iter()
+                .map(|(k, v)| Ok((k.clone(), decode_borrowed(v)?)))
+                .collect::<Result<_, String>>()?,
+        ),
+        Nbt::List(v) => Value::Array(
+            v.iter()
+                .map(|v| match v {
+                    Nbt::Compound(fields) => {
+                        if fields.len() != 1 {
+                            return Err("profile list entry requires exactly one v field".into());
+                        }
+                        decode_borrowed(fields.get("v").ok_or("profile list entry is missing v")?)
+                    }
+                    primitive => decode_borrowed(primitive),
+                })
+                .collect::<Result<_, _>>()?,
+        ),
+    })
+}
+
 fn finite(v: f64) -> Result<Value, String> {
     serde_json::Number::from_f64(v)
         .map(Value::Number)
@@ -144,4 +182,57 @@ pub(super) fn material(value: &super::wire::BlockState) -> Value {
         );
     }
     Value::Object(state)
+}
+
+#[cfg(test)]
+mod borrowed_tests {
+    use super::*;
+    use fastnbt::{ByteArray, IntArray, LongArray};
+
+    #[test]
+    fn borrowed_matches_consuming_values_and_errors_without_mutation() {
+        let mut cases = vec![
+            Nbt::Byte(-1),
+            Nbt::Byte(0),
+            Nbt::Byte(1),
+            Nbt::Byte(2),
+            Nbt::Short(i16::MIN),
+            Nbt::Int(i32::MAX),
+            Nbt::Long(i64::MIN),
+            Nbt::Float(-0.0),
+            Nbt::Float(f32::MIN_POSITIVE),
+            Nbt::Double(f64::MAX),
+            Nbt::Float(f32::INFINITY),
+            Nbt::Double(f64::NAN),
+            Nbt::String("minecraft:test".into()),
+            Nbt::ByteArray(ByteArray::new(vec![-128, -1, 0, 1, 127])),
+            Nbt::IntArray(IntArray::new(vec![i32::MIN, 0, i32::MAX])),
+            Nbt::LongArray(LongArray::new(vec![i64::MIN, 0, i64::MAX])),
+            Nbt::List(vec![]),
+            Nbt::List(vec![Nbt::Compound(Default::default())]),
+            Nbt::List(vec![Nbt::Compound([("wrong".into(), Nbt::Int(1))].into())]),
+            Nbt::List(vec![Nbt::Compound(
+                [("v".into(), Nbt::Int(1)), ("extra".into(), Nbt::Int(2))].into(),
+            )]),
+        ];
+        let nested = Nbt::Compound(
+            [(
+                "values".into(),
+                Nbt::List(vec![
+                    Nbt::Compound(
+                        [("v".into(), Nbt::ByteArray(ByteArray::new(vec![-1, 0, 1])))].into(),
+                    ),
+                    Nbt::Compound([("v".into(), Nbt::Byte(-1))].into()),
+                ]),
+            )]
+            .into(),
+        );
+        cases.push(nested);
+        for raw in cases {
+            let expected = decode(raw.clone());
+            assert_eq!(decode_borrowed(&raw), expected);
+            // A second conversion sees exactly the same immutable input.
+            assert_eq!(decode_borrowed(&raw), expected);
+        }
+    }
 }
