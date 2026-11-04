@@ -1,0 +1,2677 @@
+{
+  "schema_version": 1,
+  "cycle": 4,
+  "area": "O1",
+  "status": "rejected_inconclusive",
+  "baseline": {
+    "source": "3d7c83b2b6c8ef6c427c0cd2698ff4f6c2803cac",
+    "compiler": "rustc 1.93.0 (254b59607 2026-01-19)\nbinary: rustc\ncommit-hash: 254b59607d4417e9dffbc307138ae5c86280fe4c\ncommit-date: 2026-01-19\nhost: aarch64-apple-darwin\nrelease: 1.93.0\nLLVM version: 21.1.8\n",
+    "flags": [
+      "--release",
+      "--locked",
+      "--lib"
+    ],
+    "purpose": "Fresh current-main baseline; replaces temporary attribution artifact in shared target. No source changes.",
+    "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-baseline-3d7c83b.dylib",
+    "sha256": "76437e0d177cb691fc91cc922f955af9f3acd0ef2ce3016a164add9530a01a94"
+  },
+  "profiling": {
+    "scope": "OS sampled top-of-stack observations over20s. Counts are neither CPU percentages nor operation counts. Parked/background threads are shown separately; symbol attribution includes inlined arithmetic, so the entire evaluator count is not assigned to traversal. Workload completed afterward.",
+    "source": {
+      "source": "3d7c83b2b6c8ef6c427c0cd2698ff4f6c2803cac",
+      "compiler": "rustc 1.93.0 (254b59607 2026-01-19)\nbinary: rustc\ncommit-hash: 254b59607d4417e9dffbc307138ae5c86280fe4c\ncommit-date: 2026-01-19\nhost: aarch64-apple-darwin\nrelease: 1.93.0\nLLVM version: 21.1.8\n",
+      "flags": [
+        "--release",
+        "--locked",
+        "--lib"
+      ],
+      "purpose": "Fresh current-main baseline; replaces temporary attribution artifact in shared target. No source changes.",
+      "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-baseline-3d7c83b.dylib",
+      "sha256": "76437e0d177cb691fc91cc922f955af9f3acd0ef2ce3016a164add9530a01a94"
+    },
+    "process": {
+      "scope": "Uninstrumented production CPU generation under external OS stack sampling. Attribution only, not headline timing or a benchmark comparison. Includes warmup and measured region phases. No per-node counters enabled.",
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/Users/cyberpwn/development/workspace/ArcaneArts/Retina/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-baseline-3d7c83b.dylib",
+        "--library-revision",
+        "3d7c83b2b6c8ef6c427c0cd2698ff4f6c2803cac",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--backend",
+        "cpu",
+        "--assembly-threads",
+        "16",
+        "--count",
+        "6",
+        "--warmups",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--scope",
+        "lit-mca",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-sampled-cpu"
+      ],
+      "source": "3d7c83b2b6c8ef6c427c0cd2698ff4f6c2803cac",
+      "power": "Now drawing from 'AC Power'\n -InternalBattery-0 (id=36372579)\t74%; AC attached; not charging present: true\n",
+      "power_config": "Battery Power:\n Sleep On Power Button 1\n powermode            0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         2\n womp                 0\n networkoversleep     0\n sleep                1\n lessbright           0\n tcpkeepalive         1\n disksleep            10\nAC Power:\n Sleep On Power Button 1\n powermode            0\n standby              1\n ttyskeepawake        1\n hibernatemode        3\n powernap             1\n hibernatefile        /var/vm/sleepimage\n displaysleep         10\n womp                 1\n networkoversleep     0\n sleep                0\n tcpkeepalive         1\n disksleep            10\n",
+      "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded\n",
+      "native_owner_pid": 72087,
+      "sample_command": [
+        "/usr/bin/sample",
+        "72087",
+        "20",
+        "1",
+        "-file",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-cpu-sample.txt"
+      ],
+      "sample_returncode": 0,
+      "native_returncode": 0,
+      "wall_s": 96.77724783308804
+    },
+    "sampler_sha256": "af5bbd6683b906635960b5a93dff09ca9ba24712919cdb15137067640fcad0f0",
+    "observations": [
+      {
+        "symbol": "__psynch_cvwait  (in libsystem_kernel.dylib)",
+        "top_of_stack_observations": 107246
+      },
+      {
+        "symbol": "retina_worldgen::cpu::program::Evaluator::evaluate::h5d7654de53004524  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 28228
+      },
+      {
+        "symbol": "__workq_kernreturn  (in libsystem_kernel.dylib)",
+        "top_of_stack_observations": 12269
+      },
+      {
+        "symbol": "retina_worldgen::cpu::noise::noise3::h17cea7de296adb34  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 12024
+      },
+      {
+        "symbol": "semaphore_wait_trap  (in libsystem_kernel.dylib)",
+        "top_of_stack_observations": 9919
+      },
+      {
+        "symbol": "retina_worldgen::cpu::program::Evaluator::corner_inner::h4a44f2c7b7758425  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 5194
+      },
+      {
+        "symbol": "retina_worldgen::climate::distance::ha4fb0084a3d7d290  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 4808
+      },
+      {
+        "symbol": "retina_worldgen::cpu::caves::Caves::node::h55a07197ce54c666  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 4704
+      },
+      {
+        "symbol": "retina_worldgen::cpu::fields::Sampler::density_certificate_at::hd2b26f954a0d8317  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 4174
+      },
+      {
+        "symbol": "retina_worldgen::cpu::caves::Caves::carved::hc4f52767321537f4  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 3980
+      },
+      {
+        "symbol": "retina_worldgen::cpu::program::Evaluator::interpolate::h4d55b2271b8ae372  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 3905
+      },
+      {
+        "symbol": "retina_worldgen::climate::Index::search_with_hint::h6624865ce7abd339  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 2822
+      },
+      {
+        "symbol": "retina_worldgen::cpu::caves::Caves::values::ha54395186816aafa  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 2539
+      },
+      {
+        "symbol": "core::ops::function::impls::_$LT$impl$u20$core..ops..function..Fn$LT$A$GT$$u20$for$u20$$RF$F$GT$::call::hcf7fe20e3d3b6991  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 2445
+      },
+      {
+        "symbol": "retina_worldgen::cpu::aquifers::Aquifers::substance::hfb5cb63ae37a0a64  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 2227
+      },
+      {
+        "symbol": "swtch_pri  (in libsystem_kernel.dylib)",
+        "top_of_stack_observations": 1799
+      },
+      {
+        "symbol": "retina_worldgen::cpu::program::Evaluator::noise_profile::hbc1c19dc0a53abca  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 1568
+      },
+      {
+        "symbol": "retina_worldgen::lighting::region::hb5fb0364135b6d0c  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 1537
+      },
+      {
+        "symbol": "_platform_memset_pattern16  (in libsystem_platform.dylib)",
+        "top_of_stack_observations": 1390
+      },
+      {
+        "symbol": "retina_worldgen::cpu::caves::Caves::biome::h67e80727874bcbca  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 966
+      },
+      {
+        "symbol": "_$LT$core..hash..sip..Hasher$LT$S$GT$$u20$as$u20$core..hash..Hasher$GT$::write::h2b8b69a361f70f8a  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 782
+      },
+      {
+        "symbol": "retina_worldgen::cpu::fields::Sampler::surface_height_at::h9ecfee227367aba1  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 652
+      },
+      {
+        "symbol": "_platform_memset  (in libsystem_platform.dylib)",
+        "top_of_stack_observations": 623
+      },
+      {
+        "symbol": "retina_worldgen::cpu::program::bounds::_$LT$impl$u20$retina_worldgen..cpu..program..Evaluator$GT$::interpolation_bounds::ha0ad8886a5b0d475  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 618
+      },
+      {
+        "symbol": "core::hash::BuildHasher::hash_one::h55a378182f53c3b5  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 590
+      },
+      {
+        "symbol": "retina_worldgen::geology::plan_inner::_$u7b$$u7b$closure$u7d$$u7d$::hcfa67d1f0fd2cc7b  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 489
+      },
+      {
+        "symbol": "retina_worldgen::cpu::fields::Sampler::run::ha890808d5bf001b7  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 433
+      },
+      {
+        "symbol": "DYLD-STUB$$memset_pattern16  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 399
+      },
+      {
+        "symbol": "retina_worldgen::cpu::fields::Sampler::interpolated::h9279578df5892d93  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 381
+      },
+      {
+        "symbol": "retina_worldgen::cpu::columns::Columns::base::h9a9d7a14b398522e  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 337
+      },
+      {
+        "symbol": "core::hash::BuildHasher::hash_one::h1f5322d743a5e10c  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 320
+      },
+      {
+        "symbol": "retina_worldgen::cpu::fields::Sampler::vertex::hdb46fe0632e99ef2  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 294
+      },
+      {
+        "symbol": "hashbrown::map::HashMap$LT$K$C$V$C$S$C$A$GT$::insert::h3fb17df3dd24a1a9  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 256
+      },
+      {
+        "symbol": "deflate_compress_fastest  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 194
+      },
+      {
+        "symbol": "retina_worldgen::cpu::noise::simplex::hc05dec137fadabd6  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 187
+      },
+      {
+        "symbol": "retina_worldgen::cpu::program::gradient::h4dbadd1cc94d4b6d  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 187
+      },
+      {
+        "symbol": "retina_worldgen::geology::GeologyProfile::caves_enabled::he9a3cf672d5ec530  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 181
+      },
+      {
+        "symbol": "hashbrown::raw::RawTable$LT$T$C$A$GT$::reserve_rehash::h84ab8716ba410a8a  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 167
+      },
+      {
+        "symbol": "retina_worldgen::cpu::noise::cell_hash::h52baff4c3b41b6c4  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 144
+      },
+      {
+        "symbol": "retina_worldgen::lighting::cpu::spread::_$u7b$$u7b$closure$u7d$$u7d$::haa4dc0cb02f05e3e  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 131
+      },
+      {
+        "symbol": "retina_worldgen::cpu::fields::Sampler::density::h73215556fddbcc50  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 126
+      },
+      {
+        "symbol": "retina_worldgen::decoration::assemble_carved::h3ff2de14722c2d09  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 124
+      },
+      {
+        "symbol": "retina_worldgen::cpu::columns::Columns::column_impl::h77963602a10f9325  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 111
+      },
+      {
+        "symbol": "hashbrown::map::HashMap$LT$K$C$V$C$S$C$A$GT$::insert::h907859cb1fd6c751  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 110
+      },
+      {
+        "symbol": "retina_worldgen::cpu::fields::Sampler::coastal_biome::he9b6cc9643336cd8  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 103
+      },
+      {
+        "symbol": "retina_worldgen::cpu::program::Evaluator::blended::hcb54f3cfc4b45f02  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 101
+      },
+      {
+        "symbol": "retina_worldgen::region::PaletteScratch::build_with_indices::h0b4bce56ce607088  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 87
+      },
+      {
+        "symbol": "hashbrown::map::HashMap$LT$K$C$V$C$S$C$A$GT$::insert::h92936eca0da350be  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 80
+      },
+      {
+        "symbol": "madvise  (in libsystem_kernel.dylib)",
+        "top_of_stack_observations": 79
+      },
+      {
+        "symbol": "hashbrown::map::HashMap$LT$K$C$V$C$S$C$A$GT$::insert::hcca73bc4d7ec2e61  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 78
+      },
+      {
+        "symbol": "core::ops::function::impls::_$LT$impl$u20$core..ops..function..Fn$LT$A$GT$$u20$for$u20$$RF$F$GT$::call::h4630cac5db3d11a7  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 70
+      },
+      {
+        "symbol": "__bzero  (in libsystem_platform.dylib)",
+        "top_of_stack_observations": 65
+      },
+      {
+        "symbol": "hashbrown::raw::RawTable$LT$T$C$A$GT$::reserve_rehash::h3be952303e8d8c8b  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 65
+      },
+      {
+        "symbol": "hashbrown::raw::RawTable$LT$T$C$A$GT$::reserve_rehash::hf7536b60c3592e45  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 64
+      },
+      {
+        "symbol": "retina_worldgen::geology::apply_ores::hd11ed11e28dd87d6  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 63
+      },
+      {
+        "symbol": "_platform_memmove  (in libsystem_platform.dylib)",
+        "top_of_stack_observations": 59
+      },
+      {
+        "symbol": "retina_worldgen::cpu::program::bounds::Bounds::widen::h5cca2205cad6bcae  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 58
+      },
+      {
+        "symbol": "retina_worldgen::region::section_light::hc41eddca05183d49  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 57
+      },
+      {
+        "symbol": "hashbrown::map::HashMap$LT$K$C$V$C$S$C$A$GT$::insert::h1dfbf6740a7128a1  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 56
+      },
+      {
+        "symbol": "retina_worldgen::geology::vein_spheres::h18c2fe422e1b5871  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 48
+      },
+      {
+        "symbol": "hashbrown::raw::RawTable$LT$T$C$A$GT$::reserve_rehash::h842cc45048ba783d  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 47
+      },
+      {
+        "symbol": "retina_worldgen::region::encode_chunk::h74b623db5031710a  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 39
+      },
+      {
+        "symbol": "retina_worldgen::cpu::caves::biome_at::haee209a781ea26ed  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 38
+      },
+      {
+        "symbol": "expf  (in libsystem_m.dylib)",
+        "top_of_stack_observations": 36
+      },
+      {
+        "symbol": "retina_worldgen::decoration::placement::position_inner::h35b36c8c406fff6e  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 35
+      },
+      {
+        "symbol": "hashbrown::raw::RawTable$LT$T$C$A$GT$::reserve_rehash::hb577f7a4f130657b  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 33
+      },
+      {
+        "symbol": "retina_worldgen::decoration::anchor_ids::h9fb381b3ef2c5317  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 33
+      },
+      {
+        "symbol": "retina_worldgen::region::Nbt::packed_palette::h39cc0193fee60d40  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 31
+      },
+      {
+        "symbol": "hashbrown::raw::RawTableInner::fallible_with_capacity::hd93f1e800b95cf20  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 29
+      },
+      {
+        "symbol": "hashbrown::raw::RawTable$LT$T$C$A$GT$::reserve_rehash::h4cabb6f46d24887a  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 27
+      },
+      {
+        "symbol": "retina_worldgen::decoration::evaluate_anchor::h99e8c933e69df0d3  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 27
+      },
+      {
+        "symbol": "__sincosf_stret  (in libsystem_m.dylib)",
+        "top_of_stack_observations": 25
+      },
+      {
+        "symbol": "retina_worldgen::decoration::Field::material::h7ebbfab2091743ff  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 25
+      },
+      {
+        "symbol": "hashbrown::raw::RawTable$LT$T$C$A$GT$::reserve_rehash::h797f8115fcf44d70  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 22
+      },
+      {
+        "symbol": "_tlv_get_addr  (in libdyld.dylib)",
+        "top_of_stack_observations": 21
+      },
+      {
+        "symbol": "DYLD-STUB$$expf  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 20
+      },
+      {
+        "symbol": "retina_worldgen::decoration::placement::blob_overlay::Blocks::get::h8d4481e307e574ba  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 20
+      },
+      {
+        "symbol": "retina_worldgen::decoration::tree::h98664a7197bd8627  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 20
+      },
+      {
+        "symbol": "core::hash::BuildHasher::hash_one::h956474bddc10ef5e  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 18
+      },
+      {
+        "symbol": "deflate_flush_block  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 18
+      },
+      {
+        "symbol": "mi_page_free_list_extend  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 18
+      },
+      {
+        "symbol": "retina_worldgen::decoration::placement::stream::Count::next::ha96eb9c964ea018f  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 18
+      },
+      {
+        "symbol": "retina_worldgen::lighting::cpu::spread::hfd996ecd4c3a9a4f  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 18
+      },
+      {
+        "symbol": "hashbrown::map::HashMap$LT$K$C$V$C$S$C$A$GT$::insert::hf4676bf44aa778b9  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 17
+      },
+      {
+        "symbol": "retina_worldgen::profile::Column::material::hf1fc8668675e1427  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 17
+      },
+      {
+        "symbol": "retina_worldgen::cpu::caves::Caves::density::h69b5e143f506318b  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 16
+      },
+      {
+        "symbol": "mach_absolute_time  (in libsystem_kernel.dylib)",
+        "top_of_stack_observations": 15
+      },
+      {
+        "symbol": "retina_worldgen::cpu::fields::Sampler::surface_noise::h75bbf29deaa919e8  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 15
+      },
+      {
+        "symbol": "hashbrown::map::HashMap$LT$K$C$V$C$S$C$A$GT$::insert::ha84d2128a123f66c  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 13
+      },
+      {
+        "symbol": "retina_worldgen::geology::CaveMask::material_run_range::h3d211796d7f58ab9  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 13
+      },
+      {
+        "symbol": "retina_worldgen::geology::plan_inner::_$u7b$$u7b$closure$u7d$$u7d$::h4aab3460360486d0  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 13
+      },
+      {
+        "symbol": "retina_worldgen::decoration::Field::column::hfc7b4568531f949a  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 12
+      },
+      {
+        "symbol": "retina_worldgen::features::apply::h3154a0c422f1fa1e  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 12
+      },
+      {
+        "symbol": "__fcntl  (in libsystem_kernel.dylib)",
+        "top_of_stack_observations": 10
+      },
+      {
+        "symbol": "retina_worldgen::decoration::placement::IntProvider::sample::h94779b30fa8feed6  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 10
+      },
+      {
+        "symbol": "deflate_make_huffman_code  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 9
+      },
+      {
+        "symbol": "retina_worldgen::decoration::decorate::hdd20b0933db22145  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 9
+      },
+      {
+        "symbol": "retina_worldgen::decoration::placement::Predicate::test_with::h684698370faf4b5f  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 9
+      },
+      {
+        "symbol": "sinf  (in libsystem_m.dylib)",
+        "top_of_stack_observations": 9
+      },
+      {
+        "symbol": "core::ops::function::impls::_$LT$impl$u20$core..ops..function..Fn$LT$A$GT$$u20$for$u20$$RF$F$GT$::call::h39e6e0b5f67816d2  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 8
+      },
+      {
+        "symbol": "powf  (in libsystem_m.dylib)",
+        "top_of_stack_observations": 8
+      },
+      {
+        "symbol": "retina_worldgen::decoration::placement::Overlay::commit::h84c982a1c39ba6e8  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 8
+      },
+      {
+        "symbol": "retina_worldgen::decoration::placement::layers::Queue::pop::h2795b0860429c0ad  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 8
+      },
+      {
+        "symbol": "retina_worldgen::cpu::aquifers::Aquifers::program::h6d6d08cf3fea13ac  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 7
+      },
+      {
+        "symbol": "retina_worldgen::cpu::terrain::sample::h92a1c4db2b0ebd78  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 7
+      },
+      {
+        "symbol": "retina_worldgen::geology::vein_may_intersect::hffeedbed6aeec59b  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 7
+      },
+      {
+        "symbol": "<deduplicated_symbol>  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 6
+      },
+      {
+        "symbol": "DYLD-STUB$$bzero  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 6
+      },
+      {
+        "symbol": "__psynch_mutexwait  (in libsystem_kernel.dylib)",
+        "top_of_stack_observations": 6
+      },
+      {
+        "symbol": "crossbeam_epoch::internal::Global::try_advance::hff3d9549bec6cebf  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 6
+      },
+      {
+        "symbol": "hashbrown::raw::RawTable$LT$T$C$A$GT$::reserve_rehash::h0e0625b539e77d0b  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 6
+      },
+      {
+        "symbol": "mach_msg2_trap  (in dyld)",
+        "top_of_stack_observations": 6
+      },
+      {
+        "symbol": "retina_worldgen::structures::build_definition::hed56a6d9c43b5ab7  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 6
+      },
+      {
+        "symbol": "_$LT$smallvec..SmallVec$LT$A$GT$$u20$as$u20$core..iter..traits..collect..Extend$LT$$LT$A$u20$as$u20$smallvec..Array$GT$..Item$GT$$GT$::extend::h80f2fe725d3ea476  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 5
+      },
+      {
+        "symbol": "mach_boottime_usec  (in libsystem_kernel.dylib)",
+        "top_of_stack_observations": 5
+      },
+      {
+        "symbol": "retina_worldgen::cpu::fields::Sampler::registered_biome::hd6c4ac917c33658e  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 5
+      },
+      {
+        "symbol": "retina_worldgen::region::Nbt::byte::h0e08c8328b850967  (in cycle04-baseline-3d7c83b.dylib)",
+        "top_of_stack_observations": 5
+      }
+    ],
+    "completed_workload": {
+      "backend_selected": "CPU: native",
+      "performance_diagnostics": {
+        "counter_storage": {
+          "bytes_scope": "Counter backing only; excludes allocator overhead and candidate/terrain tracking.",
+          "enabled_bytes": 0,
+          "shards": 64,
+          "snapshot_scope": "Shards are read sequentially. Totals are exact modulo u64 after updates join; a live snapshot is not a single instant across concurrent writers."
+        },
+        "counters": {
+          "anchor_builds": 0,
+          "anchor_ready_hits": 0,
+          "blob_index_columns": 0,
+          "blob_index_covered_commands": 0,
+          "blob_index_extra_value_bytes": 0,
+          "blob_index_fast_prefixes": 0,
+          "blob_index_mask_merges": 0,
+          "blob_index_outputs": 0,
+          "blob_index_prepare_nanos": 0,
+          "blob_index_rejected_outputs": 0,
+          "blob_index_writes": 0,
+          "blob_mask_builds": 0,
+          "blob_mask_cache_allocations": 0,
+          "blob_mask_cache_bytes": 0,
+          "blob_mask_hits": 0,
+          "blob_mask_reads": 0,
+          "blob_mask_scalar_fallbacks": 0,
+          "blob_overlay_observations": 0,
+          "blob_overlay_observed_payload_bytes": 0,
+          "blob_overlay_observed_points": 0,
+          "blob_overlay_promotions": 0,
+          "column_builds": 0,
+          "column_join_nanos": 0,
+          "column_lock_nanos": 0,
+          "column_requests": 0,
+          "column_tiles": 0,
+          "column_versions_skipped": 0,
+          "completed_boundary_reads": 0,
+          "completed_column_commands": 0,
+          "completed_column_groups": 0,
+          "completed_column_reads": 0,
+          "cpu_biome_grid_bytes": 0,
+          "cpu_biome_grid_prepare_nanos": 0,
+          "cpu_columns_nanos": 0,
+          "cpu_density_air_proofs": 0,
+          "cpu_density_scalar_points": 0,
+          "cpu_density_solid_proofs": 0,
+          "cpu_height_air_points_skipped": 0,
+          "cpu_height_interval_queries": 0,
+          "cpu_height_scalar_points": 0,
+          "cpu_masks_nanos": 0,
+          "cpu_material_zero_proofs": 0,
+          "cpu_prepare_nanos": 0,
+          "cpu_queries_nanos": 0,
+          "cpu_tiles": 0,
+          "cpu_vm_auxiliary_calls": 0,
+          "cpu_vm_blended_profiles": 0,
+          "cpu_vm_calls": 0,
+          "cpu_vm_cell_hits": 0,
+          "cpu_vm_cell_lookups": 0,
+          "cpu_vm_cell_vertices_reused": 0,
+          "cpu_vm_computed_nodes": 0,
+          "cpu_vm_constant_hits": 0,
+          "cpu_vm_corner_clears": 0,
+          "cpu_vm_corner_hits": 0,
+          "cpu_vm_corner_lookups": 0,
+          "cpu_vm_field_calls": 0,
+          "cpu_vm_horizontal_clears": 0,
+          "cpu_vm_horizontal_hits": 0,
+          "cpu_vm_horizontal_lookups": 0,
+          "cpu_vm_interpolations": 0,
+          "cpu_vm_material_calls": 0,
+          "cpu_vm_node_visits": 0,
+          "cpu_vm_noise3_calls": 0,
+          "cpu_vm_noise_profiles": 0,
+          "cpu_vm_plain_corner_hits": 0,
+          "cpu_vm_plain_corner_lookups": 0,
+          "cpu_vm_ready_hits": 0,
+          "cpu_vm_samplers": 0,
+          "cpu_vm_terrain_calls": 0,
+          "deferred_ore_candidates": 0,
+          "deferred_ore_roots": 0,
+          "dependency_evaluation_nanos": 0,
+          "dependency_pool_wait_nanos": 0,
+          "distribution_nanos": 0,
+          "end_bounds_nanos": 0,
+          "end_bounds_temporary_bytes": 0,
+          "end_columns_nanos": 0,
+          "end_empty_cells": 0,
+          "end_empty_spike_anchors": 0,
+          "end_exact_nanos": 0,
+          "end_exact_noise_corners": 0,
+          "end_final_dense_equivalent_bytes": 0,
+          "end_final_material_allocated_bytes": 0,
+          "end_final_uniform_sections": 0,
+          "end_lattice_nanos": 0,
+          "end_mask_bytes": 0,
+          "end_mask_nanos": 0,
+          "end_partial_noise_probes": 0,
+          "end_query_nanos": 0,
+          "end_skipped_noise_corners": 0,
+          "end_solid_cells": 0,
+          "end_stair_columns_skipped": 0,
+          "end_substrate_nanos": 0,
+          "end_terrain_nanos": 0,
+          "end_uncertain_cells": 0,
+          "end_voxel_interpolations_avoided": 0,
+          "final_structure_planning_nanos": 0,
+          "footprint_builds": 0,
+          "footprint_pruned_writers": 0,
+          "ground_run_queries": 0,
+          "ground_run_visits": 0,
+          "ground_scalar_scans": 0,
+          "ground_voxel_queries_replaced": 0,
+          "height_roots_skipped": 0,
+          "lighting_material_upload_bytes": 0,
+          "memo_builds": 0,
+          "memo_join_nanos": 0,
+          "memo_lock_nanos": 0,
+          "memo_ready_hits": 0,
+          "memo_requests": 0,
+          "output_index_ordered_outputs": 0,
+          "output_index_ordered_writes": 0,
+          "output_index_packed_buffer_bytes": 0,
+          "output_index_packed_cells": 0,
+          "output_index_packed_outputs": 0,
+          "output_index_packed_writes": 0,
+          "output_index_uniform_bitmap_bytes": 0,
+          "overlay_recommit_calls_skipped": 0,
+          "overlay_recommit_commands_skipped": 0,
+          "prefix_evaluations": 0,
+          "region_pool_wait_nanos": 0,
+          "shared_material_columns": 0,
+          "structure_active_hits": 0,
+          "structure_builds": 0,
+          "structure_cache_evictions": 0,
+          "structure_cache_hits": 0,
+          "structure_cache_misses": 0,
+          "structure_candidates": 0,
+          "structure_discovery_tiles": 0,
+          "structure_fossil_batches": 0,
+          "structure_fossil_biome_points": 0,
+          "structure_fossil_biome_queried": 0,
+          "structure_fossil_biome_retained": 0,
+          "structure_fossil_columns": 0,
+          "structure_job_cache_hits": 0,
+          "structure_overlapping_builds": 0,
+          "structure_pending_evictions": 0,
+          "structure_plan_calls": 0,
+          "structure_probe_points": 0,
+          "structure_repeated_builds": 0,
+          "structure_unique_candidates": 0,
+          "teardown_boundary_columns_nanos": 0,
+          "teardown_commands_nanos": 0,
+          "teardown_nanos": 0,
+          "teardown_other_nanos": 0,
+          "teardown_outputs_nanos": 0,
+          "teardown_terrain_nanos": 0,
+          "teardown_versions_nanos": 0,
+          "terrain_cache_hits": 0,
+          "terrain_cache_requests_nanos": 0,
+          "terrain_cave_cache_hold_nanos": 0,
+          "terrain_cave_cache_wait_nanos": 0,
+          "terrain_column_cache_hold_nanos": 0,
+          "terrain_column_cache_wait_nanos": 0,
+          "terrain_exact_tile_cache_hits": 0,
+          "terrain_generated_chunks": 0,
+          "terrain_generated_tiles": 0,
+          "terrain_initial_crop_bytes": 0,
+          "terrain_initial_crop_nanos": 0,
+          "terrain_initial_field_reads": 0,
+          "terrain_initial_tiles_reused": 0,
+          "terrain_job_cached_tile_hits": 0,
+          "terrain_job_cached_tiles_retained": 0,
+          "terrain_job_direct_requests": 0,
+          "terrain_job_fallback_requests": 0,
+          "terrain_job_join_nanos": 0,
+          "terrain_job_lock_nanos": 0,
+          "terrain_job_requests": 0,
+          "terrain_job_snapshot_nanos": 0,
+          "terrain_live_index_absent": 0,
+          "terrain_live_index_expired": 0,
+          "terrain_live_index_hits": 0,
+          "terrain_requests": 0,
+          "terrain_reuse_crop_bytes": 0,
+          "terrain_reuse_crop_hits": 0,
+          "terrain_reuse_crop_nanos": 0,
+          "terrain_unique_tiles": 0,
+          "uniform_blob_changed_columns": 0,
+          "uniform_blob_commands": 0,
+          "uniform_blob_prefixes": 0,
+          "version_cache_boundary_hits": 0,
+          "version_cache_boundary_lookups": 0,
+          "version_cache_capture_nanos": 0,
+          "version_cache_captured_regions": 0,
+          "version_cache_evicted_regions": 0,
+          "version_cache_export_nanos": 0,
+          "version_cache_export_skips": 0,
+          "version_cache_exported_bytes": 0,
+          "version_cache_exported_regions": 0,
+          "version_cache_exterior_exported_bytes": 0,
+          "version_cache_exterior_exported_slots": 0,
+          "version_cache_exterior_exported_spans": 0,
+          "version_cache_exterior_exported_states": 0,
+          "version_cache_exterior_hits": 0,
+          "version_cache_exterior_lookups": 0,
+          "version_cache_publish_nanos": 0,
+          "version_cache_published_regions": 0,
+          "view_column_cached_reads": 0,
+          "view_column_loads": 0,
+          "view_column_slot_hits": 0,
+          "view_terrain_borrowed_reads": 0,
+          "view_terrain_loaded_reads": 0
+        },
+        "enabled": false,
+        "note": "Measured-interval deltas. Unique keys are first seen during this interval, excluding warmup keys. Recursive/concurrent durations overlap.",
+        "scope": "profile lifetime; concurrent and recursive durations overlap",
+        "terrain_tile_scope": "Measured-interval generation counts, including repeated tiles and all GPU guards; coordinates and side are chunks",
+        "terrain_tiles": [],
+        "version": 1
+      },
+      "benchmark_scope": "lit-mca",
+      "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+      "seed": 123456789,
+      "assembly_threads": 16,
+      "parallel": 1,
+      "regions": [
+        {
+          "assembly_ms": 2856.034667,
+          "generated": 1024,
+          "gpu_ms": 11947.897416,
+          "ms": 14830.85162518546,
+          "name": "0",
+          "preserved": 0,
+          "program_status": 0,
+          "terrain_host_ms": 11947.897416,
+          "write_ms": 26.854709,
+          "x": 0,
+          "z": 0
+        },
+        {
+          "assembly_ms": 3882.202167,
+          "generated": 1024,
+          "gpu_ms": 7858.270666,
+          "ms": 11754.636832978576,
+          "name": "1",
+          "preserved": 0,
+          "program_status": 0,
+          "terrain_host_ms": 7858.270666,
+          "write_ms": 14.092208,
+          "x": 1,
+          "z": 0
+        },
+        {
+          "assembly_ms": 3475.306875,
+          "generated": 1024,
+          "gpu_ms": 8308.077375,
+          "ms": 11801.778624765575,
+          "name": "2",
+          "preserved": 0,
+          "program_status": 0,
+          "terrain_host_ms": 8308.077375,
+          "write_ms": 18.329625,
+          "x": 2,
+          "z": 0
+        },
+        {
+          "assembly_ms": 4287.67725,
+          "generated": 1024,
+          "gpu_ms": 10801.043833,
+          "ms": 15108.941624872386,
+          "name": "3",
+          "preserved": 0,
+          "program_status": 0,
+          "terrain_host_ms": 10801.043833,
+          "write_ms": 20.16225,
+          "x": 0,
+          "z": 1
+        },
+        {
+          "assembly_ms": 3468.051375,
+          "generated": 1024,
+          "gpu_ms": 8836.184666,
+          "ms": 12325.866790954024,
+          "name": "4",
+          "preserved": 0,
+          "program_status": 0,
+          "terrain_host_ms": 8836.184666,
+          "write_ms": 21.547417,
+          "x": 1,
+          "z": 1
+        },
+        {
+          "assembly_ms": 3553.429958,
+          "generated": 1024,
+          "gpu_ms": 9709.332459,
+          "ms": 13279.271917417645,
+          "name": "5",
+          "preserved": 0,
+          "program_status": 0,
+          "terrain_host_ms": 9709.332459,
+          "write_ms": 16.463292,
+          "x": 2,
+          "z": 1
+        }
+      ],
+      "corpus": {
+        "algorithm": "sha256",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "4334bde333b8f1ab48f51c8627b47526eb29cce4a47b97875962f078346f92d9"
+          },
+          {
+            "file": "1.mca",
+            "records": 1024,
+            "sha256": "0007ee39890c84751e16b6727d587913012514bf9c70f879f63914a99ec94342"
+          },
+          {
+            "file": "2.mca",
+            "records": 1024,
+            "sha256": "0eaf17880ac409fdba965cfa373c807fe4f81cbd126dba77b63bd3d4a47f8b30"
+          },
+          {
+            "file": "3.mca",
+            "records": 1024,
+            "sha256": "cdd337023e91a949f38ca94246ac641d68e1124e84ba0d1b66204cdcf06e2653"
+          },
+          {
+            "file": "4.mca",
+            "records": 1024,
+            "sha256": "9db76307673aa07533a90312555eeb73d67e0f52459a21c3165a384a1802766c"
+          },
+          {
+            "file": "5.mca",
+            "records": 1024,
+            "sha256": "8a76abd912771af3c296aa3579035f91bcc8808657acbb412b7120b50b9e19fa"
+          }
+        ],
+        "records": 6144,
+        "sha256": "3ecb2b3050b405ea09457d68a3995061f734f59d646acc3ce2f75356ee8ab446"
+      },
+      "measured_process_usage": {
+        "average_scheduled_cores": 2.8010177032005137,
+        "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+        "counter_source": "RUSAGE_SELF",
+        "cpu_ms_per_region": 36942.22083333333,
+        "end_unix": 1793824841.2712011,
+        "involuntary_context_switches": 861178,
+        "major_faults": 6,
+        "minor_faults": 51253,
+        "schema_version": 1,
+        "scope": "RUSAGE_SELF deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+        "start_unix": 1793824762.137751,
+        "system_ms": 5252.048000000001,
+        "total_ms": 221653.32499999998,
+        "user_ms": 216401.277,
+        "voluntary_context_switches": 46
+      }
+    },
+    "selected_hypothesis": "Prepare private fixed-dependency arithmetic blocks. Preserve lazy/shared/cached/interpolation boundaries and original scalar arithmetic. This avoids repeated work-stack traversal rather than changing node-to-plan indexing; not the previously rejected identity-index shortcut."
+  },
+  "variants": [
+    {
+      "name": "kernels",
+      "hypothesis": "Private arithmetic body with ordinary global frame storage",
+      "build": {
+        "source": "3d7c83b2b6c8ef6c427c0cd2698ff4f6c2803cac",
+        "compiler": "rustc 1.93.0 (254b59607 2026-01-19)\nbinary: rustc\ncommit-hash: 254b59607d4417e9dffbc307138ae5c86280fe4c\ncommit-date: 2026-01-19\nhost: aarch64-apple-darwin\nrelease: 1.93.0\nLLVM version: 21.1.8\n",
+        "flags": [
+          "--release",
+          "--locked",
+          "--lib"
+        ],
+        "tracked_patch_sha256": "11aa1fd83ac4f49d8535f3d045e0235440b032de32f0c94cec276bf7b9702d21",
+        "new_module_sha256": "6d30fe0530abaae13e64a1d24ee42d6f6fbbcda8089eceb3de67541fcec3638a",
+        "candidate_sha256": "c030c65e43b01376da6f75285e197836e65f605304d9c4fbc8e5f9a5beb383b7"
+      },
+      "comparison": {
+        "schema_version": 1,
+        "scope": "Production complete-region A/B, timed phases exclude comparison and snapshot/hash work; direct-owner scoped activity equal in both variants; does not prove scheduler normalization. Small-sample p95 is descriptive.",
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "results": [
+          {
+            "trial": 0,
+            "variant": "baseline",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-baseline-3d7c83b.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/00-baseline",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/00-baseline",
+            "wall_s": 18.63771220901981,
+            "chunks_per_second": 109.59904183069635,
+            "cpu_ms_per_region": 39235.541,
+            "median_ms": 9339.57870816812,
+            "p95_region_ms": 9339.57870816812,
+            "generation_peak_rss_bytes": 1235730432,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 0,
+            "startup": {
+              "initialize_ms": 3.243708983063698,
+              "load_and_bind_ms": 967.2300000675023,
+              "warmups": [
+                {
+                  "assembly_ms": 1802.140042,
+                  "generated": 1024,
+                  "gpu_ms": 6124.955375,
+                  "ms": 7942.039916757494,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 6124.955375,
+                  "write_ms": 14.858584,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          },
+          {
+            "trial": 1,
+            "variant": "candidate",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-candidate.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/01-candidate",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0",
+              "--compare",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/00-baseline"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/01-candidate",
+            "wall_s": 18.06337016588077,
+            "chunks_per_second": 122.86630224654637,
+            "cpu_ms_per_region": 38114.31800000001,
+            "median_ms": 8331.669458188117,
+            "p95_region_ms": 8331.669458188117,
+            "generation_peak_rss_bytes": 1229045760,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 1024,
+            "startup": {
+              "initialize_ms": 0.6516249850392342,
+              "load_and_bind_ms": 960.3116661310196,
+              "warmups": [
+                {
+                  "assembly_ms": 1768.822709,
+                  "generated": 1024,
+                  "gpu_ms": 6250.140916,
+                  "ms": 8035.003124736249,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 6250.140916,
+                  "write_ms": 15.938167,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          },
+          {
+            "trial": 2,
+            "variant": "candidate",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-candidate.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/02-candidate",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0",
+              "--compare",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/00-baseline"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/02-candidate",
+            "wall_s": 18.62711429176852,
+            "chunks_per_second": 124.89495973857888,
+            "cpu_ms_per_region": 38129.584,
+            "median_ms": 8196.298458147794,
+            "p95_region_ms": 8196.298458147794,
+            "generation_peak_rss_bytes": 1244299264,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 1024,
+            "startup": {
+              "initialize_ms": 0.18800003454089165,
+              "load_and_bind_ms": 935.1274580694735,
+              "warmups": [
+                {
+                  "assembly_ms": 2147.340166,
+                  "generated": 1024,
+                  "gpu_ms": 6843.490459,
+                  "ms": 9008.221582975239,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 6843.490459,
+                  "write_ms": 17.325083,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          },
+          {
+            "trial": 3,
+            "variant": "baseline",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-baseline-3d7c83b.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/03-baseline",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0",
+              "--compare",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/00-baseline"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-kernels-screen/03-baseline",
+            "wall_s": 16.305654333904386,
+            "chunks_per_second": 134.13217220657165,
+            "cpu_ms_per_region": 38065.73100000001,
+            "median_ms": 7631.957917008549,
+            "p95_region_ms": 7631.957917008549,
+            "generation_peak_rss_bytes": 1211400192,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 1024,
+            "startup": {
+              "initialize_ms": 0.17512496560811996,
+              "load_and_bind_ms": 885.9157916158438,
+              "warmups": [
+                {
+                  "assembly_ms": 1715.019208,
+                  "generated": 1024,
+                  "gpu_ms": 5540.968167,
+                  "ms": 7274.794708006084,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 5540.968167,
+                  "write_ms": 18.73725,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          }
+        ],
+        "summary": {
+          "baseline": {
+            "trials": 2,
+            "chunks_per_second": {
+              "individual": [
+                109.59904183069635,
+                134.13217220657165
+              ],
+              "median": 121.865607018634,
+              "variance": 300.9372430198477
+            },
+            "cpu_ms_per_region": {
+              "individual": [
+                39235.541,
+                38065.73100000001
+              ],
+              "median": 38650.636,
+              "variance": 684227.7180499887
+            },
+            "median_ms": {
+              "individual": [
+                9339.57870816812,
+                7631.957917008549
+              ],
+              "median": 8485.768312588334,
+              "variance": 1457984.3832002182
+            },
+            "p95_region_ms": {
+              "individual": [
+                9339.57870816812,
+                7631.957917008549
+              ],
+              "median": 8485.768312588334,
+              "variance": 1457984.3832002182
+            },
+            "generation_peak_rss_bytes": {
+              "individual": [
+                1235730432,
+                1211400192
+              ],
+              "median": 1223565312.0,
+              "variance": 295980289228800
+            },
+            "region_file_bytes": {
+              "individual": [
+                9326592,
+                9326592
+              ],
+              "median": 9326592.0,
+              "variance": 0
+            }
+          },
+          "candidate": {
+            "trials": 2,
+            "chunks_per_second": {
+              "individual": [
+                122.86630224654637,
+                124.89495973857888
+              ],
+              "median": 123.88063099256263,
+              "variance": 2.0577256099898125
+            },
+            "cpu_ms_per_region": {
+              "individual": [
+                38114.31800000001,
+                38129.584
+              ],
+              "median": 38121.951,
+              "variance": 116.52537799993868
+            },
+            "median_ms": {
+              "individual": [
+                8331.669458188117,
+                8196.298458147794
+              ],
+              "median": 8263.983958167955,
+              "variance": 9162.653825958503
+            },
+            "p95_region_ms": {
+              "individual": [
+                8331.669458188117,
+                8196.298458147794
+              ],
+              "median": 8263.983958167955,
+              "variance": 9162.653825958503
+            },
+            "generation_peak_rss_bytes": {
+              "individual": [
+                1229045760,
+                1244299264
+              ],
+              "median": 1236672512.0,
+              "variance": 116334692139008
+            },
+            "region_file_bytes": {
+              "individual": [
+                9326592,
+                9326592
+              ],
+              "median": 9326592.0,
+              "variance": 0
+            }
+          }
+        },
+        "throughput_change_percent": 1.6534804390056612,
+        "cpu_reduction_percent": 1.3678558872873392,
+        "throughput_change_confidence_95": {
+          "method": "independent median bootstrap",
+          "samples": 10000,
+          "low_percent": -8.39908112624551,
+          "high_percent": 13.956251489416282
+        }
+      },
+      "decision": "rejected: screen does not establish a useful complete-region performance improvement; no runtime code retained"
+    },
+    {
+      "name": "register-kernels",
+      "hypothesis": "Pre-bound operands and local scratch",
+      "build": {
+        "source": "3d7c83b2b6c8ef6c427c0cd2698ff4f6c2803cac",
+        "compiler": "rustc 1.93.0 (254b59607 2026-01-19)\nbinary: rustc\ncommit-hash: 254b59607d4417e9dffbc307138ae5c86280fe4c\ncommit-date: 2026-01-19\nhost: aarch64-apple-darwin\nrelease: 1.93.0\nLLVM version: 21.1.8\n",
+        "flags": [
+          "--release",
+          "--locked",
+          "--lib"
+        ],
+        "tracked_patch_sha256": "4a556c189f4b441b7be9665b96d51e18a99aec0a3e3bc4d803c001176435f8ab",
+        "new_module_sha256": "961fbbfa67901baf06cd4f2fe7b5b633b90cbaef9bebf227bcd52549c0693f34",
+        "candidate_sha256": "59972a1b75bae1cb630cd32d5e030044c10c07b080ef21412295dd5c212d5876"
+      },
+      "comparison": {
+        "schema_version": 1,
+        "scope": "Production complete-region A/B, timed phases exclude comparison and snapshot/hash work; direct-owner scoped activity equal in both variants; does not prove scheduler normalization. Small-sample p95 is descriptive.",
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "results": [
+          {
+            "trial": 0,
+            "variant": "baseline",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-baseline-3d7c83b.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/00-baseline",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/00-baseline",
+            "wall_s": 36.5795622500591,
+            "chunks_per_second": 56.18636989842571,
+            "cpu_ms_per_region": 40286.020000000004,
+            "median_ms": 18207.100249826908,
+            "p95_region_ms": 18207.100249826908,
+            "generation_peak_rss_bytes": 1229570048,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 0,
+            "startup": {
+              "initialize_ms": 4.438542295247316,
+              "load_and_bind_ms": 1059.4976246356964,
+              "warmups": [
+                {
+                  "assembly_ms": 4301.587167,
+                  "generated": 1024,
+                  "gpu_ms": 12534.371166,
+                  "ms": 16858.79574995488,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 12534.371166,
+                  "write_ms": 21.738417,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          },
+          {
+            "trial": 1,
+            "variant": "candidate",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-candidate.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/01-candidate",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0",
+              "--compare",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/00-baseline"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/01-candidate",
+            "wall_s": 29.233110666740686,
+            "chunks_per_second": 89.27432257875168,
+            "cpu_ms_per_region": 38348.71599999999,
+            "median_ms": 11467.285833321512,
+            "p95_region_ms": 11467.285833321512,
+            "generation_peak_rss_bytes": 1169686528,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 1024,
+            "startup": {
+              "initialize_ms": 0.8640419691801071,
+              "load_and_bind_ms": 1051.292167045176,
+              "warmups": [
+                {
+                  "assembly_ms": 3116.48925,
+                  "generated": 1024,
+                  "gpu_ms": 12809.8935,
+                  "ms": 15945.404041092843,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 12809.8935,
+                  "write_ms": 18.846375,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          },
+          {
+            "trial": 2,
+            "variant": "candidate",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-candidate.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/02-candidate",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0",
+              "--compare",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/00-baseline"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/02-candidate",
+            "wall_s": 24.298270625062287,
+            "chunks_per_second": 85.0912201500233,
+            "cpu_ms_per_region": 38056.447,
+            "median_ms": 12031.2834167853,
+            "p95_region_ms": 12031.2834167853,
+            "generation_peak_rss_bytes": 1216348160,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 1024,
+            "startup": {
+              "initialize_ms": 0.39070798084139824,
+              "load_and_bind_ms": 1108.039458282292,
+              "warmups": [
+                {
+                  "assembly_ms": 2995.210166,
+                  "generated": 1024,
+                  "gpu_ms": 7579.066959,
+                  "ms": 10588.264916092157,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 7579.066959,
+                  "write_ms": 13.910541,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          },
+          {
+            "trial": 3,
+            "variant": "baseline",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-baseline-3d7c83b.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/03-baseline",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0",
+              "--compare",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/00-baseline"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-register-kernels-screen/03-baseline",
+            "wall_s": 24.135749875102192,
+            "chunks_per_second": 93.64669941761571,
+            "cpu_ms_per_region": 37049.293000000005,
+            "median_ms": 10931.784583255649,
+            "p95_region_ms": 10931.784583255649,
+            "generation_peak_rss_bytes": 1202946048,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 1024,
+            "startup": {
+              "initialize_ms": 0.2082083374261856,
+              "load_and_bind_ms": 1098.1200421229005,
+              "warmups": [
+                {
+                  "assembly_ms": 2953.511041,
+                  "generated": 1024,
+                  "gpu_ms": 8593.682375,
+                  "ms": 11564.491792116314,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 8593.682375,
+                  "write_ms": 17.22725,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          }
+        ],
+        "summary": {
+          "baseline": {
+            "trials": 2,
+            "chunks_per_second": {
+              "individual": [
+                56.18636989842571,
+                93.64669941761571
+              ],
+              "median": 74.91653465802071,
+              "variance": 701.6381438431488
+            },
+            "cpu_ms_per_region": {
+              "individual": [
+                40286.020000000004,
+                37049.293000000005
+              ],
+              "median": 38667.656500000005,
+              "variance": 5238200.836264497
+            },
+            "median_ms": {
+              "individual": [
+                18207.100249826908,
+                10931.784583255649
+              ],
+              "median": 14569.442416541278,
+              "variance": 26465109.024128605
+            },
+            "p95_region_ms": {
+              "individual": [
+                18207.100249826908,
+                10931.784583255649
+              ],
+              "median": 14569.442416541278,
+              "variance": 26465109.024128605
+            },
+            "generation_peak_rss_bytes": {
+              "individual": [
+                1229570048,
+                1202946048
+              ],
+              "median": 1216258048.0,
+              "variance": 354418688000000
+            },
+            "region_file_bytes": {
+              "individual": [
+                9326592,
+                9326592
+              ],
+              "median": 9326592.0,
+              "variance": 0
+            }
+          },
+          "candidate": {
+            "trials": 2,
+            "chunks_per_second": {
+              "individual": [
+                89.27432257875168,
+                85.0912201500233
+              ],
+              "median": 87.18277136438749,
+              "variance": 8.749172964616616
+            },
+            "cpu_ms_per_region": {
+              "individual": [
+                38348.71599999999,
+                38056.447
+              ],
+              "median": 38202.5815,
+              "variance": 42710.58418049794
+            },
+            "median_ms": {
+              "individual": [
+                11467.285833321512,
+                12031.2834167853
+              ],
+              "median": 11749.284625053406,
+              "variance": 159046.63707649626
+            },
+            "p95_region_ms": {
+              "individual": [
+                11467.285833321512,
+                12031.2834167853
+              ],
+              "median": 11749.284625053406,
+              "variance": 159046.63707649626
+            },
+            "generation_peak_rss_bytes": {
+              "individual": [
+                1169686528,
+                1216348160
+              ],
+              "median": 1193017344.0,
+              "variance": 1088653950451712
+            },
+            "region_file_bytes": {
+              "individual": [
+                9326592,
+                9326592
+              ],
+              "median": 9326592.0,
+              "variance": 0
+            }
+          }
+        },
+        "throughput_change_percent": 16.373203542261727,
+        "cpu_reduction_percent": 1.2027493830664482,
+        "throughput_change_confidence_95": {
+          "method": "independent median bootstrap",
+          "samples": 10000,
+          "low_percent": -9.13591116483391,
+          "high_percent": 58.889643057814034
+        }
+      },
+      "decision": "rejected: screen does not establish a useful complete-region performance improvement; no runtime code retained"
+    },
+    {
+      "name": "packed-kernels",
+      "hypothesis": "Local scratch with original prepared-step size",
+      "build": {
+        "source": "3d7c83b2b6c8ef6c427c0cd2698ff4f6c2803cac",
+        "compiler": "rustc 1.93.0 (254b59607 2026-01-19)\nbinary: rustc\ncommit-hash: 254b59607d4417e9dffbc307138ae5c86280fe4c\ncommit-date: 2026-01-19\nhost: aarch64-apple-darwin\nrelease: 1.93.0\nLLVM version: 21.1.8\n",
+        "flags": [
+          "--release",
+          "--locked",
+          "--lib"
+        ],
+        "tracked_patch_sha256": "0f07194e0c791d95217ed4dda2aca8c9e65d2401ad9f2d624a150de35aa21b2b",
+        "new_module_sha256": "e2788e97e793e74002c1bfb2a47e351ddc6ca2b2465a0847790645d04bce8cb4",
+        "candidate_sha256": "4573894495a52c21d66ef86aace91766720c3eb2bc7415c933d4d18b8ec06baf"
+      },
+      "comparison": {
+        "schema_version": 1,
+        "scope": "Production complete-region A/B, timed phases exclude comparison and snapshot/hash work; direct-owner scoped activity equal in both variants; does not prove scheduler normalization. Small-sample p95 is descriptive.",
+        "order": [
+          "baseline",
+          "candidate",
+          "candidate",
+          "baseline"
+        ],
+        "results": [
+          {
+            "trial": 0,
+            "variant": "baseline",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-baseline-3d7c83b.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/00-baseline",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/00-baseline",
+            "wall_s": 12.749018291011453,
+            "chunks_per_second": 172.78238576519578,
+            "cpu_ms_per_region": 34349.47,
+            "median_ms": 5924.181750044227,
+            "p95_region_ms": 5924.181750044227,
+            "generation_peak_rss_bytes": 1223016448,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 0,
+            "startup": {
+              "initialize_ms": 2.697042189538479,
+              "load_and_bind_ms": 824.9062919057906,
+              "warmups": [
+                {
+                  "assembly_ms": 1440.749333,
+                  "generated": 1024,
+                  "gpu_ms": 4226.968334,
+                  "ms": 5680.811250116676,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 4226.968334,
+                  "write_ms": 13.008291,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          },
+          {
+            "trial": 1,
+            "variant": "candidate",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-candidate.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/01-candidate",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0",
+              "--compare",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/00-baseline"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/01-candidate",
+            "wall_s": 12.950538584031165,
+            "chunks_per_second": 174.53650338038625,
+            "cpu_ms_per_region": 34217.91299999999,
+            "median_ms": 5864.8353749886155,
+            "p95_region_ms": 5864.8353749886155,
+            "generation_peak_rss_bytes": 1221836800,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 1024,
+            "startup": {
+              "initialize_ms": 0.5945409648120403,
+              "load_and_bind_ms": 873.9982917904854,
+              "warmups": [
+                {
+                  "assembly_ms": 1340.170833,
+                  "generated": 1024,
+                  "gpu_ms": 4241.216125,
+                  "ms": 5593.033874873072,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 4241.216125,
+                  "write_ms": 11.518042,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          },
+          {
+            "trial": 2,
+            "variant": "candidate",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-candidate.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/02-candidate",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0",
+              "--compare",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/00-baseline"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/02-candidate",
+            "wall_s": 12.039956124965101,
+            "chunks_per_second": 187.78415335295554,
+            "cpu_ms_per_region": 33923.222,
+            "median_ms": 5450.95520792529,
+            "p95_region_ms": 5450.95520792529,
+            "generation_peak_rss_bytes": 1204551680,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 1024,
+            "startup": {
+              "initialize_ms": 0.1582917757332325,
+              "load_and_bind_ms": 813.7072091922164,
+              "warmups": [
+                {
+                  "assembly_ms": 1335.292958,
+                  "generated": 1024,
+                  "gpu_ms": 4053.195209,
+                  "ms": 5407.508584205061,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 4053.195209,
+                  "write_ms": 18.954875,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          },
+          {
+            "trial": 3,
+            "variant": "baseline",
+            "command": [
+              "/usr/sbin/taskpolicy",
+              "-a",
+              "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+              "/tmp/retina-refinement-cpu-kernels/scripts/native-region-benchmark.py",
+              "--library",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-baseline-3d7c83b.dylib",
+              "--out",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/03-baseline",
+              "--definition",
+              "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+              "--dimension",
+              "minecraft:overworld",
+              "--backend",
+              "cpu",
+              "--assembly-threads",
+              "16",
+              "--scope",
+              "lit-mca",
+              "--lighting",
+              "enabled",
+              "--count",
+              "1",
+              "--warmups",
+              "1",
+              "--origin-x",
+              "0",
+              "--origin-z",
+              "0",
+              "--compare",
+              "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/00-baseline"
+            ],
+            "path": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle04-packed-kernels-screen/03-baseline",
+            "wall_s": 11.523959333077073,
+            "chunks_per_second": 200.27114511491624,
+            "cpu_ms_per_region": 33722.485,
+            "median_ms": 5110.934457741678,
+            "p95_region_ms": 5110.934457741678,
+            "generation_peak_rss_bytes": 1222557696,
+            "region_file_bytes": 9326592,
+            "backend_selected": "CPU: native",
+            "identical_nbt_chunks": 1024,
+            "startup": {
+              "initialize_ms": 0.14245929196476936,
+              "load_and_bind_ms": 747.917499858886,
+              "warmups": [
+                {
+                  "assembly_ms": 1316.319083,
+                  "generated": 1024,
+                  "gpu_ms": 3970.156667,
+                  "ms": 5301.421292126179,
+                  "name": "warm0",
+                  "preserved": 0,
+                  "program_status": 0,
+                  "terrain_host_ms": 3970.156667,
+                  "write_ms": 14.888708,
+                  "x": 8,
+                  "z": 8
+                }
+              ]
+            },
+            "activity": {
+              "requested": true,
+              "active": true,
+              "system_and_display_sleep_allowed": true,
+              "options": 15728639,
+              "ended": true
+            }
+          }
+        ],
+        "summary": {
+          "baseline": {
+            "trials": 2,
+            "chunks_per_second": {
+              "individual": [
+                172.78238576519578,
+                200.27114511491624
+              ],
+              "median": 186.526765440056,
+              "variance": 377.8159452934218
+            },
+            "cpu_ms_per_region": {
+              "individual": [
+                34349.47,
+                33722.485
+              ],
+              "median": 34035.9775,
+              "variance": 196555.09511250036
+            },
+            "median_ms": {
+              "individual": [
+                5924.181750044227,
+                5110.934457741678
+              ],
+              "median": 5517.558103892952,
+              "variance": 330685.5792187137
+            },
+            "p95_region_ms": {
+              "individual": [
+                5924.181750044227,
+                5110.934457741678
+              ],
+              "median": 5517.558103892952,
+              "variance": 330685.5792187137
+            },
+            "generation_peak_rss_bytes": {
+              "individual": [
+                1223016448,
+                1222557696
+              ],
+              "median": 1222787072.0,
+              "variance": 105226698752
+            },
+            "region_file_bytes": {
+              "individual": [
+                9326592,
+                9326592
+              ],
+              "median": 9326592.0,
+              "variance": 0
+            }
+          },
+          "candidate": {
+            "trials": 2,
+            "chunks_per_second": {
+              "individual": [
+                174.53650338038625,
+                187.78415335295554
+              ],
+              "median": 181.1603283666709,
+              "variance": 87.75011489785759
+            },
+            "cpu_ms_per_region": {
+              "individual": [
+                34217.91299999999,
+                33923.222
+              ],
+              "median": 34070.5675,
+              "variance": 43421.39274049753
+            },
+            "median_ms": {
+              "individual": [
+                5864.8353749886155,
+                5450.95520792529
+              ],
+              "median": 5657.895291456953,
+              "variance": 85648.39634418317
+            },
+            "p95_region_ms": {
+              "individual": [
+                5864.8353749886155,
+                5450.95520792529
+              ],
+              "median": 5657.895291456953,
+              "variance": 85648.39634418317
+            },
+            "generation_peak_rss_bytes": {
+              "individual": [
+                1221836800,
+                1204551680
+              ],
+              "median": 1213194240.0,
+              "variance": 149387686707200
+            },
+            "region_file_bytes": {
+              "individual": [
+                9326592,
+                9326592
+              ],
+              "median": 9326592.0,
+              "variance": 0
+            }
+          }
+        },
+        "throughput_change_percent": -2.877033256178829,
+        "cpu_reduction_percent": -0.10162775551252334,
+        "throughput_change_confidence_95": {
+          "method": "independent median bootstrap",
+          "samples": 10000,
+          "low_percent": -12.849899929300037,
+          "high_percent": 8.682463505363657
+        }
+      },
+      "decision": "rejected: screen does not establish a useful complete-region performance improvement; no runtime code retained"
+    }
+  ],
+  "count_attribution": {
+    "scope": "Counts only, v2 diagnostics enabled alongside own v3 compile; no timing judgment",
+    "baseline": {
+      "anchor_builds": 0,
+      "anchor_ready_hits": 0,
+      "blob_index_columns": 0,
+      "blob_index_covered_commands": 0,
+      "blob_index_extra_value_bytes": 0,
+      "blob_index_fast_prefixes": 0,
+      "blob_index_mask_merges": 0,
+      "blob_index_outputs": 0,
+      "blob_index_prepare_nanos": 0,
+      "blob_index_rejected_outputs": 0,
+      "blob_index_writes": 0,
+      "blob_mask_builds": 0,
+      "blob_mask_cache_allocations": 0,
+      "blob_mask_cache_bytes": 0,
+      "blob_mask_hits": 0,
+      "blob_mask_reads": 0,
+      "blob_mask_scalar_fallbacks": 0,
+      "blob_overlay_observations": 0,
+      "blob_overlay_observed_payload_bytes": 0,
+      "blob_overlay_observed_points": 0,
+      "blob_overlay_promotions": 0,
+      "column_builds": 0,
+      "column_join_nanos": 0,
+      "column_lock_nanos": 0,
+      "column_requests": 0,
+      "column_tiles": 0,
+      "column_versions_skipped": 0,
+      "completed_boundary_reads": 0,
+      "completed_column_commands": 0,
+      "completed_column_groups": 0,
+      "completed_column_reads": 0,
+      "cpu_biome_grid_bytes": 4435968,
+      "cpu_biome_grid_prepare_nanos": 92500,
+      "cpu_columns_nanos": 1937114875,
+      "cpu_density_air_proofs": 1204434,
+      "cpu_density_scalar_points": 10310516,
+      "cpu_density_solid_proofs": 30418452,
+      "cpu_height_air_points_skipped": 121840984,
+      "cpu_height_interval_queries": 15811541,
+      "cpu_height_scalar_points": 2822375,
+      "cpu_masks_nanos": 5992100584,
+      "cpu_material_zero_proofs": 15870517,
+      "cpu_prepare_nanos": 5778167,
+      "cpu_queries_nanos": 0,
+      "cpu_tiles": 4,
+      "cpu_vm_auxiliary_calls": 378572,
+      "cpu_vm_blended_profiles": 2706672,
+      "cpu_vm_calls": 53558925,
+      "cpu_vm_cell_hits": 43816051,
+      "cpu_vm_cell_lookups": 56462852,
+      "cpu_vm_cell_vertices_reused": 245150774,
+      "cpu_vm_computed_nodes": 680660712,
+      "cpu_vm_constant_hits": 152025793,
+      "cpu_vm_corner_clears": 359,
+      "cpu_vm_corner_hits": 118459847,
+      "cpu_vm_corner_lookups": 131734529,
+      "cpu_vm_field_calls": 13274682,
+      "cpu_vm_horizontal_clears": 4,
+      "cpu_vm_horizontal_hits": 12793420,
+      "cpu_vm_horizontal_lookups": 14843689,
+      "cpu_vm_interpolations": 56462852,
+      "cpu_vm_material_calls": 24053195,
+      "cpu_vm_node_visits": 1824680912,
+      "cpu_vm_noise3_calls": 189580560,
+      "cpu_vm_noise_profiles": 40454302,
+      "cpu_vm_plain_corner_hits": 118459847,
+      "cpu_vm_plain_corner_lookups": 131734529,
+      "cpu_vm_ready_hits": 227537306,
+      "cpu_vm_samplers": 118,
+      "cpu_vm_terrain_calls": 15852476,
+      "deferred_ore_candidates": 0,
+      "deferred_ore_roots": 0,
+      "dependency_evaluation_nanos": 0,
+      "dependency_pool_wait_nanos": 0,
+      "distribution_nanos": 0,
+      "end_bounds_nanos": 0,
+      "end_bounds_temporary_bytes": 0,
+      "end_columns_nanos": 0,
+      "end_empty_cells": 0,
+      "end_empty_spike_anchors": 0,
+      "end_exact_nanos": 0,
+      "end_exact_noise_corners": 0,
+      "end_final_dense_equivalent_bytes": 0,
+      "end_final_material_allocated_bytes": 0,
+      "end_final_uniform_sections": 0,
+      "end_lattice_nanos": 0,
+      "end_mask_bytes": 0,
+      "end_mask_nanos": 0,
+      "end_partial_noise_probes": 0,
+      "end_query_nanos": 0,
+      "end_skipped_noise_corners": 0,
+      "end_solid_cells": 0,
+      "end_stair_columns_skipped": 0,
+      "end_substrate_nanos": 0,
+      "end_terrain_nanos": 0,
+      "end_uncertain_cells": 0,
+      "end_voxel_interpolations_avoided": 0,
+      "final_structure_planning_nanos": 0,
+      "footprint_builds": 0,
+      "footprint_pruned_writers": 0,
+      "ground_run_queries": 0,
+      "ground_run_visits": 0,
+      "ground_scalar_scans": 0,
+      "ground_voxel_queries_replaced": 0,
+      "height_roots_skipped": 0,
+      "lighting_material_upload_bytes": 0,
+      "memo_builds": 0,
+      "memo_join_nanos": 0,
+      "memo_lock_nanos": 0,
+      "memo_ready_hits": 0,
+      "memo_requests": 0,
+      "output_index_ordered_outputs": 0,
+      "output_index_ordered_writes": 0,
+      "output_index_packed_buffer_bytes": 0,
+      "output_index_packed_cells": 0,
+      "output_index_packed_outputs": 0,
+      "output_index_packed_writes": 0,
+      "output_index_uniform_bitmap_bytes": 0,
+      "overlay_recommit_calls_skipped": 0,
+      "overlay_recommit_commands_skipped": 0,
+      "prefix_evaluations": 0,
+      "region_pool_wait_nanos": 152083,
+      "shared_material_columns": 0,
+      "structure_active_hits": 0,
+      "structure_builds": 20,
+      "structure_cache_evictions": 0,
+      "structure_cache_hits": 0,
+      "structure_cache_misses": 20,
+      "structure_candidates": 20,
+      "structure_discovery_tiles": 0,
+      "structure_fossil_batches": 0,
+      "structure_fossil_biome_points": 0,
+      "structure_fossil_biome_queried": 0,
+      "structure_fossil_biome_retained": 0,
+      "structure_fossil_columns": 0,
+      "structure_job_cache_hits": 0,
+      "structure_overlapping_builds": 0,
+      "structure_pending_evictions": 0,
+      "structure_plan_calls": 1,
+      "structure_probe_points": 20,
+      "structure_repeated_builds": 0,
+      "structure_unique_candidates": 20,
+      "teardown_boundary_columns_nanos": 0,
+      "teardown_commands_nanos": 0,
+      "teardown_nanos": 0,
+      "teardown_other_nanos": 0,
+      "teardown_outputs_nanos": 0,
+      "teardown_terrain_nanos": 0,
+      "teardown_versions_nanos": 0,
+      "terrain_cache_hits": 0,
+      "terrain_cache_requests_nanos": 10583,
+      "terrain_cave_cache_hold_nanos": 173500,
+      "terrain_cave_cache_wait_nanos": 83,
+      "terrain_column_cache_hold_nanos": 845416,
+      "terrain_column_cache_wait_nanos": 42,
+      "terrain_exact_tile_cache_hits": 0,
+      "terrain_generated_chunks": 1444,
+      "terrain_generated_tiles": 1,
+      "terrain_initial_crop_bytes": 0,
+      "terrain_initial_crop_nanos": 0,
+      "terrain_initial_field_reads": 0,
+      "terrain_initial_tiles_reused": 0,
+      "terrain_job_cached_tile_hits": 0,
+      "terrain_job_cached_tiles_retained": 0,
+      "terrain_job_direct_requests": 0,
+      "terrain_job_fallback_requests": 0,
+      "terrain_job_join_nanos": 0,
+      "terrain_job_lock_nanos": 0,
+      "terrain_job_requests": 0,
+      "terrain_job_snapshot_nanos": 0,
+      "terrain_live_index_absent": 1,
+      "terrain_live_index_expired": 0,
+      "terrain_live_index_hits": 0,
+      "terrain_requests": 1,
+      "terrain_reuse_crop_bytes": 0,
+      "terrain_reuse_crop_hits": 0,
+      "terrain_reuse_crop_nanos": 0,
+      "terrain_unique_tiles": 1,
+      "uniform_blob_changed_columns": 0,
+      "uniform_blob_commands": 0,
+      "uniform_blob_prefixes": 0,
+      "version_cache_boundary_hits": 0,
+      "version_cache_boundary_lookups": 0,
+      "version_cache_capture_nanos": 0,
+      "version_cache_captured_regions": 0,
+      "version_cache_evicted_regions": 0,
+      "version_cache_export_nanos": 0,
+      "version_cache_export_skips": 0,
+      "version_cache_exported_bytes": 0,
+      "version_cache_exported_regions": 0,
+      "version_cache_exterior_exported_bytes": 0,
+      "version_cache_exterior_exported_slots": 0,
+      "version_cache_exterior_exported_spans": 0,
+      "version_cache_exterior_exported_states": 0,
+      "version_cache_exterior_hits": 0,
+      "version_cache_exterior_lookups": 0,
+      "version_cache_publish_nanos": 0,
+      "version_cache_published_regions": 0,
+      "view_column_cached_reads": 0,
+      "view_column_loads": 0,
+      "view_column_slot_hits": 0,
+      "view_terrain_borrowed_reads": 0,
+      "view_terrain_loaded_reads": 0
+    },
+    "candidate": {
+      "anchor_builds": 0,
+      "anchor_ready_hits": 0,
+      "blob_index_columns": 0,
+      "blob_index_covered_commands": 0,
+      "blob_index_extra_value_bytes": 0,
+      "blob_index_fast_prefixes": 0,
+      "blob_index_mask_merges": 0,
+      "blob_index_outputs": 0,
+      "blob_index_prepare_nanos": 0,
+      "blob_index_rejected_outputs": 0,
+      "blob_index_writes": 0,
+      "blob_mask_builds": 0,
+      "blob_mask_cache_allocations": 0,
+      "blob_mask_cache_bytes": 0,
+      "blob_mask_hits": 0,
+      "blob_mask_reads": 0,
+      "blob_mask_scalar_fallbacks": 0,
+      "blob_overlay_observations": 0,
+      "blob_overlay_observed_payload_bytes": 0,
+      "blob_overlay_observed_points": 0,
+      "blob_overlay_promotions": 0,
+      "column_builds": 0,
+      "column_join_nanos": 0,
+      "column_lock_nanos": 0,
+      "column_requests": 0,
+      "column_tiles": 0,
+      "column_versions_skipped": 0,
+      "completed_boundary_reads": 0,
+      "completed_column_commands": 0,
+      "completed_column_groups": 0,
+      "completed_column_reads": 0,
+      "cpu_biome_grid_bytes": 4435968,
+      "cpu_biome_grid_prepare_nanos": 294000,
+      "cpu_columns_nanos": 2592051584,
+      "cpu_density_air_proofs": 1204434,
+      "cpu_density_scalar_points": 10310516,
+      "cpu_density_solid_proofs": 30418452,
+      "cpu_height_air_points_skipped": 121840984,
+      "cpu_height_interval_queries": 15811541,
+      "cpu_height_scalar_points": 2822375,
+      "cpu_masks_nanos": 8903162792,
+      "cpu_material_zero_proofs": 15870517,
+      "cpu_prepare_nanos": 6208584,
+      "cpu_queries_nanos": 0,
+      "cpu_tiles": 4,
+      "cpu_vm_auxiliary_calls": 378572,
+      "cpu_vm_blended_profiles": 2706672,
+      "cpu_vm_calls": 53558925,
+      "cpu_vm_cell_hits": 43816051,
+      "cpu_vm_cell_lookups": 56462852,
+      "cpu_vm_cell_vertices_reused": 245150774,
+      "cpu_vm_computed_nodes": 680660712,
+      "cpu_vm_constant_hits": 152025793,
+      "cpu_vm_corner_clears": 359,
+      "cpu_vm_corner_hits": 118459847,
+      "cpu_vm_corner_lookups": 131734529,
+      "cpu_vm_field_calls": 13274682,
+      "cpu_vm_horizontal_clears": 4,
+      "cpu_vm_horizontal_hits": 12793420,
+      "cpu_vm_horizontal_lookups": 14704482,
+      "cpu_vm_interpolations": 56462852,
+      "cpu_vm_kernel_calls": 43577731,
+      "cpu_vm_kernel_nodes": 252192696,
+      "cpu_vm_kernel_waits": 129142761,
+      "cpu_vm_material_calls": 24053195,
+      "cpu_vm_node_visits": 1407450982,
+      "cpu_vm_noise3_calls": 189580560,
+      "cpu_vm_noise_profiles": 40454302,
+      "cpu_vm_plain_corner_hits": 118459847,
+      "cpu_vm_plain_corner_lookups": 131734529,
+      "cpu_vm_ready_hits": 227537306,
+      "cpu_vm_samplers": 118,
+      "cpu_vm_terrain_calls": 15852476,
+      "deferred_ore_candidates": 0,
+      "deferred_ore_roots": 0,
+      "dependency_evaluation_nanos": 0,
+      "dependency_pool_wait_nanos": 0,
+      "distribution_nanos": 0,
+      "end_bounds_nanos": 0,
+      "end_bounds_temporary_bytes": 0,
+      "end_columns_nanos": 0,
+      "end_empty_cells": 0,
+      "end_empty_spike_anchors": 0,
+      "end_exact_nanos": 0,
+      "end_exact_noise_corners": 0,
+      "end_final_dense_equivalent_bytes": 0,
+      "end_final_material_allocated_bytes": 0,
+      "end_final_uniform_sections": 0,
+      "end_lattice_nanos": 0,
+      "end_mask_bytes": 0,
+      "end_mask_nanos": 0,
+      "end_partial_noise_probes": 0,
+      "end_query_nanos": 0,
+      "end_skipped_noise_corners": 0,
+      "end_solid_cells": 0,
+      "end_stair_columns_skipped": 0,
+      "end_substrate_nanos": 0,
+      "end_terrain_nanos": 0,
+      "end_uncertain_cells": 0,
+      "end_voxel_interpolations_avoided": 0,
+      "final_structure_planning_nanos": 0,
+      "footprint_builds": 0,
+      "footprint_pruned_writers": 0,
+      "ground_run_queries": 0,
+      "ground_run_visits": 0,
+      "ground_scalar_scans": 0,
+      "ground_voxel_queries_replaced": 0,
+      "height_roots_skipped": 0,
+      "lighting_material_upload_bytes": 0,
+      "memo_builds": 0,
+      "memo_join_nanos": 0,
+      "memo_lock_nanos": 0,
+      "memo_ready_hits": 0,
+      "memo_requests": 0,
+      "output_index_ordered_outputs": 0,
+      "output_index_ordered_writes": 0,
+      "output_index_packed_buffer_bytes": 0,
+      "output_index_packed_cells": 0,
+      "output_index_packed_outputs": 0,
+      "output_index_packed_writes": 0,
+      "output_index_uniform_bitmap_bytes": 0,
+      "overlay_recommit_calls_skipped": 0,
+      "overlay_recommit_commands_skipped": 0,
+      "prefix_evaluations": 0,
+      "region_pool_wait_nanos": 20375,
+      "shared_material_columns": 0,
+      "structure_active_hits": 0,
+      "structure_builds": 20,
+      "structure_cache_evictions": 0,
+      "structure_cache_hits": 0,
+      "structure_cache_misses": 20,
+      "structure_candidates": 20,
+      "structure_discovery_tiles": 0,
+      "structure_fossil_batches": 0,
+      "structure_fossil_biome_points": 0,
+      "structure_fossil_biome_queried": 0,
+      "structure_fossil_biome_retained": 0,
+      "structure_fossil_columns": 0,
+      "structure_job_cache_hits": 0,
+      "structure_overlapping_builds": 0,
+      "structure_pending_evictions": 0,
+      "structure_plan_calls": 1,
+      "structure_probe_points": 20,
+      "structure_repeated_builds": 0,
+      "structure_unique_candidates": 20,
+      "teardown_boundary_columns_nanos": 0,
+      "teardown_commands_nanos": 0,
+      "teardown_nanos": 0,
+      "teardown_other_nanos": 0,
+      "teardown_outputs_nanos": 0,
+      "teardown_terrain_nanos": 0,
+      "teardown_versions_nanos": 0,
+      "terrain_cache_hits": 0,
+      "terrain_cache_requests_nanos": 11166,
+      "terrain_cave_cache_hold_nanos": 179041,
+      "terrain_cave_cache_wait_nanos": 125,
+      "terrain_column_cache_hold_nanos": 889416,
+      "terrain_column_cache_wait_nanos": 84,
+      "terrain_exact_tile_cache_hits": 0,
+      "terrain_generated_chunks": 1444,
+      "terrain_generated_tiles": 1,
+      "terrain_initial_crop_bytes": 0,
+      "terrain_initial_crop_nanos": 0,
+      "terrain_initial_field_reads": 0,
+      "terrain_initial_tiles_reused": 0,
+      "terrain_job_cached_tile_hits": 0,
+      "terrain_job_cached_tiles_retained": 0,
+      "terrain_job_direct_requests": 0,
+      "terrain_job_fallback_requests": 0,
+      "terrain_job_join_nanos": 0,
+      "terrain_job_lock_nanos": 0,
+      "terrain_job_requests": 0,
+      "terrain_job_snapshot_nanos": 0,
+      "terrain_live_index_absent": 1,
+      "terrain_live_index_expired": 0,
+      "terrain_live_index_hits": 0,
+      "terrain_requests": 1,
+      "terrain_reuse_crop_bytes": 0,
+      "terrain_reuse_crop_hits": 0,
+      "terrain_reuse_crop_nanos": 0,
+      "terrain_unique_tiles": 1,
+      "uniform_blob_changed_columns": 0,
+      "uniform_blob_commands": 0,
+      "uniform_blob_prefixes": 0,
+      "version_cache_boundary_hits": 0,
+      "version_cache_boundary_lookups": 0,
+      "version_cache_capture_nanos": 0,
+      "version_cache_captured_regions": 0,
+      "version_cache_evicted_regions": 0,
+      "version_cache_export_nanos": 0,
+      "version_cache_export_skips": 0,
+      "version_cache_exported_bytes": 0,
+      "version_cache_exported_regions": 0,
+      "version_cache_exterior_exported_bytes": 0,
+      "version_cache_exterior_exported_slots": 0,
+      "version_cache_exterior_exported_spans": 0,
+      "version_cache_exterior_exported_states": 0,
+      "version_cache_exterior_hits": 0,
+      "version_cache_exterior_lookups": 0,
+      "version_cache_publish_nanos": 0,
+      "version_cache_published_regions": 0,
+      "view_column_cached_reads": 0,
+      "view_column_loads": 0,
+      "view_column_slot_hits": 0,
+      "view_terrain_borrowed_reads": 0,
+      "view_terrain_loaded_reads": 0
+    },
+    "node_stack_visit_reduction_percent": 22.86591191128764,
+    "private_body_operation_share_percent": 30.286631821900368,
+    "computed_nodes_identical": true,
+    "constant_hits_identical": true,
+    "noise_calls_identical": true,
+    "corner_reuse_identical": true
+  },
+  "attribution_limit": {
+    "purpose": "Coverage/operation-count attribution only, not speed evidence",
+    "native": "cycle04-register-kernels-candidate.dylib (second prototype)",
+    "baseline": "cycle04-baseline-3d7c83b.dylib",
+    "diagnostics": "Per-node VM counters enabled equally on both sides; their overhead is substantial",
+    "own_competing_work": "Packed-reference third prototype release build runs concurrently; all wall/CPU timings in this directory are excluded from performance judgments",
+    "reason": "Determine whether private arithmetic block coverage is too small to justify a broader qualification, using actual production generation and exact NBT comparison"
+  },
+  "raw_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
+  "layout_probe": {
+    "source": "cycle04-step-layout.rs",
+    "result": "original=32 kernel_u32=40 kernel_u16=32",
+    "scope": "Standalone model using the actual Opcode type and same fields on this compiler/host. Not a timing result or a public layout guarantee."
+  },
+  "source_archives": [
+    "cycle04-kernels-v1-source",
+    "cycle04-kernels-v2-source",
+    "cycle04-kernels-v3-source",
+    "cycle04-kernels-final-discarded.patch",
+    "cycle04-kernels-final-source-hashes.json"
+  ],
+  "validation": {
+    "production_release_builds": 3,
+    "fresh_native_processes": 15,
+    "generated_regions_including_warmup_and_profile": 33,
+    "strict_same_backend_nbt_compared_chunks": 10240,
+    "sampled_regions": 6,
+    "backend": "CPU: native",
+    "screen_settings": "Saved vanilla seed123456789,region0,0; each screen ABBA4processes,1warmup+1measured lit zlib MCA, assembly16,globalRayon2; normal diagnostics off. Scoped actual-owner activity same in both variants.",
+    "tests": "Scalar-reference unit drafts for all kernel scalar opcodes, roots/lazy branches, 5000nodechain and epoch wrap retained with discarded source but not run; losing candidates did not progress to retention qualification. Release builds typechecked production and full MCA comparisons passed."
+  },
+  "decision": "Discard all three runtime prototypes. VM stack visits fell22.87% with exact computed/constant/noise/reuse counts, but repeated screens did not demonstrate end-to-end CPU/throughput improvement. No five-pair retention qualification was attempted because screening remained inconclusive. Do not merge increased complexity on a proxy-count improvement alone.",
+  "limits": [
+    "Screens have only2processes/variant; intervals are wide and do not establish that every prepared-kernel design is unhelpful",
+    "M4Max/macOS27.0.1,AC,power mode0; competing game,VM,desktop and compiler activity varied; raw snapshots retained; no unrelated process stopped or machine setting changed",
+    "Count-only diagnostic pair ran concurrently with own third-variant build; all of its timing fields are explicitly excluded from performance claims",
+    "No Metal/Windows speed or non-primary-world correctness claim is made for discarded code",
+    "No runtime source remains in the PR, so broad backend/seed retention checks are not represented as completed"
+  ],
+  "future_leads": [
+    "A distinct-root entry schedule is still unmeasured; observed ready hits are high, but implicit nodezero and six returned roots must remain intact",
+    "Target richer prepared kernels or exact certificates only after new workload-specific evidence; do not repeat the rejected identity-index shortcut",
+    "Nether dependency/query batching and GPU-host encoding/lighting transport remain independent areas to evaluate"
+  ]
+}
