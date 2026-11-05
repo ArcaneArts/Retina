@@ -1,5 +1,7 @@
 # Refinement cycle 8: actual Nether dependency attribution
 
+Cycle PR: [#421](https://github.com/ArcaneArts/Retina/pull/421).
+
 Retain an **opt-in measurement tool**, not a terrain speedup. Real CPU and Metal captures find no raw count/provider sampling batches in this vanilla Nether workload. They instead observe millions of column reconstructions and sparse per-view caches. The next O2 cycle will test reducing view-cache allocation while preserving exact-key fallback. O2 is not complete from telemetry alone.
 
 The [machine-readable record](refinement-cycle-08-nether-attribution-2026-11-04.json) pins source, binary hashes, inputs, commands, trial results, correctness, bounded-capture semantics and external logs. Baseline is current main `ed27dbcf`; its native source tree matches the frozen library built at `50c375c1`. Candidate v2 library SHA-256 is `775bb1317e26f7aa17459dedb91fc030093ab4354c76ea250b53a1e0df548597`. Rust/build settings and exact source-file hashes are in the JSON.
