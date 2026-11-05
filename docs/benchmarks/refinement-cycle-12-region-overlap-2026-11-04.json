@@ -3,7 +3,7 @@
   "schema_version": 1,
   "cycle": 12,
   "area": "O5 bounded region overlap and foreground fairness",
-  "pr": null,
+  "pr": "https://github.com/ArcaneArts/Retina/pull/425",
   "base": "722a52bbb04c8f1161bd47e6d2e8c29ddb149b37",
   "decision": "Retain opt-in bounded fairness/latency benchmark tooling. Reject/discard all early-refill runtime prototype code: primary five matched Metal pairs inconclusive. No concurrency budgets, pipeline depth, publication, shaders or backend defaults change.",
   "hypothesis": "Refill recycled GPU lighting readback before synchronous CPU encode, preserving max2 flights per region, to overlap host/GPU work. CPU backend returns before prototype.",

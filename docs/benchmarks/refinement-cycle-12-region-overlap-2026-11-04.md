@@ -1,5 +1,7 @@
 # Refinement cycle 12: bounded overlap and foreground fairness
 
+Cycle PR: [#425](https://github.com/ArcaneArts/Retina/pull/425).
+
 Retain the opt-in measurement tooling; **discard the early-refill runtime prototype**. Five matched primary Metal pairs show median throughput -0.42%, descriptive paired bootstrap interval -10.87% to +4.25%. Process CPU, request latency and memory do not establish an efficiency win either. No generation implementation, thread budget, queue depth, publication path or backend default changes.
 
 The [machine-readable record](refinement-cycle-12-region-overlap-2026-11-04.json) includes individual successful processes, commands, native/source identities, complete-region latency, CPU work, high-water RSS, sizes/transfers, output hashes, correctness, interrupted-trial disposition and host-load observations. Large MCA corpora, samples, native builds, timeline events and rejected patches remain outside Git.
