@@ -1,5 +1,7 @@
 # Refinement cycle 13: native palette/NBT attribution
 
+Cycle PR: [#426](https://github.com/ArcaneArts/Retina/pull/426).
+
 **Discard the CPU uniform-proof forwarding prototype and all private instrumentation.** No runtime change is retained. This cycle profiles native NBT construction, completing the investigation that the [codec-only cycle](refinement-cycle-10-codec-scratch-2026-11-04.md) explicitly left open. A cheap complete-MCA CPU/Metal screen does not establish a worthwhile improvement.
 
 The [machine-readable record](refinement-cycle-13-native-nbt-2026-11-05.json) includes every complete native process, individual latency/CPU/RSS/size/transfer observations, exact source/native/compiler identities, commands, phases, output hashes, byte receipts, adaptive stop and limitations. Private patches, binaries, logs and MCA corpora remain outside Git.

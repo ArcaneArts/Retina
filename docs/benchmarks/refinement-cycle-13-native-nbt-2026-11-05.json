@@ -5,7 +5,7 @@
   "area": "O6 native palette/NBT construction attribution",
   "date": "2026-11-05",
   "base": "4c29a98b821194b23601ca6689beea57401308d9",
-  "pr": null,
+  "pr": "https://github.com/ArcaneArts/Retina/pull/426",
   "decision": "Reject/discard CPU uniform-section proof forwarding prototype and its draft unit test. One CPU pair and two Metal AB/BA pairs do not qualify a full-MCA CPU/latency/memory improvement; no runtime changes retained. Profiling covers missing native NBT construction work beyond codec cycle10.",
   "builds": {
     "attribution": {
