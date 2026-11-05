@@ -16427,5 +16427,6 @@
     }
   },
   "external_artifacts_root": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
-  "remaining": "Cumulative starting-goal baseline versus final and actual Windows Vulkan qualification remain separate; no JAR/release."
+  "remaining": "Cumulative starting-goal baseline versus final and actual Windows Vulkan qualification remain separate; no JAR/release.",
+  "pr": "https://github.com/ArcaneArts/Retina/pull/427"
 }

@@ -2,7 +2,7 @@
 
 Retain the emission-only CPU initialization for profiles whose authoritative `sky` field is false. Five fresh production-path matched Nether pairs show **lighting host elapsed time −21.16%**, descriptive paired bootstrap interval **−22.59% to −9.22%**. All five pairs improve. The medians are 668.23 → 546.57ms per complete region. Whole-region throughput, process CPU work and RSS remain inconclusive; no overall chunks/s, FPS or Windows speedup is claimed.
 
-Branch: `codex/refinement-sky-rows`, base `e10c9ee4`. Actual PR/merge linkage is maintained in the cumulative implementation ledger. The [machine-readable record](refinement-cycle-14-no-skylight-2026-11-05.json) contains every completed trial's commands/identities, measurements, load samples, exact-output checks and rejected alternatives. Large binaries, patches, profiler data and MCA corpora remain outside Git.
+Branch: `codex/refinement-sky-rows`, base `e10c9ee4`. Cycle PR: [#427](https://github.com/ArcaneArts/Retina/pull/427). Actual merge linkage is maintained in the cumulative implementation ledger. The [machine-readable record](refinement-cycle-14-no-skylight-2026-11-05.json) contains every completed trial's commands/identities, measurements, load samples, exact-output checks and rejected alternatives. Large binaries, patches, profiler data and MCA corpora remain outside Git.
 
 ## Scoped implementation
 
