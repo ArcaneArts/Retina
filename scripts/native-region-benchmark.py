@@ -54,6 +54,8 @@ def main():
                         help="Opt-in workload/wait attribution; keep these runs separate from headline timings")
     parser.add_argument("--gpu-interval", action="store_true",
                         help="Opt-in bounded submission timeline; separates warmup/boundary work from the measured batch")
+    parser.add_argument("--dependency-trace", type=Path,
+                        help="Opt-in native planner captures for the measured batch only, excluding warmups; instrumented attribution, not headline timing")
     parser.add_argument("--parallel", type=int, choices=(1,2,4,8), default=1,
                         help="Concurrent callers; CPU worker limits remain separate")
     parser.add_argument("--assembly-threads", type=int, choices=range(1,17), help="Existing shared native assembly pool budget; leaves its default/environment unchanged when omitted")
@@ -90,6 +92,10 @@ def main():
     parser.add_argument("--await-specialization", action="store_true", help="After measurement, await compilation and compare one regenerated region with its pre-warmup output")
     parser.add_argument("--specialization-timeout", type=float, default=180, help="Seconds to await a real compilation result after measurements")
     args = parser.parse_args()
+    if args.dependency_trace:
+        # This is an owned benchmark process. The optional measurement-window
+        # argument overrides an inherited whole-process capture directory.
+        os.environ.pop("RETINA_DEPENDENCY_TRACE_DIR", None)
     if args.backend:
         os.environ["RETINA_GPU_BACKEND"] = args.backend
     if args.assembly_threads:
@@ -244,6 +250,8 @@ def main():
                 final_states += (0,)
             if ready.status not in final_states:
                 raise RuntimeError(f"GPU program did not reach a final readiness state: status={ready.status}")
+        if args.dependency_trace:
+            os.environ["RETINA_DEPENDENCY_TRACE_DIR"] = str(args.dependency_trace.resolve())
         before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
         before_performance = performance_snapshot()
         before_program=ProgramSnapshot()
@@ -268,6 +276,8 @@ def main():
         wall = time.perf_counter()-start
         usage_after = process_usage.snapshot()
         batch_end_unix = time.time()
+        if args.dependency_trace:
+            os.environ.pop("RETINA_DEPENDENCY_TRACE_DIR", None)
         user_seconds = usage_after.ru_utime - usage_before.ru_utime
         system_seconds = usage_after.ru_stime - usage_before.ru_stime
         generation_peak_rss_bytes = process_usage.peak_rss_bytes(usage_after)
@@ -299,6 +309,8 @@ def main():
                     legacy_gpu_ms_scope="Legacy name for host terrain preparation, including CPU work; not device execution",
                     mca_compression=args.mca_compression,
                     benchmark_scope=args.scope, lighting=args.lighting,
+                    dependency_trace={"requested_directory": str(args.dependency_trace.resolve()),
+                                      "scope": "Measured generation batch only, excludes warmups; optional native diagnostic, availability not inferred"} if args.dependency_trace else None,
                     readiness=args.readiness, readiness_wait_ms=readiness_wait_ms,
                     build={"harness_revision": revision, "harness_dirty": dirty,
                            "harness_dirty_fingerprint": dirty_fingerprint,

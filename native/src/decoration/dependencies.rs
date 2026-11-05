@@ -7,6 +7,7 @@ mod uniform_blob;
 mod output_columns;
 mod material_masks;
 mod ground_transitions;
+mod sampling_trace;
 pub(crate) use version_cache::{Cache as VersionCache, Pending as PendingVersions};
 #[cfg(test)]
 mod version_reuse_probe;
@@ -456,6 +457,7 @@ struct Planner<'a> {
     engine: &'a TerrainEngine,
     profile: &'a WorldProfile,
     request: ChunkRequest,
+    sampling_trace: Option<Box<sampling_trace::Capture>>,
     roots: Vec<Root>,
     terrain: crate::terrain_job::TerrainJob<'a>,
     anchors: Memo<(usize, i32, i32), Output>,
@@ -561,6 +563,14 @@ struct View<'a, 'b> {
 }
 impl Drop for View<'_, '_> {
     fn drop(&mut self) {
+        if let Some(trace) = self.planner.sampling_trace.as_deref() {
+            let slots = self.columns.slots.get();
+            trace.view(self.before, slots.is_some(),
+                slots.map_or(0, |_| std::mem::size_of::<[OnceLock<ViewColumn>; VIEW_COLUMN_SLOTS]>()),
+                slots.map_or(0, |slots| slots.iter().filter(|slot| slot.get().is_some()).count()),
+                self.columns.values.lock().ok().map(|values| values.len()),
+                self.columns.material_masks.allocated_bytes());
+        }
         if let Some(counts) = &self.columns.counts {
             // Publish per-view totals once. Disabled diagnostics add no atomics
             // to scalar reads; enabled counters are local to this view.
@@ -841,7 +851,10 @@ impl Planner<'_> {
         self.error.lock().unwrap().clone().map_or(Ok(()), Err)
     }
     fn terrain(&self, x: i32, z: i32) -> Result<Arc<Field<'static>>, String> {
-        self.terrain.field(x, z)
+        let mut trace = self.sampling_trace.as_deref().map(|t| t.span(sampling_trace::TERRAIN, None, x, z));
+        let result = self.terrain.field(x, z);
+        if result.is_ok() { if let Some(trace) = &mut trace { trace.complete(); } }
+        result
     }
 
     fn anchor(&self, root: usize, x: i32, z: i32) -> Result<Cow<'_, Arc<Output>>, String> {
@@ -932,20 +945,26 @@ impl Planner<'_> {
                 let mut samples = provider_noise::Samples::default();
                 let mut counts = counts::Counts::default();
                 loop {
+                    let mut poll = self.sampling_trace.as_deref().map(|t| t.span(sampling_trace::POLL, Some(root), x, z));
                     let queries = replay.poll(
                         &samples,
                         self.profile.decoration_noise.as_ref().map(|_| &counts),
                     );
+                    if let Some(poll) = &mut poll { poll.complete(); }
+                    drop(poll);
                     self.check()?;
                     if queries.is_empty() {
                         break;
                     }
                     // Geometry and sampling share the loaded feature rules.
+                    let mut trace = self.sampling_trace.as_deref().map(|t| t.sampling(root, x, z, &queries.counts, &queries.noise));
                     let sampled = if let Some(gpu) = &self.engine.compute {
                         #[cfg(test)]
                         let mut lookup = worker_phase_probe::LookupCall::start(
                             worker_phase_probe::JoinKey::new("feature_gpu", Some(root), x, z));
+                        if let Some(trace) = &mut trace { trace.gpu_lock_begin(); }
                         let acquired = gpu.feature_gpu.lock();
+                        if let Some(trace) = &mut trace { trace.gpu_lock_end(acquired.is_ok()); }
                         #[cfg(test)]
                         lookup.acquired(acquired.is_ok());
                         let sampled = acquired.map_err(|_| "feature GPU lock poisoned")?.run_batch(
@@ -955,9 +974,11 @@ impl Planner<'_> {
                         lookup.finish(true);
                         sampled
                     } else {
+                        if let Some(trace) = &mut trace { trace.cpu_begin(); }
                         crate::cpu::features::sample(self.profile.decoration_noise.as_ref(), &queries.counts,
                             &self.profile.decoration_provider_noises, &queries.noise)?
                     };
+                    if let Some(trace) = &mut trace { trace.sampled(&sampled); }
                     self.engine.pipeline.transfer(
                         request.reserved,
                         sampled.upload,
@@ -1228,6 +1249,7 @@ impl Planner<'_> {
         #[cfg(test)] column_cpu: &mut worker_phase_probe::ColumnLoadCpu,
     ) -> Result<Arc<ColumnState>, String> {
         let metrics = &self.metrics.performance;
+        let mut trace = self.sampling_trace.as_deref().map(|t| t.span(sampling_trace::COLUMN, Some(before), x, z));
         let joined = metrics.start();
         #[cfg(test)]
         let ready_before = slot.get().is_some();
@@ -1236,11 +1258,14 @@ impl Planner<'_> {
             worker_phase_probe::JoinKey::new("column", Some(before), x, z));
         let mut built = false;
         let result = slot.get_or_init(|| {
+            let mut trace = self.sampling_trace.as_deref().map(|t| t.span(sampling_trace::BUILD, Some(before), x, z));
             built = true;
             metrics.add(Perf::column_builds, 1);
-            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1)); #[cfg(test)] return self.column_trace.evaluate(before, x, z, self.profile, compact, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
-            #[cfg(not(test))] self.build_column(before, x, z)
-                .map_err(|error| Box::new(ColumnFailure(error)))
+            #[cfg(test)] dependency_work::count(Work::ColumnBuild, before.checked_sub(1));
+            #[cfg(test)] let result = self.column_trace.evaluate(before, x, z, self.profile, compact, |observation| self.build_column(before, x, z, observation)).map_err(|error| Box::new(ColumnFailure(error)));
+            #[cfg(not(test))] let result = self.build_column(before, x, z).map_err(|error| Box::new(ColumnFailure(error)));
+            if result.is_ok() { if let Some(trace) = &mut trace { trace.complete(); } }
+            result
         });
         #[cfg(test)]
         join.finish(built, result.is_ok());
@@ -1249,6 +1274,7 @@ impl Planner<'_> {
             metrics.elapsed(Perf::column_join_nanos, joined);
             #[cfg(test)] dependency_work::count(Work::ColumnCellReuse, before.checked_sub(1));
         }
+        if result.is_ok() { if let Some(trace) = &mut trace { trace.complete(); } }
         result
             .as_ref()
             .map(Arc::clone)
@@ -1393,13 +1419,16 @@ impl Planner<'_> {
                 prior.height_trace.material();
             }
             if result.runs.slice() == prior.runs.slice() {
+                if let Some(trace) = self.sampling_trace.as_deref() { trace.identity(before - 1, limit.is_some(), true); }
                 #[cfg(test)] result.height_trace.discarded_identity();
                 #[cfg(test)] self.column_trace.identity(before, x, z, limit.is_some(), true);
                 Ok(prior)
             } else {
+                if let Some(trace) = self.sampling_trace.as_deref() { trace.identity(before - 1, limit.is_some(), false); }
                 Ok(Arc::new(result))
             }
         } else {
+            if let Some(trace) = self.sampling_trace.as_deref() { trace.identity(before - 1, limit.is_some(), true); }
             #[cfg(test)]
             probe.finish(None, prior.runs.slice().len(), true);
             #[cfg(test)] self.column_trace.identity(before, x, z, limit.is_some(), true);
@@ -1484,6 +1513,7 @@ impl Planner<'_> {
             }
         }
         let result = edits.finish(&prior, height, material);
+        if let Some(trace) = self.sampling_trace.as_deref() { trace.identity(before - 1, limit.is_some(), result.is_none()); }
         self.metrics.performance.add(Perf::uniform_blob_prefixes, 1);
         self.metrics.performance.add(Perf::uniform_blob_commands, commands);
         self.metrics.performance.add(Perf::uniform_blob_changed_columns, result.is_some() as u64);
@@ -1670,6 +1700,7 @@ pub(crate) fn generate(
         engine,
         profile,
         request,
+        sampling_trace: sampling_trace::Capture::from_env(request, side, profile, groups.values()),
         roots: groups.into_values().collect(),
         terrain: crate::terrain_job::TerrainJob::new(engine, profile, request, initial),
         anchors: ShardedMap::default(),
@@ -1858,6 +1889,7 @@ pub(crate) fn generate(
         retire(cache, &metrics.performance, Perf::teardown_outputs_nanos);
         // Preserve normal field destruction order while measuring each group.
         let Planner {
+            sampling_trace,
             roots,
             terrain,
             anchors,
@@ -1908,6 +1940,9 @@ pub(crate) fn generate(
             .performance
             .elapsed(Perf::teardown_nanos, teardown_started);
         diagnostics::record(teardown_detail, details.map(|d| &mut d.teardown_wall_nanos));
+        // Optional file serialization is outside the existing teardown timers.
+        // Instrumented full-generation wall time still includes its cost.
+        drop(sampling_trace);
         Ok(result)
     })
 }
