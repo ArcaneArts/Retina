@@ -28,10 +28,27 @@ final class TransferProbe extends ChunkGenerator {
     static void run(JavaPlugin probe, Path input, boolean live) throws Exception {
         run(probe, input, live, Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("Retina")).getClass().getClassLoader());
     }
-    static void runReference(JavaPlugin probe, Path input, Path jar) throws Exception {
+    static void runReference(JavaPlugin probe, Path input, Path jar, boolean live) throws Exception {
+        try (var loader = snapshotLoader(jar)) { run(probe, input, live, loader); }
+    }
+    static void runPaired(JavaPlugin probe, Path input, Path control, Path candidate, boolean live) throws Exception {
+        // Keep both implementations warm across all five pairs. A new loader
+        // for every command would also measure repeated class loading and JIT.
+        try (var baseline = snapshotLoader(control); var changed = snapshotLoader(candidate)) {
+            String[] order = {"control", "candidate", "candidate", "control", "control", "candidate",
+                    "candidate", "control", "control", "candidate"};
+            for (int i = 0; i < order.length; i++) {
+                String label = order[i];
+                probe.getLogger().info("RETINA_TRANSFER_PAIR_BEGIN " + i + " " + label);
+                run(probe, input, live, label.equals("control") ? baseline : changed);
+            }
+        }
+        probe.getLogger().info("RETINA_TRANSFER_PAIR_PASS");
+    }
+    private static java.net.URLClassLoader snapshotLoader(Path jar) throws Exception {
         var parent = Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("Retina")).getClass().getClassLoader();
         // Isolate only the implementation under test; Bukkit and NBT types stay shared.
-        try (var loader = new java.net.URLClassLoader(new java.net.URL[]{jar.toUri().toURL()}, parent) {
+        return new java.net.URLClassLoader(new java.net.URL[]{jar.toUri().toURL()}, parent) {
             @Override protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
                 if (!name.equals("art.arcane.retina.bukkit.ChunkSnapshot") && !name.startsWith("art.arcane.retina.bukkit.ChunkSnapshot$"))
                     return super.loadClass(name, resolve);
@@ -42,7 +59,7 @@ final class TransferProbe extends ChunkGenerator {
                     return type;
                 }
             }
-        }) { run(probe, input, false, loader); }
+        };
     }
     private static void run(JavaPlugin probe, Path input, boolean live, ClassLoader loader) throws Exception {
         var retina = Objects.requireNonNull(Bukkit.getPluginManager().getPlugin("Retina"));
@@ -59,6 +76,9 @@ final class TransferProbe extends ChunkGenerator {
         var validate = method(metadata, "validate", compound);
         var allocation = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
         allocation.setThreadAllocatedMemoryEnabled(true);
+        boolean cpuSupported = allocation.isCurrentThreadCpuTimeSupported();
+        if (cpuSupported) allocation.setThreadCpuTimeEnabled(true);
+        probe.getLogger().info("RETINA_TRANSFER_METRICS wall_ns java_allocated_bytes current_thread_cpu_ns supported=" + cpuSupported);
         var factory = new TransferProbe();
         List<Path> fixtures;
         try (var paths = Files.list(input)) { fixtures = paths.filter(p -> p.toString().endsWith(".nbt")).sorted().toList(); }
@@ -97,6 +117,7 @@ final class TransferProbe extends ChunkGenerator {
                 var nativeBytes = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
                 for (int round = -2; round < 5; round++) {
                     long before = allocation.getThreadAllocatedBytes(Thread.currentThread().threadId());
+                    long beforeCpu = cpuSupported ? allocation.getCurrentThreadCpuTime() : 0;
                     long start = System.nanoTime();
                     int iterations = live ? 5 : 100;
                     for (int i = 0; i < iterations; i++) {
@@ -111,18 +132,21 @@ final class TransferProbe extends ChunkGenerator {
                     }
                     long elapsed = System.nanoTime() - start;
                     long allocated = allocation.getThreadAllocatedBytes(Thread.currentThread().threadId()) - before;
-                    if (round >= 0) probe.getLogger().info("RETINA_TRANSFER_SAMPLE " + name + " " + round + " " + elapsed / (double) iterations + " " + allocated / (double) iterations);
+                    double cpu = cpuSupported ? (allocation.getCurrentThreadCpuTime() - beforeCpu) / (double) iterations : -1;
+                    if (round >= 0) probe.getLogger().info("RETINA_TRANSFER_SAMPLE " + name + " " + round + " " + elapsed / (double) iterations + " " + allocated / (double) iterations + " " + cpu);
                 }
             }
             for (int round = -2; round < 5; round++) {
                 long before = allocation.getThreadAllocatedBytes(Thread.currentThread().threadId());
+                long beforeCpu = cpuSupported ? allocation.getCurrentThreadCpuTime() : 0;
                 long start = System.nanoTime();
                 for (int i = 0; i < 100; i++) {
                     var data = factory.target(world); install.invoke(reference, data, bind); sink = data;
                 }
                 long elapsed = System.nanoTime() - start;
                 long allocated = allocation.getThreadAllocatedBytes(Thread.currentThread().threadId()) - before;
-                if (round >= 0) probe.getLogger().info("RETINA_INSTALL_SAMPLE " + name + " " + round + " " + elapsed / 100.0 + " " + allocated / 100.0);
+                double cpu = cpuSupported ? (allocation.getCurrentThreadCpuTime() - beforeCpu) / 100.0 : -1;
+                if (round >= 0) probe.getLogger().info("RETINA_INSTALL_SAMPLE " + name + " " + round + " " + elapsed / 100.0 + " " + allocated / 100.0 + " " + cpu);
             }
         }
         probe.getLogger().info("RETINA_TRANSFER_PASS");

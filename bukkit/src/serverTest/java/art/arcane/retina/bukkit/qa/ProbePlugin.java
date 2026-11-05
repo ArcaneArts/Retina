@@ -28,7 +28,12 @@ public final class ProbePlugin extends JavaPlugin {
             if (args.length == 2 && args[0].equals("universal-smoke")) {
                 UniversalSmoke.run(this, args[1].equals("reopen")); return true;
             }
-            if (args.length == 3 && args[0].equals("transfer-reference-benchmark")) { TransferProbe.runReference(this, Path.of(args[1]), Path.of(args[2])); return true; }
+            if (args.length == 4 && (args[0].equals("transfer-paired-benchmark") || args[0].equals("transfer-live-paired-benchmark"))) {
+                TransferProbe.runPaired(this, Path.of(args[1]), Path.of(args[2]), Path.of(args[3]), args[0].equals("transfer-live-paired-benchmark")); return true;
+            }
+            if (args.length == 3 && (args[0].equals("transfer-reference-benchmark") || args[0].equals("transfer-live-reference-benchmark"))) {
+                TransferProbe.runReference(this, Path.of(args[1]), Path.of(args[2]), args[0].equals("transfer-live-reference-benchmark")); return true;
+            }
             if (args.length == 2 && args[0].equals("transfer-live-benchmark")) { TransferProbe.run(this, Path.of(args[1]), true); return true; }
             if (args.length == 2 && args[0].equals("transfer-benchmark")) { TransferProbe.run(this, Path.of(args[1]), false); return true; }
             if (args.length != 0 && args[0].equals("save-benchmark")) { SaveProbe.run(this); return true; }
