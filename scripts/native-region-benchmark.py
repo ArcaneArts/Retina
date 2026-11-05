@@ -5,6 +5,7 @@ Use a saved retina.dat and --library to compare retained native builds.
 import argparse
 import atexit
 import concurrent.futures
+from contextlib import nullcontext
 import ctypes as c
 import json
 import os
@@ -21,6 +22,7 @@ from benchmark_support import (RESULT_SCHEMA, RESULT_SCHEMA_VERSION, compare_cor
                                region_coordinates, write_json)
 
 from saved_definition import Request, SavedDefinition
+from foreground_probe import ForegroundProbes
 
 class Report(c.Structure):
     _fields_ = [("generated", c.c_uint32), ("preserved", c.c_uint32)] + [(s, c.c_uint64) for s in ("gpu", "assembly", "write", "bytes")]
@@ -54,6 +56,8 @@ def main():
                         help="Opt-in workload/wait attribution; keep these runs separate from headline timings")
     parser.add_argument("--gpu-interval", action="store_true",
                         help="Opt-in bounded submission timeline; separates warmup/boundary work from the measured batch")
+    parser.add_argument("--foreground-biome-probes", action="store_true",
+                        help="Opt-in bounded read-only query fairness workload; separate from generation-only throughput")
     parser.add_argument("--dependency-trace", type=Path,
                         help="Opt-in native planner captures for the measured batch only, excluding warmups; instrumented attribution, not headline timing")
     parser.add_argument("--parallel", type=int, choices=(1,2,4,8), default=1,
@@ -250,32 +254,52 @@ def main():
                 final_states += (0,)
             if ready.status not in final_states:
                 raise RuntimeError(f"GPU program did not reach a final readiness state: status={ready.status}")
-        if args.dependency_trace:
-            os.environ["RETINA_DEPENDENCY_TRACE_DIR"] = str(args.dependency_trace.resolve())
-        before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
-        before_performance = performance_snapshot()
-        before_program=ProgramSnapshot()
-        if program:
-            check(program(profile,c.byref(before_program)))
         pipeline = getattr(lib, "retina_gpu_pipeline_snapshot", None)
-        before_pipeline = PipelineSnapshot()
         if pipeline:
             pipeline.argtypes = [c.POINTER(PipelineSnapshot)]
-            check(pipeline(c.byref(before_pipeline)))
         # Adjacent tiles exercise shared structure halos and cold full-region terrain.
         coords = region_coordinates(args.count, args.origin_x, args.origin_z, args.grid_width,
                                     args.request_order, seed)
+        def completed_samples():
+            snapshot = PipelineSnapshot()
+            check(pipeline(c.byref(snapshot)))
+            return snapshot.completed
+        probe_context = ForegroundProbes(lib, identity, args.out / "foreground-probes.json",
+                                        snapshot_completed_samples=completed_samples if pipeline else None) \
+            if args.foreground_biome_probes else nullcontext(None)
         interval_id = c.c_uint64()
-        if interval_available:
-            check(interval_begin(c.byref(interval_id)))
-        batch_start_unix = time.time()
-        usage_before = process_usage.snapshot()
-        start = time.perf_counter()
-        with concurrent.futures.ThreadPoolExecutor(args.parallel) as workers:
-            regions = list(workers.map(generate, coords))
-        wall = time.perf_counter()-start
-        usage_after = process_usage.snapshot()
-        batch_end_unix = time.time()
+        with probe_context as foreground:
+            # Idle reference queries are setup, outside every measured delta.
+            if args.dependency_trace:
+                os.environ["RETINA_DEPENDENCY_TRACE_DIR"] = str(args.dependency_trace.resolve())
+            before = Snapshot(); check(lib.retina_timing_snapshot(profile, c.byref(before)))
+            before_performance = performance_snapshot()
+            before_program = ProgramSnapshot()
+            if program:
+                check(program(profile, c.byref(before_program)))
+            before_pipeline = PipelineSnapshot()
+            if pipeline:
+                check(pipeline(c.byref(before_pipeline)))
+            if interval_available:
+                check(interval_begin(c.byref(interval_id)))
+            batch_start_unix = time.time()
+            usage_before = process_usage.snapshot()
+            start = time.perf_counter()
+            if foreground:
+                foreground.begin(start)
+            def generate_from_batch(item):
+                admitted = time.perf_counter()
+                result = generate(item)
+                result["dispatch_wait_ms"] = (admitted - start) * 1000
+                result["return_since_batch_start_ms"] = (time.perf_counter() - start) * 1000
+                return result
+            with concurrent.futures.ThreadPoolExecutor(args.parallel) as workers:
+                regions = list(workers.map(generate_from_batch, coords))
+            wall = time.perf_counter()-start
+            usage_after = process_usage.snapshot()
+            batch_end_unix = time.time()
+            if foreground:
+                foreground.end_window(start + wall)
         if args.dependency_trace:
             os.environ.pop("RETINA_DEPENDENCY_TRACE_DIR", None)
         user_seconds = usage_after.ru_utime - usage_before.ru_utime
@@ -309,6 +333,8 @@ def main():
                     legacy_gpu_ms_scope="Legacy name for host terrain preparation, including CPU work; not device execution",
                     mca_compression=args.mca_compression,
                     benchmark_scope=args.scope, lighting=args.lighting,
+                    foreground_probes=foreground.report() if foreground else None,
+                    request_latency_scope="All requests are offered at batch start. Existing ms measures the native generation call; dispatch_wait_ms includes executor admission and earlier queued work; return_since_batch_start_ms includes native completion and the existing program snapshot observation. Foreground latency is separate.",
                     dependency_trace={"requested_directory": str(args.dependency_trace.resolve()),
                                       "scope": "Measured generation batch only, excludes warmups; optional native diagnostic, availability not inferred"} if args.dependency_trace else None,
                     readiness=args.readiness, readiness_wait_ms=readiness_wait_ms,
