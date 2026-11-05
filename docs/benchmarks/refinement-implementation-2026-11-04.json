@@ -624,6 +624,7 @@
     "base": "5ecad6beca7c093ffce378ba6b9a3de78e4d7b8a",
     "runtime_changes": false,
     "evidence": "docs/benchmarks/refinement-closeout-2026-11-05.json",
-    "delivery": "Own ready PR with squash Automerge; actual merge/sync/cleanup observed by the live task after this evidence commit."
+    "delivery": "Own ready PR with squash Automerge; actual merge/sync/cleanup observed by the live task after this evidence commit.",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/429"
   }
 }

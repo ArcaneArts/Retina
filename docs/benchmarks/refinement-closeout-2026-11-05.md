@@ -35,4 +35,4 @@ Future Windows testing should evaluate all eight input/output/palette combinatio
 
 Other leads remain exact CPU certificates/root-entry scheduling, dependency-view reuse with complete prefix identity, attribution of native foreground query tail latency, and Java cold-generation/biome/boxing/closure costs. They require new evidence; previously rejected variants are not accepted wins.
 
-Delivery uses branch `codex/refinement-closeout` in its own worktree and ready PR with squash Automerge. Actual merge, primary synchronization and worktree cleanup are observed by the live task after publication. No public release is part of this pass.
+Closeout PR: [#429](https://github.com/ArcaneArts/Retina/pull/429). Delivery uses branch `codex/refinement-closeout` in its own worktree and ready PR with squash Automerge. Actual merge, primary synchronization and worktree cleanup are observed by the live task after publication. No public release is part of this pass.
