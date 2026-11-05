@@ -1,22 +1,22 @@
 # Refinement implementation — 2026-11-04
 
-Active goal: implement and benchmark the nine areas in [the inspection report](refinement-opportunities-2026-11-04.md), retaining demonstrated improvements and recording rejected experiments. Each cycle uses an isolated worktree and squash auto-merge PR. The inspection timings are context; fresh paired measurements govern retention.
+Refinement pass: implement and benchmark the nine areas in [the inspection report](refinement-opportunities-2026-11-04.md), retaining demonstrated improvements and recording rejected experiments. Each cycle uses an isolated worktree and squash auto-merge PR. The inspection timings are context; fresh paired measurements govern retention.
 
 Starting main is `8e37896e219e9ef49eed7fc2509c3c39fa1c0602`. A frozen copy of its native source was built with Rust 1.93.0, `--release --locked --lib`, default features, codegen-units 2, thin LTO, and no RUSTFLAGS. Runtime trials use saved definitions through the production reader, global Rayon 2, explicit backend and worker budget, zlib, and completed lit-MCA output. Source patches, native hashes, individual measurements, host-load snapshots, logs and full MCA corpora remain under `~/.cache/retina/refinement-implementation-20261104/`.
 
-Current local runtime is `4c1231d4` ([PR #427](https://github.com/ArcaneArts/Retina/pull/427)). Cycles 1–14 are observed merged, with their owned worktrees removed. The full goal remains **active/incomplete** because actual Windows Vulkan qualification is pending. Historical notes below reflect each cycle at its merge; this current disposition table and the [fresh cumulative report](refinement-cycle-15-cumulative-2026-11-05.md) supersede their former next-step lists.
+Current local runtime is `4c1231d4` ([PR #427](https://github.com/ArcaneArts/Retina/pull/427)). Cycles 1–15 are observed merged, with their owned worktrees removed. The local pass is **finalized with Windows validation explicitly deferred by the user on 2026-11-05**. Actual Windows qualification is unvalidated and remains future work; it no longer blocks this pass. See the [closeout](refinement-closeout-2026-11-05.md). Historical notes below reflect each cycle at its merge; this current disposition table and the [fresh cumulative report](refinement-cycle-15-cumulative-2026-11-05.md) supersede their former next-step lists.
 
 | Area | Current disposition |
 | --- | --- |
 | O1 CPU registry execution | Three prepared arithmetic variants rejected; no unqualified kernel shipped (cycle 4) |
 | O2 Nether dependencies/planning | Actual attribution retained; two smaller-cache variants rejected; no generation change (cycles 8/9) |
 | O3 CPU lighting | No-skylight emission-only initialization retained; scoped lighting-host elapsed win. Row/scratch/tile/sky-row alternatives rejected (cycles 2/6/7/14) |
-| O4 Windows Vulkan transport/palettes | Portable factorial test bundle ready; **actual Windows validation pending**, defaults unchanged (cycle 5) |
+| O4 Windows Vulkan transport/palettes | Portable factorial test bundle ready; **actual Windows validation deferred by user**, defaults unchanged (cycle 5) |
 | O5 Bounded overlap | Early refill rejected; bounded tools retained; CPU/Metal 1/2/4 caller and native foreground coverage recorded (cycles 12/15) |
 | O6 Encoding/compression | Codec/NBT profiling and actual Minecraft decode complete; runtime scratch/proof variants rejected (cycles 10/13) |
 | O7 Definition loading/binding | Borrowed immutable conversion retained; tall-open CPU/memory savings reproduced without deferring preparation (cycles 3/15) |
 | O8 Interval diagnostics | Correct bounded opt-in submission-window attribution retained; no utilization/speed claim (cycle 1) |
-| O9 Java/Bukkit delivery | Actual delivery Java allocation −5.0803%; latency/CPU gains unproven; lifecycle/value guards pass (cycle 11) |
+| O9 Java/Bukkit delivery | Actual delivery allocated Java bytes −5.0803%; latency/CPU gains unproven; lifecycle/value guards pass (cycle 11) |
 
 The fresh starting-native versus current comparison reproduces tall-open CPU **−18.53%**, high-water RSS **−41.99%**, and CPU Nether lighting-host elapsed **−22.25%**. These are separate scopes, not a combined whole-MCA speedup. Overall chunks/s remains inconclusive: the short CPU Overworld negative result does not repeat in longer batches; Metal Nether’s negative/order-dependent long result and identical-binary controls are preserved without assigning a cause. See the cumulative report for individual pairs and limits.
 
@@ -153,7 +153,7 @@ The [cycle report](refinement-cycle-07-cpu-light-tiles-2026-11-04.md) evaluates 
 - Cycle 12: Retain bounded fairness tooling; reject early refill. [#425](https://github.com/ArcaneArts/Retina/pull/425); [evidence](refinement-cycle-12-region-overlap-2026-11-04.json).
 - Cycle 13: Attribute native NBT construction; reject uniform-proof forwarding. [#426](https://github.com/ArcaneArts/Retina/pull/426); [evidence](refinement-cycle-13-native-nbt-2026-11-05.json).
 - Cycle 14: Retain scoped CPU no-skylight lighting initialization. [#427](https://github.com/ArcaneArts/Retina/pull/427); [evidence](refinement-cycle-14-no-skylight-2026-11-05.json).
-- Cycle 15: Record fresh cumulative comparisons, order controls and completed CPU fairness. [#428](https://github.com/ArcaneArts/Retina/pull/428); [evidence](refinement-cycle-15-cumulative-2026-11-05.json).
+- Cycle 15: Record fresh cumulative comparisons, order controls and completed CPU fairness. [#428](https://github.com/ArcaneArts/Retina/pull/428), merged `5ecad6be`; [evidence](refinement-cycle-15-cumulative-2026-11-05.json).
 
 | Cycle | Pull request | Observed state | Merge commit |
 | --- | --- | --- | --- |
@@ -171,13 +171,18 @@ The [cycle report](refinement-cycle-07-cpu-light-tiles-2026-11-04.md) evaluates 
 | 12 | [#425](https://github.com/ArcaneArts/Retina/pull/425) | MERGED | `4c29a98b` |
 | 13 | [#426](https://github.com/ArcaneArts/Retina/pull/426) | MERGED | `e10c9ee4` |
 | 14 | [#427](https://github.com/ArcaneArts/Retina/pull/427) | MERGED | `4c1231d4` |
+| 15 | [#428](https://github.com/ArcaneArts/Retina/pull/428) | MERGED | `5ecad6be` |
 
-## Coverage, limits and remaining work
+## Coverage, limits and future work
 
-The per-cycle records contain correctness and compatibility evidence proportional to retained changes, including all dimensions/second seed/negative-far coordinates/custom/expanded/768-height inputs, strict same-backend decompressed NBT, actual Minecraft decoding, independent fresh-process preservation, storage failures, and actual Bukkit callbacks/unload/restart/edits/entity metadata. Rejected code is restored rather than qualified for platforms where it never ships. The cycle 15 machine record audits 31 concrete requirements and records missing evidence explicitly. Its own eventual merge is observed by the live task after this evidence commit; see [PR #428](https://github.com/ArcaneArts/Retina/pull/428) for authoritative delivery state.
+The per-cycle records contain correctness and compatibility evidence proportional to retained changes, including all dimensions/second seed/negative-far coordinates/custom/expanded/768-height inputs, strict same-backend decompressed NBT, actual Minecraft decoding, independent fresh-process preservation, storage failures, and actual Bukkit callbacks/unload/restart/edits/entity metadata. Rejected code is restored rather than qualified for platforms where it never ships. The cycle 15 machine record audits 31 concrete requirements and records missing evidence explicitly. PR #428 was subsequently observed merged as `5ecad6be`. The [closeout](refinement-closeout-2026-11-05.md) records the final scope and audit.
 
 Fresh cumulative and confirmation trials complete 180 MCAs with 110,592 strict NBT comparisons; 18 further order/CPU-fairness controls complete 90 MCAs and 73,728 comparisons. Results include all completed unfavorable trials. Shared load/power/context and timing boundaries are recorded. Native generation does not establish client FPS, Java activation or server tick performance. No public release is performed.
 
-Windows O4 remains the required external dependency. The stable `build/release/retina-windows-transport-test.zip` needs real Windows execution: extract, run `Run-tests.cmd`, choose Vulkan screening and return `SEND-THIS-results.zip`, including failures. Then qualify promising combinations and custom/tall inputs before changing defaults. Metal byte reductions, a cross-build and MoltenVK’s pre-terrain failure do not substitute for that evidence.
+Windows O4 is explicitly deferred future work under the user’s 2026-11-05 instruction. The stable `build/release/retina-windows-transport-test.zip` remains available for later testing. Future Windows runs should qualify promising combinations and custom/tall inputs before changing defaults; no run is required to close the local pass. Metal byte reductions, a cross-build and MoltenVK’s pre-terrain failure do not substitute for that evidence.
 
 Remaining opportunities include exact CPU graph certificates/root-entry scheduling, Nether direct-view pages with full prefix identity, and attribution of occasional multi-second native foreground query waits. These are measured leads or hypotheses, not promised wins. The already rejected sky-row/cache/scratch/refill prototypes need new evidence before repetition. Java cold-generation/biome lookup and remaining boxing/closure/lock costs are also follow-up leads; they do not erase the preserved exact-state/lifecycle contracts.
+
+## Final scope amendment
+
+On 2026-11-05 the user explicitly deferred Windows testing and asked to finish using available evidence. The [closeout record](refinement-closeout-2026-11-05.json) preserves that instruction, all nine dispositions, verified prior merges, retained results and remaining limits. This closes the local pass without claiming Windows validation or changing platform defaults.
