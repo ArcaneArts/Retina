@@ -153,7 +153,7 @@ The [cycle report](refinement-cycle-07-cpu-light-tiles-2026-11-04.md) evaluates 
 - Cycle 12: Retain bounded fairness tooling; reject early refill. [#425](https://github.com/ArcaneArts/Retina/pull/425); [evidence](refinement-cycle-12-region-overlap-2026-11-04.json).
 - Cycle 13: Attribute native NBT construction; reject uniform-proof forwarding. [#426](https://github.com/ArcaneArts/Retina/pull/426); [evidence](refinement-cycle-13-native-nbt-2026-11-05.json).
 - Cycle 14: Retain scoped CPU no-skylight lighting initialization. [#427](https://github.com/ArcaneArts/Retina/pull/427); [evidence](refinement-cycle-14-no-skylight-2026-11-05.json).
-- Cycle 15: Record fresh cumulative comparisons, order controls and completed CPU fairness. Current evidence cycle (PR linkage added on creation); [evidence](refinement-cycle-15-cumulative-2026-11-05.json).
+- Cycle 15: Record fresh cumulative comparisons, order controls and completed CPU fairness. [#428](https://github.com/ArcaneArts/Retina/pull/428); [evidence](refinement-cycle-15-cumulative-2026-11-05.json).
 
 | Cycle | Pull request | Observed state | Merge commit |
 | --- | --- | --- | --- |
@@ -174,7 +174,7 @@ The [cycle report](refinement-cycle-07-cpu-light-tiles-2026-11-04.md) evaluates 
 
 ## Coverage, limits and remaining work
 
-The per-cycle records contain correctness and compatibility evidence proportional to retained changes, including all dimensions/second seed/negative-far coordinates/custom/expanded/768-height inputs, strict same-backend decompressed NBT, actual Minecraft decoding, independent fresh-process preservation, storage failures, and actual Bukkit callbacks/unload/restart/edits/entity metadata. Rejected code is restored rather than qualified for platforms where it never ships. The cycle 15 machine record audits 31 concrete requirements and records missing evidence explicitly.
+The per-cycle records contain correctness and compatibility evidence proportional to retained changes, including all dimensions/second seed/negative-far coordinates/custom/expanded/768-height inputs, strict same-backend decompressed NBT, actual Minecraft decoding, independent fresh-process preservation, storage failures, and actual Bukkit callbacks/unload/restart/edits/entity metadata. Rejected code is restored rather than qualified for platforms where it never ships. The cycle 15 machine record audits 31 concrete requirements and records missing evidence explicitly. Its own eventual merge is observed by the live task after this evidence commit; see [PR #428](https://github.com/ArcaneArts/Retina/pull/428) for authoritative delivery state.
 
 Fresh cumulative and confirmation trials complete 180 MCAs with 110,592 strict NBT comparisons; 18 further order/CPU-fairness controls complete 90 MCAs and 73,728 comparisons. Results include all completed unfavorable trials. Shared load/power/context and timing boundaries are recorded. Native generation does not establish client FPS, Java activation or server tick performance. No public release is performed.
 

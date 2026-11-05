@@ -2,7 +2,7 @@
 
 Fresh comparisons use the **starting goal native versus the current merged runtime**, rather than multiplying earlier percentages. They reproduce tall-definition CPU/memory savings and the scoped no-skylight CPU lighting improvement. Whole-region throughput remains inconclusive. Actual Windows Vulkan transport/palette qualification remains pending; the full nine-area goal is **not complete**.
 
-The [machine-readable record](refinement-cycle-15-cumulative-2026-11-05.json) retains all individual commands, metrics, identities, source/fixture hashes, workload boundaries, load snapshots, actual-output checks and the requirement audit. This cycle changes documentation only. Branch: `codex/refinement-cumulative-validation`, base `4c1231d4`.
+The [machine-readable record](refinement-cycle-15-cumulative-2026-11-05.json) retains all individual commands, metrics, identities, source/fixture hashes, workload boundaries, load snapshots, actual-output checks and the requirement audit. Cycle PR: [#428](https://github.com/ArcaneArts/Retina/pull/428). This cycle changes documentation only. Branch: `codex/refinement-cumulative-validation`, base `4c1231d4`.
 
 ## Matched starting-versus-current comparison
 
