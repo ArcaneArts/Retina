@@ -131,29 +131,39 @@ fn run_impl<const FRONTIERS: bool>(
     let mut light = vec![0u8; count];
     // Direct sun is a contiguous suffix of every column. Retain its lowest Y
     // rather than treating every voxel in that suffix as a propagation source.
-    let mut lowest_sun = if FRONTIERS {
+    let mut lowest_sun = if FRONTIERS && profile.sky {
         vec![padded; plane]
     } else {
         Vec::new()
     };
     let mut emitters = false;
-    for z in 0..side {
-        for x in 0..side {
-            let mut sun = profile.sky;
-            let mut above = 0;
-            for y in (0..padded).rev() {
-                let index = y * plane + z * side + x;
-                let material = materials[index];
-                let traits = profile.states[material as usize][0];
-                sun = sun && traits & 15 == 0 && !occludes(profile, above, material, 0);
-                light[index] = ((traits >> 4) & 15) as u8 | if sun { 240 } else { 0 };
-                if FRONTIERS {
-                    if sun {
-                        lowest_sun[z * side + x] = y;
+    if FRONTIERS && !profile.sky {
+        // A dimension without a skylight source needs only emission here.
+        // Keep the original column walk for every sky-lit volume and reference.
+        for (value, &material) in light.iter_mut().zip(&materials) {
+            let traits = profile.states[material as usize][0];
+            *value = ((traits >> 4) & 15) as u8;
+            emitters |= (traits >> 4) & 15 > 1;
+        }
+    } else {
+        for z in 0..side {
+            for x in 0..side {
+                let mut sun = profile.sky;
+                let mut above = 0;
+                for y in (0..padded).rev() {
+                    let index = y * plane + z * side + x;
+                    let material = materials[index];
+                    let traits = profile.states[material as usize][0];
+                    sun = sun && traits & 15 == 0 && !occludes(profile, above, material, 0);
+                    light[index] = ((traits >> 4) & 15) as u8 | if sun { 240 } else { 0 };
+                    if FRONTIERS {
+                        if sun {
+                            lowest_sun[z * side + x] = y;
+                        }
+                        emitters |= (traits >> 4) & 15 > 1;
                     }
-                    emitters |= (traits >> 4) & 15 > 1;
+                    above = material;
                 }
-                above = material;
             }
         }
     }
@@ -177,29 +187,31 @@ fn run_impl<const FRONTIERS: bool>(
         // neighbor. Omitted dark cells still enter the unchanged queue whenever
         // raised. Positive attenuation and monotone max updates give the same
         // integer fixed point regardless of initial source order.
-        for z in 0..side {
-            for x in 0..side {
-                let column = z * side + x;
-                let low = lowest_sun[column];
-                if low == padded {
-                    continue;
-                }
-                let mut highest_neighbor = low;
-                if z > 0 {
-                    highest_neighbor = highest_neighbor.max(lowest_sun[column - side]);
-                }
-                if z + 1 < side {
-                    highest_neighbor = highest_neighbor.max(lowest_sun[column + side]);
-                }
-                if x > 0 {
-                    highest_neighbor = highest_neighbor.max(lowest_sun[column - 1]);
-                }
-                if x + 1 < side {
-                    highest_neighbor = highest_neighbor.max(lowest_sun[column + 1]);
-                }
-                let high = low.max(highest_neighbor.saturating_sub(1));
-                for y in low..=high {
-                    seed(y * plane + column);
+        if profile.sky {
+            for z in 0..side {
+                for x in 0..side {
+                    let column = z * side + x;
+                    let low = lowest_sun[column];
+                    if low == padded {
+                        continue;
+                    }
+                    let mut highest_neighbor = low;
+                    if z > 0 {
+                        highest_neighbor = highest_neighbor.max(lowest_sun[column - side]);
+                    }
+                    if z + 1 < side {
+                        highest_neighbor = highest_neighbor.max(lowest_sun[column + side]);
+                    }
+                    if x > 0 {
+                        highest_neighbor = highest_neighbor.max(lowest_sun[column - 1]);
+                    }
+                    if x + 1 < side {
+                        highest_neighbor = highest_neighbor.max(lowest_sun[column + 1]);
+                    }
+                    let high = low.max(highest_neighbor.saturating_sub(1));
+                    for y in low..=high {
+                        seed(y * plane + column);
+                    }
                 }
             }
         }
@@ -440,6 +452,34 @@ mod tests {
         assert_eq!(at(4, 27, 4) >> 4, 14);
         assert_eq!(at(0, 47, 0) >> 4, 15);
         assert!(run(&p, 1, 16, 0, 1, OutputFormat::Voxels, |_| 99).is_err());
+    }
+    #[test]
+    fn short_volumes_and_padding_traits_match_full_scan() {
+        for height in [1, 17, 32] {
+            for sky in [false, true] {
+                for padding in [0, 15, 240, 255] {
+                    for blocked in [0, 1] {
+                        let mut p = profile(sky);
+                        p.states[0][0] = padding;
+                        p.blocked[0] = blocked;
+                        let blocks: Vec<u16> = (0..height * 256)
+                            .map(|i| if i % 23 == 0 { 2 } else if i / 256 < height / 2 { 1 } else { 0 })
+                            .collect();
+                        for format in [OutputFormat::Voxels, OutputFormat::Sections] {
+                            if height % 16 != 0 && matches!(format, OutputFormat::Sections) {
+                                continue;
+                            }
+                            let expected = run_impl::<false>(
+                                &p, 1, height, 0, 1, format, |i| blocks[i],
+                            ).unwrap();
+                            let actual = run(&p, 1, height, 0, 1, format, |i| blocks[i]).unwrap();
+                            assert_eq!(actual.bytes, expected.bytes,
+                                "height={height} sky={sky} padding={padding} blocked={blocked}");
+                        }
+                    }
+                }
+            }
+        }
     }
     #[test]
     fn empty_region_uses_shared_constant_proofs_and_never_initializes_graphics() {
