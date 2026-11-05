@@ -43,7 +43,8 @@ def main() -> None:
     parser.add_argument("--trials", type=int, default=4)
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--warmups", type=int, default=5)
-    parser.add_argument("--parallel", type=int, choices=(1, 2), default=1)
+    parser.add_argument("--parallel", type=int, choices=(1, 2, 4, 8), default=1)
+    parser.add_argument("--foreground-biome-probes", action="store_true")
     parser.add_argument("--origin-x", type=int, default=-1)
     parser.add_argument("--origin-z", type=int, default=-1)
     parser.add_argument("--grid-width", type=int, default=3)
@@ -71,6 +72,7 @@ def main() -> None:
         if args.backend: command += ["--backend", args.backend]
         if args.assembly_threads: command += ["--assembly-threads", str(args.assembly_threads)]
         if args.preservation_check: command += ["--preservation-check"]
+        if args.foreground_biome_probes: command += ["--foreground-biome-probes"]
         if (args.baseline_gpu_interval if variant == "baseline" else args.candidate_gpu_interval):
             command += ["--gpu-interval"]
         revision = args.baseline_revision if variant == "baseline" else args.candidate_revision
