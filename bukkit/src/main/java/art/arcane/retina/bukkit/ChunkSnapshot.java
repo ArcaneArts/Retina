@@ -55,9 +55,10 @@ final class ChunkSnapshot {
     static String state(CompoundBinaryTag state) {
         String id = state.getString("id");
         if (id.isEmpty()) throw new IllegalStateException("Native block palette entry has no canonical id");
+        var savedProperties = state.getCompound("properties");
+        if (savedProperties.size() == 0) return id;
         var properties = new TreeMap<String, String>();
-        for (var property : state.getCompound("properties")) properties.put(property.getKey(), ((StringBinaryTag) property.getValue()).value());
-        if (properties.isEmpty()) return id;
+        for (var property : savedProperties) properties.put(property.getKey(), ((StringBinaryTag) property.getValue()).value());
         var values = new StringJoiner(",", id + "[", "]"); properties.forEach((key, value) -> values.add(key + "=" + value));
         return values.toString();
     }
@@ -67,7 +68,9 @@ final class ChunkSnapshot {
             throw new IllegalStateException("ChunkData bounds " + target.getMinHeight() + ".." + target.getMaxHeight()
                     + " cannot contain saved storage " + minimum + ".." + (minimum + height));
         for (var section : sections.values()) {
-            var states = Arrays.stream(section.states()).map(bind).toArray(BlockData[]::new);
+            var names = section.states();
+            var states = new BlockData[names.length];
+            for (int i = 0; i < states.length; i++) states[i] = bind.apply(names[i]);
             if (states.length == 1) {
                 target.setRegion(0, section.y(), 0, 16, section.y() + 16, 16, states[0]);
             } else {
