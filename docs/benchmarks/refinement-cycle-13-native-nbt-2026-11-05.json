@@ -1,0 +1,3148 @@
+{
+  "schema": "retina.refinement-cycle",
+  "schema_version": 1,
+  "cycle": 13,
+  "area": "O6 native palette/NBT construction attribution",
+  "date": "2026-11-05",
+  "base": "4c29a98b821194b23601ca6689beea57401308d9",
+  "pr": "https://github.com/ArcaneArts/Retina/pull/426",
+  "decision": "Reject/discard CPU uniform-section proof forwarding prototype and its draft unit test. One CPU pair and two Metal AB/BA pairs do not qualify a full-MCA CPU/latency/memory improvement; no runtime changes retained. Profiling covers missing native NBT construction work beyond codec cycle10.",
+  "builds": {
+    "attribution": {
+      "command": [
+        "cargo",
+        "+1.93.0",
+        "build",
+        "--release",
+        "--locked",
+        "--lib"
+      ],
+      "cwd": "/private/tmp/retina-refinement-nbt-attribution/native",
+      "exit_code": 0,
+      "seconds": 97.0702803330496,
+      "source_base": "4c29a98b821194b23601ca6689beea57401308d9",
+      "patch_sha256": "aabb4fde9a4c9e358d66f62d5442fa6f68565f3702d6e2bdd328719b868e35d3",
+      "rustc": "rustc 1.93.0 (254b59607 2026-01-19)\nbinary: rustc\ncommit-hash: 254b59607d4417e9dffbc307138ae5c86280fe4c\ncommit-date: 2026-01-19\nhost: aarch64-apple-darwin\nrelease: 1.93.0\nLLVM version: 21.1.8\n",
+      "CARGO_BUILD_JOBS": "2",
+      "RUSTFLAGS": null,
+      "CARGO_ENCODED_RUSTFLAGS": null,
+      "features": "default scalable-allocator,spirv-tools",
+      "scope": "Private phase attribution only, must be discarded before final optimization qualification",
+      "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution.dylib",
+      "sha256": "70c8e9f519eb91e3d1888a0c3b209c2df9fbf4f41309a260a6eee6f976288763",
+      "bytes": 10971720
+    },
+    "attribution-v2": {
+      "command": [
+        "cargo",
+        "+1.93.0",
+        "build",
+        "--release",
+        "--locked",
+        "--lib"
+      ],
+      "cwd": "/private/tmp/retina-refinement-nbt-attribution/native",
+      "exit_code": 0,
+      "seconds": 63.57675554091111,
+      "source_base": "4c29a98b821194b23601ca6689beea57401308d9",
+      "patch_sha256": "dbc18e80458ad8517b183b9dae4b012b48cd8e4ab5e947970a51fb4c4479a213",
+      "rustc": "rustc 1.93.0 (254b59607 2026-01-19)\nbinary: rustc\ncommit-hash: 254b59607d4417e9dffbc307138ae5c86280fe4c\ncommit-date: 2026-01-19\nhost: aarch64-apple-darwin\nrelease: 1.93.0\nLLVM version: 21.1.8\n",
+      "CARGO_BUILD_JOBS": "2",
+      "RUSTFLAGS": null,
+      "CARGO_ENCODED_RUSTFLAGS": null,
+      "features": "default scalable-allocator,spirv-tools",
+      "scope": "Private per-region NBT-only opt-in attribution. Global RETINA_PERFORMANCE_DIAGNOSTICS remains OFF; no per-node CPU VM trace. Timers/capacity deltas are attribution, not speedup/allocation/DRAM/peak-memory claims.",
+      "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+      "sha256": "e2429dbfd4aec14d784f01169ffafd47b159484e457798dfbba0fcb797002d66",
+      "bytes": 11181960
+    },
+    "baseline": {
+      "command": [
+        "cargo",
+        "+1.93.0",
+        "build",
+        "--release",
+        "--locked",
+        "--lib"
+      ],
+      "cwd": "/private/tmp/retina-refinement-nbt-attribution/native",
+      "exit_code": 0,
+      "seconds": 60.971909041982144,
+      "source_base": "4c29a98b821194b23601ca6689beea57401308d9",
+      "patch_sha256": null,
+      "rustc": "rustc 1.93.0 (254b59607 2026-01-19)\nbinary: rustc\ncommit-hash: 254b59607d4417e9dffbc307138ae5c86280fe4c\ncommit-date: 2026-01-19\nhost: aarch64-apple-darwin\nrelease: 1.93.0\nLLVM version: 21.1.8\n",
+      "CARGO_BUILD_JOBS": "2",
+      "RUSTFLAGS": null,
+      "CARGO_ENCODED_RUSTFLAGS": null,
+      "features": "default scalable-allocator,spirv-tools",
+      "scope": "Fresh unmodified current-main production baseline in same lane/toolchain as CPU uniform-proof candidate",
+      "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+      "sha256": "f2d38a661c456c0eb26a11422214406bc304b990c300852d5ca1f9642db0895a",
+      "bytes": 10944472
+    },
+    "candidate": {
+      "command": [
+        "cargo",
+        "+1.93.0",
+        "build",
+        "--release",
+        "--locked",
+        "--lib"
+      ],
+      "cwd": "/private/tmp/retina-refinement-nbt-attribution/native",
+      "exit_code": 0,
+      "seconds": 506.8918857499957,
+      "source_base": "4c29a98b821194b23601ca6689beea57401308d9",
+      "patch_sha256": "a19527a31f73a6861c8974fa026153988489ebf58e7e513368dd66de195fd8d4",
+      "rustc": "rustc 1.93.0 (254b59607 2026-01-19)\nbinary: rustc\ncommit-hash: 254b59607d4417e9dffbc307138ae5c86280fe4c\ncommit-date: 2026-01-19\nhost: aarch64-apple-darwin\nrelease: 1.93.0\nLLVM version: 21.1.8\n",
+      "CARGO_BUILD_JOBS": "2",
+      "RUSTFLAGS": null,
+      "CARGO_ENCODED_RUSTFLAGS": null,
+      "features": "default scalable-allocator,spirv-tools",
+      "scope": "CPUlighting uniform final-material classification reuse. No phase instrumentation in qualification binary. Mixedsections and GPU palettes preserve existing path.",
+      "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+      "sha256": "977166d4a5f6e7f2734d89483c1438b005c68b757f2d48b0b95be2db7cd19ff7",
+      "bytes": 10991576
+    }
+  },
+  "unused_attribution_v1": "Built but never run; excluded from measured-process counts. V2 uses isolated per-region Metrics, not global VM diagnostics. All private instrumentation restored before baseline/candidate builds.",
+  "prototype": "CPU lighting already classifies final immutable material sections. Copy bounded per-tile u32 descriptors; ChunkLight palette() prefers existing GPU palettes, otherwise returns only proven uniformIDs, leaving mixed-section CPU encoding unchanged. New struct field creates a cost/complexity tradeoff; no claimed allocation saving.",
+  "summary": {
+    "successful_native_processes": 10,
+    "warmups": 10,
+    "measured_regions": 17,
+    "strict_nbt_comparisons": 17408,
+    "fresh_regions": 27
+  },
+  "screen_summary": {
+    "cpu_screen": {
+      "chunks_per_second": {
+        "individual_paired_changes_pct": [
+          22.193496191341634
+        ],
+        "median_change_pct": 22.193496191341634,
+        "variance": null,
+        "confidence_interval": null,
+        "scope": "Descriptive screen only; one/two process pairs, insufficient qualification"
+      },
+      "p95_region_ms": {
+        "individual_paired_changes_pct": [
+          -30.258796510344578
+        ],
+        "median_change_pct": -30.258796510344578,
+        "variance": null,
+        "confidence_interval": null,
+        "scope": "Descriptive screen only; one/two process pairs, insufficient qualification"
+      },
+      "generation_peak_rss_bytes": {
+        "individual_paired_changes_pct": [
+          2.326429496610949
+        ],
+        "median_change_pct": 2.326429496610949,
+        "variance": null,
+        "confidence_interval": null,
+        "scope": "Descriptive screen only; one/two process pairs, insufficient qualification"
+      },
+      "cpu_ms_per_region": {
+        "individual_paired_changes_pct": [
+          -1.1363714206977238
+        ],
+        "median_change_pct": -1.1363714206977238,
+        "variance": null,
+        "confidence_interval": null,
+        "scope": "Descriptive screen only; one/two process pairs, insufficient qualification"
+      }
+    },
+    "metal_screen": {
+      "chunks_per_second": {
+        "individual_paired_changes_pct": [
+          -37.778409347594774,
+          2.960083554572046
+        ],
+        "median_change_pct": -17.409162896511365,
+        "variance": 829.8124019699482,
+        "confidence_interval": null,
+        "scope": "Descriptive screen only; one/two process pairs, insufficient qualification"
+      },
+      "p95_region_ms": {
+        "individual_paired_changes_pct": [
+          106.68325746553329,
+          -6.568883912754231
+        ],
+        "median_change_pct": 50.05718677638953,
+        "variance": 6413.023763383812,
+        "confidence_interval": null,
+        "scope": "Descriptive screen only; one/two process pairs, insufficient qualification"
+      },
+      "generation_peak_rss_bytes": {
+        "individual_paired_changes_pct": [
+          1.30239825348073,
+          2.0069189509431595
+        ],
+        "median_change_pct": 1.6546586022119447,
+        "variance": 0.24817470657647414,
+        "confidence_interval": null,
+        "scope": "Descriptive screen only; one/two process pairs, insufficient qualification"
+      },
+      "cpu_ms_per_region": {
+        "individual_paired_changes_pct": [
+          9.405207928602376,
+          1.0221025542640483
+        ],
+        "median_change_pct": 5.213655241433212,
+        "variance": 35.13822785863008,
+        "confidence_interval": null,
+        "scope": "Descriptive screen only; one/two process pairs, insufficient qualification"
+      }
+    }
+  },
+  "individual_measurements": [
+    {
+      "name": "metal-overworld",
+      "backend": "metal",
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+        "--library-revision",
+        "PRIVATE NBT-only attribution, not performance qualification",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-profile/metal-overworld",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle12-baseline/metal-00-p1"
+      ],
+      "exit_code": 0,
+      "seconds": 3.776222708635032,
+      "load_before": [
+        9.216796875,
+        24.89404296875,
+        42.42041015625
+      ],
+      "load_after": [
+        8.958984375,
+        24.580078125,
+        42.20654296875
+      ],
+      "traces": [
+        {
+          "counters": {
+            "nbt_biomes_nanos": 13724238,
+            "nbt_blocks_nanos": 13297549,
+            "nbt_bytes": 66438102,
+            "nbt_capacity_growth_bytes": 7826624,
+            "nbt_chunks": 1024,
+            "nbt_cold_scratch_chunks": 84,
+            "nbt_cpu_palette_sections": 2977,
+            "nbt_gpu_palette_sections": 7963,
+            "nbt_header_nanos": 269167,
+            "nbt_heightmaps_nanos": 14502474,
+            "nbt_light_nanos": 14712577,
+            "nbt_metadata_nanos": 923712,
+            "nbt_uniform_sections": 13636
+          },
+          "profile": 1,
+          "region_x": 8,
+          "region_z": 8,
+          "seed": 123456789
+        },
+        {
+          "counters": {
+            "nbt_biomes_nanos": 13346099,
+            "nbt_blocks_nanos": 12994188,
+            "nbt_bytes": 70303233,
+            "nbt_capacity_growth_bytes": 9990304,
+            "nbt_chunks": 1024,
+            "nbt_cold_scratch_chunks": 84,
+            "nbt_cpu_palette_sections": 3021,
+            "nbt_gpu_palette_sections": 8265,
+            "nbt_header_nanos": 259377,
+            "nbt_heightmaps_nanos": 13385134,
+            "nbt_light_nanos": 14107915,
+            "nbt_metadata_nanos": 1195611,
+            "nbt_uniform_sections": 13290
+          },
+          "profile": 1,
+          "region_x": 0,
+          "region_z": 0,
+          "seed": 123456789
+        },
+        {
+          "counters": {
+            "nbt_biomes_nanos": 13933683,
+            "nbt_blocks_nanos": 15515162,
+            "nbt_bytes": 68416874,
+            "nbt_capacity_growth_bytes": 9201680,
+            "nbt_chunks": 1024,
+            "nbt_cold_scratch_chunks": 84,
+            "nbt_cpu_palette_sections": 3021,
+            "nbt_gpu_palette_sections": 8514,
+            "nbt_header_nanos": 306654,
+            "nbt_heightmaps_nanos": 15515717,
+            "nbt_light_nanos": 15720785,
+            "nbt_metadata_nanos": 1264544,
+            "nbt_uniform_sections": 13041
+          },
+          "profile": 1,
+          "region_x": 1,
+          "region_z": 0,
+          "seed": 123456789
+        }
+      ],
+      "measurement": {
+        "backend_selected": "Metal: Apple M4 Max",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "38701a82727bcc902e547d596b23e52c85a7c2d46c72f65afe7a0ffe830b04b8",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+          "library_revision": "PRIVATE NBT-only attribution, not performance qualification",
+          "library_sha256": "e2429dbfd4aec14d784f01169ffafd47b159484e457798dfbba0fcb797002d66"
+        },
+        "chunks_per_second": 3527.770532603735,
+        "comparison": {
+          "identical_nbt_chunks": 2048,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 0,
+          "origin_z": 0
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "c31022255209e4cc90012e8b2af2c45f59742b9db0d0bc6d31f5099e7d886e81"
+            },
+            {
+              "file": "1.mca",
+              "records": 1024,
+              "sha256": "bcc13fe29bf199317d6e9ee20fe8de2134d4ff6fc0ef03226279337c60fbd32a"
+            }
+          ],
+          "records": 2048,
+          "sha256": "6b7c37cdfe491807922359d90322fe933c8313dc57e98c9fe0cd2ac34c59cab6"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:overworld",
+        "generation_peak_rss_bytes": 1562214400,
+        "gpu_pipeline": {
+          "completed": 9,
+          "device_gap_ms": 1066.356041,
+          "device_span_ms": 1800.815749,
+          "peak_in_flight": 2,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 1089054625,
+          "emitted": 2780,
+          "graphs": 30,
+          "horizontal_fields": 9,
+          "nodes": 3680,
+          "readback_bytes": 355938828,
+          "source_bytes": 986944,
+          "status": 4,
+          "upload_bytes": 315352452
+        },
+        "gpu_transfers": {
+          "readback_bytes": 239869744,
+          "readback_bytes_per_region": 119934872.0,
+          "upload_bytes": 213250616,
+          "upload_bytes_per_region": 106625308.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 2048,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 2.817389857219533,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 817.7990000000001,
+          "end_unix": 1793858532.717082,
+          "involuntary_context_switches": 12902,
+          "major_faults": 8,
+          "minor_faults": 33092,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793858532.136516,
+          "system_ms": 230.14799999999997,
+          "total_ms": 1635.5980000000002,
+          "user_ms": 1405.45,
+          "voluntary_context_switches": 21
+        },
+        "median_ms": 272.87739561870694,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 284.4086639583111,
+        "parallel": 1,
+        "peak_rss_bytes": 1884422144,
+        "readiness": "shader-ready",
+        "readiness_effective": "shader-ready",
+        "readiness_wait_ms": 706.6371249966323,
+        "region_file_bytes": 18264064,
+        "regions": [
+          {
+            "assembly_ms": 156.251209,
+            "dispatch_wait_ms": 34.262374974787235,
+            "generated": 1024,
+            "gpu_ms": 116.204166,
+            "ms": 285.6899159960449,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 320.1755420304835,
+            "terrain_host_ms": 116.204166,
+            "write_ms": 12.752584,
+            "x": 0,
+            "z": 0
+          },
+          {
+            "assembly_ms": 164.477625,
+            "dispatch_wait_ms": 320.20512502640486,
+            "generated": 1024,
+            "gpu_ms": 83.783208,
+            "ms": 260.064875241369,
+            "name": "1",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 580.4412090219557,
+            "terrain_host_ms": 83.783208,
+            "write_ms": 11.285375,
+            "x": 1,
+            "z": 0
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:badlands",
+          "frequency": 0.00800000037997961,
+          "height": 384,
+          "min_y": -64,
+          "storage": {
+            "height": 384,
+            "min_y": -64
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.00829020166015625,
+          "aquifer_mask": 0.0116001787109375,
+          "assembly": 0.06548403662109376,
+          "cave_density": 0.02602772900390625,
+          "cave_features": 0.01123452001953125,
+          "cave_mask": 0.01777372216796875,
+          "columns": 0.00791794873046875,
+          "compress": 0.1386835302734375,
+          "encode": 0.0017096962890625,
+          "feature_counts": 8.1787109375e-06,
+          "geology": 0.07490601123046875,
+          "height": 0.01685217333984375,
+          "io": 0.01220027685546875,
+          "lake_candidates": 0.00423020361328125,
+          "lake_density": 0.00259598876953125,
+          "lake_reduce": 0.00015071630859375,
+          "light_host": 0.0311237177734375,
+          "light_pack": 0.00202722412109375,
+          "light_sky": 0.005569111328125,
+          "light_spread": 0.018740802734375,
+          "materials": 0.015420552734375,
+          "nbt": 0.057509310546875,
+          "ore_mask": 0.009700927734375,
+          "ore_plan": 0.0233377890625,
+          "provider_noise": 5.513671875e-06,
+          "queue": 0.00115804052734375,
+          "sites": 0.002105041015625,
+          "snow": 0.00029469775390625,
+          "structure_plan": 0.0244013466796875,
+          "structures": 0.09717071728515625,
+          "vegetation": 0.0018931025390625,
+          "vegetation_plan": 0.02683111572265625,
+          "wait_copy": 0.1207330927734375
+        },
+        "startup": {
+          "initialize_ms": 35.03337502479553,
+          "load_and_bind_ms": 866.9761251658201,
+          "warmups": [
+            {
+              "assembly_ms": 173.247833,
+              "generated": 1024,
+              "gpu_ms": 335.972333,
+              "ms": 525.5586672574282,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 1,
+              "terrain_host_ms": 335.972333,
+              "write_ms": 15.604917,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 580.5366253480315
+      },
+      "series": "attribution"
+    },
+    {
+      "name": "cpu-overworld",
+      "backend": "cpu",
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+        "--library-revision",
+        "PRIVATE NBT-only attribution, not performance qualification",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--backend",
+        "cpu",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "1",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-profile/cpu-overworld",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle12-baseline/cpu-00-p1"
+      ],
+      "exit_code": 0,
+      "seconds": 15.752618792001158,
+      "load_before": [
+        8.958984375,
+        24.580078125,
+        42.20654296875
+      ],
+      "load_after": [
+        14.0927734375,
+        24.91796875,
+        42.0166015625
+      ],
+      "traces": [
+        {
+          "counters": {
+            "nbt_biomes_nanos": 11139454,
+            "nbt_blocks_nanos": 58244434,
+            "nbt_bytes": 66438050,
+            "nbt_capacity_growth_bytes": 7610208,
+            "nbt_chunks": 1024,
+            "nbt_cold_scratch_chunks": 84,
+            "nbt_cpu_palette_sections": 24576,
+            "nbt_gpu_palette_sections": 0,
+            "nbt_header_nanos": 252445,
+            "nbt_heightmaps_nanos": 11488252,
+            "nbt_light_nanos": 21719574,
+            "nbt_metadata_nanos": 889930,
+            "nbt_uniform_sections": 0
+          },
+          "profile": 1,
+          "region_x": 8,
+          "region_z": 8,
+          "seed": 123456789
+        },
+        {
+          "counters": {
+            "nbt_biomes_nanos": 13339569,
+            "nbt_blocks_nanos": 70823853,
+            "nbt_bytes": 70303233,
+            "nbt_capacity_growth_bytes": 9915424,
+            "nbt_chunks": 1024,
+            "nbt_cold_scratch_chunks": 83,
+            "nbt_cpu_palette_sections": 24576,
+            "nbt_gpu_palette_sections": 0,
+            "nbt_header_nanos": 319753,
+            "nbt_heightmaps_nanos": 13455962,
+            "nbt_light_nanos": 25553066,
+            "nbt_metadata_nanos": 1154185,
+            "nbt_uniform_sections": 0
+          },
+          "profile": 1,
+          "region_x": 0,
+          "region_z": 0,
+          "seed": 123456789
+        }
+      ],
+      "measurement": {
+        "backend_selected": "CPU: native",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "38701a82727bcc902e547d596b23e52c85a7c2d46c72f65afe7a0ffe830b04b8",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+          "library_revision": "PRIVATE NBT-only attribution, not performance qualification",
+          "library_sha256": "e2429dbfd4aec14d784f01169ffafd47b159484e457798dfbba0fcb797002d66"
+        },
+        "chunks_per_second": 124.94038565366891,
+        "comparison": {
+          "identical_nbt_chunks": 1024,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 0,
+          "origin_z": 0
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "4334bde333b8f1ab48f51c8627b47526eb29cce4a47b97875962f078346f92d9"
+            }
+          ],
+          "records": 1024,
+          "sha256": "8634e04bfa736a0537dbb2148f3b93ade710d92a31272a6597c2f7595880e8dc"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:overworld",
+        "generation_peak_rss_bytes": 1210417152,
+        "gpu_pipeline": {
+          "completed": 0,
+          "device_gap_ms": 0.0,
+          "device_span_ms": 0.0,
+          "peak_in_flight": 0,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 0,
+          "emitted": 0,
+          "graphs": 0,
+          "horizontal_fields": 0,
+          "nodes": 0,
+          "readback_bytes": 0,
+          "source_bytes": 0,
+          "status": 0,
+          "upload_bytes": 0
+        },
+        "gpu_transfers": {
+          "readback_bytes": 0,
+          "readback_bytes_per_region": 0.0,
+          "upload_bytes": 0,
+          "upload_bytes_per_region": 0.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 1024,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 4.282115512846515,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 35095.827999999994,
+          "end_unix": 1793858548.733293,
+          "involuntary_context_switches": 73682,
+          "major_faults": 0,
+          "minor_faults": 10593,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793858540.537337,
+          "system_ms": 471.584,
+          "total_ms": 35095.827999999994,
+          "user_ms": 34624.244,
+          "voluntary_context_switches": 8
+        },
+        "median_ms": 8193.800874985754,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 8193.800874985754,
+        "parallel": 1,
+        "peak_rss_bytes": 1456734208,
+        "readiness": "shader-ready",
+        "readiness_effective": "cpu",
+        "readiness_wait_ms": 0.0,
+        "region_file_bytes": 9326592,
+        "regions": [
+          {
+            "assembly_ms": 1576.443458,
+            "dispatch_wait_ms": 1.8651247955858707,
+            "generated": 1024,
+            "gpu_ms": 6598.900625,
+            "ms": 8193.800874985754,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 0,
+            "return_since_batch_start_ms": 8195.818332955241,
+            "terrain_host_ms": 6598.900625,
+            "write_ms": 17.916208,
+            "x": 0,
+            "z": 0
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:badlands",
+          "frequency": 0.00800000037997961,
+          "height": 384,
+          "min_y": -64,
+          "storage": {
+            "height": 384,
+            "min_y": -64
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.0,
+          "aquifer_mask": 0.0,
+          "assembly": 0.05577268359375,
+          "cave_density": 0.0,
+          "cave_features": 0.0173093505859375,
+          "cave_mask": 0.0,
+          "columns": 0.0,
+          "compress": 0.143945955078125,
+          "encode": 0.0,
+          "feature_counts": 0.0,
+          "geology": 0.029969345703125,
+          "height": 0.0,
+          "io": 0.0179955234375,
+          "lake_candidates": 0.0,
+          "lake_density": 0.0,
+          "lake_reduce": 0.0,
+          "light_host": 1.1456035546875,
+          "light_pack": 0.0,
+          "light_sky": 0.0,
+          "light_spread": 0.0,
+          "materials": 0.0,
+          "nbt": 0.1218484697265625,
+          "ore_mask": 0.0,
+          "ore_plan": 0.120371134765625,
+          "provider_noise": 0.0,
+          "queue": 0.0,
+          "sites": 0.0,
+          "snow": 0.0002547021484375,
+          "structure_plan": 0.0212848720703125,
+          "structures": 0.038706392578125,
+          "vegetation": 0.001850298828125,
+          "vegetation_plan": 0.0783795166015625,
+          "wait_copy": 0.0
+        },
+        "startup": {
+          "initialize_ms": 0.18570804968476295,
+          "load_and_bind_ms": 1039.905957877636,
+          "warmups": [
+            {
+              "assembly_ms": 1369.455,
+              "generated": 1024,
+              "gpu_ms": 4588.489042,
+              "ms": 5973.775040823966,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 0,
+              "terrain_host_ms": 4588.489042,
+              "write_ms": 15.214,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 8195.908749941736
+      },
+      "series": "attribution"
+    },
+    {
+      "name": "metal-nether",
+      "backend": "metal",
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+        "--library-revision",
+        "PRIVATE NBT-only attribution, not performance qualification",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:the_nether",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "1",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-profile/metal-nether",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle08-metal-base"
+      ],
+      "exit_code": 0,
+      "seconds": 3.4365396248176694,
+      "load_before": [
+        14.0927734375,
+        24.91796875,
+        42.0166015625
+      ],
+      "load_after": [
+        13.4443359375,
+        24.603515625,
+        41.80517578125
+      ],
+      "traces": [
+        {
+          "counters": {
+            "nbt_biomes_nanos": 9765401,
+            "nbt_blocks_nanos": 15870145,
+            "nbt_bytes": 31052133,
+            "nbt_capacity_growth_bytes": 4372184,
+            "nbt_chunks": 1024,
+            "nbt_cold_scratch_chunks": 84,
+            "nbt_cpu_palette_sections": 1984,
+            "nbt_gpu_palette_sections": 6074,
+            "nbt_header_nanos": 472900,
+            "nbt_heightmaps_nanos": 3844017,
+            "nbt_light_nanos": 6699878,
+            "nbt_metadata_nanos": 2877919,
+            "nbt_uniform_sections": 8326
+          },
+          "profile": 3,
+          "region_x": 8,
+          "region_z": 8,
+          "seed": 123456789
+        },
+        {
+          "counters": {
+            "nbt_biomes_nanos": 10159613,
+            "nbt_blocks_nanos": 11518627,
+            "nbt_bytes": 33815386,
+            "nbt_capacity_growth_bytes": 5157616,
+            "nbt_chunks": 1024,
+            "nbt_cold_scratch_chunks": 84,
+            "nbt_cpu_palette_sections": 1984,
+            "nbt_gpu_palette_sections": 6501,
+            "nbt_header_nanos": 471127,
+            "nbt_heightmaps_nanos": 4181871,
+            "nbt_light_nanos": 5804475,
+            "nbt_metadata_nanos": 4447667,
+            "nbt_uniform_sections": 7899
+          },
+          "profile": 3,
+          "region_x": 0,
+          "region_z": 0,
+          "seed": 123456789
+        }
+      ],
+      "measurement": {
+        "backend_selected": "Metal: Apple M4 Max",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "38701a82727bcc902e547d596b23e52c85a7c2d46c72f65afe7a0ffe830b04b8",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+          "library_revision": "PRIVATE NBT-only attribution, not performance qualification",
+          "library_sha256": "e2429dbfd4aec14d784f01169ffafd47b159484e457798dfbba0fcb797002d66"
+        },
+        "chunks_per_second": 950.6704686489021,
+        "comparison": {
+          "identical_nbt_chunks": 1024,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 0,
+          "origin_z": 0
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "b721897100f996a3f7289ec68fd3b9df7373447713cdb8370c94b8c6bccf686e"
+            }
+          ],
+          "records": 1024,
+          "sha256": "ff013659c7b105f81f1609ad3a83856e7dd060fc3843abeb63fc7a1e2d5396c2"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:the_nether",
+        "generation_peak_rss_bytes": 2074787840,
+        "gpu_pipeline": {
+          "completed": 44,
+          "device_gap_ms": 567.603791,
+          "device_span_ms": 611.796293,
+          "peak_in_flight": 2,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 112864208,
+          "emitted": 289,
+          "graphs": 8,
+          "horizontal_fields": 2,
+          "nodes": 258,
+          "readback_bytes": 476165016,
+          "source_bytes": 104730,
+          "status": 4,
+          "upload_bytes": 148936908
+        },
+        "gpu_transfers": {
+          "readback_bytes": 253379188,
+          "readback_bytes_per_region": 253379188.0,
+          "upload_bytes": 76450900,
+          "upload_bytes_per_region": 76450900.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 1024,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 3.1783736069886603,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 3423.5360000000005,
+          "end_unix": 1793858552.2801511,
+          "involuntary_context_switches": 18210,
+          "major_faults": 0,
+          "minor_faults": 24621,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793858551.2029881,
+          "system_ms": 324.668,
+          "total_ms": 3423.5360000000005,
+          "user_ms": 3098.8680000000004,
+          "voluntary_context_switches": 15
+        },
+        "median_ms": 1073.799833189696,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 1073.799833189696,
+        "parallel": 1,
+        "peak_rss_bytes": 2190131200,
+        "readiness": "shader-ready",
+        "readiness_effective": "shader-ready",
+        "readiness_wait_ms": 0.0007497146725654602,
+        "region_file_bytes": 5431296,
+        "regions": [
+          {
+            "assembly_ms": 1030.338417,
+            "dispatch_wait_ms": 3.059667069464922,
+            "generated": 1024,
+            "gpu_ms": 30.489458,
+            "ms": 1073.799833189696,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 1077.025332953781,
+            "terrain_host_ms": 30.489458,
+            "write_ms": 12.331584,
+            "x": 0,
+            "z": 0
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:basalt_deltas",
+          "frequency": 0.00800000037997961,
+          "height": 256,
+          "min_y": 0,
+          "storage": {
+            "height": 256,
+            "min_y": 0
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.0,
+          "aquifer_mask": 0.0057547216796875,
+          "assembly": 0.0610528427734375,
+          "cave_density": 0.00667590625,
+          "cave_features": 3.55078125e-05,
+          "cave_mask": 0.0377541123046875,
+          "columns": 0.00345597265625,
+          "compress": 0.10882412109375,
+          "encode": 0.019758875,
+          "feature_counts": 0.0,
+          "geology": 3.48984375e-05,
+          "height": 0.0094651328125,
+          "io": 0.012635783203125,
+          "lake_candidates": 0.001374185546875,
+          "lake_density": 0.0005609521484375,
+          "lake_reduce": 0.00018957421875,
+          "light_host": 0.029324869140625,
+          "light_pack": 0.0014641123046875,
+          "light_sky": 0.0026139326171875,
+          "light_spread": 0.0253203525390625,
+          "materials": 0.065694419921875,
+          "nbt": 0.0358609033203125,
+          "ore_mask": 0.0,
+          "ore_plan": 0.0005773515625,
+          "provider_noise": 0.0,
+          "queue": 0.038128296875,
+          "sites": 0.0012293720703125,
+          "snow": 0.000263515625,
+          "structure_plan": 0.1427261962890625,
+          "structures": 0.0,
+          "vegetation": 0.06666858203125,
+          "vegetation_plan": 0.9254302568359375,
+          "wait_copy": 0.26966040234375
+        },
+        "startup": {
+          "initialize_ms": 33.430416602641344,
+          "load_and_bind_ms": 824.8460832983255,
+          "warmups": [
+            {
+              "assembly_ms": 824.357959,
+              "generated": 1024,
+              "gpu_ms": 206.264166,
+              "ms": 1044.2751250229776,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 4,
+              "terrain_host_ms": 206.264166,
+              "write_ms": 12.862084,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 1077.1345421671867
+      },
+      "series": "attribution"
+    },
+    {
+      "name": "metal-end",
+      "backend": "metal",
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+        "--library-revision",
+        "PRIVATE NBT-only attribution, not performance qualification",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:the_end",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "10",
+        "--origin-z",
+        "10",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "1",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-profile/metal-end",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle03-guard-metal-end"
+      ],
+      "exit_code": 0,
+      "seconds": 1.5750232497230172,
+      "load_before": [
+        13.4443359375,
+        24.603515625,
+        41.80517578125
+      ],
+      "load_after": [
+        13.4443359375,
+        24.603515625,
+        41.80517578125
+      ],
+      "traces": [
+        {
+          "counters": {
+            "nbt_biomes_nanos": 8969146,
+            "nbt_blocks_nanos": 2626904,
+            "nbt_bytes": 39233554,
+            "nbt_capacity_growth_bytes": 5327048,
+            "nbt_chunks": 1024,
+            "nbt_cold_scratch_chunks": 84,
+            "nbt_cpu_palette_sections": 198,
+            "nbt_gpu_palette_sections": 885,
+            "nbt_header_nanos": 326045,
+            "nbt_heightmaps_nanos": 5871224,
+            "nbt_light_nanos": 4921736,
+            "nbt_metadata_nanos": 761640,
+            "nbt_uniform_sections": 15301
+          },
+          "profile": 2,
+          "region_x": 8,
+          "region_z": 8,
+          "seed": 123456789
+        },
+        {
+          "counters": {
+            "nbt_biomes_nanos": 8623569,
+            "nbt_blocks_nanos": 2938044,
+            "nbt_bytes": 40158787,
+            "nbt_capacity_growth_bytes": 5392392,
+            "nbt_chunks": 1024,
+            "nbt_cold_scratch_chunks": 84,
+            "nbt_cpu_palette_sections": 299,
+            "nbt_gpu_palette_sections": 1851,
+            "nbt_header_nanos": 581564,
+            "nbt_heightmaps_nanos": 9145351,
+            "nbt_light_nanos": 6154414,
+            "nbt_metadata_nanos": 714269,
+            "nbt_uniform_sections": 14234
+          },
+          "profile": 2,
+          "region_x": 10,
+          "region_z": 10,
+          "seed": 123456789
+        }
+      ],
+      "measurement": {
+        "backend_selected": "Metal: Apple M4 Max",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "38701a82727bcc902e547d596b23e52c85a7c2d46c72f65afe7a0ffe830b04b8",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+          "library_revision": "PRIVATE NBT-only attribution, not performance qualification",
+          "library_sha256": "e2429dbfd4aec14d784f01169ffafd47b159484e457798dfbba0fcb797002d66"
+        },
+        "chunks_per_second": 8221.413428289965,
+        "comparison": {
+          "identical_nbt_chunks": 1024,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 10,
+          "origin_z": 10
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "01c11a6f3a38b0de9f4dc5b78b20dc0eef2da49776bb0a443e9c5f78e6035c8e"
+            }
+          ],
+          "records": 1024,
+          "sha256": "0e871066b886cd89504d515c38162b0617982765636d9c9695df4979676e068f"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:the_end",
+        "generation_peak_rss_bytes": 763904000,
+        "gpu_pipeline": {
+          "completed": 0,
+          "device_gap_ms": 0.0,
+          "device_span_ms": 0.0,
+          "peak_in_flight": 0,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 0,
+          "emitted": 0,
+          "graphs": 0,
+          "horizontal_fields": 0,
+          "nodes": 0,
+          "readback_bytes": 34358208,
+          "source_bytes": 0,
+          "status": 0,
+          "upload_bytes": 32896712
+        },
+        "gpu_transfers": {
+          "readback_bytes": 21149948,
+          "readback_bytes_per_region": 21149948.0,
+          "upload_bytes": 22223736,
+          "upload_bytes_per_region": 22223736.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 1024,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-attribution-v2.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 2.581467615414693,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 321.5290000000001,
+          "end_unix": 1793858553.981719,
+          "involuntary_context_switches": 6242,
+          "major_faults": 0,
+          "minor_faults": 8138,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793858553.857145,
+          "system_ms": 80.49400000000001,
+          "total_ms": 321.5290000000001,
+          "user_ms": 241.0350000000001,
+          "voluntary_context_switches": 11
+        },
+        "median_ms": 122.32766672968864,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 122.32766672968864,
+        "parallel": 1,
+        "peak_rss_bytes": 912572416,
+        "readiness": "shader-ready",
+        "readiness_effective": "shader-ready",
+        "readiness_wait_ms": 0.00020815059542655945,
+        "region_file_bytes": 4202496,
+        "regions": [
+          {
+            "assembly_ms": 47.356875,
+            "dispatch_wait_ms": 1.9879592582583427,
+            "generated": 1024,
+            "gpu_ms": 62.299292,
+            "ms": 122.32766672968864,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 0,
+            "return_since_batch_start_ms": 124.48375020176172,
+            "terrain_host_ms": 62.299292,
+            "write_ms": 12.18925,
+            "x": 10,
+            "z": 10
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:end_barrens",
+          "frequency": 0.00800000037997961,
+          "height": 256,
+          "min_y": 0,
+          "storage": {
+            "height": 256,
+            "min_y": 0
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.0,
+          "aquifer_mask": 0.0,
+          "assembly": 0.0103691640625,
+          "cave_density": 0.0,
+          "cave_features": 0.0,
+          "cave_mask": 0.0,
+          "columns": 0.0,
+          "compress": 0.0464859677734375,
+          "encode": 0.0,
+          "feature_counts": 0.0,
+          "geology": 0.0,
+          "height": 0.0,
+          "io": 0.012343873046875,
+          "lake_candidates": 0.0,
+          "lake_density": 0.0,
+          "lake_reduce": 0.0,
+          "light_host": 0.011435546875,
+          "light_pack": 0.0001092529296875,
+          "light_sky": 0.0040035810546875,
+          "light_spread": 0.00890926171875,
+          "materials": 0.0,
+          "nbt": 0.02761871484375,
+          "ore_mask": 0.0,
+          "ore_plan": 0.00045731640625,
+          "provider_noise": 0.0,
+          "queue": 0.0,
+          "sites": 0.0,
+          "snow": 0.000221638671875,
+          "structure_plan": 0.00196968359375,
+          "structures": 0.0,
+          "vegetation": 0.0019278125,
+          "vegetation_plan": 0.018640828125,
+          "wait_copy": 0.0
+        },
+        "startup": {
+          "initialize_ms": 37.346374709159136,
+          "load_and_bind_ms": 954.4887081719935,
+          "warmups": [
+            {
+              "assembly_ms": 89.954459,
+              "generated": 1024,
+              "gpu_ms": 47.3795,
+              "ms": 151.22929215431213,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 0,
+              "terrain_host_ms": 47.3795,
+              "write_ms": 13.311917,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 124.55279240384698
+      },
+      "series": "attribution"
+    },
+    {
+      "backend": "cpu",
+      "callers": 1,
+      "run": 0,
+      "label": "baseline",
+      "exit_code": 0,
+      "seconds": 254.76720987493172,
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+        "--library-revision",
+        "baseline cycle13 uninstrumented same-toolchain build",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--backend",
+        "cpu",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-confirmation/cpu-p1-0-baseline",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle12-baseline/cpu-00-p1"
+      ],
+      "load_before": [
+        67.79248046875,
+        58.251953125,
+        49.17138671875
+      ],
+      "load_after": [
+        82.57763671875,
+        73.2587890625,
+        58.390625
+      ],
+      "measurement": {
+        "backend_selected": "CPU: native",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "5e8baafd96b4db6c8ef3d8b96c1b75cc7ae0e2efd13eacd84dacd622bb194dee",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+          "library_revision": "baseline cycle13 uninstrumented same-toolchain build",
+          "library_sha256": "f2d38a661c456c0eb26a11422214406bc304b990c300852d5ca1f9642db0895a"
+        },
+        "chunks_per_second": 12.04650192383409,
+        "comparison": {
+          "identical_nbt_chunks": 2048,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 0,
+          "origin_z": 0
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "4334bde333b8f1ab48f51c8627b47526eb29cce4a47b97875962f078346f92d9"
+            },
+            {
+              "file": "1.mca",
+              "records": 1024,
+              "sha256": "0007ee39890c84751e16b6727d587913012514bf9c70f879f63914a99ec94342"
+            }
+          ],
+          "records": 2048,
+          "sha256": "871fcf3eb696610226ffe0307246d2c402315a72328787c6bd0ff44b43766804"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:overworld",
+        "generation_peak_rss_bytes": 1302872064,
+        "gpu_pipeline": {
+          "completed": 0,
+          "device_gap_ms": 0.0,
+          "device_span_ms": 0.0,
+          "peak_in_flight": 0,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 0,
+          "emitted": 0,
+          "graphs": 0,
+          "horizontal_fields": 0,
+          "nodes": 0,
+          "readback_bytes": 0,
+          "source_bytes": 0,
+          "status": 0,
+          "upload_bytes": 0
+        },
+        "gpu_transfers": {
+          "readback_bytes": 0,
+          "readback_bytes_per_region": 0.0,
+          "upload_bytes": 0,
+          "upload_bytes_per_region": 0.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 2048,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 0.617384547064726,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 52480.1125,
+          "end_unix": 1793859691.362627,
+          "involuntary_context_switches": 596482,
+          "major_faults": 8,
+          "minor_faults": 17107,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793859521.3541691,
+          "system_ms": 3929.136,
+          "total_ms": 104960.225,
+          "user_ms": 101031.089,
+          "voluntary_context_switches": 13
+        },
+        "median_ms": 84981.65697860532,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 99911.25550980214,
+        "parallel": 1,
+        "peak_rss_bytes": 1571651584,
+        "readiness": "shader-ready",
+        "readiness_effective": "cpu",
+        "readiness_wait_ms": 0.0,
+        "region_file_bytes": 18264064,
+        "regions": [
+          {
+            "assembly_ms": 11601.545792,
+            "dispatch_wait_ms": 41.43095761537552,
+            "generated": 1024,
+            "gpu_ms": 56777.573583,
+            "ms": 68393.2141661644,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 0,
+            "return_since_batch_start_ms": 68436.38441665098,
+            "terrain_host_ms": 56777.573583,
+            "write_ms": 13.99525,
+            "x": 0,
+            "z": 0
+          },
+          {
+            "assembly_ms": 35039.136208,
+            "dispatch_wait_ms": 68436.42562488094,
+            "generated": 1024,
+            "gpu_ms": 66511.554958,
+            "ms": 101570.09979104623,
+            "name": "1",
+            "preserved": 0,
+            "program_status": 0,
+            "return_since_batch_start_ms": 170006.96087488905,
+            "terrain_host_ms": 66511.554958,
+            "write_ms": 19.126625,
+            "x": 1,
+            "z": 0
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:badlands",
+          "frequency": 0.00800000037997961,
+          "height": 384,
+          "min_y": -64,
+          "storage": {
+            "height": 384,
+            "min_y": -64
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.0,
+          "aquifer_mask": 0.0,
+          "assembly": 1.0203474711914062,
+          "cave_density": 0.0,
+          "cave_features": 0.078848875,
+          "cave_mask": 0.0,
+          "columns": 0.0,
+          "compress": 1.0836815986328125,
+          "encode": 0.0,
+          "feature_counts": 0.0,
+          "geology": 0.31256418310546874,
+          "height": 0.0,
+          "io": 0.016225037109375,
+          "lake_candidates": 0.0,
+          "lake_density": 0.0,
+          "lake_reduce": 0.0,
+          "light_host": 11.509769937011718,
+          "light_pack": 0.0,
+          "light_sky": 0.0,
+          "light_spread": 0.0,
+          "materials": 0.0,
+          "nbt": 0.91004387890625,
+          "ore_mask": 0.0,
+          "ore_plan": 1.9895541787109374,
+          "provider_noise": 0.0,
+          "queue": 0.0,
+          "sites": 0.0,
+          "snow": 0.00966443359375,
+          "structure_plan": 6.047570780761719,
+          "structures": 0.16441369970703126,
+          "vegetation": 0.03270497607421875,
+          "vegetation_plan": 0.7202683305664063,
+          "wait_copy": 0.0
+        },
+        "startup": {
+          "initialize_ms": 0.8707907982170582,
+          "load_and_bind_ms": 1952.9154170304537,
+          "warmups": [
+            {
+              "assembly_ms": 15210.419459,
+              "generated": 1024,
+              "gpu_ms": 64877.117708,
+              "ms": 80103.63495768979,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 0,
+              "terrain_host_ms": 64877.117708,
+              "write_ms": 15.947792,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 170007.85895762965
+      },
+      "series": "cpu_screen"
+    },
+    {
+      "backend": "cpu",
+      "callers": 1,
+      "run": 1,
+      "label": "candidate",
+      "exit_code": 0,
+      "seconds": 218.55960820894688,
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+        "--library-revision",
+        "candidate cycle13 uninstrumented same-toolchain build",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--backend",
+        "cpu",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-confirmation/cpu-p1-1-candidate",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle12-baseline/cpu-00-p1"
+      ],
+      "load_before": [
+        82.57763671875,
+        73.2587890625,
+        58.390625
+      ],
+      "load_after": [
+        72.92578125,
+        76.90283203125,
+        63.72607421875
+      ],
+      "measurement": {
+        "backend_selected": "CPU: native",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "5e8baafd96b4db6c8ef3d8b96c1b75cc7ae0e2efd13eacd84dacd622bb194dee",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+          "library_revision": "candidate cycle13 uninstrumented same-toolchain build",
+          "library_sha256": "977166d4a5f6e7f2734d89483c1438b005c68b757f2d48b0b95be2db7cd19ff7"
+        },
+        "chunks_per_second": 14.720041869490105,
+        "comparison": {
+          "identical_nbt_chunks": 2048,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 0,
+          "origin_z": 0
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "4334bde333b8f1ab48f51c8627b47526eb29cce4a47b97875962f078346f92d9"
+            },
+            {
+              "file": "1.mca",
+              "records": 1024,
+              "sha256": "0007ee39890c84751e16b6727d587913012514bf9c70f879f63914a99ec94342"
+            }
+          ],
+          "records": 2048,
+          "sha256": "871fcf3eb696610226ffe0307246d2c402315a72328787c6bd0ff44b43766804"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:overworld",
+        "generation_peak_rss_bytes": 1333182464,
+        "gpu_pipeline": {
+          "completed": 0,
+          "device_gap_ms": 0.0,
+          "device_span_ms": 0.0,
+          "peak_in_flight": 0,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 0,
+          "emitted": 0,
+          "graphs": 0,
+          "horizontal_fields": 0,
+          "nodes": 0,
+          "readback_bytes": 0,
+          "source_bytes": 0,
+          "status": 0,
+          "upload_bytes": 0
+        },
+        "gpu_transfers": {
+          "readback_bytes": 0,
+          "readback_bytes_per_region": 0.0,
+          "upload_bytes": 0,
+          "upload_bytes_per_region": 0.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 2048,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 0.7458309342440282,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 51883.74349999999,
+          "end_unix": 1793859910.267484,
+          "involuntary_context_switches": 619882,
+          "major_faults": 12,
+          "minor_faults": 18833,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793859771.136929,
+          "system_ms": 3969.139,
+          "total_ms": 103767.48699999998,
+          "user_ms": 99798.34799999997,
+          "voluntary_context_switches": 12
+        },
+        "median_ms": 69558.63752076402,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 69679.31201416068,
+        "parallel": 1,
+        "peak_rss_bytes": 1604222976,
+        "readiness": "shader-ready",
+        "readiness_effective": "cpu",
+        "readiness_wait_ms": 0.0,
+        "region_file_bytes": 18264064,
+        "regions": [
+          {
+            "assembly_ms": 13945.373375,
+            "dispatch_wait_ms": 6.488833110779524,
+            "generated": 1024,
+            "gpu_ms": 55462.687208,
+            "ms": 69424.5547503233,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 0,
+            "return_since_batch_start_ms": 69431.47016689181,
+            "terrain_host_ms": 55462.687208,
+            "write_ms": 16.341875,
+            "x": 0,
+            "z": 0
+          },
+          {
+            "assembly_ms": 21126.529333,
+            "dispatch_wait_ms": 69431.52724998072,
+            "generated": 1024,
+            "gpu_ms": 48522.784125,
+            "ms": 69692.72029120475,
+            "name": "1",
+            "preserved": 0,
+            "program_status": 0,
+            "return_since_batch_start_ms": 139125.64412504435,
+            "terrain_host_ms": 48522.784125,
+            "write_ms": 43.335125,
+            "x": 1,
+            "z": 0
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:badlands",
+          "frequency": 0.00800000037997961,
+          "height": 384,
+          "min_y": -64,
+          "storage": {
+            "height": 384,
+            "min_y": -64
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.0,
+          "aquifer_mask": 0.0,
+          "assembly": 0.4347463896484375,
+          "cave_density": 0.0,
+          "cave_features": 0.06140786572265625,
+          "cave_mask": 0.0,
+          "columns": 0.0,
+          "compress": 0.8301036997070312,
+          "encode": 0.0,
+          "feature_counts": 0.0,
+          "geology": 0.402928021484375,
+          "height": 0.0,
+          "io": 0.02921883251953125,
+          "lake_candidates": 0.0,
+          "lake_density": 0.0,
+          "lake_reduce": 0.0,
+          "light_host": 8.863407185058593,
+          "light_pack": 0.0,
+          "light_sky": 0.0,
+          "light_spread": 0.0,
+          "materials": 0.0,
+          "nbt": 0.7412692495117188,
+          "ore_mask": 0.0,
+          "ore_plan": 1.3328497309570313,
+          "provider_noise": 0.0,
+          "queue": 0.0,
+          "sites": 0.0,
+          "snow": 0.004996796875,
+          "structure_plan": 4.151450276855469,
+          "structures": 0.39041874462890624,
+          "vegetation": 0.006928060546875,
+          "vegetation_plan": 0.990384521484375,
+          "wait_copy": 0.0
+        },
+        "startup": {
+          "initialize_ms": 1.4734170399606228,
+          "load_and_bind_ms": 2461.3737920299172,
+          "warmups": [
+            {
+              "assembly_ms": 17141.897333,
+              "generated": 1024,
+              "gpu_ms": 57785.3035,
+              "ms": 74942.0342091471,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 0,
+              "terrain_host_ms": 57785.3035,
+              "write_ms": 14.542375,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 139130.0390418619
+      },
+      "series": "cpu_screen"
+    },
+    {
+      "backend": "metal",
+      "callers": 1,
+      "run": 0,
+      "label": "baseline",
+      "exit_code": 0,
+      "seconds": 20.909032917115837,
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+        "--library-revision",
+        "baseline cycle13 uninstrumented same-toolchain build",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-metal-screen/metal-p1-0-baseline",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle12-baseline/metal-00-p1"
+      ],
+      "load_before": [
+        74.37255859375,
+        76.58447265625,
+        64.6494140625
+      ],
+      "load_after": [
+        82.86279296875,
+        78.24560546875,
+        65.58447265625
+      ],
+      "measurement": {
+        "backend_selected": "Metal: Apple M4 Max",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "5e8baafd96b4db6c8ef3d8b96c1b75cc7ae0e2efd13eacd84dacd622bb194dee",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+          "library_revision": "baseline cycle13 uninstrumented same-toolchain build",
+          "library_sha256": "f2d38a661c456c0eb26a11422214406bc304b990c300852d5ca1f9642db0895a"
+        },
+        "chunks_per_second": 371.1886779558406,
+        "comparison": {
+          "identical_nbt_chunks": 2048,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 0,
+          "origin_z": 0
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "c31022255209e4cc90012e8b2af2c45f59742b9db0d0bc6d31f5099e7d886e81"
+            },
+            {
+              "file": "1.mca",
+              "records": 1024,
+              "sha256": "bcc13fe29bf199317d6e9ee20fe8de2134d4ff6fc0ef03226279337c60fbd32a"
+            }
+          ],
+          "records": 2048,
+          "sha256": "6b7c37cdfe491807922359d90322fe933c8313dc57e98c9fe0cd2ac34c59cab6"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:overworld",
+        "generation_peak_rss_bytes": 1530970112,
+        "gpu_pipeline": {
+          "completed": 9,
+          "device_gap_ms": 11886.551333,
+          "device_span_ms": 1316.721625,
+          "peak_in_flight": 2,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 10647926417,
+          "emitted": 2780,
+          "graphs": 30,
+          "horizontal_fields": 9,
+          "nodes": 3680,
+          "readback_bytes": 355938716,
+          "source_bytes": 986944,
+          "status": 4,
+          "upload_bytes": 315352452
+        },
+        "gpu_transfers": {
+          "readback_bytes": 239869744,
+          "readback_bytes_per_region": 119934872.0,
+          "upload_bytes": 213250616,
+          "upload_bytes_per_region": 106625308.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 2048,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 0.4935290588140184,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 1361.5009999999995,
+          "end_unix": 1793860004.336929,
+          "involuntary_context_switches": 33781,
+          "major_faults": 2,
+          "minor_faults": 31974,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793859998.819456,
+          "system_ms": 433.92299999999994,
+          "total_ms": 2723.001999999999,
+          "user_ms": 2289.0789999999993,
+          "voluntary_context_switches": 12
+        },
+        "median_ms": 2741.6843336541206,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 3189.016320859082,
+        "parallel": 1,
+        "peak_rss_bytes": 1750925312,
+        "readiness": "shader-ready",
+        "readiness_effective": "shader-ready",
+        "readiness_wait_ms": 6767.264791298658,
+        "region_file_bytes": 18264064,
+        "regions": [
+          {
+            "assembly_ms": 2638.084584,
+            "dispatch_wait_ms": 11.336250230669975,
+            "generated": 1024,
+            "gpu_ms": 569.433333,
+            "ms": 3238.7198749929667,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 3251.2566251680255,
+            "terrain_host_ms": 569.433333,
+            "write_ms": 31.097292,
+            "x": 0,
+            "z": 0
+          },
+          {
+            "assembly_ms": 1834.109958,
+            "dispatch_wait_ms": 3251.339000184089,
+            "generated": 1024,
+            "gpu_ms": 376.864542,
+            "ms": 2244.6487923152745,
+            "name": "1",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 5500.469374936074,
+            "terrain_host_ms": 376.864542,
+            "write_ms": 33.611333,
+            "x": 1,
+            "z": 0
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:badlands",
+          "frequency": 0.00800000037997961,
+          "height": 384,
+          "min_y": -64,
+          "storage": {
+            "height": 384,
+            "min_y": -64
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.015015869140625,
+          "aquifer_mask": 0.04877598095703125,
+          "assembly": 0.4870274252929688,
+          "cave_density": 0.09214589453125,
+          "cave_features": 0.1304799072265625,
+          "cave_mask": 0.0806048173828125,
+          "columns": 0.024348490234375,
+          "compress": 0.8936595434570312,
+          "encode": 0.06024212646484375,
+          "feature_counts": 0.00010459375,
+          "geology": 0.7354373505859375,
+          "height": 0.0835401806640625,
+          "io": 0.03165047216796875,
+          "lake_candidates": 0.02017612744140625,
+          "lake_density": 0.0096148076171875,
+          "lake_reduce": 0.00052014208984375,
+          "light_host": 0.4700011796875,
+          "light_pack": 0.01648964453125,
+          "light_sky": 0.033813029296875,
+          "light_spread": 0.1673651513671875,
+          "materials": 0.069799541015625,
+          "nbt": 0.29982509814453123,
+          "ore_mask": 0.0431307373046875,
+          "ore_plan": 0.21027909375,
+          "provider_noise": 0.000116353515625,
+          "queue": 0.023633443359375,
+          "sites": 0.00866507958984375,
+          "snow": 0.000378791015625,
+          "structure_plan": 0.2198177490234375,
+          "structures": 0.38337215478515624,
+          "vegetation": 0.0084178056640625,
+          "vegetation_plan": 0.4316396279296875,
+          "wait_copy": 0.52453651953125
+        },
+        "startup": {
+          "initialize_ms": 474.8446666635573,
+          "load_and_bind_ms": 2212.008791975677,
+          "warmups": [
+            {
+              "assembly_ms": 2475.536666,
+              "generated": 1024,
+              "gpu_ms": 1776.230042,
+              "ms": 4263.9607498422265,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 1,
+              "terrain_host_ms": 1776.230042,
+              "write_ms": 12.017542,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 5517.409666907042
+      },
+      "series": "metal_screen"
+    },
+    {
+      "backend": "metal",
+      "callers": 1,
+      "run": 1,
+      "label": "candidate",
+      "exit_code": 0,
+      "seconds": 38.049371582921594,
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+        "--library-revision",
+        "candidate cycle13 uninstrumented same-toolchain build",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-metal-screen/metal-p1-1-candidate",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle12-baseline/metal-00-p1"
+      ],
+      "load_before": [
+        82.86279296875,
+        78.24560546875,
+        65.58447265625
+      ],
+      "load_after": [
+        92.90576171875,
+        81.08642578125,
+        67.119140625
+      ],
+      "measurement": {
+        "backend_selected": "Metal: Apple M4 Max",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "5e8baafd96b4db6c8ef3d8b96c1b75cc7ae0e2efd13eacd84dacd622bb194dee",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+          "library_revision": "candidate cycle13 uninstrumented same-toolchain build",
+          "library_sha256": "977166d4a5f6e7f2734d89483c1438b005c68b757f2d48b0b95be2db7cd19ff7"
+        },
+        "chunks_per_second": 230.95949974575785,
+        "comparison": {
+          "identical_nbt_chunks": 2048,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 0,
+          "origin_z": 0
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "c31022255209e4cc90012e8b2af2c45f59742b9db0d0bc6d31f5099e7d886e81"
+            },
+            {
+              "file": "1.mca",
+              "records": 1024,
+              "sha256": "bcc13fe29bf199317d6e9ee20fe8de2134d4ff6fc0ef03226279337c60fbd32a"
+            }
+          ],
+          "records": 2048,
+          "sha256": "6b7c37cdfe491807922359d90322fe933c8313dc57e98c9fe0cd2ac34c59cab6"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:overworld",
+        "generation_peak_rss_bytes": 1550909440,
+        "gpu_pipeline": {
+          "completed": 9,
+          "device_gap_ms": 28564.344208,
+          "device_span_ms": 32389.713583,
+          "peak_in_flight": 2,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 24363628208,
+          "emitted": 2780,
+          "graphs": 30,
+          "horizontal_fields": 9,
+          "nodes": 3680,
+          "readback_bytes": 355938828,
+          "source_bytes": 986944,
+          "status": 4,
+          "upload_bytes": 315352452
+        },
+        "gpu_transfers": {
+          "readback_bytes": 239869744,
+          "readback_bytes_per_region": 119934872.0,
+          "upload_bytes": 213250616,
+          "upload_bytes_per_region": 106625308.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 2048,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 0.335963296606243,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 1489.553,
+          "end_unix": 1793860042.782478,
+          "involuntary_context_switches": 35759,
+          "major_faults": 0,
+          "minor_faults": 32871,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793860033.915064,
+          "system_ms": 582.361,
+          "total_ms": 2979.106,
+          "user_ms": 2396.7450000000003,
+          "voluntary_context_switches": 8
+        },
+        "median_ms": 4428.101875586435,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 6591.162813059054,
+        "parallel": 1,
+        "peak_rss_bytes": 1790263296,
+        "readiness": "shader-ready",
+        "readiness_effective": "shader-ready",
+        "readiness_wait_ms": 19592.569957952946,
+        "region_file_bytes": 18264064,
+        "regions": [
+          {
+            "assembly_ms": 5789.677291,
+            "dispatch_wait_ms": 5.5863745510578156,
+            "generated": 1024,
+            "gpu_ms": 991.7505,
+            "ms": 6831.502917222679,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 6839.130999986082,
+            "terrain_host_ms": 991.7505,
+            "write_ms": 49.977041,
+            "x": 0,
+            "z": 0
+          },
+          {
+            "assembly_ms": 1820.101,
+            "dispatch_wait_ms": 6839.177166577429,
+            "generated": 1024,
+            "gpu_ms": 178.821584,
+            "ms": 2024.7008339501917,
+            "name": "1",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 8867.17504169792,
+            "terrain_host_ms": 178.821584,
+            "write_ms": 24.036667,
+            "x": 1,
+            "z": 0
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:badlands",
+          "frequency": 0.00800000037997961,
+          "height": 384,
+          "min_y": -64,
+          "storage": {
+            "height": 384,
+            "min_y": -64
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.00611006689453125,
+          "aquifer_mask": 0.01389280224609375,
+          "assembly": 0.7911294702148437,
+          "cave_density": 0.0308205966796875,
+          "cave_features": 0.1776582978515625,
+          "cave_mask": 0.021614705078125,
+          "columns": 0.010482015625,
+          "compress": 2.476509739746094,
+          "encode": 0.07027437353515625,
+          "feature_counts": 2.187109375e-05,
+          "geology": 0.9375654956054688,
+          "height": 0.019827392578125,
+          "io": 0.03646628857421875,
+          "lake_candidates": 0.00445047998046875,
+          "lake_density": 0.003102986328125,
+          "lake_reduce": 0.000176697265625,
+          "light_host": 0.533593791015625,
+          "light_pack": 0.0140248818359375,
+          "light_sky": 0.0191557001953125,
+          "light_spread": 0.12486663720703126,
+          "materials": 0.01986527490234375,
+          "nbt": 1.7655894228515625,
+          "ore_mask": 0.029409138671875,
+          "ore_plan": 0.19139536572265625,
+          "provider_noise": 2.567529296875e-05,
+          "queue": 0.05049324560546875,
+          "sites": 0.002542908203125,
+          "snow": 0.0153800751953125,
+          "structure_plan": 0.5178801674804687,
+          "structures": 1.6337718149414062,
+          "vegetation": 0.04781898388671875,
+          "vegetation_plan": 0.9182789711914062,
+          "wait_copy": 0.41488289306640624
+        },
+        "startup": {
+          "initialize_ms": 229.07870868220925,
+          "load_and_bind_ms": 2520.8607083186507,
+          "warmups": [
+            {
+              "assembly_ms": 3416.520666,
+              "generated": 1024,
+              "gpu_ms": 2001.834292,
+              "ms": 5429.804790765047,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 1,
+              "terrain_host_ms": 2001.834292,
+              "write_ms": 11.377083,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 8867.355541791767
+      },
+      "series": "metal_screen"
+    },
+    {
+      "backend": "metal",
+      "callers": 1,
+      "run": 2,
+      "label": "candidate",
+      "exit_code": 0,
+      "seconds": 60.610018874984235,
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+        "--library-revision",
+        "candidate cycle13 uninstrumented same-toolchain build",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-metal-screen/metal-p1-2-candidate",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle12-baseline/metal-00-p1"
+      ],
+      "load_before": [
+        92.90576171875,
+        81.08642578125,
+        67.119140625
+      ],
+      "load_after": [
+        124.7978515625,
+        92.873046875,
+        72.5029296875
+      ],
+      "measurement": {
+        "backend_selected": "Metal: Apple M4 Max",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "5e8baafd96b4db6c8ef3d8b96c1b75cc7ae0e2efd13eacd84dacd622bb194dee",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+          "library_revision": "candidate cycle13 uninstrumented same-toolchain build",
+          "library_sha256": "977166d4a5f6e7f2734d89483c1438b005c68b757f2d48b0b95be2db7cd19ff7"
+        },
+        "chunks_per_second": 292.8583635328763,
+        "comparison": {
+          "identical_nbt_chunks": 2048,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 0,
+          "origin_z": 0
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "c31022255209e4cc90012e8b2af2c45f59742b9db0d0bc6d31f5099e7d886e81"
+            },
+            {
+              "file": "1.mca",
+              "records": 1024,
+              "sha256": "bcc13fe29bf199317d6e9ee20fe8de2134d4ff6fc0ef03226279337c60fbd32a"
+            }
+          ],
+          "records": 2048,
+          "sha256": "6b7c37cdfe491807922359d90322fe933c8313dc57e98c9fe0cd2ac34c59cab6"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:overworld",
+        "generation_peak_rss_bytes": 1579745280,
+        "gpu_pipeline": {
+          "completed": 9,
+          "device_gap_ms": 44421.861666,
+          "device_span_ms": 1530.553208,
+          "peak_in_flight": 2,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 46209347875,
+          "emitted": 2780,
+          "graphs": 30,
+          "horizontal_fields": 9,
+          "nodes": 3680,
+          "readback_bytes": 355938828,
+          "source_bytes": 986944,
+          "status": 4,
+          "upload_bytes": 315352452
+        },
+        "gpu_transfers": {
+          "readback_bytes": 239869744,
+          "readback_bytes_per_region": 119934872.0,
+          "upload_bytes": 213250616,
+          "upload_bytes_per_region": 106625308.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 2048,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-candidate.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 0.3930525311565616,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 1374.336,
+          "end_unix": 1793860103.137117,
+          "involuntary_context_switches": 31002,
+          "major_faults": 12,
+          "minor_faults": 34668,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793860096.143919,
+          "system_ms": 452.6170000000001,
+          "total_ms": 2748.672,
+          "user_ms": 2296.055,
+          "voluntary_context_switches": 13
+        },
+        "median_ms": 3484.683645889163,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 3696.100302413106,
+        "parallel": 1,
+        "peak_rss_bytes": 1805418496,
+        "readiness": "shader-ready",
+        "readiness_effective": "shader-ready",
+        "readiness_wait_ms": 24023.466833867133,
+        "region_file_bytes": 18264064,
+        "regions": [
+          {
+            "assembly_ms": 3220.841541,
+            "dispatch_wait_ms": 6.933458149433136,
+            "generated": 1024,
+            "gpu_ms": 429.144,
+            "ms": 3719.5910420268774,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 3727.972500026226,
+            "terrain_host_ms": 429.144,
+            "write_ms": 69.518084,
+            "x": 0,
+            "z": 0
+          },
+          {
+            "assembly_ms": 2825.024,
+            "dispatch_wait_ms": 3734.2327502556145,
+            "generated": 1024,
+            "gpu_ms": 395.194042,
+            "ms": 3249.7762497514486,
+            "name": "1",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 6984.456832986325,
+            "terrain_host_ms": 395.194042,
+            "write_ms": 29.46225,
+            "x": 1,
+            "z": 0
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:badlands",
+          "frequency": 0.00800000037997961,
+          "height": 384,
+          "min_y": -64,
+          "storage": {
+            "height": 384,
+            "min_y": -64
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.0149918212890625,
+          "aquifer_mask": 0.04487139892578125,
+          "assembly": 1.0773509428710937,
+          "cave_density": 0.10899548291015625,
+          "cave_features": 0.24514035400390624,
+          "cave_mask": 0.07520524072265625,
+          "columns": 0.02162923046875,
+          "compress": 1.1892342158203124,
+          "encode": 0.06470121240234375,
+          "feature_counts": 9.824658203125e-05,
+          "geology": 1.4785026547851563,
+          "height": 0.08820343017578125,
+          "io": 0.0483878583984375,
+          "lake_candidates": 0.017447408203125,
+          "lake_density": 0.01257655859375,
+          "lake_reduce": 0.00068029736328125,
+          "light_host": 0.5147036123046875,
+          "light_pack": 0.01321168994140625,
+          "light_sky": 0.03481268359375,
+          "light_spread": 0.19243902392578124,
+          "materials": 0.06610793115234374,
+          "nbt": 0.4182611591796875,
+          "ore_mask": 0.0465339765625,
+          "ore_plan": 0.2631117758789063,
+          "provider_noise": 0.00011305712890625,
+          "queue": 0.05242142724609375,
+          "sites": 0.0089528193359375,
+          "snow": 0.000504921875,
+          "structure_plan": 0.2044799189453125,
+          "structures": 1.27903041796875,
+          "vegetation": 0.0071377783203125,
+          "vegetation_plan": 0.718437458984375,
+          "wait_copy": 0.487415873046875
+        },
+        "startup": {
+          "initialize_ms": 134.02058277279139,
+          "load_and_bind_ms": 4570.453625172377,
+          "warmups": [
+            {
+              "assembly_ms": 17671.637125,
+              "generated": 1024,
+              "gpu_ms": 5682.046917,
+              "ms": 23366.845624987036,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 1,
+              "terrain_host_ms": 5682.046917,
+              "write_ms": 12.885584,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 6993.1415831670165
+      },
+      "series": "metal_screen"
+    },
+    {
+      "backend": "metal",
+      "callers": 1,
+      "run": 3,
+      "label": "baseline",
+      "exit_code": 0,
+      "seconds": 31.872186792083085,
+      "command": [
+        "/usr/sbin/taskpolicy",
+        "-a",
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/bench-active.py",
+        "/private/tmp/retina-refinement-nbt-attribution/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+        "--library-revision",
+        "baseline cycle13 uninstrumented same-toolchain build",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "16",
+        "--parallel",
+        "1",
+        "--origin-x",
+        "0",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "2",
+        "--warmups",
+        "1",
+        "--count",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--specialization-timeout",
+        "1800",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-metal-screen/metal-p1-3-baseline",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle12-baseline/metal-00-p1"
+      ],
+      "load_before": [
+        124.7978515625,
+        92.873046875,
+        72.5029296875
+      ],
+      "load_after": [
+        115.40185546875,
+        94.08203125,
+        73.76416015625
+      ],
+      "measurement": {
+        "backend_selected": "Metal: Apple M4 Max",
+        "benchmark_scope": "lit-mca",
+        "build": {
+          "harness_dirty": true,
+          "harness_dirty_fingerprint": "5e8baafd96b4db6c8ef3d8b96c1b75cc7ae0e2efd13eacd84dacd622bb194dee",
+          "harness_revision": "4c29a98b821194b23601ca6689beea57401308d9",
+          "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+          "library_revision": "baseline cycle13 uninstrumented same-toolchain build",
+          "library_sha256": "f2d38a661c456c0eb26a11422214406bc304b990c300852d5ca1f9642db0895a"
+        },
+        "chunks_per_second": 284.4387391912442,
+        "comparison": {
+          "identical_nbt_chunks": 2048,
+          "membership_identical": true
+        },
+        "coordinates": {
+          "grid_width": 2,
+          "origin_x": 0,
+          "origin_z": 0
+        },
+        "corpus": {
+          "algorithm": "sha256",
+          "files": [
+            {
+              "file": "0.mca",
+              "records": 1024,
+              "sha256": "c31022255209e4cc90012e8b2af2c45f59742b9db0d0bc6d31f5099e7d886e81"
+            },
+            {
+              "file": "1.mca",
+              "records": 1024,
+              "sha256": "bcc13fe29bf199317d6e9ee20fe8de2134d4ff6fc0ef03226279337c60fbd32a"
+            }
+          ],
+          "records": 2048,
+          "sha256": "6b7c37cdfe491807922359d90322fe933c8313dc57e98c9fe0cd2ac34c59cab6"
+        },
+        "definition": "/Users/cyberpwn/.cache/retina/cpu-optimization-20261101/definitions/vanilla/retina.dat",
+        "definition_sha256": "98e8cf1a2e3e5e049192b0b5245b58aa44a8001f3b00a6ddeb51a619ad375b4e",
+        "dimension": "minecraft:overworld",
+        "generation_peak_rss_bytes": 1548664832,
+        "gpu_pipeline": {
+          "completed": 9,
+          "device_gap_ms": 22588.546541,
+          "device_span_ms": 1148.742001,
+          "peak_in_flight": 2,
+          "unavailable_timestamp_pairs": 0
+        },
+        "gpu_program": {
+          "cache_hits": 0,
+          "compile_nanos": 20486742750,
+          "emitted": 2780,
+          "graphs": 30,
+          "horizontal_fields": 9,
+          "nodes": 3680,
+          "readback_bytes": 355938828,
+          "source_bytes": 986944,
+          "status": 4,
+          "upload_bytes": 315352452
+        },
+        "gpu_transfers": {
+          "readback_bytes": 239869744,
+          "readback_bytes_per_region": 119934872.0,
+          "upload_bytes": 213250616,
+          "upload_bytes_per_region": 106625308.0
+        },
+        "host": {
+          "logical_processors": 16,
+          "machine": "arm64",
+          "processor": "arm",
+          "python": "3.12.9",
+          "rayon_global_threads": "2",
+          "release": "27.0.0",
+          "system": "Darwin"
+        },
+        "identical_nbt_chunks": 2048,
+        "library": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-baseline.dylib",
+        "lighting": "enabled",
+        "mca_compression": "zlib",
+        "measured_process_usage": {
+          "average_scheduled_cores": 0.3778899203092613,
+          "clock_scope": "Unix timestamps bracket the batch and CPU samples for observation alignment only; wall-clock adjustments may affect them. Latency uses the existing monotonic perf_counter interval. No per-request CPU attribution is implied.",
+          "counter_source": "RUSAGE_SELF",
+          "cpu_ms_per_region": 1360.431,
+          "end_unix": 1793860135.042314,
+          "involuntary_context_switches": 32569,
+          "major_faults": 1,
+          "minor_faults": 33150,
+          "schema_version": 1,
+          "scope": "Process user/kernel deltas for the whole process and all its threads around the measured batch, including executor creation/join and host driver work. Excludes startup, warmups, readiness wait and later snapshot/hash/NBT validation work. GPU device execution and other processes are not CPU time here. Context-switch/fault counts are platform-reported observations, not wait durations. Average scheduled cores is CPU seconds divided by elapsed batch seconds, not worker occupancy or an elapsed-time share.",
+          "start_unix": 1793860127.842104,
+          "system_ms": 434.40899999999993,
+          "total_ms": 2720.862,
+          "user_ms": 2286.453,
+          "voluntary_context_switches": 8
+        },
+        "median_ms": 3585.907645523548,
+        "memory_peak_scope": {
+          "generation_peak_rss_bytes": "Process lifetime through measured generation, including startup and warmups; excludes later snapshot processing and output validation",
+          "note": "Unix RSS or Windows peak working set. High-water marks, not current memory or isolated phase allocations; neither field proves sustained memory stability",
+          "peak_rss_bytes": "Process lifetime through output hashing, optional NBT comparison and optional specialization regeneration; retained legacy field"
+        },
+        "p95_region_ms": 3955.9629138559103,
+        "parallel": 1,
+        "peak_rss_bytes": 1769865216,
+        "readiness": "shader-ready",
+        "readiness_effective": "shader-ready",
+        "readiness_wait_ms": 15931.687459349632,
+        "region_file_bytes": 18264064,
+        "regions": [
+          {
+            "assembly_ms": 3492.478458,
+            "dispatch_wait_ms": 10.838082991540432,
+            "generated": 1024,
+            "gpu_ms": 485.679709,
+            "ms": 3997.0801658928394,
+            "name": "0",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 4015.167792327702,
+            "terrain_host_ms": 485.679709,
+            "write_ms": 18.818917,
+            "x": 0,
+            "z": 0
+          },
+          {
+            "assembly_ms": 2765.940625,
+            "dispatch_wait_ms": 4015.228250063956,
+            "generated": 1024,
+            "gpu_ms": 360.08175,
+            "ms": 3174.735125154257,
+            "name": "1",
+            "preserved": 0,
+            "program_status": 4,
+            "return_since_batch_start_ms": 7192.28354236111,
+            "terrain_host_ms": 360.08175,
+            "write_ms": 47.590334,
+            "x": 1,
+            "z": 0
+          }
+        ],
+        "request": {
+          "amplitude": 48.0,
+          "base_height": 64.0,
+          "data_version": 5023,
+          "fallback_biome": "minecraft:badlands",
+          "frequency": 0.00800000037997961,
+          "height": 384,
+          "min_y": -64,
+          "storage": {
+            "height": 384,
+            "min_y": -64
+          }
+        },
+        "seed": 123456789,
+        "stage_ms_chunk": {
+          "aquifer_fields": 0.01169942236328125,
+          "aquifer_mask": 0.05149025439453125,
+          "assembly": 0.7327962612304687,
+          "cave_density": 0.0920386142578125,
+          "cave_features": 0.17443571630859375,
+          "cave_mask": 0.08123311376953125,
+          "columns": 0.02447027587890625,
+          "compress": 1.0254932221679687,
+          "encode": 0.01414054296875,
+          "feature_counts": 2.756787109375e-05,
+          "geology": 1.0861632348632813,
+          "height": 0.0767046923828125,
+          "io": 0.03286346435546875,
+          "lake_candidates": 0.0165233154296875,
+          "lake_density": 0.0117310986328125,
+          "lake_reduce": 0.000593708984375,
+          "light_host": 0.6131739501953125,
+          "light_pack": 0.01565498779296875,
+          "light_sky": 0.03587801123046875,
+          "light_spread": 0.27567946240234376,
+          "materials": 0.06648055029296875,
+          "nbt": 0.5050240737304688,
+          "ore_mask": 0.04276965283203125,
+          "ore_plan": 0.34449334765625,
+          "provider_noise": 8.524560546875e-05,
+          "queue": 0.00696846630859375,
+          "sites": 0.00890152978515625,
+          "snow": 0.00041353857421875,
+          "structure_plan": 0.1799628291015625,
+          "structures": 0.462904328125,
+          "vegetation": 0.0050146259765625,
+          "vegetation_plan": 0.6601686196289063,
+          "wait_copy": 0.548835775390625
+        },
+        "startup": {
+          "initialize_ms": 396.88283298164606,
+          "load_and_bind_ms": 1932.866542134434,
+          "warmups": [
+            {
+              "assembly_ms": 3186.754291,
+              "generated": 1024,
+              "gpu_ms": 1659.377834,
+              "ms": 4860.4414174333215,
+              "name": "warm0",
+              "preserved": 0,
+              "program_status": 1,
+              "terrain_host_ms": 1659.377834,
+              "write_ms": 14.19475,
+              "x": 8,
+              "z": 8
+            }
+          ]
+        },
+        "total_ms": 7200.144417118281
+      },
+      "series": "metal_screen"
+    }
+  ],
+  "attribution_byte_receipts": [
+    {
+      "name": "metal-overworld",
+      "x": 0,
+      "z": 0,
+      "records": 1024,
+      "trace_nbt_bytes": 70303233,
+      "decoded_mca_nbt_bytes": 70303233,
+      "status": "pass"
+    },
+    {
+      "name": "metal-overworld",
+      "x": 1,
+      "z": 0,
+      "records": 1024,
+      "trace_nbt_bytes": 68416874,
+      "decoded_mca_nbt_bytes": 68416874,
+      "status": "pass"
+    },
+    {
+      "name": "cpu-overworld",
+      "x": 0,
+      "z": 0,
+      "records": 1024,
+      "trace_nbt_bytes": 70303233,
+      "decoded_mca_nbt_bytes": 70303233,
+      "status": "pass"
+    },
+    {
+      "name": "metal-nether",
+      "x": 0,
+      "z": 0,
+      "records": 1024,
+      "trace_nbt_bytes": 33815386,
+      "decoded_mca_nbt_bytes": 33815386,
+      "status": "pass"
+    },
+    {
+      "name": "metal-end",
+      "x": 10,
+      "z": 10,
+      "records": 1024,
+      "trace_nbt_bytes": 40158787,
+      "decoded_mca_nbt_bytes": 40158787,
+      "status": "pass"
+    }
+  ],
+  "adaptive_screen_stop": {
+    "reason": "Adaptive cheap screen: stop after first complete CPU matched pair before expensive confirmation under shared-host contention. Firstbaseline scheduled0.617cores; one pair is not qualification. Allcomplete results retained; next started process ifany is partial/excluded. May extend if actual evidence warrants, otherwise discard runtime. No unrelated processes touched.",
+    "time": 1793859911.985066,
+    "controller_pid": 42094,
+    "process_group": 42094,
+    "completed_rows": 2,
+    "actual_command": "/Library/Frameworks/Python.framework/Versions/3.12/Resources/Python.app/Contents/MacOS/Python /Users/cyberpwn/.cache/retina/refinement-implementation-20261104/cycle13-confirmation.py",
+    "signal": "SIGTERM"
+  },
+  "validation": {
+    "strict_nbt": "Every measured payload matches existing same-backend golden, lighting/structures/blockentities/heightmaps/metadata included. Native actual backend checked from completed runs.",
+    "byte_attribution": "All5120measured attribution payload byte totals equal actual decompressed MCA,5receipts. Warmups identified by8,8 separately.",
+    "unit_tests": "Draft palette-unit added to private prototype but NOT run; discarded with all runtime code. No new unit test or runtime implementation shipped.",
+    "actual_minecraft_decode": "No new consumer change or decode-speed claim. Codec cycle10already performs actual Minecraft decoding; this discarded prototype does not replace expanded validation required for a retained runtime change.",
+    "builds": "All4 private/fresh native builds compile successfully with recorded same Rust1.93.0/LLVM21.1.8/releaseThinLTO2CG/defaultfeatures/Cargo.lock settings.",
+    "diff_check": "PASS; runtime tree restored exactly before documentation commit."
+  },
+  "limitations": [
+    "Screens are deliberately not5matchedpairs; none of this code is retained or claimed as qualified. Changing extreme host load makes +22% CPUwall insufficient: CPUwork -1.14% with scheduledcores .617->.746.",
+    "Six phase timers are disjoint worker-elapsed spans inside encode_chunk, including clock/preemption overhead; may overlap across workers and are not utilization percentages.",
+    "Cold NBTscratch count is first nonempty Vec use; capacitygrowth is positive ending-minus-starting logicalcapacity, not allocator count, DRAMtraffic, retainedmemory orRSS.",
+    "Path counters count CPU palette-builder attempts including uniformdense values; uniformfastpath andGPU-packed paths separate.",
+    "Normal CPU/Metal, MetalNether/outerEnd attribution and normal CPU/Metalprototype screens only. Rejected code is not qualified for newseed/custom/tall/partialpublication/cancellation.",
+    "Windows compact transport/default qualification remains pending. No Windows performance claim, default switch, JAR build or release."
+  ],
+  "next_opportunity": "Separate O3 direct-sky row-major initialization using exact existing frontier state; prior helper attribution ~25/55ms synthetic phase. Not part of this discarded palette trial and not a claimed performance win.",
+  "external_evidence_root": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
+  "build_process_policy": {
+    "external_record": "cycle13-build-process-policy.json",
+    "scope": "After verifying ownership, taskpolicy -B applied to candidate compiler33730 only; no system/other-process changes. No causal compile-time speedup claim."
+  }
+}
