@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "goal_status": "active_pending_real_Windows_hardware_qualification",
+  "goal_status": "local_pass_finalized_windows_validation_deferred_by_user",
   "goal_objective_sha256": "5264fa91cd893658453e9eda32b1fc4e3a4ecb5b1c56cea4dbe566c59c0cb887",
   "starting_main": "8e37896e219e9ef49eed7fc2509c3c39fa1c0602",
   "current_runtime_main": "4c1231d46a5b2c69dbb24eea79d8bd08fd89ffc8",
@@ -33,11 +33,11 @@
       "disposition": "Only no-skylight CPU emission initialization retained427: five production Nether pairs lighting-host -21.16%CI[-22.59,-9.22]. Whole-MCA throughput/CPU/RSS not established. Rows/scratch/core6/10/sky-row prototypes discarded."
     },
     "O4": {
-      "status": "pending_real_Windows_hardware_qualification",
+      "status": "deferred_by_user_unvalidated",
       "cycles": [
         5
       ],
-      "disposition": "All-eight-combination portable transport/palette runner and offlineWindowsZIP provided. Local CPU/Metal controller validation is not Windows acceptance. Actual Vulkan/default/custom-tall/startup/cache/steady-state results still needed; existing backend defaults unchanged.",
+      "disposition": "User explicitly deferred real Windows testing on 2026-11-05. The portable all-eight-combination matrix and local controller validation are delivered; actual Windows Vulkan/DX12 performance, custom/tall and startup/cache qualification remain unvalidated. Existing backend defaults are unchanged. This follow-up does not block the local pass.",
       "test_artifact": "build/release/retina-windows-transport-test.zip",
       "return_artifact": "SEND-THIS-results.zip"
     },
@@ -78,7 +78,7 @@
         10,
         11
       ],
-      "disposition": "Actual Minecraft decode/BukkitJFR and real delivery qualification.13,160 fewer Java bytes/chunk(-5.0803%),pairedlatency/CPUneutral. Actual callbacks/lifecycle/block/biome/edits/entitymetadata preserved; no FPS/TPS/latency speedup claim."
+      "disposition": "Actual Minecraft decode and Bukkit JFR/delivery qualification: 13,160 fewer allocated Java bytes per chunk (-5.0803%); paired latency/CPU gains are unproven. Actual callbacks, lifecycle, blocks, biomes, edits and entity metadata are preserved. No FPS/TPS claim."
     }
   },
   "cycles": [
@@ -242,15 +242,15 @@
       "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
       "report": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.md",
       "pr": "https://github.com/ArcaneArts/Retina/pull/428",
-      "state": "OPEN at evidence commit; inspect linked PR for eventual merge state",
-      "merge_commit": null,
+      "state": "MERGED",
+      "merge_commit": "5ecad6beca7c093ffce378ba6b9a3de78e4d7b8a",
       "head_branch": "codex/refinement-cumulative-validation",
-      "owned_worktree_removed": false
+      "owned_worktree_removed": true
     }
   ],
   "cumulative_evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
   "merge_observation": {
-    "observed_unix": 1793867366.2657,
+    "checked_unix": 1793893719.8170161,
     "prs": [
       {
         "number": 414,
@@ -258,7 +258,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-04T19:00:00Z",
         "headRefName": "codex/refinement-gpu-intervals",
-        "title": "Attribute GPU diagnostics to bounded submission windows",
         "mergeCommit": {
           "oid": "c62bff79bd4a15608d80df5804b7c5615167087f"
         }
@@ -269,7 +268,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-04T20:09:24Z",
         "headRefName": "codex/refinement-cpu-light-rows",
-        "title": "Record CPU lighting row-staging qualification and rejection",
         "mergeCommit": {
           "oid": "985c0e02c949387eb362de0ea4605f91939365eb"
         }
@@ -280,7 +278,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-04T20:33:05Z",
         "headRefName": "codex/refinement-definition-borrow",
-        "title": "Reduce definition-loading memory by borrowing structural NBT",
         "mergeCommit": {
           "oid": "3d7c83b2b6c8ef6c427c0cd2698ff4f6c2803cac"
         }
@@ -291,7 +288,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-04T21:26:31Z",
         "headRefName": "codex/refinement-cpu-kernels",
-        "title": "Record rejected prepared CPU arithmetic kernel experiments",
         "mergeCommit": {
           "oid": "47f9488ac875727eba4d427e3ce0ba804f59bdca"
         }
@@ -302,7 +298,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-04T22:00:05Z",
         "headRefName": "codex/refinement-windows-transport-qa",
-        "title": "Add reproducible Windows lighting transport test bundle",
         "mergeCommit": {
           "oid": "50c375c1f746c5a504cfdbd5bc873789dac94070"
         }
@@ -313,7 +308,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-04T22:25:19Z",
         "headRefName": "codex/refinement-cpu-light-scratch",
-        "title": "Record CPU lighting scratch reuse benchmark and rejection",
         "mergeCommit": {
           "oid": "4a89afe45f409ad1ecd2bf7ae1d907a4c4c57d4d"
         }
@@ -324,7 +318,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-04T22:56:56Z",
         "headRefName": "codex/refinement-cpu-light-tiles",
-        "title": "Record CPU lighting tile-size benchmarks and keep current default",
         "mergeCommit": {
           "oid": "ed27dbcf0e489645f6a57a7b764164d746f20e88"
         }
@@ -335,7 +328,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-05T00:04:43Z",
         "headRefName": "codex/refinement-nether-sampling",
-        "title": "Add bounded opt-in Nether dependency attribution",
         "mergeCommit": {
           "oid": "b2cf48bc4a3fefbfa35b801345c8202b76811b0c"
         }
@@ -346,7 +338,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-05T00:25:21Z",
         "headRefName": "codex/refinement-view-cache-size",
-        "title": "Record rejected smaller view-cache experiments",
         "mergeCommit": {
           "oid": "4a1680221311c146c72c41e76a43bf32d3712166"
         }
@@ -357,7 +348,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-05T01:13:48Z",
         "headRefName": "codex/refinement-encoding-scratch",
-        "title": "Add production-source codec benchmarks and rejection evidence",
         "mergeCommit": {
           "oid": "4cebcbb0829aaa3992ddc70b704bfc79ab48ff38"
         }
@@ -368,7 +358,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-05T02:23:25Z",
         "headRefName": "codex/refinement-bukkit-bindings",
-        "title": "Reduce Bukkit palette delivery allocations",
         "mergeCommit": {
           "oid": "722a52bbb04c8f1161bd47e6d2e8c29ddb149b37"
         }
@@ -379,7 +368,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-05T05:54:43Z",
         "headRefName": "codex/refinement-region-overlap",
-        "title": "Benchmark foreground fairness; reject early lighting refill",
         "mergeCommit": {
           "oid": "4c29a98b821194b23601ca6689beea57401308d9"
         }
@@ -390,7 +378,6 @@
         "state": "MERGED",
         "mergedAt": "2026-11-05T06:34:06Z",
         "headRefName": "codex/refinement-nbt-attribution",
-        "title": "Profile native NBT phases; reject unqualified proof reuse",
         "mergeCommit": {
           "oid": "e10c9ee4d61a752cd39ca51265d0c5d6d73e80fb"
         }
@@ -401,9 +388,18 @@
         "state": "MERGED",
         "mergedAt": "2026-11-05T08:20:17Z",
         "headRefName": "codex/refinement-sky-rows",
-        "title": "Stream CPU lighting initialization without skylight",
         "mergeCommit": {
           "oid": "4c1231d46a5b2c69dbb24eea79d8bd08fd89ffc8"
+        }
+      },
+      {
+        "number": 428,
+        "url": "https://github.com/ArcaneArts/Retina/pull/428",
+        "state": "MERGED",
+        "mergedAt": "2026-11-05T08:36:22Z",
+        "headRefName": "codex/refinement-cumulative-validation",
+        "mergeCommit": {
+          "oid": "5ecad6beca7c093ffce378ba6b9a3de78e4d7b8a"
         }
       }
     ]
@@ -411,165 +407,193 @@
   "requirements_audit": [
     {
       "requirement": "all_nine_areas",
-      "disposition": "Incomplete: actual Windows O4 hardware qualification pending. Local O1/O2/O3/O5/O6/O7/O8/O9 investigated; retained and rejected approaches recorded.",
-      "evidence": "docs/benchmarks/refinement-implementation-2026-11-04.json"
+      "disposition": "Eight local areas have validated improvements or evidence-backed rejected implementations. O4 test tooling is delivered; actual Windows acceptance is explicitly deferred by the user rather than labeled validated.",
+      "evidence": "docs/benchmarks/refinement-implementation-2026-11-04.json",
+      "status": "satisfied_under_user_amended_scope"
     },
     {
       "requirement": "CPU_registry_kernels",
       "disposition": "Investigated and rejected three concrete private arithmetic/block variants; no unqualified runtime retained. Exact-certificate/root-entry alternatives remain future opportunities.",
-      "evidence": "docs/benchmarks/refinement-cycle-04-cpu-kernels-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-04-cpu-kernels-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "Nether_attribution",
       "disposition": "Validated bounded opt-in actual CPU/Metal trace distinguishes replay/view/query work; actual raw sampling zero for measured vanilla Nether, so cross-anchor batching would not address this workload.",
-      "evidence": "docs/benchmarks/refinement-cycle-08-nether-attribution-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-08-nether-attribution-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "Nether_work_reduction",
       "disposition": "Two smaller-view-cache variants investigated and rejected; one failed mask-coverage unit, isolated variant failed Metal screen; all runtime code discarded.",
-      "evidence": "docs/benchmarks/refinement-cycle-09-view-cache-size-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-09-view-cache-size-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "CPU_lighting_rows_scratch_tiles",
       "disposition": "Validated and merged427 only scoped CPU noSky lighting initialization. Row staging, scratch, core6/10 and sky-row variants rejected; no overallgenerationCPU/CPS/RSSgain claimed.",
-      "evidence": "docs/benchmarks/refinement-cycle-14-no-skylight-2026-11-05.json"
+      "evidence": "docs/benchmarks/refinement-cycle-14-no-skylight-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "Windows_Vulkan_individual_and_combined_paths",
-      "disposition": "PENDING: actual real-Windows transport/palette factorial matrix, startup/cache/steady-state/latency/CPU/memory/custom-tall qualification. Local runner validation and byte reductions are not hardware performance proof.",
-      "evidence": "docs/benchmarks/refinement-cycle-05-windows-transport-2026-11-04.json"
+      "disposition": "Actual Windows transport/palette, startup/cache, steady-state and custom/tall qualification is deferred to later by explicit 2026-11-05 user instruction. No Windows speed or correctness acceptance is claimed.",
+      "evidence": "docs/benchmarks/refinement-cycle-05-windows-transport-2026-11-04.json",
+      "status": "deferred_by_user_unvalidated"
     },
     {
       "requirement": "Windows_bundle_and_defaults",
-      "disposition": "Portable frozen test bundle prepared; existing Windows defaults preserved. Need returned hardware results, not another MoltenVK adapter-only test.",
-      "evidence": "build/release/retina-windows-transport-test.zip"
+      "disposition": "Portable frozen Windows bundle and matrix runner delivered; platform defaults preserved. Real hardware qualification is a future follow-up under the amended scope.",
+      "evidence": "build/release/retina-windows-transport-test.zip",
+      "status": "satisfied_local_delivery"
     },
     {
       "requirement": "bounded_overlap",
       "disposition": "Early-refill rejected after5Metalpairs, toolingretained425. CPU/Metal1/2/4generation-only,Metalforeground and now6CPUforeground1/2/4/4/2/1processes complete. Everyqueryanswer andNBTchecked. Diagnosticstress,notfairness/defaultbudgetrecommendation.",
-      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json"
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "encoding_scratch_copy_and_codec_tradeoffs",
       "disposition": "Production codec attribution, five-pair CPU/Metal complete-MCA qualification, compressed size and actual Minecraft decoding; grow-only scratch discarded.",
-      "evidence": "docs/benchmarks/refinement-cycle-10-codec-scratch-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-10-codec-scratch-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "native_palette_NBT_construction",
       "disposition": "Six isolated encode phases measured; exact byte receipts and full-MCA screens. Uniform-proof forwarding prototype rejected before retention.",
-      "evidence": "docs/benchmarks/refinement-cycle-13-native-nbt-2026-11-05.json"
+      "evidence": "docs/benchmarks/refinement-cycle-13-native-nbt-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "definition_loading_binding",
       "disposition": "Retained immutable borrowed-profile conversion: repeated open CPU/RSS improvement, no preparation deferral. Parse/convert/metadata/CPU prep/registration attribution and error/identity/retirement coverage recorded.",
-      "evidence": "docs/benchmarks/refinement-cycle-03-definition-borrow-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-03-definition-borrow-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "GPU_interval_correctness",
       "disposition": "Retained bounded opt-in event/submission-window identities, boundary membership, interval/lifetime peaks, overlap and missing timestamps. No utilization or speedup claim; disabled overhead qualified with limitations.",
-      "evidence": "docs/benchmarks/refinement-cycle-01-intervals-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-01-intervals-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "actual_Java_Bukkit_delivery",
-      "disposition": "Retained5.0803% Java allocation reduction from measured actual Bukkit delivery, five matched pairs/mode and actual production callback JFR, no wall/FPS/TPS claim.",
-      "evidence": "docs/benchmarks/refinement-cycle-11-bukkit-allocations-2026-11-04.json"
+      "disposition": "Actual Bukkit delivery uses 13,160 fewer allocated Java bytes/chunk (-5.0803%). Five matched pairs and actual callback JFR/lifecycle/value tests support that allocation metric; neither object-count reduction nor live wall/FPS/TPS improvement is claimed.",
+      "evidence": "docs/benchmarks/refinement-cycle-11-bukkit-allocations-2026-11-04.json",
+      "status": "validated_allocated_bytes_reduction"
     },
     {
       "requirement": "fixture_authority_and_native_completion",
       "disposition": "Production SavedDefinition reader and actual lit/decorated/encoded/compressed/atomic MCA throughout; no fabricated legacy profiles.",
-      "evidence": "cumulative-final/results.json"
+      "evidence": "cumulative-final/results.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "fresh_pinned_starting_baseline",
       "disposition": "Starting main8e37896 source and frozen ccd708... native rebuilt with pinned1.93.0; fresh current interleaved comparisons retain identities and exact commands.",
-      "evidence": "cumulative-final/analysis.json"
+      "evidence": "cumulative-final/analysis.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "compiler_budget_and_readiness",
       "disposition": "Matched pinned compiler/features/ThinLTO/codegen2, fixture hashes, seeds, coordinates, backends,16/native+2/global budget and shader readiness recorded.",
-      "evidence": "cumulative-final/results.json"
+      "evidence": "cumulative-final/results.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "startup_vs_first_vs_warm_vs_diagnostics",
       "disposition": "Distinct open phases, first-region observations, warmed generation and separately instrumented captures; byte comparisons outside generation clock.",
-      "evidence": "docs/benchmarks/refinement-opportunities-2026-11-04.md"
+      "evidence": "docs/benchmarks/refinement-opportunities-2026-11-04.md",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "at_least_five_primary_pairs_to_retain",
       "disposition": "Retained O7/O9 and candidateO3 have five matched pairs per primary mode/input, O8 has correctness+five-pair overhead controls; rejected screens not misrepresented as qualification.",
-      "evidence": "docs/benchmarks/refinement-cycle-03-definition-borrow-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-03-definition-borrow-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "record_individual_results_and_variability",
       "disposition": "All50short/20long/18additional processes terminal0, individualmetrics/commands/hashes/load retained. Smallandorderdependentdifferencesreportedunresolved ratherthan causalproof.",
-      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json"
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "host_load_and_power",
       "disposition": "Load snapshots per process, activity control, AC/power mode observation; unrelated processes/settings untouched.",
-      "evidence": "cumulative-final-power.txt"
+      "evidence": "cumulative-final-power.txt",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "actual_backend_after_operation",
       "disposition": "Backend-selected fields and real workload completion recorded; mixed CPU End+Metal lighting supported without invalid generic terrain-job gate.",
-      "evidence": "docs/benchmarks/refinement-cycle-03-definition-borrow-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-03-definition-borrow-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "strict_NBT_and_dimension_coverage",
       "disposition": "Retained native candidates checked against same-backend goldens covering lighting/structures/entities/heightmaps/metadata,2seeds/negative/far/custom/expanded/tall/dimensions; CPU/GPU not required bit-identical.",
-      "evidence": "cycle14-broad/results.json"
+      "evidence": "cycle14-broad/results.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "existing_region_and_failure_behavior",
       "disposition": "Actual reopen/preservation checks, independent fresh-process whole-file preservation, four storage tests including partial/timestamp/write/read/rename/oversize failures.",
-      "evidence": "cycle14-fresh-preservation.json"
+      "evidence": "cycle14-fresh-preservation.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "Java_callback_unload_lifetime_and_errors",
       "disposition": "Actual seven-server lifecycle/failure suite plus21units/3native-gatedskips; exact blocks/biomes/edits/metadata/crystals verified.",
-      "evidence": "docs/benchmarks/refinement-cycle-11-bukkit-allocations-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-11-bukkit-allocations-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "no_cost_shifting",
       "disposition": "O7eagerbindingunchanged,O9allocationwinwithneutralpairedlatency/CPU,O3scopedproductionlightingbenefitwithbroadguards. CumulativeCPUshortnegative2.37%notreproducedlong;MetalNethernegativeorderdependentseriesandAAcontrolsrecordedwithoutcausalclaim.",
-      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json"
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "no_speculative_preflight_gate",
       "disposition": "Generation operations execute and report actual failures; no new secondary-counter-based generation admission gate introduced. Diagnostics absent/errors do not prevent valid generation.",
-      "evidence": "docs/benchmarks/refinement-cycle-01-intervals-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-01-intervals-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "tests_and_no_admin_bypass",
       "disposition": "Per-cycle actual test logs and PR merge states recorded; failing development tests fixed or implementations discarded, no failing-check admin bypass.",
-      "evidence": "merge-audit-414-426-current.json"
+      "evidence": "merge-audit-414-426-current.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "each_cycle_worktree_PR_Automerge",
-      "disposition": "Cycles1\u201314observedMERGED,primarysyncedandownedlanesremoved. Cycle15readyPR428; live task observes squashAutomerge/sync/cleanup after publishing this evidence commit.",
-      "evidence": "https://github.com/ArcaneArts/Retina/pull/428"
+      "disposition": "All 15 prior cycles are freshly observed MERGED and owned worktrees removed. The current documentation-only closeout uses its own isolated worktree/PR/Automerge and is verified after merge in the live delivery audit.",
+      "evidence": "https://github.com/ArcaneArts/Retina/pull/428",
+      "status": "satisfied_for_prior_cycles_current_delivery_in_progress"
     },
     {
       "requirement": "durable_MD_JSON_records",
-      "disposition": "Per-cycleMD/JSONandcumulativeledgerupdatedthrough15 in thisreadyPR. Goal remainsactivependingWindows hardware qualification.",
-      "evidence": "docs/benchmarks/refinement-implementation-2026-11-04.json"
+      "disposition": "Per-cycle records, cumulative starting-versus-current benchmarks, all nine dispositions, this scope amendment and explicit future Windows work are recorded. Historical cycle snapshots remain unchanged.",
+      "evidence": "docs/benchmarks/refinement-implementation-2026-11-04.json",
+      "status": "satisfied"
     },
     {
       "requirement": "cumulative_fresh_comparison",
       "disposition": "Freshstarting8e37896versuscurrent427runtime:50shortprocesses+20longconfirmation,baseline/finalidentitiespinned,110592strictNBT. Additional18AA/fairnessprocessescomplete. No multiplied per-cycle gains.",
-      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json"
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     },
     {
       "requirement": "release_scope",
       "disposition": "No public release requested or performed. Windows matrix artifact is a private test bundle, not a release.",
-      "evidence": "docs/benchmarks/refinement-cycle-05-windows-transport-2026-11-04.json"
+      "evidence": "docs/benchmarks/refinement-cycle-05-windows-transport-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
     }
   ],
   "raw_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
-  "remaining_work": [
-    "Actual Windows Vulkan all8transport/palette combinations, custom/tall inputs and primaryqualification results; defaults preserved until evidence.",
-    "After any retained Windows runtime change, repeat relevant cumulative/backend/correctness qualification and full completion audit."
-  ],
+  "remaining_work": [],
   "future_opportunities": [
     "CPU exact certificates or distinct entry-root scheduling that avoid traversal without adding costly general execution state.",
     "Nether lazy direct-view pages/full dependency identity reuse; never reuse solely by coordinates across edited prefixes.",
@@ -578,5 +602,29 @@
     "Native NBT/codec micro-wins remain small against whole CPU generation; avoid unbounded pooling and cost-shifting.",
     "Actual Java cold-generation/biome lookup attribution and remaining boxed/closure/lock allocation leads; retained5.08%allocation win does not prove faster live activation."
   ],
-  "release": "No public release performed; test bundle only."
+  "release": "No public release performed; test bundle only.",
+  "scope_amendment": {
+    "date": "2026-11-05",
+    "authority": "Explicit user instruction in the active chat",
+    "user_instruction": "Not doing a windows test right now, do with what you have, we will focus on windows tests later, finish up your work and feel free to bench this system as normal",
+    "interpretation": "Finish the local refinement pass using available evidence. Real Windows hardware testing is deferred to later, not a condition for closing this pass. No Windows qualification or performance success is inferred."
+  },
+  "deferred_follow_up": [
+    {
+      "area": "O4",
+      "status": "explicitly_deferred_unvalidated",
+      "work": "On actual Windows Vulkan, evaluate compact input/output and GPU palettes individually and together; compare cold/repeated startup, steady throughput, latency, CPU, RSS and transfers with exact output checks; include Nether and custom/tall data. Qualify promising changes before altering defaults. DX12 claims also require actual hardware evidence.",
+      "test_artifact": "build/release/retina-windows-transport-test.zip",
+      "evidence": "docs/benchmarks/refinement-cycle-05-windows-transport-2026-11-04.json"
+    }
+  ],
+  "closeout": {
+    "cycle": 16,
+    "branch": "codex/refinement-closeout",
+    "base": "5ecad6beca7c093ffce378ba6b9a3de78e4d7b8a",
+    "runtime_changes": false,
+    "evidence": "docs/benchmarks/refinement-closeout-2026-11-05.json",
+    "delivery": "Own ready PR with squash Automerge; actual merge/sync/cleanup observed by the live task after this evidence commit.",
+    "pr": "https://github.com/ArcaneArts/Retina/pull/429"
+  }
 }

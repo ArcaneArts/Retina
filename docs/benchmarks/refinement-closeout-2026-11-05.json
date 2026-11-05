@@ -1,0 +1,436 @@
+{
+  "schema": "retina.refinement.local-pass-closeout",
+  "schema_version": 1,
+  "cycle": 16,
+  "branch": "codex/refinement-closeout",
+  "base": "5ecad6beca7c093ffce378ba6b9a3de78e4d7b8a",
+  "runtime_changes": false,
+  "scope_amendment": {
+    "date": "2026-11-05",
+    "authority": "Explicit user instruction in the active chat",
+    "user_instruction": "Not doing a windows test right now, do with what you have, we will focus on windows tests later, finish up your work and feel free to bench this system as normal",
+    "interpretation": "Finish the local refinement pass using available evidence. Real Windows hardware testing is deferred to later, not a condition for closing this pass. No Windows qualification or performance success is inferred."
+  },
+  "decision": "Finalize the local pass under the user-amended scope. Preserve all retained/rejected evidence and the explicitly unvalidated Windows follow-up. No new benchmark candidate, runtime/default change or release.",
+  "native_source_identity": {
+    "qualified_runtime_commit": "4c1231d46a5b2c69dbb24eea79d8bd08fd89ffc8",
+    "closeout_base": "5ecad6beca7c093ffce378ba6b9a3de78e4d7b8a",
+    "verified_native_src_and_Cargo_diff": "empty",
+    "starting_native_sha256": "ccd7084444c80737a5d582cf710773ffcfa6383fb58f72558e9cc1bfa44a1c0a",
+    "qualified_native_sha256": "648240065f37e3cd135ec4df4cd1f0eabbe10bc73eb081fac8c28a4d42e5f6f7",
+    "compiler": "Rust 1.93.0 / LLVM 21.1.8; locked release/default features, ThinLTO, two codegen units, no RUSTFLAGS. Both frozen binaries rehashed during closeout."
+  },
+  "retained_results": [
+    {
+      "area": "O7",
+      "metric": "Tall-definition open process CPU",
+      "cumulative_median_paired_change_pct": -18.52776976963918,
+      "scope": "Definition open, not Minecraft startup or steady-state terrain.",
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json"
+    },
+    {
+      "area": "O7",
+      "metric": "Tall-definition open high-water RSS",
+      "cumulative_median_paired_change_pct": -41.99003096442867,
+      "scope": "Process high-water RSS at definition open, not generation memory.",
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json"
+    },
+    {
+      "area": "O3",
+      "metric": "CPU Nether lighting-host elapsed per region",
+      "cumulative_median_paired_change_pct": -22.250668464626866,
+      "scope": "Production CPU lighting pass excluding consume/encoding callbacks. Complete-MCA speed, process CPU and RSS gains are unproven.",
+      "evidence": "docs/benchmarks/refinement-cycle-14-no-skylight-2026-11-05.json"
+    },
+    {
+      "area": "O9",
+      "metric": "Actual Bukkit delivery allocated Java bytes per chunk",
+      "median_change_pct": -5.0803,
+      "fewer_bytes_per_chunk": 13160,
+      "scope": "Allocated bytes, not allocation/object count. Latency/CPU/FPS/TPS speedups unproven.",
+      "evidence": "docs/benchmarks/refinement-cycle-11-bukkit-allocations-2026-11-04.json"
+    }
+  ],
+  "revalidated_evidence": {
+    "previous_PRs": {
+      "checked_unix": 1793893719.8170161,
+      "prs": [
+        {
+          "number": 414,
+          "url": "https://github.com/ArcaneArts/Retina/pull/414",
+          "state": "MERGED",
+          "mergedAt": "2026-11-04T19:00:00Z",
+          "headRefName": "codex/refinement-gpu-intervals",
+          "mergeCommit": {
+            "oid": "c62bff79bd4a15608d80df5804b7c5615167087f"
+          }
+        },
+        {
+          "number": 415,
+          "url": "https://github.com/ArcaneArts/Retina/pull/415",
+          "state": "MERGED",
+          "mergedAt": "2026-11-04T20:09:24Z",
+          "headRefName": "codex/refinement-cpu-light-rows",
+          "mergeCommit": {
+            "oid": "985c0e02c949387eb362de0ea4605f91939365eb"
+          }
+        },
+        {
+          "number": 416,
+          "url": "https://github.com/ArcaneArts/Retina/pull/416",
+          "state": "MERGED",
+          "mergedAt": "2026-11-04T20:33:05Z",
+          "headRefName": "codex/refinement-definition-borrow",
+          "mergeCommit": {
+            "oid": "3d7c83b2b6c8ef6c427c0cd2698ff4f6c2803cac"
+          }
+        },
+        {
+          "number": 417,
+          "url": "https://github.com/ArcaneArts/Retina/pull/417",
+          "state": "MERGED",
+          "mergedAt": "2026-11-04T21:26:31Z",
+          "headRefName": "codex/refinement-cpu-kernels",
+          "mergeCommit": {
+            "oid": "47f9488ac875727eba4d427e3ce0ba804f59bdca"
+          }
+        },
+        {
+          "number": 418,
+          "url": "https://github.com/ArcaneArts/Retina/pull/418",
+          "state": "MERGED",
+          "mergedAt": "2026-11-04T22:00:05Z",
+          "headRefName": "codex/refinement-windows-transport-qa",
+          "mergeCommit": {
+            "oid": "50c375c1f746c5a504cfdbd5bc873789dac94070"
+          }
+        },
+        {
+          "number": 419,
+          "url": "https://github.com/ArcaneArts/Retina/pull/419",
+          "state": "MERGED",
+          "mergedAt": "2026-11-04T22:25:19Z",
+          "headRefName": "codex/refinement-cpu-light-scratch",
+          "mergeCommit": {
+            "oid": "4a89afe45f409ad1ecd2bf7ae1d907a4c4c57d4d"
+          }
+        },
+        {
+          "number": 420,
+          "url": "https://github.com/ArcaneArts/Retina/pull/420",
+          "state": "MERGED",
+          "mergedAt": "2026-11-04T22:56:56Z",
+          "headRefName": "codex/refinement-cpu-light-tiles",
+          "mergeCommit": {
+            "oid": "ed27dbcf0e489645f6a57a7b764164d746f20e88"
+          }
+        },
+        {
+          "number": 421,
+          "url": "https://github.com/ArcaneArts/Retina/pull/421",
+          "state": "MERGED",
+          "mergedAt": "2026-11-05T00:04:43Z",
+          "headRefName": "codex/refinement-nether-sampling",
+          "mergeCommit": {
+            "oid": "b2cf48bc4a3fefbfa35b801345c8202b76811b0c"
+          }
+        },
+        {
+          "number": 422,
+          "url": "https://github.com/ArcaneArts/Retina/pull/422",
+          "state": "MERGED",
+          "mergedAt": "2026-11-05T00:25:21Z",
+          "headRefName": "codex/refinement-view-cache-size",
+          "mergeCommit": {
+            "oid": "4a1680221311c146c72c41e76a43bf32d3712166"
+          }
+        },
+        {
+          "number": 423,
+          "url": "https://github.com/ArcaneArts/Retina/pull/423",
+          "state": "MERGED",
+          "mergedAt": "2026-11-05T01:13:48Z",
+          "headRefName": "codex/refinement-encoding-scratch",
+          "mergeCommit": {
+            "oid": "4cebcbb0829aaa3992ddc70b704bfc79ab48ff38"
+          }
+        },
+        {
+          "number": 424,
+          "url": "https://github.com/ArcaneArts/Retina/pull/424",
+          "state": "MERGED",
+          "mergedAt": "2026-11-05T02:23:25Z",
+          "headRefName": "codex/refinement-bukkit-bindings",
+          "mergeCommit": {
+            "oid": "722a52bbb04c8f1161bd47e6d2e8c29ddb149b37"
+          }
+        },
+        {
+          "number": 425,
+          "url": "https://github.com/ArcaneArts/Retina/pull/425",
+          "state": "MERGED",
+          "mergedAt": "2026-11-05T05:54:43Z",
+          "headRefName": "codex/refinement-region-overlap",
+          "mergeCommit": {
+            "oid": "4c29a98b821194b23601ca6689beea57401308d9"
+          }
+        },
+        {
+          "number": 426,
+          "url": "https://github.com/ArcaneArts/Retina/pull/426",
+          "state": "MERGED",
+          "mergedAt": "2026-11-05T06:34:06Z",
+          "headRefName": "codex/refinement-nbt-attribution",
+          "mergeCommit": {
+            "oid": "e10c9ee4d61a752cd39ca51265d0c5d6d73e80fb"
+          }
+        },
+        {
+          "number": 427,
+          "url": "https://github.com/ArcaneArts/Retina/pull/427",
+          "state": "MERGED",
+          "mergedAt": "2026-11-05T08:20:17Z",
+          "headRefName": "codex/refinement-sky-rows",
+          "mergeCommit": {
+            "oid": "4c1231d46a5b2c69dbb24eea79d8bd08fd89ffc8"
+          }
+        },
+        {
+          "number": 428,
+          "url": "https://github.com/ArcaneArts/Retina/pull/428",
+          "state": "MERGED",
+          "mergedAt": "2026-11-05T08:36:22Z",
+          "headRefName": "codex/refinement-cumulative-validation",
+          "mergeCommit": {
+            "oid": "5ecad6beca7c093ffce378ba6b9a3de78e4d7b8a"
+          }
+        }
+      ]
+    },
+    "prior_cycle_records_parsed": 15,
+    "CPU_lighting_test_log": "5 passed, 0 failed, 0 ignored; original candidate log inspected, not rerun",
+    "storage_test_log": "4 passed, 0 failed, 0 ignored; original candidate log inspected, not rerun",
+    "real_Metal_integer_light_log": "1 passed with 6 exact CPU/GPU cases; original candidate log inspected, not rerun",
+    "broad_generation": "11 cases, each1024 exact NBT and1024 same-process preserved records, including dimensions/seed/negative-far/custom/expanded/768height",
+    "fresh_process_preservation": "1024 preserved, zero replacements; entire Nether MCA including timestamp header identical",
+    "actual_Minecraft_decode": "6144 successful repeated chunk operations using actual Minecraft APIs",
+    "Bukkit_delivery": "Actual production callback JFR; seven-server lifecycle/failure suite; 917504blocks,14336biomes,12chunks,3edits,10persistedcrystals;21unitpasses/3nativegatedskips",
+    "cumulative_generation": "270 fresh MCAs including warmups;184320 strict same-backend NBT comparisons across short,long,order and CPUforeground controls;10 separate tall-definition processes",
+    "performance_scope": "Existing results apply to unchanged runtime sources. No new timing series is presented for this documentation-only cycle."
+  },
+  "limitations": [
+    "Overall chunks/sec improvement remains inconclusive; small CPU Overworld and order-dependent Metal Nether negative observations remain in the cumulative evidence.",
+    "Native generation does not establish live Java activation, FPS, TPS or rendering performance.",
+    "Native foreground stress retains rare multi-second query waits; the source-level cause is not established.",
+    "No real Windows Vulkan/DX12 qualification; user explicitly deferred it.",
+    "Local MoltenVK attempts failed before terrain submission and cannot rank Windows performance."
+  ],
+  "requirements_audit": [
+    {
+      "requirement": "all_nine_areas",
+      "disposition": "Eight local areas have validated improvements or evidence-backed rejected implementations. O4 test tooling is delivered; actual Windows acceptance is explicitly deferred by the user rather than labeled validated.",
+      "evidence": "docs/benchmarks/refinement-implementation-2026-11-04.json",
+      "status": "satisfied_under_user_amended_scope"
+    },
+    {
+      "requirement": "CPU_registry_kernels",
+      "disposition": "Investigated and rejected three concrete private arithmetic/block variants; no unqualified runtime retained. Exact-certificate/root-entry alternatives remain future opportunities.",
+      "evidence": "docs/benchmarks/refinement-cycle-04-cpu-kernels-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "Nether_attribution",
+      "disposition": "Validated bounded opt-in actual CPU/Metal trace distinguishes replay/view/query work; actual raw sampling zero for measured vanilla Nether, so cross-anchor batching would not address this workload.",
+      "evidence": "docs/benchmarks/refinement-cycle-08-nether-attribution-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "Nether_work_reduction",
+      "disposition": "Two smaller-view-cache variants investigated and rejected; one failed mask-coverage unit, isolated variant failed Metal screen; all runtime code discarded.",
+      "evidence": "docs/benchmarks/refinement-cycle-09-view-cache-size-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "CPU_lighting_rows_scratch_tiles",
+      "disposition": "Validated and merged427 only scoped CPU noSky lighting initialization. Row staging, scratch, core6/10 and sky-row variants rejected; no overallgenerationCPU/CPS/RSSgain claimed.",
+      "evidence": "docs/benchmarks/refinement-cycle-14-no-skylight-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "Windows_Vulkan_individual_and_combined_paths",
+      "disposition": "Actual Windows transport/palette, startup/cache, steady-state and custom/tall qualification is deferred to later by explicit 2026-11-05 user instruction. No Windows speed or correctness acceptance is claimed.",
+      "evidence": "docs/benchmarks/refinement-cycle-05-windows-transport-2026-11-04.json",
+      "status": "deferred_by_user_unvalidated"
+    },
+    {
+      "requirement": "Windows_bundle_and_defaults",
+      "disposition": "Portable frozen Windows bundle and matrix runner delivered; platform defaults preserved. Real hardware qualification is a future follow-up under the amended scope.",
+      "evidence": "build/release/retina-windows-transport-test.zip",
+      "status": "satisfied_local_delivery"
+    },
+    {
+      "requirement": "bounded_overlap",
+      "disposition": "Early-refill rejected after5Metalpairs, toolingretained425. CPU/Metal1/2/4generation-only,Metalforeground and now6CPUforeground1/2/4/4/2/1processes complete. Everyqueryanswer andNBTchecked. Diagnosticstress,notfairness/defaultbudgetrecommendation.",
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "encoding_scratch_copy_and_codec_tradeoffs",
+      "disposition": "Production codec attribution, five-pair CPU/Metal complete-MCA qualification, compressed size and actual Minecraft decoding; grow-only scratch discarded.",
+      "evidence": "docs/benchmarks/refinement-cycle-10-codec-scratch-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "native_palette_NBT_construction",
+      "disposition": "Six isolated encode phases measured; exact byte receipts and full-MCA screens. Uniform-proof forwarding prototype rejected before retention.",
+      "evidence": "docs/benchmarks/refinement-cycle-13-native-nbt-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "definition_loading_binding",
+      "disposition": "Retained immutable borrowed-profile conversion: repeated open CPU/RSS improvement, no preparation deferral. Parse/convert/metadata/CPU prep/registration attribution and error/identity/retirement coverage recorded.",
+      "evidence": "docs/benchmarks/refinement-cycle-03-definition-borrow-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "GPU_interval_correctness",
+      "disposition": "Retained bounded opt-in event/submission-window identities, boundary membership, interval/lifetime peaks, overlap and missing timestamps. No utilization or speedup claim; disabled overhead qualified with limitations.",
+      "evidence": "docs/benchmarks/refinement-cycle-01-intervals-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "actual_Java_Bukkit_delivery",
+      "disposition": "Actual Bukkit delivery uses 13,160 fewer allocated Java bytes/chunk (-5.0803%). Five matched pairs and actual callback JFR/lifecycle/value tests support that allocation metric; neither object-count reduction nor live wall/FPS/TPS improvement is claimed.",
+      "evidence": "docs/benchmarks/refinement-cycle-11-bukkit-allocations-2026-11-04.json",
+      "status": "validated_allocated_bytes_reduction"
+    },
+    {
+      "requirement": "fixture_authority_and_native_completion",
+      "disposition": "Production SavedDefinition reader and actual lit/decorated/encoded/compressed/atomic MCA throughout; no fabricated legacy profiles.",
+      "evidence": "cumulative-final/results.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "fresh_pinned_starting_baseline",
+      "disposition": "Starting main8e37896 source and frozen ccd708... native rebuilt with pinned1.93.0; fresh current interleaved comparisons retain identities and exact commands.",
+      "evidence": "cumulative-final/analysis.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "compiler_budget_and_readiness",
+      "disposition": "Matched pinned compiler/features/ThinLTO/codegen2, fixture hashes, seeds, coordinates, backends,16/native+2/global budget and shader readiness recorded.",
+      "evidence": "cumulative-final/results.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "startup_vs_first_vs_warm_vs_diagnostics",
+      "disposition": "Distinct open phases, first-region observations, warmed generation and separately instrumented captures; byte comparisons outside generation clock.",
+      "evidence": "docs/benchmarks/refinement-opportunities-2026-11-04.md",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "at_least_five_primary_pairs_to_retain",
+      "disposition": "Retained O7/O9 and candidateO3 have five matched pairs per primary mode/input, O8 has correctness+five-pair overhead controls; rejected screens not misrepresented as qualification.",
+      "evidence": "docs/benchmarks/refinement-cycle-03-definition-borrow-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "record_individual_results_and_variability",
+      "disposition": "All50short/20long/18additional processes terminal0, individualmetrics/commands/hashes/load retained. Smallandorderdependentdifferencesreportedunresolved ratherthan causalproof.",
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "host_load_and_power",
+      "disposition": "Load snapshots per process, activity control, AC/power mode observation; unrelated processes/settings untouched.",
+      "evidence": "cumulative-final-power.txt",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "actual_backend_after_operation",
+      "disposition": "Backend-selected fields and real workload completion recorded; mixed CPU End+Metal lighting supported without invalid generic terrain-job gate.",
+      "evidence": "docs/benchmarks/refinement-cycle-03-definition-borrow-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "strict_NBT_and_dimension_coverage",
+      "disposition": "Retained native candidates checked against same-backend goldens covering lighting/structures/entities/heightmaps/metadata,2seeds/negative/far/custom/expanded/tall/dimensions; CPU/GPU not required bit-identical.",
+      "evidence": "cycle14-broad/results.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "existing_region_and_failure_behavior",
+      "disposition": "Actual reopen/preservation checks, independent fresh-process whole-file preservation, four storage tests including partial/timestamp/write/read/rename/oversize failures.",
+      "evidence": "cycle14-fresh-preservation.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "Java_callback_unload_lifetime_and_errors",
+      "disposition": "Actual seven-server lifecycle/failure suite plus21units/3native-gatedskips; exact blocks/biomes/edits/metadata/crystals verified.",
+      "evidence": "docs/benchmarks/refinement-cycle-11-bukkit-allocations-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "no_cost_shifting",
+      "disposition": "O7eagerbindingunchanged,O9allocationwinwithneutralpairedlatency/CPU,O3scopedproductionlightingbenefitwithbroadguards. CumulativeCPUshortnegative2.37%notreproducedlong;MetalNethernegativeorderdependentseriesandAAcontrolsrecordedwithoutcausalclaim.",
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "no_speculative_preflight_gate",
+      "disposition": "Generation operations execute and report actual failures; no new secondary-counter-based generation admission gate introduced. Diagnostics absent/errors do not prevent valid generation.",
+      "evidence": "docs/benchmarks/refinement-cycle-01-intervals-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "tests_and_no_admin_bypass",
+      "disposition": "Per-cycle actual test logs and PR merge states recorded; failing development tests fixed or implementations discarded, no failing-check admin bypass.",
+      "evidence": "merge-audit-414-426-current.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "each_cycle_worktree_PR_Automerge",
+      "disposition": "All 15 prior cycles are freshly observed MERGED and owned worktrees removed. The current documentation-only closeout uses its own isolated worktree/PR/Automerge and is verified after merge in the live delivery audit.",
+      "evidence": "https://github.com/ArcaneArts/Retina/pull/428",
+      "status": "satisfied_for_prior_cycles_current_delivery_in_progress"
+    },
+    {
+      "requirement": "durable_MD_JSON_records",
+      "disposition": "Per-cycle records, cumulative starting-versus-current benchmarks, all nine dispositions, this scope amendment and explicit future Windows work are recorded. Historical cycle snapshots remain unchanged.",
+      "evidence": "docs/benchmarks/refinement-implementation-2026-11-04.json",
+      "status": "satisfied"
+    },
+    {
+      "requirement": "cumulative_fresh_comparison",
+      "disposition": "Freshstarting8e37896versuscurrent427runtime:50shortprocesses+20longconfirmation,baseline/finalidentitiespinned,110592strictNBT. Additional18AA/fairnessprocessescomplete. No multiplied per-cycle gains.",
+      "evidence": "docs/benchmarks/refinement-cycle-15-cumulative-2026-11-05.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    },
+    {
+      "requirement": "release_scope",
+      "disposition": "No public release requested or performed. Windows matrix artifact is a private test bundle, not a release.",
+      "evidence": "docs/benchmarks/refinement-cycle-05-windows-transport-2026-11-04.json",
+      "status": "satisfied_with_documented_scope_and_limits"
+    }
+  ],
+  "future_opportunities": [
+    "CPU exact certificates or distinct entry-root scheduling that avoid traversal without adding costly general execution state.",
+    "Nether lazy direct-view pages/full dependency identity reuse; never reuse solely by coordinates across edited prefixes.",
+    "Attribute CPU foreground long-tail admission/query waits before proposing scheduler/cache changes.",
+    "Investigate sky-lit initialization only with materially new evidence; current sky-row reordering was rejected.",
+    "Native NBT/codec micro-wins remain small against whole CPU generation; avoid unbounded pooling and cost-shifting.",
+    "Actual Java cold-generation/biome lookup attribution and remaining boxed/closure/lock allocation leads; retained5.08%allocation win does not prove faster live activation."
+  ],
+  "deferred_follow_up": [
+    {
+      "area": "O4",
+      "status": "explicitly_deferred_unvalidated",
+      "work": "On actual Windows Vulkan, evaluate compact input/output and GPU palettes individually and together; compare cold/repeated startup, steady throughput, latency, CPU, RSS and transfers with exact output checks; include Nether and custom/tall data. Qualify promising changes before altering defaults. DX12 claims also require actual hardware evidence.",
+      "test_artifact": "build/release/retina-windows-transport-test.zip",
+      "evidence": "docs/benchmarks/refinement-cycle-05-windows-transport-2026-11-04.json"
+    }
+  ],
+  "release": "No release requested or published. Windows ZIP is a private test artifact only.",
+  "large_evidence_directory": "/Users/cyberpwn/.cache/retina/refinement-implementation-20261104",
+  "pr": "https://github.com/ArcaneArts/Retina/pull/429"
+}
