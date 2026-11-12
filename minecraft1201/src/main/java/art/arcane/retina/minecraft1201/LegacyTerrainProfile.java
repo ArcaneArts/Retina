@@ -179,9 +179,14 @@ final class LegacyTerrainProfile {
         } else if (structures && type.hasSkyLight()) {
             world.add("structures", LegacyLandmarks.export(registries, biomeProfile.biomes(), palette));
         }
+        var structuresProfile = world.getAsJsonObject("structures");
+        if (structures && structuresProfile != null) {
+            LegacyJigsawProfile.add(registries, palette, templates, context, structuresProfile);
+        }
         LegacyGeologyProfile.export(registries, biomeProfile, world, palette, context, storage,
                 type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
-        LegacyNetherStructures.finish(world.getAsJsonObject("structures"), palette);
+        LegacyNetherStructures.finish(structuresProfile, palette);
+        LegacyStructureProcessors.finish(structuresProfile, palette);
         // Geology and structures have added their output states. Both compilers bind against the
         // complete palette so ore replacement masks and predicates agree.
         if (predicates != null) predicates.finish(palette);

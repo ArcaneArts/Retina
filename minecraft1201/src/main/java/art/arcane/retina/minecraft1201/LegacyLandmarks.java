@@ -16,6 +16,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
@@ -39,7 +40,8 @@ final class LegacyLandmarks {
     private static final Map<Class<? extends Structure>, String> FAMILIES = Map.of(
             DesertPyramidStructure.class, "desert_pyramid",
             JungleTempleStructure.class, "jungle_temple",
-            SwampHutStructure.class, "swamp_hut");
+            SwampHutStructure.class, "swamp_hut",
+            JigsawStructure.class, "jigsaw");
 
     private LegacyLandmarks() { }
 
@@ -52,6 +54,7 @@ final class LegacyLandmarks {
             var definition = row.getAsJsonObject();
             if (definition.has("unimplemented")) continue;
             String kind = definition.get("kind").getAsString();
+            if (kind.equals("jigsaw")) continue;
             int index = indices.computeIfAbsent(kind, name -> {
                 var structure = structures.get(new ResourceLocation(definition.get("id").getAsString()));
                 int next = templates.size();

@@ -113,7 +113,9 @@ final class LegacyChunkGenerator extends ChunkGenerator {
     @Override public void applyCarvers(WorldGenRegion region, long seed, RandomState random, BiomeManager biomes,
                                        StructureManager structures, ChunkAccess chunk, GenerationStep.Carving step) { }
     @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) { }
-    @Override public void spawnOriginalMobs(WorldGenRegion region) { }
+    @Override public void spawnOriginalMobs(WorldGenRegion region) {
+        LegacyStructureMobs.finalizeProtoChunk(region);
+    }
     @Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state, StructureManager structures,
                                           ChunkAccess chunk, StructureTemplateManager templates) {
         if (saved.hasStructures) {

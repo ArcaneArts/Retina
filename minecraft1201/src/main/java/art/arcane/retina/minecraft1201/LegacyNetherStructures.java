@@ -8,6 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
+import net.minecraft.world.level.levelgen.structure.structures.JigsawStructure;
 import net.minecraft.world.level.levelgen.structure.structures.NetherFortressStructure;
 import net.minecraft.world.level.levelgen.structure.structures.NetherFossilStructure;
 
@@ -24,7 +25,7 @@ final class LegacyNetherStructures {
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials,
                              WorldGenerationContext context, Function<ResourceLocation, Optional<CompoundTag>> source) {
         var result = LegacyStructureSets.export(registry, biomes,
-                Map.of(NetherFortressStructure.class, "fortress", NetherFossilStructure.class, "nether_fossil"),
+                Map.of(NetherFortressStructure.class, "fortress", NetherFossilStructure.class, "nether_fossil", JigsawStructure.class, "jigsaw"),
                 config -> {
                     if (config.get("type").getAsString().equals("minecraft:nether_fossil")) {
                         LegacyFeaturePlacement.bindHeight(config.get("height"), context);
@@ -33,7 +34,8 @@ final class LegacyNetherStructures {
         if (has(result, "nether_fossil")) {
             var missing = LegacyNetherFossils.addTemplates(result, materials, source);
             if (missing.isPresent()) {
-                result = LegacyStructureSets.export(registry, biomes, NetherFortressStructure.class, "fortress", config -> { });
+                result = LegacyStructureSets.export(registry, biomes,
+                        Map.of(NetherFortressStructure.class, "fortress", JigsawStructure.class, "jigsaw"), config -> { });
                 result.getAsJsonArray("omissions").add("missing_template:" + missing.get());
             }
         }

@@ -43,10 +43,11 @@ final class NetherFortressVerification {
             require(members.size() == 2 && members.get(0).getAsJsonObject().get("weight").getAsInt() == 2
                     && members.get(1).getAsJsonObject().get("weight").getAsInt() == 3, "weighted Nether complexes");
             int fortress = members.get(0).getAsJsonObject().get("definition").getAsInt();
-            var bastion = definitions.get(members.get(1).getAsJsonObject().get("definition").getAsInt()).getAsJsonObject();
+            int bastionIndex = members.get(1).getAsJsonObject().get("definition").getAsInt();
+            var bastion = definitions.get(bastionIndex).getAsJsonObject();
             require(definitions.get(fortress).getAsJsonObject().get("id").getAsString().equals(FORTRESS)
                     && bastion.get("id").getAsString().equals(BASTION)
-                    && bastion.get("unimplemented").getAsBoolean(), "retained bastion membership");
+                    && bastion.get("kind").getAsString().equals("jigsaw"), "retained bastion membership");
             var kit = profile.getAsJsonObject("fortress");
             require(kit.getAsJsonArray("pieces").size() == 13
                     && kit.getAsJsonObject("end_filler").getAsJsonArray("templates").size() == 4
@@ -64,17 +65,19 @@ final class NetherFortressVerification {
             }
             var starts = nativeWorld.structureStarts(NETHER, queries.stream().mapToInt(Integer::intValue).toArray());
             var expected = new HashSet<ChunkPos>();
+            var expectedBastions = new HashSet<ChunkPos>();
             for (int i = 0; i < starts.length; i++) {
                 if (starts[i] == fortress) expected.add(candidates.get(i));
-                else require(starts[i] == -1, "no substituted bastion start");
+                else if (starts[i] == bastionIndex) expectedBastions.add(candidates.get(i));
+                else require(starts[i] == -1, "only members of the Nether complex set can generate");
             }
-            require(!expected.isEmpty() && expected.size() < candidates.size(), "fortress fixture must exercise both choices: " + expected);
+            require(!expected.isEmpty() && !expectedBastions.isEmpty(), "fortress fixture must exercise both choices");
             Path folder = Files.createDirectories(world.resolve("DIM-1/region"));
             Path region = folder.resolve("r." + RX + "." + RZ + ".mca");
             long started = System.nanoTime();
             require(nativeWorld.generateRegion(NETHER, RX, RZ, region).generated() == 1024, "full fortress region");
             long elapsed = (System.nanoTime() - started) / 1_000_000;
-            var result = inspect(region, expected);
+            var result = inspect(region, expected, expectedBastions);
             require(nativeWorld.generateRegion(NETHER, RX, RZ, region).preserved() == 1024, "fortress region reopen");
             result.addProperty("event", "nether_fortress_1201");
             result.addProperty("milliseconds", elapsed);
@@ -83,8 +86,9 @@ final class NetherFortressVerification {
         }
     }
 
-    private static JsonObject inspect(Path region, Set<ChunkPos> expected) throws Exception {
+    private static JsonObject inspect(Path region, Set<ChunkPos> expected, Set<ChunkPos> expectedBastions) throws Exception {
         var seen = new HashSet<ChunkPos>();
+        var seenBastions = new HashSet<ChunkPos>();
         int pieces = 0;
         int references = 0;
         int chests = 0;
@@ -99,7 +103,7 @@ final class NetherFortressVerification {
                     var chunk = NbtIo.read(input);
                     var structures = chunk.getCompound("structures");
                     var starts = structures.getCompound("starts");
-                    require(!starts.contains(BASTION), "unexpected bastion start " + pos);
+                    if (starts.contains(BASTION)) seenBastions.add(pos);
                     if (starts.contains(FORTRESS)) {
                         var start = starts.getCompound(FORTRESS);
                         var children = start.getList("Children", Tag.TAG_COMPOUND);
@@ -139,10 +143,12 @@ final class NetherFortressVerification {
             }
         }
         require(seen.equals(expected) && references > seen.size(), "fortress starts and cross-chunk references");
+        require(seenBastions.equals(expectedBastions), "weighted bastion starts");
         require(chests > 0 && spawners > 0, "fortress chest loot and blaze spawners: " + chests + "/" + spawners);
         require(!expectedLava.isEmpty() && lavaTicks.containsAll(expectedLava), "immediate lava ticks at fortress entrances");
         var result = new JsonObject();
         result.addProperty("starts", seen.size());
+        result.addProperty("bastion_starts", seenBastions.size());
         result.addProperty("pieces", pieces);
         result.addProperty("references", references);
         result.addProperty("loot_chests", chests);
