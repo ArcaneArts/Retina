@@ -4,9 +4,9 @@
 preferring your GPU and automatically using CPU when needed.** It generates terrain, biomes, supported decorations and structures in
 large batches so Minecraft can spend more time loading and displaying the world.
 
-Retina currently targets **Minecraft 26.3** and **Java 25**. The
-[latest release](https://github.com/ArcaneArts/Retina/releases/latest) contains
-**one universal JAR** for Fabric, NeoForge, Bukkit servers and command-line generation.
+Retina supports **Minecraft 26.3 on Java 25** and **Minecraft 1.20.1 on Java 17**.
+The latest release line builds the 26.3 universal JAR. The 1.20.1 release line
+builds separate Fabric, Forge and Bukkit JARs. [GitHub releases](https://github.com/ArcaneArts/Retina/releases)
 
 Retina is a generator, not a rendering mod. It does not promise higher FPS or
 identical vanilla terrain for a given seed. Overworld and Nether noise generation
@@ -20,13 +20,15 @@ terrain can have seams where it meets terrain from a different generator.
 
 ## Support at a glance
 
-| Installation | How Retina is selected | Requirements / limits |
+| Minecraft | Installation | Requirements |
 | --- | --- | --- |
-| Fabric client or dedicated server | Automatically accelerates supported world generators | Fabric Loader 0.19.5+, Fabric API, Java 25 |
-| NeoForge client or dedicated server | Automatically accelerates supported world generators | NeoForge 26.3.0.51-beta+, Java 25 |
-| CraftBukkit, Spigot or Paper server | Select `Retina` in Bukkit's world-generator configuration | Matching 26.3 server, Java 25; public Bukkit API limitations below |
-| Headless command line | Run the universal JAR with `java -jar` | Java 25; no Minecraft installation or mod loader needed |
-| Other Minecraft versions | Not currently supported | Require a separate port |
+| 26.3 | Fabric client or dedicated server | Java 25, Fabric Loader 0.19.5+, Fabric API |
+| 26.3 | NeoForge client or dedicated server | Java 25, NeoForge 26.3.0.51-beta+ |
+| 26.3 | Bukkit-compatible server | Java 25, matching server API |
+| 1.20.1 | Fabric client or dedicated server | Java 17, Fabric Loader 0.16.14+ |
+| 1.20.1 | Forge client or dedicated server | Java 17, Forge 47.2.0 through 47.x |
+| 1.20.1 | Bukkit-compatible server | Java 17, matching server API, tested on Spigot |
+| 26.3 and 1.20.1 saved definitions | Headless command line | Java 25 and the 26.3 universal JAR |
 
 The modded client overlay is optional for server play; generation runs on the
 server. Other installed mods or datapacks may impose their own client requirements.
@@ -43,7 +45,7 @@ Retina uses native CPU generation, including on dedicated servers. Disabling all
 three graphics APIs also selects CPU and keeps Retina active. CPU execution needs
 no graphics driver or software graphics renderer. OpenGL/OpenGL ES is not included.
 
-| World generation | Fabric / NeoForge | Bukkit |
+| World generation | Fabric, Forge and NeoForge | Bukkit |
 | --- | --- | --- |
 | Normal Overworld, Nether and End | Automatic | Bundled vanilla definition, selected per world |
 | Large Biomes, Amplified, Single Biome, Superflat | Supported adapters | Requires a matching imported definition; Bukkit preset strings do not select Retina presets |
@@ -61,7 +63,7 @@ unsupported primitives, features and structure processors are reported. See
 
 ## Install and play
 
-### Fabric or NeoForge
+### Minecraft 26.3 on Fabric or NeoForge
 
 1. Install the matching Minecraft 26.3 loader and Java 25.
 2. Put the release `retina-26.3-<commit>.jar` in `mods/`.
@@ -79,12 +81,27 @@ using its loader's launch script, with the JVM arguments above.
 Retina also activates for new terrain in existing supported worlds. Back up an
 existing world before changing its generator or generation inputs.
 
+### Minecraft 1.20.1 on Fabric or Forge
+
+1. Install Java 17 and a matching 1.20.1 loader.
+2. Put `retina-fabric-1.20.1-<commit>.jar` or `retina-forge-1.20.1-<commit>.jar`
+   in the client or dedicated server's `mods/` directory.
+3. Start the loader using its normal Java 17 launch command and select your
+   world settings in Minecraft. Enable any datapacks before first world creation.
+
+Retina bundles its 1.20.1 vanilla definitions and Java 17 native bridge.
+The 1.20.1 Fabric artifact runs with Fabric Loader alone.
+
 ### Bukkit / CraftBukkit / Spigot / Paper
 
-1. Put the same release JAR in `plugins/`.
-2. Use Java 25 and add `--enable-native-access=ALL-UNNAMED` to the server JVM.
-3. Set your seed in `server.properties` and select Retina in `bukkit.yml` before
-   creating the worlds. For `level-name=world`:
+Put the JAR for your server's Minecraft version in `plugins/`.
+
+- For 26.3, use `retina-26.3-<commit>.jar` and Java 25 with
+  `--enable-native-access=ALL-UNNAMED`.
+- For 1.20.1, use `retina-bukkit-1.20.1-<commit>.jar` and Java 17.
+
+Set the seed in `server.properties` and select Retina in `bukkit.yml` before
+creating the worlds. This example uses `level-name=world`.
 
 ```yaml
 worlds:
@@ -136,14 +153,14 @@ terrain; it does not regenerate existing chunks. See the
 
 ## Use a custom datapack on a server
 
-### Fabric / NeoForge server
+### Fabric, Forge or NeoForge server
 
 For a new world, place the pack ZIP or directory under the intended
 `<level-name>/datapacks/` folder **before the first world startup**, and ensure
 Minecraft enables it. Packs requiring a custom preset or dimension configuration
 must use their documented Minecraft setup as well.
 
-For example, with `level-name=world`:
+For a 26.3 server with `level-name=world`, the layout is
 
 ```text
 server/
@@ -152,12 +169,12 @@ server/
   server.properties
 ```
 
-Start the server with Retina installed. Minecraft loads the packs, then Retina
-captures supported rules into `world/retina.dat` automatically. There is no
+On 1.20.1, use the Fabric or Forge JAR named above. Minecraft loads the packs,
+then Retina captures supported rules into `world/retina.dat` automatically. There is no
 export command to run. Check the startup log for definition creation and any
 unsupported worldgen reports before committing to a long-lived world.
 
-You can also create a world in a matching Fabric/NeoForge client, enable packs
+You can also create a world in a matching modded client, enable packs
 in the world-creation screen, then stop the game and transfer the complete save
 (including `retina.dat` and `datapacks/`) to a matching server.
 
@@ -172,8 +189,9 @@ feature.
 Bukkit cannot export the same worldgen registry data through its public API.
 Use a matching modded installation to prepare it:
 
-1. Create a temporary Fabric or NeoForge world with the same Minecraft/Retina
-   version, intended seed, datapacks, preset and dimension settings.
+1. Create a temporary world on Fabric, Forge or NeoForge using the matching
+   Minecraft and Retina versions, intended seed, datapacks, preset and dimension
+   settings.
 2. Let Retina create `retina.dat`, inspect compatibility messages, then stop the
    game/server. For strict Bukkit delivery, disable structures and bonus chest;
    other unsupported metadata may still need to be addressed.
@@ -197,7 +215,7 @@ first; a successful export is not a guarantee that every pack feature is support
 
 ## Configure Retina
 
-### Fabric / NeoForge settings
+### Mod settings
 
 Retina creates `config/retina.toml` on first startup. Edit it and restart:
 
@@ -217,7 +235,7 @@ f3_overlay = true
 | `allow_metal` | `true` | Allow Metal |
 | `allow_vulkan` | `true` | Allow Vulkan |
 | `mca_parallelism` | `8` | Maximum simultaneous native region generations across ordinary requests, DH, Chunky and repairs |
-| `mca_compression` | `"zlib"` | New chunk compression: `zlib` for smaller files, `lz4` for faster compression with larger files |
+| `mca_compression` | `"zlib"` | New chunk compression. Minecraft 1.20.1 uses zlib. On 26.3, `lz4` trades larger files for faster compression |
 | `debug` | `false` | Detailed startup, driver and generation diagnostics; preparation progress and errors remain visible when off |
 | `f3_overlay` | `true` | Retina statistics on the local modded client's F3 screen |
 
@@ -269,7 +287,7 @@ See the [shipped Bukkit configuration](bukkit/src/main/resources/config.yml).
 
 ## Distant Horizons, Chunky and performance
 
-On Fabric/NeoForge, Distant Horizons preview requests share Retina's region
+On supported mod loaders, Distant Horizons preview requests share Retina's region
 pipeline. Temporary generated regions can later be promoted into the real save
 without generating them again. Chunky has a region-ahead scheduler that feeds
 Retina while Chunky continues loading/finalizing chunks. Neither mod is required.
@@ -282,7 +300,8 @@ completed-terrain throughput, in-flight jobs and stage timings. Completed terrai
 is newly generated chunks over a ten-second wall-clock window. Cached/promoted
 terrain is not counted again. Region latency and Minecraft's loaded/rendered
 chunks per second measure different things, so they need not agree with Chunky
-or DH's counters.
+or DH's counters. On 1.20.1 the overlay reports throughput, region latency,
+work in flight, prepared and published regions, and failures.
 
 GPU startup includes pipeline preparation. Progress logs show completed
 and pending work; a waiting driver call does not have a reliable percentage or
@@ -310,8 +329,9 @@ java -jar retina-26.3-<commit>.jar generate --world ./world \
   --dimension minecraft:overworld --region-radius 1
 ```
 
-Radius 1 selects a 3 × 3 square of regions centered at 0,0. For custom generation,
-use a mod-created definition instead of `init`:
+Radius 1 selects a 3 × 3 square of regions centered at 0,0. For custom
+generation or Minecraft 1.20.1, supply a mod-created `retina.dat`.
+The CLI uses the saved definition's game version, and 1.20.1 output uses zlib.
 
 ```sh
 java -jar retina-26.3-<commit>.jar generate --world ./output \
@@ -355,15 +375,17 @@ for example `26.3-511` and `1.20.1-511`. Run the
 The developer Windows GPU probe is not a regular release asset.
 
 See [universal builds and release instructions](docs/UNIVERSAL_RELEASE.md),
-[loader runtime QA](docs/RUNTIME_QA.md), and
+[loader runtime QA](docs/RUNTIME_QA.md),
+[1.20.1 validation](docs/benchmarks/backport-1.20.1.md), and
 [the manual PR workflow](docs/MANUAL_CHANGE_PROTOCOL.md).
 
 | Source directory | Responsibility |
 | --- | --- |
-| `common/` | Shared Minecraft integration and registry export |
-| `core/` | JDK native bridge, definition ownership and CLI |
-| `fabric/`, `neoforge/` | Mod loader adapters |
-| `bukkit/` | Public-API server plugin |
+| `common/`, `minecraft1201/` | Version-specific Minecraft integration and registry export |
+| `definition/` | Shared world-definition encoding |
+| `core/`, `core17/` | Shared native interfaces, FFM and Java 17 JNI transports, and the modern CLI |
+| `fabric/`, `neoforge/`, `fabric1201/`, `forge1201/` | Mod loader adapters |
+| `bukkit/`, `bukkit1201/` | Public Bukkit plugin and version-specific API adapters |
 | `native/` | Rust generation engine, shaders and region writer |
 | `data/` | Vanilla catalog generation |
 | `universal/` | Combined release JAR |

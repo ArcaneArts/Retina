@@ -6,32 +6,23 @@ Retina's Rust engine and JDK-only `core` runtime with the other distributions.
 
 ## Build and install
 
-```sh
-./gradlew :bukkit:build
-./gradlew buildBukkit
-./gradlew :bukkit:build -PretinaHostOnly
-```
+| Minecraft | Release artifact | Runtime |
+| --- | --- | --- |
+| 26.3 | `retina-26.3-<commit>.jar` | Java 25 with `--enable-native-access=ALL-UNNAMED` |
+| 1.20.1 | `retina-bukkit-1.20.1-<commit>.jar` | Java 17 with bundled JNI |
 
-The installable file is `bukkit/build/libs/retina-bukkit-<version>.jar`.
-The sources JAR is not a plugin. Universal builds use the existing six-platform
-native packaging pipeline; `retinaHostOnly` packages the current host's library
-for development. Ordinary builds consume committed vanilla catalogs without
-launching Minecraft or regenerating data.
-
-The release workflow builds and stages Bukkit alongside Fabric and NeoForge.
-`scripts/stage-release.py <minecraft> <version>` reads each built JAR's six native
-entries and checks the plugin's actual descriptor, runtime classes, catalog bytes
-and manifest hash. Helper/probe JARs and bundled server/API classes are excluded.
-The tested universal 0.399 build produced a 28,212,017-byte plugin; Mach-O, ELF and
-PE images were inspected for both architectures. Its packaged host library
-generated all three dimensions on a JDK-only classpath without Minecraft or an
-external native override. Foreign images were cross-compiled, not GPU-tested.
-
-Use Java 25, a supported GPU/driver, and enable FFM native access:
+Local builds for the current host use these commands.
 
 ```sh
-java --enable-native-access=ALL-UNNAMED -jar server.jar --nogui
+./gradlew buildBukkit -PretinaHostOnly
+./gradlew buildBukkit1201 -PretinaHostOnly
 ```
+
+The plugin JARs are in `bukkit/build/libs` and `bukkit1201/build/libs`.
+Each contains a catalog for its game version. The release JARs contain native
+libraries for macOS ARM64, Linux x64 and Windows x64. Release staging checks
+the actual archives, descriptors, runtime classes and catalog and native bytes.
+[Build and release guide](UNIVERSAL_RELEASE.md)
 
 Place the plugin in `plugins/`, then select it in `bukkit.yml` before creating
 the worlds. For `level-name=world` in `server.properties`:
@@ -122,6 +113,14 @@ omission reports. Full native/mod generation retains those features.
 | Other block entities and opaque fields | Strict mode reports concrete unsupported requirements; no raw server NBT injection |
 | Nether/End gameplay | The server owns portal routing, dimension transitions, dragon-fight state and normal ticking; these global runtime records are not imported from a generation snapshot |
 | Initial vanilla terrain, surface, decorations, structures and mobs | Suppressed to prevent a second generation pass; normal runtime spawning remains server-owned |
+
+On 1.20.1, spawners support a single registered spawn type, with weighted and
+customized spawns reported as unsupported. Entity delivery uses the public API
+for type, position, rotation, invulnerability and gravity. Generated sculk
+sensors, shriekers and catalysts use the server's default block entities.
+The 1.20.1 catalog keeps those blocks and omits saved fluid queues.
+[Java 17 Spigot validation](benchmarks/backport-1.20.1.md#bukkit-1201-on-java-17)
+
 
 `allow-metadata-loss: true` explicitly permits reported omissions when importing
 a snapshot. This mode does not rewrite its rules or file; it places available
