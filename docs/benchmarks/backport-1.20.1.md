@@ -832,3 +832,37 @@ to the preceding build.
 locally. The three installable Java 17 JARs contained the same
 365,442-byte version-isolated 1.20.1 catalog with five variants.
 All four JARs contained identical native bytes.
+
+## Cherry and mangrove trees
+
+The 1.20.1 exporter now records the registered cherry branch and
+canopy parameters, mangrove branch and leaf scatter programs, and
+mangrove root geometry and materials. The native engine keeps the
+existing geometry for saved profiles without these optional fields.
+Mangrove roots use the loaded replacement sets and distinguish dry,
+waterlogged, and muddy states. Beehive and hanging propagule
+decorators remain reported approximations.
+
+Selector branches now share the placement predicate objects until
+their material IDs are bound. A copied, still-empty sapling survival
+predicate previously suppressed some of the exported tree choices.
+The fixed-biome tree pack verifies 256 generated chunks, including
+the stripped cherry override on all three log axes, connected cherry
+and mangrove leaves, and all three mangrove root cases.
+
+Run the verified noise and catalog exports above, using a fresh world
+with `minecraft1201/src/datagen/fixtures/overworld-tree-pack` for the
+datapack check. Compare existing profiles through the same Java 25
+FFM transport with both native libraries, using fresh destination
+files for every region.
+
+The normal Overworld exports 84 of 121 non-ore roots. All 15 catalog
+parity cases passed, and all three Java 17 distributions carry the
+same five-variant catalog. The locally built 26.3 distribution and
+the three 1.20.1 distributions share the same native binary.
+
+Region `-1,0` from a saved 1.20.1 profile produced 1,024 identical
+decoded chunks with the old and new libraries. On the M4 Max,
+three alternating runs of the same tree-bearing 26.3 region
+produced 1,024 identical decoded chunks per pair. Baseline Metal
+times were 687–782 ms and candidate times were 681–761 ms.

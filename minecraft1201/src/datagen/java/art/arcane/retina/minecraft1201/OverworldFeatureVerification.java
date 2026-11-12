@@ -77,7 +77,8 @@ final class OverworldFeatureVerification {
                 "minecraft:disk_sand", "minecraft:spring_water", "minecraft:bamboo",
                 "minecraft:lush_caves_vegetation", "minecraft:lush_caves_clay", "minecraft:dark_forest_vegetation",
                 "minecraft:mushroom_island_vegetation", "minecraft:trees_birch", "minecraft:trees_savanna",
-                "minecraft:trees_old_growth_pine_taiga", "minecraft:trees_old_growth_spruce_taiga")), "supported vanilla roots");
+                "minecraft:trees_old_growth_pine_taiga", "minecraft:trees_old_growth_spruce_taiga",
+                "minecraft:trees_cherry", "minecraft:trees_mangrove")), "supported vanilla roots");
         var omitted = new HashSet<String>();
         for (var tag : profile.getList("decoration_omissions", Tag.TAG_STRING)) {
             String description = tag.getAsString();
@@ -216,10 +217,14 @@ final class OverworldFeatureVerification {
         System.out.println("QA_EVT {\"event\":\"overworld_1201_datapack_lush_caves\",\"status\":\"pass\",\"chunks\":16}");
     }
 
-    static void treesDatapack(Path world) throws Exception {
+    static void treesDatapack(Path world, boolean specialized) throws Exception {
         var observed = new HashMap<String, Set<String>>();
+        var cherryAxes = new HashSet<String>();
+        var rootWaterlogging = new HashSet<String>();
+        var probes = specialized ? List.of("forest_probe", "mushroom_probe", "cherry_probe", "mangrove_probe")
+                : List.of("forest_probe", "mushroom_probe");
         try (var nativeWorld = NativeWorldDefinition.open(world.resolve("retina.dat"))) {
-            for (String name : List.of("forest_probe", "mushroom_probe")) {
+            for (String name : probes) {
                 String key = "retina:" + name;
                 nativeWorld.bindDimension(key, 2);
                 var materials = new HashSet<String>();
@@ -233,6 +238,12 @@ final class OverworldFeatureVerification {
                             if (properties.contains("distance")) {
                                 materials.add(state.getString("Name") + "/distance/" + properties.getString("distance"));
                             }
+                            if (state.getString("Name").equals("minecraft:stripped_cherry_log")) {
+                                cherryAxes.add(properties.getString("axis"));
+                            }
+                            if (state.getString("Name").equals("minecraft:mangrove_roots")) {
+                                rootWaterlogging.add(properties.getString("waterlogged"));
+                            }
                         }
                     }
                 }
@@ -244,7 +255,16 @@ final class OverworldFeatureVerification {
                 && !observed.get("forest_probe").contains("minecraft:dark_oak_log"), "datapack tree states");
         require(observed.get("mushroom_probe").containsAll(Set.of("minecraft:red_mushroom_block", "minecraft:brown_mushroom_block",
                 "minecraft:mushroom_stem")), "mushroom selector outputs");
-        System.out.println("QA_EVT {\"event\":\"overworld_1201_datapack_trees_and_mushrooms\",\"status\":\"pass\",\"chunks\":128}");
+        if (specialized) {
+            require(observed.get("cherry_probe").contains("minecraft:cherry_leaves/distance/1")
+                    && cherryAxes.equals(Set.of("x", "y", "z")), "cherry canopy and datapack trunk axes " + cherryAxes);
+            require(observed.get("mangrove_probe").containsAll(Set.of("minecraft:mangrove_log", "minecraft:mangrove_roots",
+                    "minecraft:muddy_mangrove_roots", "minecraft:mangrove_leaves/distance/1"))
+                    && rootWaterlogging.equals(Set.of("true", "false")),
+                    "mangrove branches and rooted soil, wet and dry roots " + observed.get("mangrove_probe") + " " + rootWaterlogging);
+        }
+        System.out.println("QA_EVT {\"event\":\"overworld_1201_datapack_trees_and_mushrooms\",\"status\":\"pass\",\"chunks\":"
+                + probes.size() * 64 + "}");
     }
 
     private static CompoundTag read(RegionFile file, ChunkPos chunk) throws Exception {

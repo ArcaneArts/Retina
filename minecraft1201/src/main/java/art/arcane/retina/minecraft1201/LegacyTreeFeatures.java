@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Blocks;
@@ -23,8 +24,9 @@ import java.util.Set;
 import java.util.function.ToIntFunction;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
-import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.type;
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
+import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.type;
+import static art.arcane.retina.minecraft1201.LegacyFeaturePredicates.selection;
 
 final class LegacyTreeFeatures {
     private static final Set<String> TRUNKS = Set.of("straight_trunk_placer", "fancy_trunk_placer",
@@ -56,9 +58,14 @@ final class LegacyTreeFeatures {
         var foliage = encoded.getAsJsonObject("foliage_placer");
         String trunkType = type(trunk);
         String foliageType = type(foliage);
-        if (!TRUNKS.contains(trunkType)) throw new IllegalArgumentException("tree:" + trunkType);
-        if (!FOLIAGE.contains(foliageType)) throw new IllegalArgumentException("tree:" + foliageType);
-        if (encoded.has("root_placer")) throw new IllegalArgumentException("tree:root-placer");
+        var geometry = new JsonObject();
+        if (trunkType.equals("cherry_trunk_placer")) geometry.add("trunk", cherryTrunk(trunk));
+        else if (trunkType.equals("upwards_branching_trunk_placer")) geometry.add("trunk", upwardsTrunk(trunk));
+        else if (!TRUNKS.contains(trunkType)) throw new IllegalArgumentException("tree:" + trunkType);
+
+        if (foliageType.equals("cherry_foliage_placer")) geometry.add("foliage", cherryFoliage(foliage));
+        else if (foliageType.equals("random_spread_foliage_placer")) geometry.add("foliage", spreadFoliage(foliage));
+        else if (!FOLIAGE.contains(foliageType)) throw new IllegalArgumentException("tree:" + foliageType);
 
         var data = new JsonObject();
         data.addProperty("kind", "tree");
@@ -74,15 +81,29 @@ final class LegacyTreeFeatures {
         data.add("trunk_height", range(foliage.get("trunk_height"), 2));
         data.add("logs", variants(encoded.getAsJsonObject("trunk_provider"), true));
         data.add("leaves", variants(encoded.getAsJsonObject("foliage_provider"), false));
-        var dirt = encoded.getAsJsonObject("dirt_provider");
-        if (!type(dirt).equals("simple_state_provider")) throw new IllegalArgumentException("tree:dirt-provider");
-        data.addProperty("soil", material.applyAsInt(state(dirt.get("state"))));
-        data.addProperty("root", 0);
+        var roots = encoded.getAsJsonObject("root_placer");
+        int rootReach = 0;
+        if (roots == null) {
+            data.addProperty("soil", material.applyAsInt(simpleState(encoded.getAsJsonObject("dirt_provider"))));
+            data.addProperty("root", 0);
+        } else {
+            if (!type(roots).equals("mangrove_root_placer")) throw new IllegalArgumentException("tree:" + type(roots));
+            var rootState = simpleState(roots.getAsJsonObject("root_provider"));
+            var rootGeometry = mangroveRoots(roots, rootState);
+            geometry.add("roots", rootGeometry);
+            rootReach = rootGeometry.get("width").getAsInt();
+            data.addProperty("soil", 0);
+            data.addProperty("root", material.applyAsInt(rootState));
+            approximations.add("decoration:mangrove-root-layout");
+        }
         data.add("root_offset", array(0, 0));
+        if (geometry.size() != 0) data.add("geometry", geometry);
         data.add("decorators", decorators(encoded.getAsJsonArray("decorators")));
         approximations.add("decoration:shared-tree-shapes-and-clearance");
 
         int crownReach = switch (foliageType) {
+            case "cherry_foliage_placer" -> radius.get(1).getAsInt() + 1;
+            case "random_spread_foliage_placer" -> radius.get(1).getAsInt() - 1;
             case "dark_oak_foliage_placer" -> Math.min(radius.get(1).getAsInt(), 4) + 4;
             case "fancy_foliage_placer", "acacia_foliage_placer",
                     "pine_foliage_placer", "spruce_foliage_placer", "mega_pine_foliage_placer" ->
@@ -90,13 +111,107 @@ final class LegacyTreeFeatures {
             default -> 6;
         };
         int reach = switch (trunkType) {
+            case "cherry_trunk_placer" -> maximum(trunk.get("branch_horizontal_length")) + 1 + crownReach;
+            case "upwards_branching_trunk_placer" -> maximum(trunk.get("extra_branch_steps")) + crownReach;
             case "fancy_trunk_placer" -> 7 + crownReach;
             case "mega_jungle_trunk_placer" -> 5 + crownReach;
             case "forking_trunk_placer", "dark_oak_trunk_placer" -> 3 + crownReach;
             case "giant_trunk_placer" -> 1 + crownReach;
             default -> crownReach;
         };
-        return new Recipe(data, reach + (data.getAsJsonArray("decorators").isEmpty() ? 0 : 1));
+        int decoratedReach = reach + (data.getAsJsonArray("decorators").isEmpty() ? 0 : 1);
+        return new Recipe(data, Math.max(rootReach, decoratedReach));
+    }
+
+    private JsonObject cherryTrunk(JsonObject trunk) {
+        var result = kind("cherry");
+        result.add("branch_count", integer(trunk.get("branch_count")));
+        result.add("length", integer(trunk.get("branch_horizontal_length")));
+        var start = trunk.getAsJsonObject("branch_start_offset_from_top");
+        result.add("start", array(start.get("min_inclusive").getAsInt(), start.get("max_inclusive").getAsInt()));
+        result.add("end", integer(trunk.get("branch_end_offset_from_top")));
+        return result;
+    }
+
+    private JsonObject upwardsTrunk(JsonObject trunk) {
+        var result = kind("upwards_branching");
+        result.add("steps", integer(trunk.get("extra_branch_steps"), 1, 16));
+        result.add("extra_length", integer(trunk.get("extra_branch_length"), 0, 16));
+        result.add("chance", trunk.get("place_branch_per_log_probability"));
+        result.add("can_grow_through", predicates.material(selection(trunk.get("can_grow_through"))));
+        return result;
+    }
+
+    private JsonObject cherryFoliage(JsonObject foliage) {
+        var result = kind("cherry");
+        result.add("radius", integer(foliage.get("radius")));
+        result.add("offset", integer(foliage.get("offset")));
+        result.add("height", integer(foliage.get("height")));
+        result.add("corner_hole", foliage.get("corner_hole_chance"));
+        result.add("bottom_hole", foliage.get("wide_bottom_layer_hole_chance"));
+        result.add("hanging", foliage.get("hanging_leaves_chance"));
+        result.add("extension", foliage.get("hanging_leaves_extension_chance"));
+        return result;
+    }
+
+    private JsonObject spreadFoliage(JsonObject foliage) {
+        var result = kind("random_spread");
+        result.add("radius", integer(foliage.get("radius"), 1, 16));
+        result.add("height", integer(foliage.get("foliage_height")));
+        result.add("attempts", foliage.get("leaf_placement_attempts"));
+        return result;
+    }
+
+    private JsonObject mangroveRoots(JsonObject roots, BlockState rootState) {
+        var placement = roots.getAsJsonObject("mangrove_root_placement");
+        var result = new JsonObject();
+        result.add("trunk_offset", integer(roots.get("trunk_offset_y"), 0, 16));
+        result.add("width", placement.get("max_root_width"));
+        result.add("length", placement.get("max_root_length"));
+        result.add("skew", placement.get("random_skew_chance"));
+        var growThrough = selection(placement.get("can_grow_through"));
+        result.add("grow_through", predicates.material(state -> state.isAir() || state.is(BlockTags.REPLACEABLE_BY_TREES)
+                || state.getFluidState().is(FluidTags.WATER) || growThrough.test(state)));
+        result.add("muddy_in", predicates.material(selection(placement.get("muddy_roots_in"))));
+        result.add("water", predicates.material(state -> state.getFluidState().is(FluidTags.WATER)));
+        result.addProperty("wet", material.applyAsInt(rootState.hasProperty(BlockStateProperties.WATERLOGGED)
+                ? rootState.setValue(BlockStateProperties.WATERLOGGED, true) : rootState));
+        result.addProperty("muddy", material.applyAsInt(simpleState(placement.getAsJsonObject("muddy_roots_provider"))));
+        if (roots.has("above_root_placement")) {
+            var placementAbove = roots.getAsJsonObject("above_root_placement");
+            var above = new JsonObject();
+            above.add("chance", placementAbove.get("above_root_placement_chance"));
+            above.addProperty("material", material.applyAsInt(simpleState(placementAbove.getAsJsonObject("above_root_provider"))));
+            result.add("above", above);
+        }
+        return result;
+    }
+
+    private static JsonObject kind(String kind) {
+        var result = new JsonObject();
+        result.addProperty("kind", kind);
+        return result;
+    }
+
+    private static JsonElement integer(JsonElement value) {
+        return LegacyFeaturePlacement.integer(value);
+    }
+
+    private JsonElement integer(JsonElement value, int min, int max) {
+        var provider = decode(IntProvider.CODEC.parse(ops, value));
+        if (provider.getMinValue() < min || provider.getMaxValue() > max) {
+            throw new IllegalArgumentException("tree:integer-out-of-range:" + value);
+        }
+        return integer(value);
+    }
+
+    private int maximum(JsonElement value) {
+        return decode(IntProvider.CODEC.parse(ops, value)).getMaxValue();
+    }
+
+    private BlockState simpleState(JsonObject provider) {
+        if (!type(provider).equals("simple_state_provider")) throw new IllegalArgumentException("tree:provider:" + type(provider));
+        return state(provider.get("state"));
     }
 
     Recipe mushroom(HugeMushroomFeatureConfiguration config, boolean red) {
