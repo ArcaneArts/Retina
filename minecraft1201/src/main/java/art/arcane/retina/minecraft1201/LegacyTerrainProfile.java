@@ -175,13 +175,13 @@ final class LegacyTerrainProfile {
             overworld.reserveWaterlogging();
         }
         if (structures && type.hasCeiling()) {
-            world.add("structures", LegacyNetherFossils.export(registries, biomeProfile.biomes(), palette, context, templates));
+            world.add("structures", LegacyNetherStructures.export(registries, biomeProfile.biomes(), palette, context, templates));
         } else if (structures && type.hasSkyLight()) {
             world.add("structures", LegacyLandmarks.export(registries, biomeProfile.biomes(), palette));
         }
         LegacyGeologyProfile.export(registries, biomeProfile, world, palette, context, storage,
                 type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
-        LegacyNetherFossils.finish(world.getAsJsonObject("structures"), palette);
+        LegacyNetherStructures.finish(world.getAsJsonObject("structures"), palette);
         // Geology and structures have added their output states. Both compilers bind against the
         // complete palette so ore replacement masks and predicates agree.
         if (predicates != null) predicates.finish(palette);

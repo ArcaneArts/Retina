@@ -75,7 +75,10 @@ final class NetherFossilVerification {
             Function<ChunkPos, StructureStart> reference = position -> structure.generate(registry, generator,
                     generator.getBiomeSource(), random, manager, seed, position, 0, bounds, structure.biomes()::contains);
             var profile = JsonParser.parseString(nativeWorld.diagnosticProfile(dimension)).getAsJsonObject().getAsJsonObject("structures");
-            var savedSet = profile.getAsJsonArray("sets").get(0).getAsJsonObject().getAsJsonObject("placement");
+            var savedSet = profile.getAsJsonArray("sets").asList().stream()
+                    .map(value -> value.getAsJsonObject())
+                    .filter(row -> row.get("id").getAsString().equals("minecraft:nether_fossils"))
+                    .findFirst().orElseThrow().getAsJsonObject("placement");
             require(savedSet.get("salt").getAsInt() == salt, "loaded fossil placement salt");
             var kit = profile.getAsJsonObject("fossils");
             require(kit.getAsJsonArray("templates").size() == 14 && !kit.has("dried_ghast"), "1.20.1 fossil catalog");
