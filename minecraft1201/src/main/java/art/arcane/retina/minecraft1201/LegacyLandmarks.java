@@ -65,7 +65,7 @@ final class LegacyLandmarks {
 
     private static JsonObject capture(RegistryAccess registry, Structure structure, String kind,
                                       LinkedHashMap<BlockState, Integer> materials) {
-        var level = new LegacyLandmarkCapture(registry);
+        var level = new LegacyStructureCapture(registry);
         var random = level.getRandom();
         StructurePiece piece = switch (kind) {
             case "desert_pyramid" -> new DesertPyramidPiece(random, 0, 0);
@@ -123,7 +123,7 @@ final class LegacyLandmarks {
         }
         var result = new JsonObject();
         result.addProperty("id", "retina:captured/" + kind);
-        result.addProperty("ground", LegacyLandmarkCapture.SURFACE - minY);
+        result.addProperty("ground", LegacyStructureCapture.SURFACE - minY);
         result.add("size", array(maxX - minX + 1, maxY - minY + 1, maxZ - minZ + 1));
         result.add("blocks", blocks);
         result.add("tags", tags);

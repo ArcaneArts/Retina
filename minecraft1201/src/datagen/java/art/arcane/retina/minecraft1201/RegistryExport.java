@@ -86,6 +86,8 @@ public final class RegistryExport {
             if (structures) {
                 if (loaded.packs().contains("file/retina-landmarks")) {
                     LandmarkVerification.verify(world, loaded, seed);
+                } else if (loaded.packs().contains("file/retina-nether-fortress")) {
+                    NetherFortressVerification.verify(world, loaded, seed);
                 } else {
                     EndCityVerification.verify(world, loaded, seed);
                     NetherFossilVerification.verify(world, loaded, seed);

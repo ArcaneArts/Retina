@@ -1142,3 +1142,44 @@ records. A separate stock Fabric world materialized the bundled
 catalog and located and saved a desert pyramid at `128,-1520`.
 The native library and the 26.3 catalogs were byte-identical
 to the preceding build.
+
+### Nether fortresses
+
+The structure-enabled 1.20.1 catalog and live registry export now
+capture all 13 fortress piece families, their orientations, chest
+variants, supports, ticks and end filler geometry from the target
+game. The shared native planner assembles the fortress. The
+`nether_complexes` set keeps the loaded weights and biome
+eligibility for fortress and bastion; bastions remain unavailable
+in this cycle. The Nether fossil kit shares the structure table and
+retains its own placement and templates.
+
+To reproduce, copy `minecraft1201/src/datagen/fixtures/nether-fortress-pack`
+to `$RETINA_WORLD/datapacks/retina-nether-fortress` in a fresh world
+directory, then run:
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaGenerateStructures \
+  -PretinaVerifyNoiseTerrain "-PretinaWorld=$RETINA_WORLD" \
+  "-PretinaNativePath=$RETINA_NATIVE" -PretinaGpuBackend=metal
+```
+
+Seed 12345 generated Nether region `-1,0` with three starts, 299
+pieces, 257 references to those starts, 12 loot chests, five blaze
+spawners and three immediate lava ticks at the castle entrances.
+One other candidate did not produce a start. The 1.20.1 region reader
+opened all 1,024 chunks; regenerating preserved them all. A separate
+CPU run matched all structure compounds and 1,021 complete decoded
+chunk records. Initial local region generation took 1.19 s on Metal
+and 8.61 s on CPU; both backends passed again with the entrance
+tick locations asserted explicitly.
+
+Run `scripts/minecraft1201-fortress-test.py` with that headless
+MCA as `--reference`. Java 17 dedicated servers on Fabric Loader
+0.16.14 and Forge 47.4.28 located all three starts before the
+region was generated, loaded the chest loot table and spawner
+data, and retained the same saved starts after restart. Stock
+headless End-city and Nether-fossil checks also passed. All 15
+catalog parity cases and Bukkit tests passed; all four locally
+built JARs used identical macOS arm64 native bytes, with the 26.3
+catalogs and native bytes unchanged from the previous cycle.

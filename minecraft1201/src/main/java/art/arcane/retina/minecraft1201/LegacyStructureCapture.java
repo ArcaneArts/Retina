@@ -6,6 +6,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
@@ -42,15 +43,18 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.ticks.LevelTickAccess;
+import net.minecraft.world.ticks.TickPriority;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-/** Flat capture surface for the vanilla landmark piece methods. All writes are local to one capture. */
-final class LegacyLandmarkCapture implements WorldGenLevel {
+/** Bounded recording surface for vanilla structure piece methods. */
+final class LegacyStructureCapture implements WorldGenLevel {
     static final int SURFACE = 64;
     private static final long SEED = 1945L;
 
@@ -60,8 +64,32 @@ final class LegacyLandmarkCapture implements WorldGenLevel {
     private final Map<BlockPos, BlockEntity> entities = new HashMap<>();
     private final Map<ChunkPos, ProtoChunk> chunks = new HashMap<>();
 
-    LegacyLandmarkCapture(RegistryAccess registries) {
+    private final Set<BlockPos> postProcessing = new LinkedHashSet<>();
+    private final Set<FluidTick> ticks = new LinkedHashSet<>();
+    private final int surface;
+    private final BlockState foundation;
+
+    LegacyStructureCapture(RegistryAccess registries) {
+        this(registries, SURFACE, Blocks.STONE.defaultBlockState());
+    }
+
+    LegacyStructureCapture(RegistryAccess registries, int surface, BlockState foundation) {
         this.registries = registries;
+        this.surface = surface;
+        this.foundation = foundation;
+    }
+
+    record FluidTick(BlockPos pos, String fluid, int delay, int priority) { }
+
+    Set<BlockPos> postProcessing() { return postProcessing; }
+    Set<FluidTick> ticks() { return ticks; }
+
+    @Override public void scheduleTick(BlockPos pos, Fluid fluid, int delay) {
+        scheduleTick(pos, fluid, delay, TickPriority.NORMAL);
+    }
+
+    @Override public void scheduleTick(BlockPos pos, Fluid fluid, int delay, TickPriority priority) {
+        ticks.add(new FluidTick(pos.immutable(), BuiltInRegistries.FLUID.getKey(fluid).toString(), delay, priority.getValue()));
     }
 
     Map<BlockPos, BlockState> blocks() { return blocks; }
@@ -70,11 +98,11 @@ final class LegacyLandmarkCapture implements WorldGenLevel {
     @Override public RegistryAccess registryAccess() { return registries; }
     @Override public int getHeight() { return 384; }
     @Override public int getMinBuildHeight() { return -64; }
-    @Override public int getHeight(Heightmap.Types type, int x, int z) { return SURFACE; }
+    @Override public int getHeight(Heightmap.Types type, int x, int z) { return surface; }
     @Override public boolean isClientSide() { return false; }
     @Override public BlockEntity getBlockEntity(BlockPos pos) { return entities.get(pos); }
     @Override public BlockState getBlockState(BlockPos pos) {
-        return blocks.getOrDefault(pos, (pos.getY() < SURFACE ? Blocks.STONE : Blocks.AIR).defaultBlockState());
+        return blocks.getOrDefault(pos, pos.getY() < surface ? foundation : Blocks.AIR.defaultBlockState());
     }
 
     @Override public FluidState getFluidState(BlockPos pos) { return getBlockState(pos).getFluidState(); }
@@ -84,7 +112,11 @@ final class LegacyLandmarkCapture implements WorldGenLevel {
     @Override public ChunkAccess getChunk(int x, int z, ChunkStatus status, boolean create) {
         var pos = new ChunkPos(x, z);
         return chunks.computeIfAbsent(pos, at ->
-                new ProtoChunk(at, UpgradeData.EMPTY, this, registries.registryOrThrow(Registries.BIOME), null));
+                new ProtoChunk(at, UpgradeData.EMPTY, this, registries.registryOrThrow(Registries.BIOME), null) {
+                    @Override public void markPosForPostprocessing(BlockPos block) {
+                        LegacyStructureCapture.this.postProcessing.add(block.immutable());
+                    }
+                });
     }
 
     @Override public boolean setBlock(BlockPos pos, BlockState state, int flags, int depth) {
@@ -126,6 +158,6 @@ final class LegacyLandmarkCapture implements WorldGenLevel {
     @Override public List<? extends Player> players() { throw unsupported(); }
 
     private static UnsupportedOperationException unsupported() {
-        return new UnsupportedOperationException("Retina landmark capture has no live world");
+        return new UnsupportedOperationException("Retina structure capture has no live world");
     }
 }
