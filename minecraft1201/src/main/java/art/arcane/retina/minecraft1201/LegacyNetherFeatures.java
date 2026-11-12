@@ -49,7 +49,7 @@ final class LegacyNetherFeatures {
     private final LevelHeightAccessor storage;
     private final LegacyFeaturePredicates predicates = new LegacyFeaturePredicates();
     private final LegacyNetherPlants plants;
-    private final LinkedHashMap<String, Integer> fluidTicks = new LinkedHashMap<>();
+    private final LegacyFeatureTicks ticks = new LegacyFeatureTicks();
 
     private LegacyNetherFeatures(RegistryAccess registries, LinkedHashMap<BlockState, Integer> palette,
                                  WorldGenerationContext context, LevelHeightAccessor storage) {
@@ -107,7 +107,7 @@ final class LegacyNetherFeatures {
         omissions.forEach(report::add);
         world.add("decorations", recipes);
         world.add("decoration_omissions", report);
-        world.add("decoration_ticks", fluidTickTable(fluidTicks));
+        world.add("decoration_ticks", ticks.export());
         world.addProperty("ordered_decorations", true);
         world.addProperty("decoration_source_order", true);
         world.addProperty("decoration_biome_3d", true);
@@ -116,7 +116,7 @@ final class LegacyNetherFeatures {
     private Primitive primitive(ConfiguredFeature<?, ?> configured) {
         var feature = configured.feature();
         if (feature == Feature.SPRING) {
-            return new Primitive(spring((SpringConfiguration) configured.config(), predicates, this::material, fluidTicks), 0);
+            return new Primitive(spring((SpringConfiguration) configured.config(), predicates, this::material, ticks), 0);
         }
         if (feature == Feature.DELTA_FEATURE) return delta((DeltaFeatureConfiguration) configured.config());
         if (feature == Feature.REPLACE_BLOBS) return blobs((ReplaceSphereConfiguration) configured.config());
@@ -132,7 +132,7 @@ final class LegacyNetherFeatures {
     }
 
     static JsonObject spring(SpringConfiguration config, LegacyFeaturePredicates predicates,
-                             ToIntFunction<BlockState> material, LinkedHashMap<String, Integer> fluidTicks) {
+                             ToIntFunction<BlockState> material, LegacyFeatureTicks ticks) {
         var data = kind("spring");
         data.addProperty("state", material.applyAsInt(config.state.createLegacyBlock()));
         data.addProperty("requires_block_below", config.requiresBlockBelow);
@@ -141,19 +141,8 @@ final class LegacyNetherFeatures {
         data.add("valid_blocks", predicates.material(state -> config.validBlocks.contains(state.getBlock().builtInRegistryHolder())));
         data.add("air", predicates.material(BlockState::isAir));
         String fluid = BuiltInRegistries.FLUID.getKey(config.state.getType()).toString();
-        data.addProperty("tick", fluidTicks.computeIfAbsent(fluid, key -> fluidTicks.size() + 1));
+        data.addProperty("tick", ticks.fluid(fluid));
         return data;
-    }
-
-    static JsonArray fluidTickTable(LinkedHashMap<String, Integer> fluidTicks) {
-        var ticks = new JsonArray();
-        fluidTicks.forEach((id, index) -> {
-            var tick = new JsonObject();
-            tick.addProperty("id", id);
-            tick.addProperty("kind", "fluid");
-            ticks.add(tick);
-        });
-        return ticks;
     }
 
     private Primitive delta(DeltaFeatureConfiguration config) {

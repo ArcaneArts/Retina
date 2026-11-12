@@ -91,7 +91,7 @@ final class LegacyOverworldFeatures {
     private final LegacyOverworldPlants plants;
     private final LegacyTreeFeatures trees;
     private final TreeSet<String> approximations = new TreeSet<>();
-    private final LinkedHashMap<String, Integer> fluidTicks = new LinkedHashMap<>();
+    private final LegacyFeatureTicks ticks = new LegacyFeatureTicks();
     private final List<JsonArray> poolWaterlogging = new ArrayList<>();
     private boolean surfaceFreeze;
 
@@ -160,7 +160,7 @@ final class LegacyOverworldFeatures {
         omissions.forEach(report::add);
         world.add("decorations", recipes);
         world.add("decoration_omissions", report);
-        world.add("decoration_ticks", LegacyNetherFeatures.fluidTickTable(fluidTicks));
+        world.add("decoration_ticks", ticks.export());
         world.addProperty("ordered_decorations", true);
         world.addProperty("decoration_source_order", true);
         world.addProperty("decoration_biome_3d", true);
@@ -304,7 +304,7 @@ final class LegacyOverworldFeatures {
             surfaceFreeze = true;
             return new Recipe(kind("freeze_top_layer"), 15);
         }
-        if (flat && depth == 0 && feature == Feature.LAKE) return lake((LakeFeature.Configuration) config);
+        if (feature == Feature.LAKE) return lake((LakeFeature.Configuration) config);
         if (flat && depth == 0 && feature == Feature.VOID_START_PLATFORM) {
             var data = kind("void_platform");
             data.add("platform", array(material(Blocks.STONE.defaultBlockState()), material(Blocks.COBBLESTONE.defaultBlockState())));
@@ -330,7 +330,7 @@ final class LegacyOverworldFeatures {
         }
         if (feature == Feature.SPRING) {
             return new Recipe(nativeFeature(LegacyNetherFeatures.spring((SpringConfiguration) config, predicates,
-                    this::material, fluidTicks)), 0);
+                    this::material, ticks)), 0);
         }
         if (feature == Feature.RANDOM_SELECTOR) return random((RandomFeatureConfiguration) config, depth);
         if (feature == Feature.SIMPLE_RANDOM_SELECTOR) return choices((SimpleRandomFeatureConfiguration) config, depth);
@@ -438,7 +438,10 @@ final class LegacyOverworldFeatures {
         data.add("can_replace_with_barrier", predicates.material(state -> !state.is(BlockTags.LAVA_POOL_STONE_CANNOT_REPLACE)));
         data.add("solid", predicates.material(BlockState::isSolid));
         data.add("liquid", predicates.material(BlockState::liquid));
+        data.add("non_air", predicates.material(state -> !state.isAir()));
         data.addProperty("air", material(Blocks.CAVE_AIR.defaultBlockState()));
+        data.addProperty("air_tick", ticks.block(BuiltInRegistries.BLOCK.getKey(Blocks.CAVE_AIR).toString()));
+        data.addProperty("mark_above", true);
         surfaceFreeze = true;
         data.addProperty("freeze_water", true);
         // The 1.20.1 blob begins at the placement origin in X and Z.

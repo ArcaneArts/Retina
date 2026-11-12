@@ -161,9 +161,14 @@ final class CatalogExport {
                     removed.set(i);
                     omissions.add(StringTag.valueOf("bukkit-api:scheduled-spring-root:" + recipe.getString("source")));
                 }
+                if (recipe.getString("kind").equals("flat_lake") && recipe.contains("air_tick")) {
+                    recipe.remove("air_tick");
+                    recipe.remove("mark_above");
+                    omissions.add(StringTag.valueOf("bukkit-api:lake-update-queues:" + recipe.getString("source")));
+                }
             }
+            if (!omissions.isEmpty()) profile.put("decoration_omissions", omissions);
             if (removed.isEmpty()) continue;
-            profile.put("decoration_omissions", omissions);
             for (var row : profile.getList("biomes", Tag.TAG_COMPOUND)) {
                 var biome = ((CompoundTag) row).getCompound("v");
                 Tag selected = biome.get("decorations");

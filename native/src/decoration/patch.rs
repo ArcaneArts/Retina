@@ -103,6 +103,10 @@ pub enum Feature {
     Submerged { submerged: submerged::Recipe },
     SurfaceFormation { formation: formation::Recipe },
     Dripstone { dripstone: dripstone::Recipe },
+    FlatLake {
+        #[serde(flatten)]
+        lake: super::flat_features::Lake,
+    },
     Disk {
         #[serde(flatten)]
         disk: Disk,
@@ -165,6 +169,7 @@ impl Placed {
                 Feature::Submerged { submerged } => submerged.validate(palette),
                 Feature::SurfaceFormation { formation } => formation.validate(palette),
                 Feature::Dripstone { dripstone } => dripstone.validate(palette),
+                Feature::FlatLake { lake } => lake.validate(palette),
                 Feature::Disk { disk } => disk.validate(palette),
                 Feature::Sequence { features } | Feature::Overlay { features } => {
                     !features.is_empty() && features.iter().all(|v| v.validate(palette))
@@ -334,6 +339,13 @@ impl World<'_> {
             Feature::Submerged { submerged } => submerged.place(self, at, rng),
             Feature::SurfaceFormation { formation } => formation.place(self, at, rng),
             Feature::Dripstone { dripstone } => dripstone.place(self, at, rng),
+            Feature::FlatLake { lake } => {
+                let start = self.blocks.len();
+                let placed = super::flat_features::lake(lake, at, rng, self.field, self.profile,
+                    self.request, self.overlay, self.blocks, self.noise);
+                self.overlay.commit(self.blocks, start, self.field, self.profile, self.request);
+                placed
+            }
             Feature::Disk { disk } => self.disk(disk, at, rng),
             Feature::Sequence { features } => self.composite(features, true, at, rng),
             Feature::Overlay { features } => self.composite(features, false, at, rng),

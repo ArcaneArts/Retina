@@ -21,6 +21,9 @@ impl Updates {
     }
     pub fn placements(&mut self, profile: &WorldProfile, placements: &[Placement]) {
         for p in placements {
+            if p.role == super::POST_PROCESS {
+                continue;
+            }
             self.record(profile, p.index as usize, p.material);
             if p.role == super::PLANT && p.upper != 0 {
                 self.record(profile, p.index as usize + COLUMNS, p.upper);

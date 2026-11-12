@@ -1,4 +1,4 @@
-//! Registered flat-world lakes and the void preset's starting platform.
+//! Registered lakes and the void preset's starting platform.
 use super::*;
 use blocks::Provider;
 use placement::{Overlay, Predicate};
@@ -17,6 +17,11 @@ pub struct Lake {
     horizontal_offset: i32,
     #[serde(default)]
     pub(crate) freeze_water: bool,
+    non_air: Option<Predicate>,
+    #[serde(default)]
+    air_tick: u16,
+    #[serde(default)]
+    mark_above: bool,
 }
 
 fn centered_offset() -> i32 {
@@ -29,6 +34,8 @@ impl Lake {
             && self.barrier.validate(palette)
             && (self.air as usize) < palette
             && (-8..=0).contains(&self.horizontal_offset)
+            && (!self.mark_above || self.non_air.is_some())
+            && self.non_air.as_ref().is_none_or(|p| p.validate(palette))
             && [
                 &self.can_place_feature,
                 &self.can_replace_with_air_or_fluid,
@@ -67,11 +74,15 @@ pub(super) fn lake(
     overlay: &Overlay,
     output: &mut Vec<WorldBlock>,
     noise: &provider_noise::Context,
-) {
+) -> bool {
     if at[1] <= request.min_y + 4 || at[1] + 3 >= request.min_y + request.height as i32 {
-        return;
+        return false;
     }
-    let origin = [at[0] + recipe.horizontal_offset, at[1] - 4, at[2] + recipe.horizontal_offset];
+    let origin = [
+        at[0] + recipe.horizontal_offset,
+        at[1] - 4,
+        at[2] + recipe.horizontal_offset,
+    ];
     let mut grid = [false; 2048];
     let spots = rng.below(4) + 4;
     for _ in 0..spots {
@@ -108,7 +119,7 @@ pub(super) fn lake(
                     origin[2] + z as i32,
                 ];
                 let Some(material) = read(pos) else {
-                    return;
+                    return false;
                 };
                 if (y >= 4 && recipe.liquid.test_with(pos, &read) != Some(false))
                     || (y < 4
@@ -116,7 +127,7 @@ pub(super) fn lake(
                         && material != fluid)
                     || recipe.can_place_feature.test_with(pos, &read) != Some(true)
                 {
-                    return;
+                    return false;
                 }
             }
         }
@@ -138,7 +149,7 @@ pub(super) fn lake(
                     placed.insert(pos, material);
                     output.push(WorldBlock {
                         root_order: 0,
-                        tick: 0,
+                        tick: if y >= 4 { recipe.air_tick } else { 0 },
                         x: pos[0],
                         y: pos[1],
                         z: pos[2],
@@ -146,48 +157,113 @@ pub(super) fn lake(
                         upper: 0,
                         role: FEATURE,
                     });
+                    if y >= 4 && recipe.mark_above {
+                        mark_above(
+                            pos,
+                            request,
+                            recipe.non_air.as_ref().unwrap(),
+                            &|p| placed.get(&p).copied().or_else(|| read(p)),
+                            output,
+                        );
+                    }
                 }
             }
         }
     }
-    let barrier = recipe.barrier.sample(rng, origin, &|p| placed.get(&p).copied().or_else(|| read(p)), noise);
+    let barrier = recipe.barrier.sample(
+        rng,
+        origin,
+        &|p| placed.get(&p).copied().or_else(|| read(p)),
+        noise,
+    );
     let barrier_start = output.len();
-    if barrier != 0 {
-        let live = |p| placed.get(&p).copied().or_else(|| read(p));
+    let has_barrier = recipe.non_air.as_ref().map_or(barrier != 0, |predicate| {
+        predicate.test_with(origin, &|_| Some(barrier)) == Some(true)
+    });
+    if has_barrier {
         for x in 0..16 {
             for z in 0..16 {
                 for y in 0..8 {
                     if !boundary(&grid, x, y, z) || (y >= 4 && rng.below(2) == 0) {
                         continue;
                     }
-                    let pos = [origin[0] + x as i32, origin[1] + y as i32, origin[2] + z as i32];
+                    let pos = [
+                        origin[0] + x as i32,
+                        origin[1] + y as i32,
+                        origin[2] + z as i32,
+                    ];
+                    let live = |p| placed.get(&p).copied().or_else(|| read(p));
                     if recipe.solid.test_with(pos, &live) == Some(true)
                         && recipe.can_replace_with_barrier.test_with(pos, &live) == Some(true)
                     {
                         blocks::write(output, pos, barrier);
+                        if recipe.mark_above {
+                            placed.insert(pos, barrier);
+                            mark_above(
+                                pos,
+                                request,
+                                recipe.non_air.as_ref().unwrap(),
+                                &|p| placed.get(&p).copied().or_else(|| read(p)),
+                                output,
+                            );
+                        }
                     }
                 }
             }
         }
     }
-    if let Some(climate) = profile.terrain_features.surface_freeze.as_ref()
+    if let Some(climate) = profile
+        .terrain_features
+        .surface_freeze
+        .as_ref()
         .filter(|climate| recipe.freeze_water && climate.water_fluid(fluid))
     {
         let y = origin[1] + 4;
-        for block in output[barrier_start..].iter().filter(|block| block.y == y) {
+        for block in output[barrier_start..]
+            .iter()
+            .filter(|block| block.y == y && block.role == FEATURE)
+        {
             placed.insert([block.x, block.y, block.z], block.material);
         }
         let live = |p| placed.get(&p).copied().or_else(|| read(p));
         for x in 0..16 {
             for z in 0..16 {
                 let pos = [origin[0] + x, y, origin[2] + z];
-                if let Some(ice) = live(pos).and_then(|state| climate.lake_ice(profile, field, pos, state))
+                if let Some(ice) =
+                    live(pos).and_then(|state| climate.lake_ice(profile, field, pos, state))
                     && recipe.can_replace_with_air_or_fluid.test_with(pos, &live) == Some(true)
                 {
                     blocks::write(output, pos, ice);
                 }
             }
         }
+    }
+    true
+}
+
+fn mark_above(
+    [x, y, z]: [i32; 3],
+    request: ChunkRequest,
+    non_air: &Predicate,
+    read: &impl Fn([i32; 3]) -> Option<u16>,
+    output: &mut Vec<WorldBlock>,
+) {
+    for y in y + 1..=y + 2 {
+        if y >= request.min_y + request.height as i32
+            || non_air.test_with([x, y, z], read) != Some(true)
+        {
+            break;
+        }
+        output.push(WorldBlock {
+            root_order: 0,
+            x,
+            y,
+            z,
+            material: 0,
+            upper: 0,
+            role: POST_PROCESS,
+            tick: 0,
+        });
     }
 }
 
