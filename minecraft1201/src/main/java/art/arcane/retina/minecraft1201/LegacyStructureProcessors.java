@@ -73,9 +73,12 @@ final class LegacyStructureProcessors {
     }
 
     static void finish(JsonObject profile, LinkedHashMap<BlockState, Integer> materials) {
-        if (profile == null) return;
+        if (profile != null) finishPrograms(profile.getAsJsonObject("pools"), materials);
+    }
+
+    static void finishPrograms(JsonElement source, LinkedHashMap<BlockState, Integer> materials) {
         var tables = new HashMap<String, JsonElement>();
-        walk(profile.getAsJsonObject("pools"), row -> {
+        walk(source, row -> {
             if (row.has("predicate_type") && row.get("predicate_type").getAsString().equals("minecraft:tag_match")) {
                 bindTag(row, "tag", "retina_matching", materials);
             }

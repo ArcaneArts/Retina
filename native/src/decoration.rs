@@ -101,6 +101,8 @@ pub enum Kind {
     Submerged { submerged: patch::submerged::Recipe },
     #[serde(rename = "surface_formation")]
     SurfaceFormation { formation: patch::formation::Recipe },
+    #[serde(rename = "fossil")]
+    Fossil { fossil: patch::fossil::Recipe },
     #[serde(rename = "geode")]
     Geode { geode: patch::geode::Recipe },
     #[serde(rename = "monster_room")]
@@ -230,6 +232,8 @@ impl Recipe {
             Kind::SurfaceFormation { formation } => self.placement.is_some() && formation.validate(material_count),
             Kind::Dripstone { dripstone } => self.placement.is_some() && dripstone.validate(material_count),
             Kind::MonsterRoom { room } => self.placement.is_some() && room.validate(material_count),
+            Kind::Fossil { fossil } => self.placement.is_some() && fossil.validate(material_count)
+                && self.reach.is_some_and(|reach| reach >= fossil.reach()),
             Kind::Geode { geode } => self.placement.is_some() && geode.validate(material_count)
                 && self.reach.is_some_and(|reach| reach >= geode.reach()),
             Kind::FlatLake { lake } => self.placement.is_some() && lake.validate(material_count),
@@ -1578,7 +1582,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
         let mut rng = Rng::new(candidate.seed);
         let feature_start = diagnostics::start(MEASURE);
         match &recipe.feature {
-            Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+            Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Fossil { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
                 patch::place_registered(
                     &recipe.feature,
                     position,
@@ -1697,7 +1701,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
             }
         }
         let commit_start = diagnostics::start(MEASURE);
-        let live_overlay = matches!(&recipe.feature, Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. }) || matches!(&recipe.feature,
+        let live_overlay = matches!(&recipe.feature, Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Fossil { .. }) || matches!(&recipe.feature,
             Kind::NetherFeature { nether } if nether.commits_overlay());
         if profile.ordered_decorations && !live_overlay {
             // Preserve the same within-feature replay as the live overlay,
@@ -1772,6 +1776,7 @@ pub(crate) fn feature_sample(
             | Kind::Dripstone { .. }
             | Kind::MonsterRoom { .. }
             | Kind::Geode { .. }
+            | Kind::Fossil { .. }
             | Kind::VoidPlatform { .. }
             | Kind::EndPlatform { .. }
             | Kind::EndIsland { .. }
@@ -1799,7 +1804,7 @@ pub(crate) fn feature_sample(
     let mut overlay = placement::Overlay::default();
     let mut rng = Rng::new(seed);
     match &recipe.feature {
-        Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+        Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Fossil { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
             patch::place_registered(
                 &recipe.feature,
                 at,

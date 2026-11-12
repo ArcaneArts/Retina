@@ -170,7 +170,7 @@ final class LegacyTerrainProfile {
                 ? LegacyNetherFeatures.export(registries, sourceOrder,
                         biomeProfile.biomes(), biomeEntries, palette, context, storage, world)
                 : null;
-        var overworld = type.hasCeiling() ? null : new LegacyOverworldFeatures(registries, context, storage, palette, type.hasSkyLight(), false);
+        var overworld = type.hasCeiling() ? null : new LegacyOverworldFeatures(registries, context, storage, palette, type.hasSkyLight(), false, templates);
         if (overworld != null) {
             overworld.export(registries, sourceOrder, biomeProfile.biomes(), biomeEntries, world);
             overworld.reserveWaterlogging();

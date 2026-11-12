@@ -77,6 +77,8 @@ public final class RegistryExport {
         if (verifyMonsterRooms) MonsterRoomVerification.pack(packFolder);
         boolean verifyGeodes = Arrays.asList(args).contains("--verify-geodes");
         if (verifyGeodes) GeodeVerification.pack(packFolder);
+        boolean verifyFossils = Arrays.asList(args).contains("--verify-overworld-fossils");
+        if (verifyFossils) OverworldFossilVerification.pack(packFolder);
         try (var loaded = load(packFolder, preset)) {
             export(world, seed, started, noise, preset, loaded, structures, verify);
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
@@ -94,6 +96,7 @@ public final class RegistryExport {
             if (verifyDesertWells) DesertWellVerification.verify(world);
             if (verifyMonsterRooms) MonsterRoomVerification.verify(world);
             if (verifyGeodes) GeodeVerification.verify(world);
+            if (verifyFossils) OverworldFossilVerification.verify(world);
         }
     }
 
