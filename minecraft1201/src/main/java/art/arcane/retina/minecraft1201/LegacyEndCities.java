@@ -1,23 +1,15 @@
 package art.arcane.retina.minecraft1201;
 
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.serialization.JsonOps;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.biome.Biome;
@@ -32,9 +24,6 @@ import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.StairsShape;
-import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
-import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 import net.minecraft.world.level.levelgen.structure.structures.EndCityStructure;
 
 import java.util.ArrayList;
@@ -45,6 +34,7 @@ import java.util.function.Function;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
+import static art.arcane.retina.minecraft1201.LegacyTemplateNbt.tag;
 
 /** Translates loaded 1.20.1 city templates to the shared End city program. */
 final class LegacyEndCities {
@@ -53,118 +43,31 @@ final class LegacyEndCities {
             "second_floor_1", "second_floor_2", "second_roof", "ship", "third_floor_1", "third_floor_2",
             "third_roof", "tower_base", "tower_piece", "tower_top");
 
-    private final RegistryAccess registry;
-    private final RegistryOps<JsonElement> ops;
-    private final List<Holder<Biome>> biomes;
     private final LinkedHashMap<BlockState, Integer> materials;
-    private final JsonArray templates = new JsonArray();
-    private final JsonArray definitions = new JsonArray();
-    private final JsonArray sets = new JsonArray();
-    private final JsonArray omissions = new JsonArray();
+    private final JsonArray templates;
+    private final JsonArray omissions;
 
-    private LegacyEndCities(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials) {
-        this.registry = registry;
-        this.ops = RegistryOps.create(JsonOps.INSTANCE, registry);
-        this.biomes = biomes;
+    private LegacyEndCities(LinkedHashMap<BlockState, Integer> materials, JsonObject structures) {
         this.materials = materials;
+        templates = structures.getAsJsonArray("templates");
+        omissions = structures.getAsJsonArray("omissions");
     }
 
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials,
                              Function<ResourceLocation, Optional<CompoundTag>> templateSource) {
-        var exporter = new LegacyEndCities(registry, biomes, materials);
-        var result = new JsonObject();
-        result.add("templates", exporter.templates);
-        result.add("definitions", exporter.definitions);
-        result.add("sets", exporter.sets);
-        result.add("pools", new JsonObject());
-        result.add("omissions", exporter.omissions);
-        exporter.placements();
-        if (exporter.sets.isEmpty()) return result;
+        var result = LegacyStructureSets.export(registry, biomes, EndCityStructure.class, "end_city", config -> { });
+        if (result.getAsJsonArray("sets").isEmpty()) return result;
+        var exporter = new LegacyEndCities(materials, result);
 
         var sources = new ArrayList<CompoundTag>();
         for (String name : TEMPLATES) {
             var id = new ResourceLocation("end_city/" + name);
             var template = templateSource.apply(id);
-            if (template.isEmpty()) {
-                exporter.omissions.add("missing_template:" + id);
-                result.add("sets", new JsonArray());
-                result.add("definitions", new JsonArray());
-                return result;
-            }
+            if (template.isEmpty()) return LegacyStructureSets.missingTemplate(result, id.toString());
             sources.add(template.get());
         }
         result.add("end_cities", exporter.resident(sources));
         return result;
-    }
-
-    private void placements() {
-        var source = registry.registryOrThrow(Registries.STRUCTURE);
-        var executable = new LinkedHashMap<Structure, JsonObject>();
-        var perStep = new int[net.minecraft.world.level.levelgen.GenerationStep.Decoration.values().length];
-        for (var structure : source.stream().toList()) {
-            int step = structure.step().ordinal();
-            int index = perStep[step]++;
-            var allowed = new JsonArray();
-            for (int biome = 0; biome < biomes.size(); biome++) {
-                if (structure.biomes().contains(biomes.get(biome))) allowed.add(biome);
-            }
-            if (allowed.isEmpty()) continue;
-            String id = source.getKey(structure).toString();
-            if (structure.getClass() != EndCityStructure.class) {
-                omissions.add("structure:" + id);
-                continue;
-            }
-            var definition = new JsonObject();
-            var config = decode(Structure.DIRECT_CODEC.encodeStart(ops, structure)).getAsJsonObject();
-            config.addProperty("retina_decoration_index", index);
-            config.addProperty("retina_decoration_step", step);
-            definition.addProperty("id", id);
-            definition.addProperty("kind", "end_city");
-            definition.add("config", config);
-            definition.add("biomes", allowed);
-            executable.put(structure, definition);
-        }
-        var indexes = new LinkedHashMap<Structure, Integer>();
-        var sourceSets = registry.registryOrThrow(Registries.STRUCTURE_SET);
-        for (var entry : sourceSets.entrySet()) {
-            var set = entry.getValue();
-            if (set.structures().stream().noneMatch(member -> executable.containsKey(member.structure().value()))) continue;
-            String id = entry.getKey().location().toString();
-            if (set.placement().getClass() != RandomSpreadStructurePlacement.class) {
-                omissions.add("placement:" + id + ":non-random-spread");
-                continue;
-            }
-            var placement = decode(StructurePlacement.CODEC.encodeStart(ops, set.placement())).getAsJsonObject();
-            if (placement.has("exclusion_zone")) {
-                omissions.add("placement:" + id + ":exclusion-zone");
-                continue;
-            }
-            var members = new JsonArray();
-            for (var member : set.structures()) {
-                int definition = indexes.computeIfAbsent(member.structure().value(), ignored -> {
-                    var row = executable.get(member.structure().value());
-                    if (row == null) {
-                        row = new JsonObject();
-                        row.addProperty("id", member.structure().unwrapKey().orElseThrow().location().toString());
-                        row.addProperty("kind", "unavailable");
-                        row.addProperty("unimplemented", true);
-                        row.add("biomes", new JsonArray());
-                        row.add("config", new JsonObject());
-                    }
-                    definitions.add(row);
-                    return definitions.size() - 1;
-                });
-                var encoded = new JsonObject();
-                encoded.addProperty("definition", definition);
-                encoded.addProperty("weight", member.weight());
-                members.add(encoded);
-            }
-            var row = new JsonObject();
-            row.addProperty("id", id);
-            row.add("placement", placement);
-            row.add("entries", members);
-            sets.add(row);
-        }
     }
 
     private JsonObject resident(List<CompoundTag> sources) {
@@ -314,35 +217,4 @@ final class LegacyEndCities {
         return result;
     }
 
-    private static JsonArray tag(Tag value) {
-        var result = new JsonArray();
-        result.add(value.getId());
-        if (value instanceof CompoundTag compound) {
-            var fields = new JsonObject();
-            for (String key : compound.getAllKeys()) fields.add(key, tag(compound.get(key)));
-            result.add(fields);
-        } else if (value instanceof ListTag list) {
-            var values = new JsonArray();
-            list.forEach(child -> values.add(tag(child)));
-            var data = new JsonArray();
-            data.add(list.getElementType());
-            data.add(values);
-            result.add(data);
-        } else if (value instanceof ByteArrayTag bytes) {
-            var values = new JsonArray();
-            for (byte n : bytes.getAsByteArray()) values.add(n);
-            result.add(values);
-        } else if (value instanceof IntArrayTag integers) {
-            result.add(array(integers.getAsIntArray()));
-        } else if (value instanceof LongArrayTag longs) {
-            var values = new JsonArray();
-            for (long n : longs.getAsLongArray()) values.add(n);
-            result.add(values);
-        } else if (value instanceof NumericTag number) {
-            result.add(number.getAsNumber());
-        } else {
-            result.add(value.getAsString());
-        }
-        return result;
-    }
 }

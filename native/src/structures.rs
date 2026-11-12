@@ -1601,6 +1601,20 @@ impl Start {
         })
     }
 }
+fn saved_template_piece(id: &str, template: &str, bounds: [i32; 6], pos: [i32; 3], rotation: usize, depth: i32) -> Value {
+    let mut tag = nbt::compound();
+    nbt::put(&mut tag, "id", nbt::string(id));
+    nbt::put(&mut tag, "BB", json!([11, bounds]));
+    nbt::put(&mut tag, "GD", nbt::int(depth));
+    nbt::put(&mut tag, "O", nbt::int(2));
+    nbt::put(&mut tag, "Rot", nbt::string(["NONE", "CLOCKWISE_90", "CLOCKWISE_180", "COUNTERCLOCKWISE_90"][rotation]));
+    for (key, n) in ["TPX", "TPY", "TPZ"].into_iter().zip(pos) {
+        nbt::put(&mut tag, key, nbt::int(n));
+    }
+    nbt::put(&mut tag, "Template", nbt::string(template));
+    tag
+}
+
 pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<Start>]) -> Value {
     let p = &profile.structures;
     let chunk_bounds = [
@@ -1643,6 +1657,10 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
                 .map(|piece| {
                     if definition.kind=="end_city" {
                         return cities::integration::saved_piece(piece,p);
+                    }
+                    if definition.kind == "nether_fossil" && p.fossils.as_ref().is_some_and(|kit| kit.vanilla_piece_nbt) {
+                        let template = &p.templates[piece.element.parts[0].template].id;
+                        return saved_template_piece("minecraft:nefos", template, piece.bounds, piece.pos, piece.rotation, piece.depth as i32);
                     }
                     let mut tag = nbt::compound();
                     nbt::put(&mut tag, "id", nbt::string("retina:template"));

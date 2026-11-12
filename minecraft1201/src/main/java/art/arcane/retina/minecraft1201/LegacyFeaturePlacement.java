@@ -169,7 +169,7 @@ final class LegacyFeaturePlacement {
         return data;
     }
 
-    private static void bindHeight(JsonElement value, WorldGenerationContext context) {
+    static void bindHeight(JsonElement value, WorldGenerationContext context) {
         if (value instanceof JsonArray array) {
             array.forEach(item -> bindHeight(item, context));
         } else if (value instanceof JsonObject object) {

@@ -85,6 +85,7 @@ public final class RegistryExport {
         if (verify) {
             if (structures) {
                 EndCityVerification.verify(world, loaded, seed);
+                NetherFossilVerification.verify(world, loaded, seed);
             } else if (noise) {
                 boolean vanilla = seed == 12345 && preset.equals(WorldPresets.NORMAL) && loaded.packs().equals(List.of("vanilla"));
                 NoiseExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed, vanilla);

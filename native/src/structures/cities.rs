@@ -6,7 +6,6 @@ pub(super) mod integration;
 pub(super) mod placement;
 pub use resident::{Resident, TemplateRef};
 use super::{add, intersects, rotate, Random};
-use crate::nbt;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -97,28 +96,10 @@ pub struct Piece {
 impl Piece {
     /// Actual EndCityPiece/TemplateStructurePiece fields, retaining signed GD.
     pub fn saved_tag(&self) -> Value {
-        let mut tag = nbt::compound();
-        nbt::put(&mut tag, "id", nbt::string("minecraft:ecp"));
-        nbt::put(&mut tag, "BB", json!([11, self.bounds]));
-        nbt::put(&mut tag, "GD", nbt::int(self.depth));
-        nbt::put(&mut tag, "O", nbt::int(2));
-        nbt::put(&mut tag, "OW", json!([1, u8::from(self.overwrite)]));
-        nbt::put(
-            &mut tag,
-            "Rot",
-            nbt::string(
-                [
-                    "NONE",
-                    "CLOCKWISE_90",
-                    "CLOCKWISE_180",
-                    "COUNTERCLOCKWISE_90",
-                ][self.rotation],
-            ),
+        let mut tag = super::saved_template_piece(
+            "minecraft:ecp", &self.template, self.bounds, self.pos, self.rotation, self.depth,
         );
-        for (key, n) in ["TPX", "TPY", "TPZ"].into_iter().zip(self.pos) {
-            nbt::put(&mut tag, key, nbt::int(n));
-        }
-        nbt::put(&mut tag, "Template", nbt::string(&self.template));
+        crate::nbt::put(&mut tag, "OW", json!([1, u8::from(self.overwrite)]));
         tag
     }
 }

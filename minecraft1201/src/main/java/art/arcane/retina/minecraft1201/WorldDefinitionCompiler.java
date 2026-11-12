@@ -56,7 +56,7 @@ public final class WorldDefinitionCompiler {
                 try {
                     profile = LegacyEndProfile.selected(stem, noise)
                             ? LegacyEndProfile.compile(registries, stem, noise, options.generateStructures(), templates)
-                            : LegacyTerrainProfile.compile(registries, stem, noise, options.seed());
+                            : LegacyTerrainProfile.compile(registries, stem, noise, options.seed(), options.generateStructures(), templates);
                 } catch (IllegalArgumentException unsupported) {
                     assembly.unsupported(id, parameters, unsupported.getMessage());
                     continue;
