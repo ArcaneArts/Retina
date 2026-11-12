@@ -101,6 +101,8 @@ pub enum Kind {
     Submerged { submerged: patch::submerged::Recipe },
     #[serde(rename = "surface_formation")]
     SurfaceFormation { formation: patch::formation::Recipe },
+    #[serde(rename = "root_system")]
+    RootSystem { roots: patch::root_system::Recipe },
     #[serde(rename = "fossil")]
     Fossil { fossil: patch::fossil::Recipe },
     #[serde(rename = "geode")]
@@ -232,6 +234,7 @@ impl Recipe {
             Kind::SurfaceFormation { formation } => self.placement.is_some() && formation.validate(material_count),
             Kind::Dripstone { dripstone } => self.placement.is_some() && dripstone.validate(material_count),
             Kind::MonsterRoom { room } => self.placement.is_some() && room.validate(material_count),
+            Kind::RootSystem { roots } => self.placement.is_some() && roots.validate(material_count),
             Kind::Fossil { fossil } => self.placement.is_some() && fossil.validate(material_count)
                 && self.reach.is_some_and(|reach| reach >= fossil.reach()),
             Kind::Geode { geode } => self.placement.is_some() && geode.validate(material_count)
@@ -1340,6 +1343,7 @@ fn expand_anchor(
                     &mut blocks,
                     mask,
                     None,
+                    None,
                     timing.as_deref_mut(),
                     scratch,
                 ),
@@ -1582,7 +1586,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
         let mut rng = Rng::new(candidate.seed);
         let feature_start = diagnostics::start(MEASURE);
         match &recipe.feature {
-            Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Fossil { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+            Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Fossil { .. } | Kind::RootSystem { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
                 patch::place_registered(
                     &recipe.feature,
                     position,
@@ -1607,6 +1611,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
                 &mut blocks,
                 mask,
                 Some((y, &overlay)),
+                None,
                 timing.as_deref_mut(),
                 scratch,
             ),
@@ -1701,7 +1706,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
             }
         }
         let commit_start = diagnostics::start(MEASURE);
-        let live_overlay = matches!(&recipe.feature, Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Fossil { .. }) || matches!(&recipe.feature,
+        let live_overlay = matches!(&recipe.feature, Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Fossil { .. } | Kind::RootSystem { .. }) || matches!(&recipe.feature,
             Kind::NetherFeature { nether } if nether.commits_overlay());
         if profile.ordered_decorations && !live_overlay {
             // Preserve the same within-feature replay as the live overlay,
@@ -1777,6 +1782,7 @@ pub(crate) fn feature_sample(
             | Kind::MonsterRoom { .. }
             | Kind::Geode { .. }
             | Kind::Fossil { .. }
+            | Kind::RootSystem { .. }
             | Kind::VoidPlatform { .. }
             | Kind::EndPlatform { .. }
             | Kind::EndIsland { .. }
@@ -1804,7 +1810,7 @@ pub(crate) fn feature_sample(
     let mut overlay = placement::Overlay::default();
     let mut rng = Rng::new(seed);
     match &recipe.feature {
-        Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Fossil { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+        Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Fossil { .. } | Kind::RootSystem { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
             patch::place_registered(
                 &recipe.feature,
                 at,
@@ -1882,6 +1888,7 @@ fn tree(
     blocks: &mut Vec<WorldBlock>,
     mask: Option<&crate::geology::CaveMask>,
     placed: Option<(i32, &placement::Overlay)>,
+    site: Option<&patch::root_system::Tree>,
     timing: Option<&mut diagnostics::Worker>,
     scratch: &mut TreeScratch,
 ) {
@@ -1924,20 +1931,25 @@ fn tree(
     let rooted_soil = roots.zip(placed).is_some_and(|(roots, (_, overlay))| {
         roots.muddy_in.test([x, ground_y - 1, z], field, profile, request, overlay) == Some(true)
     });
-    if profile.material_flags[ground_material as usize] & 1 == 0 && !snowy_soil && !rooted_soil {
+    let live = site.zip(placed).map(|(site, (_, overlay))| (site, overlay));
+    if live.is_none() && profile.material_flags[ground_material as usize] & 1 == 0 && !snowy_soil && !rooted_soil {
         return;
     }
-    let h = (height[0] + rng.below(height[1] + 1) + rng.below(height[2] + 1)).max(1);
+    let mut h = (height[0] + rng.below(height[1] + 1) + rng.below(height[2] + 1)).max(1);
+    if let Some((site, overlay)) = live {
+        let Some(clearance) = site.height([x, ground_y, z], h, field, profile, request, overlay) else { return; };
+        h = clearance;
+    }
     let base_y = ground_y
         + match roots {
             Some(roots) => roots.trunk_offset.sample(rng),
             None => rng.range(*root_offset),
         };
-    if base_y + h + 4 >= request.min_y + request.height as i32 {
+    if live.is_none() && base_y + h + 4 >= request.min_y + request.height as i32 {
         return;
     }
     let log = weighted(logs.iter(), |s| s.weight, rng).unwrap();
-    let leaf = weighted(leaves.iter(), |s| s.weight, rng).unwrap();
+    let leaf = live.is_none().then(|| weighted(leaves.iter(), |s| s.weight, rng).unwrap());
     let width = if trunk_shape.contains("giant")
         || trunk_shape.contains("mega_jungle")
         || trunk_shape.contains("dark_oak")
@@ -1952,7 +1964,7 @@ fn tree(
         return;
     }
     let trunk = geometry.and_then(|shape| shape.trunk.as_ref());
-    let (wood, crowns) = match trunk {
+    let (mut wood, crowns) = match trunk {
         Some(trunk) => trunk.place(x, base_y, z, h, rng),
         None => crate::tree_shapes::trunk(trunk_shape, x, base_y, z, h, width, rng),
     };
@@ -1963,7 +1975,19 @@ fn tree(
         _ => None,
     };
     // Validate the entire trunk against GPU terrain, including neighboring columns.
-    if wood.iter().any(|&(wx, wy, wz, _)| {
+    if let Some((site, overlay)) = live {
+        wood.retain(|&(wx, wy, wz, _)| {
+            let at = [wx, wy, wz];
+            (request.min_y..request.min_y + request.height as i32).contains(&wy)
+                && (site.grow.test(at, field, profile, request, overlay) == Some(true)
+                    || growth.is_some_and(|(predicate, overlay)| {
+                        predicate.test(at, field, profile, request, overlay) == Some(true)
+                    }))
+        });
+        if wood.is_empty() {
+            return;
+        }
+    } else if wood.iter().any(|&(wx, wy, wz, _)| {
         if geometry.is_some() && !(request.min_y..request.min_y + request.height as i32).contains(&wy) {
             return true;
         }
@@ -2008,6 +2032,10 @@ fn tree(
     if *soil != 0 {
         for wz in 0..width {
             for wx in 0..width {
+                if live.is_some_and(|(site, overlay)| !site.force_dirt
+                    && site.dirt.test([x + wx, ground_y - 1, z + wz], field, profile, request, overlay) == Some(true)) {
+                    continue;
+                }
                 blocks.push(WorldBlock {
                     root_order: 0,
                     tick: 0,
@@ -2053,10 +2081,18 @@ fn tree(
         decorator_positions,
     } = scratch;
     leaf_positions.clear();
+    let leaf_space = |pos: (i32, i32, i32)| {
+        if let Some((site, overlay)) = live {
+            (request.min_y..request.min_y + request.height as i32).contains(&pos.1)
+                && site.grow.test([pos.0, pos.1, pos.2], field, profile, request, overlay) == Some(true)
+        } else {
+            field.column(pos.0, pos.2).is_some_and(|c| pos.1 >= c.surface_height(Some(profile)))
+        }
+    };
     if let Some(foliage) = geometry.and_then(|shape| shape.foliage.as_ref()) {
         foliage.visit(&crowns, rng, |pos| {
             if (request.min_y..request.min_y + request.height as i32).contains(&pos.1)
-                && field.column(pos.0, pos.2).is_some_and(|c| pos.1 >= c.surface_height(Some(profile)))
+                && leaf_space(pos)
             {
                 leaf_positions.push(pos);
             }
@@ -2079,11 +2115,7 @@ fn tree(
                 leaf_positions.extend(
                     crate::tree_shapes::dark_oak_foliage(crown, r, o, rng)
                         .into_iter()
-                        .filter(|p| {
-                            field
-                                .column(p.0, p.2)
-                                .is_some_and(|c| p.1 >= c.surface_height(Some(profile)))
-                        }),
+                        .filter(|&p| leaf_space(p)),
                 );
                 continue;
             }
@@ -2134,10 +2166,7 @@ fn tree(
                             continue;
                         }
                         let pos = (cx + lx, cy + o - dy, cz + lz);
-                        if field
-                            .column(pos.0, pos.2)
-                            .is_some_and(|c| pos.1 >= c.surface_height(Some(profile)))
-                        {
+                        if leaf_space(pos) {
                             leaf_positions.push(pos);
                         }
                     }
@@ -2177,7 +2206,8 @@ fn tree(
                     x: next.0,
                     y: next.1,
                     z: next.2,
-                    material: leaf.distances[d as usize - 1],
+                    material: leaf.unwrap_or_else(|| weighted(leaves.iter(), |s| s.weight, rng).unwrap())
+                        .distances[d as usize - 1],
                     upper: 0,
                     role: LEAF,
                 });

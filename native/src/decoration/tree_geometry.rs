@@ -15,6 +15,10 @@ pub struct Geometry {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub(super) enum Trunk {
+    Bending {
+        length: IntProvider,
+        leaves_from: i32,
+    },
     Cherry {
         branch_count: IntProvider,
         length: IntProvider,
@@ -71,6 +75,7 @@ struct AboveRoot {
 impl Geometry {
     pub fn validate(&self, palette: usize) -> bool {
         self.trunk.as_ref().is_none_or(|trunk| match trunk {
+            Trunk::Bending { length, leaves_from } => in_range(length, 1, 64) && *leaves_from > 0,
             Trunk::Cherry {
                 branch_count,
                 length,
@@ -153,6 +158,26 @@ impl Trunk {
         let mut wood = Vec::new();
         let mut crowns = Vec::new();
         match self {
+            Self::Bending { length, leaves_from } => {
+                let (dx, dz) = [(0, -1), (1, 0), (0, 1), (-1, 0)][rng.below(4) as usize];
+                let (mut x, mut z) = (x, z);
+                for dy in 0..height {
+                    if dy + 1 >= height - 1 + rng.below(2) {
+                        x += dx;
+                        z += dz;
+                    }
+                    wood.push((x, y + dy, z, 0));
+                    if dy >= *leaves_from {
+                        crowns.push(crown(x, y + dy, z));
+                    }
+                }
+                for _ in 0..=length.sample(rng) {
+                    wood.push((x, y + height, z, 0));
+                    crowns.push(crown(x, y + height, z));
+                    x += dx;
+                    z += dz;
+                }
+            }
             Self::Cherry {
                 branch_count,
                 length,

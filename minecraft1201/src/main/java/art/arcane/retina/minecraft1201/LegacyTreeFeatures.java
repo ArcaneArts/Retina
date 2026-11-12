@@ -61,6 +61,12 @@ final class LegacyTreeFeatures {
         var geometry = new JsonObject();
         if (trunkType.equals("cherry_trunk_placer")) geometry.add("trunk", cherryTrunk(trunk));
         else if (trunkType.equals("upwards_branching_trunk_placer")) geometry.add("trunk", upwardsTrunk(trunk));
+        else if (trunkType.equals("bending_trunk_placer")) {
+            var bend = kind("bending");
+            bend.add("length", integer(trunk.get("bend_length")));
+            bend.addProperty("leaves_from", trunk.has("min_height_for_leaves") ? trunk.get("min_height_for_leaves").getAsInt() : 1);
+            geometry.add("trunk", bend);
+        }
         else if (!TRUNKS.contains(trunkType)) throw new IllegalArgumentException("tree:" + trunkType);
 
         if (foliageType.equals("cherry_foliage_placer")) geometry.add("foliage", cherryFoliage(foliage));
@@ -113,6 +119,7 @@ final class LegacyTreeFeatures {
         int reach = switch (trunkType) {
             case "cherry_trunk_placer" -> maximum(trunk.get("branch_horizontal_length")) + 1 + crownReach;
             case "upwards_branching_trunk_placer" -> maximum(trunk.get("extra_branch_steps")) + crownReach;
+            case "bending_trunk_placer" -> maximum(trunk.get("bend_length")) + 2 + crownReach;
             case "fancy_trunk_placer" -> 7 + crownReach;
             case "mega_jungle_trunk_placer" -> 5 + crownReach;
             case "forking_trunk_placer", "dark_oak_trunk_placer" -> 3 + crownReach;
