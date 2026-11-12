@@ -1544,3 +1544,48 @@ ocean region `2,-2` in 3.85 seconds on Metal. The running server
 found the predicted horn coral block and east-facing waterlogged
 tube coral wall fan in chunk `64,-64`. Cold spawn preparation for
 that server took 166 seconds.
+
+### Forest rocks and ice formations
+
+The 1.20.1 exporter now writes the registered forest rock, ice
+spike, blue ice and both iceberg placements. Forest rocks use the
+configured block and the loaded dirt and Overworld stone tags.
+Blue ice seeds below the saved sea level when it finds water and
+packed ice, then grows through adjacent replaceable blocks. Ice
+spikes extend down from snow. Icebergs include round and elliptical
+shapes, submerged ice, snow caps and cutouts. The shapes use
+Retina's seeded decoration stream.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifySurfaceFormations \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Run again in a fresh directory with `-PretinaGpuBackend=cpu`. The
+fixture adds quartz blocks to the dirt tag and configures emerald
+forest rocks. The rock and blue-ice controls confirm that the
+features require their loaded ground and ice conditions. The seven
+fixtures cover cross-chunk growth, rooted spikes, and both iceberg
+materials above and below sea level. The 1.20.1 chunk reader opens
+and reopens every region. All 7,168 fixture chunk payloads matched
+between CPU and Metal.
+
+The stock Overworld exports 107 non-ore roots with 14 omissions.
+All 1,024 chunk payloads in the 26.3 regression region matched
+revision 548.
+
+In the stock seed-`12345` Overworld, frozen-ocean region `0,4`
+contained packed ice in 18 chunks and blue ice in three. Taiga
+region `-4,1` contained mossy cobblestone in 228 chunks. The old
+export had none of those blocks in the same regions. Ice-spikes
+region `1,-11` increased from 106 to 147 chunks with packed ice.
+All 15 bundled-catalog parity cases passed.
+
+Packaged Fabric and Forge on Java 17 found the expected block in
+all five positive fixture dimensions, then reopened the same
+`retina.dat` and preserved a player edit. Packaged Spigot created
+the bundled definition and generated the same blue ice and mossy
+cobblestone samples as headless generation of that file. The Spigot
+fixture skipped spawn preloading to isolate those requests. The
+first cold force-load reported 76.8 seconds of tick delay.
