@@ -30,6 +30,7 @@ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.configurations.BlockColumnConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.HugeMushroomFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.ProbabilityFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.RandomBooleanFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.RandomFeatureConfiguration;
@@ -37,6 +38,7 @@ import net.minecraft.world.level.levelgen.feature.configurations.RandomPatchConf
 import net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.SimpleRandomFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.SpringConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.TreeConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.VegetationPatchConfiguration;
 import net.minecraft.world.level.levelgen.feature.stateproviders.RuleBasedBlockStateProvider;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
@@ -55,6 +57,14 @@ import static art.arcane.retina.minecraft1201.LegacyNetherFeatures.nativeFeature
 final class LegacyOverworldFeatures {
     private record Recipe(JsonObject data, int reach) { }
     private record Nested(JsonObject data, int reach) { }
+    private record Root(String source, int step, int order) {
+        JsonObject branch(String path, JsonArray placement, Recipe recipe, int placementReach) {
+            var row = LegacyFeaturePlacement.recipe(path, step, order, placement, recipe.data(), placementReach + recipe.reach());
+            row.addProperty("root_source", source);
+            row.addProperty("placement_salt", LegacyFeaturePlacement.salt(source, step));
+            return row;
+        }
+    }
 
     private final RegistryOps<JsonElement> ops;
     private final WorldGenerationContext context;
@@ -63,6 +73,8 @@ final class LegacyOverworldFeatures {
     private final LegacyDecorationNoise noise = new LegacyDecorationNoise();
     private final LegacyBlockProviders providers;
     private final LegacyOverworldPlants plants;
+    private final LegacyTreeFeatures trees;
+    private final TreeSet<String> approximations = new TreeSet<>();
     private final LinkedHashMap<String, Integer> fluidTicks = new LinkedHashMap<>();
     private final List<JsonArray> poolWaterlogging = new ArrayList<>();
 
@@ -74,6 +86,7 @@ final class LegacyOverworldFeatures {
         this.providers = new LegacyBlockProviders(ops, predicates, this::material, noise);
         this.plants = new LegacyOverworldPlants(predicates, this::material, skylight);
         predicates.bindSurvival(plants::survival);
+        this.trees = new LegacyTreeFeatures(ops, predicates, providers, this::material, approximations);
     }
 
     void export(RegistryAccess registries, List<Holder<Biome>> sourceOrder, List<Holder<Biome>> biomes,
@@ -95,13 +108,21 @@ final class LegacyOverworldFeatures {
                 String source = features.getResourceKey(root).map(key -> key.location().toString())
                         .orElse("inline/overworld/" + step + "/" + index);
                 try {
-                    var placement = placement(root, false);
-                    var recipe = compile(configured, 0);
-                    var biomesForRoot = members.get(root);
-                    for (int biome = biomesForRoot.nextSetBit(0); biome >= 0; biome = biomesForRoot.nextSetBit(biome + 1)) {
-                        biomeEntries.get(biome).getAsJsonObject().getAsJsonArray("decorations").add(recipes.size());
+                    var placed = placement(root, false);
+                    var rows = new ArrayList<JsonObject>();
+                    if (isSelector(configured) && configured.getFeatures().anyMatch(feature -> isTree(feature.feature()))) {
+                        compileTreeBranches(configured, placed, source, new Root(source, step, rootOrder), 0, 0, rows);
+                    } else {
+                        var recipe = compile(configured, 0);
+                        rows.add(LegacyFeaturePlacement.recipe(source, step, rootOrder, placed, recipe.data(), recipe.reach()));
                     }
-                    recipes.add(LegacyFeaturePlacement.recipe(source, step, rootOrder, placement, recipe.data(), recipe.reach()));
+                    var biomesForRoot = members.get(root);
+                    for (var row : rows) {
+                        for (int biome = biomesForRoot.nextSetBit(0); biome >= 0; biome = biomesForRoot.nextSetBit(biome + 1)) {
+                            biomeEntries.get(biome).getAsJsonObject().getAsJsonArray("decorations").add(recipes.size());
+                        }
+                        recipes.add(row);
+                    }
                 } catch (IllegalArgumentException unsupported) {
                     omissions.add(source + ":" + unsupported.getMessage());
                 }
@@ -117,6 +138,7 @@ final class LegacyOverworldFeatures {
         world.addProperty("decoration_biome_3d", true);
         world.addProperty("decoration_patch_halo", true);
         noise.export(world);
+        approximations.forEach(world.getAsJsonObject("registry_program").getAsJsonArray("approximations")::add);
     }
 
     private static IdentityHashMap<PlacedFeature, BitSet> membership(List<Holder<Biome>> biomes, int step) {
@@ -157,6 +179,59 @@ final class LegacyOverworldFeatures {
         world.add("plant_halves", halves);
     }
 
+    // Top-level tree and mushroom operations write geometry into the region overlay.
+    // Sibling recipes replay the same placement seed and select disjoint intervals.
+    private void compileTreeBranches(ConfiguredFeature<?, ?> feature, JsonArray placement, String path, Root root,
+                                     int depth, int reach, List<JsonObject> rows) {
+        if (depth > 16) throw new IllegalArgumentException("feature:recursion");
+        if (feature.config() instanceof RandomFeatureConfiguration config) {
+            double lower = 0;
+            int index = 0;
+            for (var option : config.features) {
+                double upper = lower + (1 - lower) * option.chance;
+                compileChoice(option.feature.value(), placement, path + "/" + index++, root,
+                        depth, reach, lower, upper, rows);
+                lower = upper;
+            }
+            compileChoice(config.defaultFeature.value(), placement, path + "/default", root,
+                    depth, reach, lower, 1, rows);
+        } else if (feature.config() instanceof SimpleRandomFeatureConfiguration config) {
+            int count = config.features.size();
+            for (int index = 0; index < count; index++) {
+                compileChoice(config.features.get(index).value(), placement, path + "/" + index, root,
+                        depth, reach, (double) index / count, (double) (index + 1) / count, rows);
+            }
+        } else if (feature.config() instanceof RandomBooleanFeatureConfiguration config) {
+            compileChoice(config.featureTrue.value(), placement, path + "/true", root, depth, reach, 0, 0.5, rows);
+            compileChoice(config.featureFalse.value(), placement, path + "/false", root, depth, reach, 0.5, 1, rows);
+        } else {
+            rows.add(root.branch(path, placement, compile(feature, depth), reach));
+        }
+    }
+
+    private void compileChoice(PlacedFeature child, JsonArray parent, String path, Root root, int depth,
+                               int reach, double lower, double upper, List<JsonObject> rows) {
+        if (lower == upper) return;
+        var branch = parent.deepCopy();
+        var select = LegacyBlockProviders.operation("select");
+        select.addProperty("min", lower);
+        select.addProperty("max", upper);
+        branch.add(select);
+        var childPlacement = placement(child, true);
+        branch.addAll(childPlacement);
+        compileTreeBranches(child.feature().value(), branch, path, root, depth + 1,
+                reach + LegacyFeaturePlacement.nestedHorizontalReach(childPlacement), rows);
+    }
+
+    private static boolean isSelector(ConfiguredFeature<?, ?> feature) {
+        return feature.feature() == Feature.RANDOM_SELECTOR || feature.feature() == Feature.SIMPLE_RANDOM_SELECTOR
+                || feature.feature() == Feature.RANDOM_BOOLEAN_SELECTOR;
+    }
+
+    private static boolean isTree(Feature<?> feature) {
+        return feature == Feature.TREE || feature == Feature.HUGE_RED_MUSHROOM || feature == Feature.HUGE_BROWN_MUSHROOM;
+    }
+
     private Recipe compile(ConfiguredFeature<?, ?> configured, int depth) {
         if (depth > 16) throw new IllegalArgumentException("feature:recursion");
         var feature = configured.feature();
@@ -166,6 +241,11 @@ final class LegacyOverworldFeatures {
             var child = nested(patch.feature().value(), depth);
             var spread = LegacyNetherFeatures.spreadPatch(patch.tries(), patch.xzSpread(), patch.ySpread(), child.data(), null);
             return new Recipe(nativeFeature(spread), patch.xzSpread() + child.reach());
+        }
+        if (isTree(feature)) {
+            var tree = feature == Feature.TREE ? trees.tree((TreeConfiguration) config)
+                    : trees.mushroom((HugeMushroomFeatureConfiguration) config, feature == Feature.HUGE_RED_MUSHROOM);
+            return new Recipe(tree.data(), tree.reach());
         }
         if (feature == Feature.SIMPLE_BLOCK) {
             var simple = (SimpleBlockConfiguration) config;
@@ -194,6 +274,7 @@ final class LegacyOverworldFeatures {
     }
 
     private Nested nested(PlacedFeature feature, int depth) {
+        if (isTree(feature.feature().value().feature())) throw new IllegalArgumentException("feature:nested-tree");
         var placement = placement(feature, true);
         var recipe = compile(feature.feature().value(), depth + 1);
         int reach = LegacyFeaturePlacement.nestedHorizontalReach(placement) + recipe.reach();

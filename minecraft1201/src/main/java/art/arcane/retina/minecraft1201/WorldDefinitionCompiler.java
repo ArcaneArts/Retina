@@ -11,6 +11,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -146,6 +147,11 @@ public final class WorldDefinitionCompiler {
     }
 
     static JsonArray writePalette(JsonObject world, LinkedHashMap<BlockState, Integer> palette, boolean skylight) {
+        return writePalette(world, palette, skylight, false);
+    }
+
+    static JsonArray writePalette(JsonObject world, LinkedHashMap<BlockState, Integer> palette,
+                                  boolean skylight, boolean trees) {
         var materials = new JsonArray();
         var air = new JsonArray();
         var flags = new JsonArray();
@@ -155,6 +161,13 @@ public final class WorldDefinitionCompiler {
             if (state.isAir()) air.add(id);
             int flag = state.isAir() || state.is(Blocks.WATER) || state.is(Blocks.LAVA) ? 64 : 0;
             if (state.is(Blocks.BEDROCK)) flag |= 128;
+            if (trees) {
+                if (LegacyOverworldPlants.soil(state)) flag |= 1;
+                if (state.is(BlockTags.LEAVES)) flag |= 4;
+                if (state.is(BlockTags.LOGS)) flag |= 8;
+                if (state.is(BlockTags.REPLACEABLE_BY_TREES) && (flag & 64) == 0) flag |= 16;
+                if (state.is(BlockTags.JUNGLE_LOGS)) flag |= 32;
+            }
             flags.add(flag);
             int mask = 0;
             for (var heightmap : Heightmap.Types.values()) {

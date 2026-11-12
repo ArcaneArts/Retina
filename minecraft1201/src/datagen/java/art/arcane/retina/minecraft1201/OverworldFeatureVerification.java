@@ -32,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 final class OverworldFeatureVerification {
@@ -58,17 +59,25 @@ final class OverworldFeatureVerification {
                 .getCompound("dimensions").getCompound("minecraft:overworld").getCompound("profile");
         var recipes = profile.getList("decorations", Tag.TAG_COMPOUND);
         var exported = new HashSet<String>();
+        var sources = new HashSet<String>();
+        String previous = "";
         int order = -1;
         for (var tag : recipes) {
             var recipe = ((CompoundTag) tag).getCompound("v");
-            require(exported.add(recipe.getString("source")), "duplicate root");
+            String source = recipe.getString("source");
+            String root = recipe.contains("root_source") ? recipe.getString("root_source") : source;
+            require(sources.add(source), "duplicate recipe " + source);
             int next = recipe.getInt("root_order");
-            require(next > order, "placed roots retained their loaded order");
+            require(root.equals(previous) ? next == order : exported.add(root) && next > order,
+                    "placed roots retained their loaded order " + root);
+            previous = root;
             order = next;
         }
         require(exported.containsAll(Set.of("minecraft:flower_meadow", "minecraft:patch_sunflower", "minecraft:patch_cactus_desert",
                 "minecraft:disk_sand", "minecraft:spring_water", "minecraft:bamboo",
-                "minecraft:lush_caves_vegetation", "minecraft:lush_caves_clay")), "supported vanilla roots");
+                "minecraft:lush_caves_vegetation", "minecraft:lush_caves_clay", "minecraft:dark_forest_vegetation",
+                "minecraft:mushroom_island_vegetation", "minecraft:trees_birch", "minecraft:trees_savanna",
+                "minecraft:trees_old_growth_pine_taiga", "minecraft:trees_old_growth_spruce_taiga")), "supported vanilla roots");
         var omitted = new HashSet<String>();
         for (var tag : profile.getList("decoration_omissions", Tag.TAG_STRING)) {
             String description = tag.getAsString();
@@ -127,12 +136,15 @@ final class OverworldFeatureVerification {
         }
         require(materials.containsAll(Set.of("minecraft:grass", "minecraft:tall_grass", "minecraft:dandelion",
                 "minecraft:cornflower", "minecraft:sugar_cane", "minecraft:clay")), "emitted Overworld plants and disk material");
+        require(materials.containsAll(Set.of("minecraft:oak_log", "minecraft:oak_leaves", "minecraft:birch_leaves")),
+                "generated vanilla trees");
         require(plants > 0 && fluids.containsAll(Set.of("minecraft:water", "minecraft:lava")), "paired plants and both spring fluids");
         var result = new JsonObject();
         result.addProperty("event", "overworld_1201_placed_features");
         result.addProperty("status", "pass");
         result.addProperty("exported", exported.size());
         result.addProperty("omitted", omitted.size());
+        result.addProperty("recipes", sources.size());
         result.addProperty("paired_plants", plants);
         result.addProperty("fluid_ticks", ticks);
         System.out.println("QA_EVT " + result);
@@ -202,6 +214,37 @@ final class OverworldFeatureVerification {
         missing.removeAll(materials);
         require(missing.isEmpty(), "generated cave vegetation " + missing);
         System.out.println("QA_EVT {\"event\":\"overworld_1201_datapack_lush_caves\",\"status\":\"pass\",\"chunks\":16}");
+    }
+
+    static void treesDatapack(Path world) throws Exception {
+        var observed = new HashMap<String, Set<String>>();
+        try (var nativeWorld = NativeWorldDefinition.open(world.resolve("retina.dat"))) {
+            for (String name : List.of("forest_probe", "mushroom_probe")) {
+                String key = "retina:" + name;
+                nativeWorld.bindDimension(key, 2);
+                var materials = new HashSet<String>();
+                for (int z = 0; z < 8; z++) for (int x = -8; x < 0; x++) {
+                    var chunk = NbtIo.read(new DataInputStream(new ByteArrayInputStream(nativeWorld.chunk(key, x, z))));
+                    for (var section : chunk.getList("sections", Tag.TAG_COMPOUND)) {
+                        for (var tag : ((CompoundTag) section).getCompound("block_states").getList("palette", Tag.TAG_COMPOUND)) {
+                            var state = (CompoundTag) tag;
+                            materials.add(state.getString("Name"));
+                            var properties = state.getCompound("Properties");
+                            if (properties.contains("distance")) {
+                                materials.add(state.getString("Name") + "/distance/" + properties.getString("distance"));
+                            }
+                        }
+                    }
+                }
+                observed.put(name, materials);
+            }
+        }
+        require(observed.get("forest_probe").containsAll(Set.of("minecraft:stripped_dark_oak_log", "minecraft:dark_oak_leaves/distance/1",
+                "minecraft:dark_oak_leaves/distance/3", "minecraft:birch_leaves", "minecraft:oak_leaves"))
+                && !observed.get("forest_probe").contains("minecraft:dark_oak_log"), "datapack tree states");
+        require(observed.get("mushroom_probe").containsAll(Set.of("minecraft:red_mushroom_block", "minecraft:brown_mushroom_block",
+                "minecraft:mushroom_stem")), "mushroom selector outputs");
+        System.out.println("QA_EVT {\"event\":\"overworld_1201_datapack_trees_and_mushrooms\",\"status\":\"pass\",\"chunks\":128}");
     }
 
     private static CompoundTag read(RegionFile file, ChunkPos chunk) throws Exception {

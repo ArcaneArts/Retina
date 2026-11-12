@@ -796,3 +796,39 @@ foreground promotion, cancellation, and lease release checks.
 Three alternating 26.3 Nether Metal runs per library generated the same
 1,024 decoded records. Region times ranged from 1.25 to 1.61 s before
 and from 1.09 to 1.55 s after, excluding definition loading and binding.
+
+## Overworld trees and giant mushrooms
+
+The normal 1.20.1 Overworld now exports 82 of 121 loaded non-ore
+placed roots. This adds 23 roots, including dark forest, mushroom
+fields, birch, jungle, savanna, and old-growth taiga vegetation.
+Tree and mushroom branches share the loaded root's placement seed,
+order, and biome membership. Each selector branch applies its own
+placement modifiers and writes through the shared native overlay.
+
+The exporter records approximate tree geometry and clearance and
+reports the omitted beehive and altered-ground decorators. Cherry,
+mangrove, and rooted azalea remain explicit root omissions. Previously
+saved definitions keep their original decoration recipes.
+
+Run the verified noise and catalog exports as above. The 1.20.1
+reader found oak and birch trees, 1,409 paired plants, and 192 fluid
+ticks in the 1,024-chunk vanilla region. All 15 catalog parity cases
+passed. Copy `minecraft1201/src/datagen/fixtures/overworld-tree-pack`
+into a fresh world's `datapacks` directory and repeat the verified
+noise export. Its 128 headless chunks confirm a dark-oak trunk
+override, several connected leaf distances, and both giant
+mushroom caps and their stems. The 1.20.1 Nether and End profiles
+and resolved palettes are unchanged.
+
+Using the same native CLI on the M4 Max, seed 12345 region `-1,0`
+went from 4.35 s to 4.59 s on Metal and 31.34 s to 32.05 s on CPU.
+These are single fresh-region runs. CPU and Metal agreed on the
+uncompressed NBT of 1,007 of 1,024 chunks before and after. The
+26.3 catalogs and macOS arm64 native library stayed byte-identical
+to the preceding build.
+
+`buildSupported :bukkit:test :bukkit1201:serverProbeJar` succeeded
+locally. The three installable Java 17 JARs contained the same
+365,442-byte version-isolated 1.20.1 catalog with five variants.
+All four JARs contained identical native bytes.
