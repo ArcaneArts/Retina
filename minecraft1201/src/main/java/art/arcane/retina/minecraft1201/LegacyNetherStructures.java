@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 
 /** Keeps Nether structure set membership and template indexes in one native profile. */
@@ -28,17 +29,23 @@ final class LegacyNetherStructures {
 
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials,
                              WorldGenerationContext context, Function<ResourceLocation, Optional<CompoundTag>> source) {
+        return export(registry, biomes, materials, context, source, Optional.empty());
+    }
+
+    static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials,
+                             WorldGenerationContext context, Function<ResourceLocation, Optional<CompoundTag>> source,
+                             Optional<Set<ResourceLocation>> allowedSets) {
         var templateOmissions = new JsonArray();
         var portalTemplates = LegacyPortalProfile.load(source, templateOmissions);
         var families = new HashMap<Class<? extends Structure>, String>(Map.of(
                 NetherFortressStructure.class, "fortress", NetherFossilStructure.class, "nether_fossil",
                 JigsawStructure.class, "jigsaw", RuinedPortalStructure.class, "ruined_portal"));
-        var result = exportSets(registry, biomes, context, families, !portalTemplates.isEmpty());
+        var result = exportSets(registry, biomes, context, families, !portalTemplates.isEmpty(), allowedSets);
         if (has(result, "nether_fossil")) {
             var missing = LegacyNetherFossils.addTemplates(result, materials, source);
             if (missing.isPresent()) {
                 families.remove(NetherFossilStructure.class);
-                result = exportSets(registry, biomes, context, families, !portalTemplates.isEmpty());
+                result = exportSets(registry, biomes, context, families, !portalTemplates.isEmpty(), allowedSets);
                 templateOmissions.add("missing_template:" + missing.get());
             }
         }
@@ -53,12 +60,12 @@ final class LegacyNetherStructures {
 
     private static JsonObject exportSets(RegistryAccess registry, List<Holder<Biome>> biomes, WorldGenerationContext context,
                                          Map<Class<? extends Structure>, String> families,
-                                         boolean portalsAvailable) {
+                                         boolean portalsAvailable, Optional<Set<ResourceLocation>> allowedSets) {
         return LegacyStructureSets.export(registry, biomes, families, config -> {
             if (config.get("type").getAsString().equals("minecraft:nether_fossil")) {
                 LegacyFeaturePlacement.bindHeight(config.get("height"), context);
             }
-        }, (kind, config) -> !kind.equals("ruined_portal") || portalsAvailable && LegacyPortalProfile.supported(config));
+        }, (kind, config) -> !kind.equals("ruined_portal") || portalsAvailable && LegacyPortalProfile.supported(config), allowedSets);
     }
 
     static void finish(JsonObject structures, LinkedHashMap<BlockState, Integer> materials) {

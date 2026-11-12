@@ -31,7 +31,7 @@ dependencies {
              providers.gradleProperty('retinaPreset').getOrElse(mode == 'flat' ? 'minecraft:flat' : 'minecraft:normal')
         def verify = mode == 'flat' ? 'retinaVerifyFlat' : 'retinaVerifyNoiseTerrain'
         if (providers.gradleProperty(verify).isPresent()) args '--verify'
-        if (mode == 'noise' && providers.gradleProperty('retinaGenerateStructures').isPresent()) args '--structures'
+        if (providers.gradleProperty('retinaGenerateStructures').isPresent()) args '--structures'
         if (mode == 'noise' && providers.gradleProperty('retinaVerifyJigsaws').isPresent()) {
             args '--structures', '--verify-jigsaws'
         }
@@ -39,6 +39,9 @@ dependencies {
             args '--structures', '--verify-portals'
         }
         if (mode == 'noise' && providers.gradleProperty('retinaVerifyAttachments').isPresent()) args '--verify-attachments'
+        if (mode == 'flat' && providers.gradleProperty('retinaVerifyFlatWorldgen').isPresent()) {
+            args '--structures', '--verify-flat-worldgen'
+        }
         if (providers.gradleProperty('retinaNativePath').isPresent()) {
             systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
         }

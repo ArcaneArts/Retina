@@ -1,0 +1,17 @@
+{
+  "feature": "retina:flat_marker",
+  "placement": [
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "minecraft:height_range",
+      "height": {
+        "absolute": 20
+      }
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

@@ -23,6 +23,9 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
@@ -45,6 +48,12 @@ final class LegacyStructureSets {
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes,
                              Map<Class<? extends Structure>, String> families, Consumer<JsonObject> normalize,
                              BiPredicate<String, JsonObject> supports) {
+        return export(registry, biomes, families, normalize, supports, Optional.empty());
+    }
+
+    static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes,
+                             Map<Class<? extends Structure>, String> families, Consumer<JsonObject> normalize,
+                             BiPredicate<String, JsonObject> supports, Optional<Set<ResourceLocation>> allowedSets) {
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, registry);
         var definitions = new JsonArray();
         var sets = new JsonArray();
@@ -56,12 +65,21 @@ final class LegacyStructureSets {
         result.add("pools", new JsonObject());
         result.add("omissions", omissions);
         var source = registry.registryOrThrow(Registries.STRUCTURE);
+        var sourceSets = registry.registryOrThrow(Registries.STRUCTURE_SET);
+        // Set and template indices must not depend on the registry map's iteration order.
+        var orderedSets = sourceSets.entrySet().stream()
+                .filter(entry -> allowedSets.isEmpty() || allowedSets.get().contains(entry.getKey().location()))
+                .sorted(Comparator.comparing(entry -> entry.getKey().location()))
+                .toList();
+        var selected = allowedSets.map(ignored -> orderedSets.stream().flatMap(entry -> entry.getValue().structures().stream())
+                .map(member -> member.structure().value()).collect(Collectors.toSet()));
         var executable = new LinkedHashMap<Structure, JsonObject>();
         var eligibility = new HashMap<Structure, JsonArray>();
         var perStep = new int[GenerationStep.Decoration.values().length];
         for (var structure : source.stream().toList()) {
             int step = structure.step().ordinal();
             int index = perStep[step]++;
+            if (selected.isPresent() && !selected.get().contains(structure)) continue;
             var allowed = new JsonArray();
             for (int biome = 0; biome < biomes.size(); biome++) {
                 if (structure.biomes().contains(biomes.get(biome))) allowed.add(biome);
@@ -90,12 +108,7 @@ final class LegacyStructureSets {
             executable.put(structure, definition);
         }
         var indexes = new LinkedHashMap<Structure, Integer>();
-        var sourceSets = registry.registryOrThrow(Registries.STRUCTURE_SET);
         var requiredPlacements = new LinkedHashMap<String, JsonObject>();
-        // Set and template indices must not depend on the registry map's iteration order.
-        var orderedSets = sourceSets.entrySet().stream()
-                .sorted(Comparator.comparing(entry -> entry.getKey().location()))
-                .toList();
         for (var entry : orderedSets) {
             var set = entry.getValue();
             if (set.structures().stream().noneMatch(member -> executable.containsKey(member.structure().value()))) continue;

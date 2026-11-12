@@ -13,6 +13,12 @@ pub struct Lake {
     solid: Predicate,
     liquid: Predicate,
     air: u16,
+    #[serde(default = "centered_offset")]
+    horizontal_offset: i32,
+}
+
+fn centered_offset() -> i32 {
+    -8
 }
 
 impl Lake {
@@ -20,6 +26,7 @@ impl Lake {
         self.fluid.validate(palette)
             && self.barrier.validate(palette)
             && (self.air as usize) < palette
+            && (-8..=0).contains(&self.horizontal_offset)
             && [
                 &self.can_place_feature,
                 &self.can_replace_with_air_or_fluid,
@@ -62,7 +69,7 @@ pub(super) fn lake(
     if at[1] <= request.min_y + 4 || at[1] + 3 >= request.min_y + request.height as i32 {
         return;
     }
-    let origin = [at[0] - 8, at[1] - 4, at[2] - 8];
+    let origin = [at[0] + recipe.horizontal_offset, at[1] - 4, at[2] + recipe.horizontal_offset];
     let mut grid = [false; 2048];
     let spots = rng.below(4) + 4;
     for _ in 0..spots {

@@ -157,11 +157,10 @@ uses the actual saved DataVersion 3465 to encode `Name` and `Properties` in
 chunk block palettes and to require zlib. The saved definition keeps the same
 format and canonical identities as the 26.3 definitions.
 
-The current exporter covers Flat terrain with biome decoration, lakes and
-structure generation disabled. The native Flat model handles ordinary layers
-and deferred fill layers. Other generator types and unsupported options have
-explicit unsupported reasons in the saved file. Noise profiles and loader
-installation are subsequent implementation work.
+The initial exporter covered Flat terrain with biome decoration, lakes and
+structure generation disabled. The native Flat model handled ordinary layers
+and deferred fill layers. Later cycles added noise profiles, loader
+installation and the Flat features and structures described below.
 
 For a disposable world, point Gradle at a Java 17 installation and a native
 library from this checkout. Leave out `-PretinaVerifyFlat` to export just the
@@ -1308,3 +1307,49 @@ The full Java 17 Spigot acceptance run on Metal matched 917,504
 block states and 14,336 quart biomes across 12 chunks both
 before and after restart. The imported definition, metadata
 and entity probes passed, and all three player edits survived.
+
+### Flat features, lakes and structures
+
+The 1.20.1 adapter now exports the game's adjusted Flat biome settings
+and selected structure sets. The base and deferred layers still come
+from the selected preset. Default Flat uses Retina for its villages
+when structures are enabled. Strongholds remain a reported omission
+because the shared planner does not implement concentric-ring placement.
+The lake recipe records the 1.20.1 horizontal origin. Older definitions
+keep the existing centered origin. The shared lake model covers
+excavation, fluid and barriers. Cold-biome water-lake freezing remains
+outside its current coverage.
+
+Run the stock preset in a fresh directory:
+
+```sh
+./gradlew :minecraft1201:exportFlat -PretinaVerifyFlatWorldgen \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+For the custom case, copy
+`minecraft1201/src/datagen/fixtures/flat-worldgen-pack` into a fresh world's
+`datapacks/retina-flat-worldgen` first. Seed 12345 produced a 96-piece
+stock plains village and a custom Desert pyramid, 7,419 lake lava
+blocks, 261,592 deferred torches and 1,024 blocks from the selected
+decoration. The fixture's Void dimension generated its spawn platform.
+CPU and Metal matched all 3,072 decoded chunks across the three
+regions, and native reopen preserved every chunk. The stock region
+took 94 ms on Metal and 894 ms on CPU. The decorated Desert region
+took 335 ms on Metal and 1.50 s on CPU in separate local runs.
+
+Run `scripts/minecraft1201-flat-worldgen-test.py` with the generated
+Overworld `r.-1.0.mca` as `--reference`. Use `--pack` for the Desert
+and Void fixture. Packaged Fabric located the stock village and
+packaged Forge located the custom pyramid. Forge read the sampled
+lake, torch, decoration and Void platform through the game. Both
+servers preserved the structure records and a player edit after
+restart and kept the original saved definition.
+
+The original Flat layer round trips, focused native Flat test,
+Bukkit tests, all 15 catalog parity cases and all four local builds
+passed. All four JARs contain the same rebuilt macOS arm64 library.
+The 26.3 catalogs match the preceding build, and the old and new
+native libraries produced identical NBT for all 1,024 chunks in a
+26.3 Overworld region.

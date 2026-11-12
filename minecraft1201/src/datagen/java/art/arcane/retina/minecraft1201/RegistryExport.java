@@ -60,6 +60,7 @@ public final class RegistryExport {
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
             if (Arrays.asList(args).contains("--verify-portals")) NetherPortalVerification.verify(world, loaded, seed);
             if (Arrays.asList(args).contains("--verify-attachments")) AttachmentVerification.verify(world);
+            if (Arrays.asList(args).contains("--verify-flat-worldgen")) FlatWorldgenVerification.verify(world, loaded, seed);
         }
     }
 
