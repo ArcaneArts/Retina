@@ -123,6 +123,16 @@ impl WorldDefinition {
     pub fn seed(&self) -> i64 {
         self.document.seed
     }
+    pub(crate) fn check_compression(&self, compression: crate::region::codec::Compression) -> Result<(), String> {
+        use crate::region::{ChunkStorageFormat, codec::Compression};
+        if matches!(ChunkStorageFormat::for_data_version(self.data_version()), ChunkStorageFormat::Minecraft1201)
+            && compression != Compression::Zlib
+        {
+            return Err("Minecraft 1.20.1 region output requires zlib compression".into());
+        }
+        Ok(())
+    }
+
     pub fn data_version(&self) -> i32 {
         self.document.data_version
     }
@@ -296,7 +306,7 @@ fn load_profile(
             ));
         }
     }
-    let profile = WorldProfile::from_definition(data, identity)?;
+    let profile = WorldProfile::from_definition(data, identity, world.data_version)?;
     if profile.sea_level != dimension.parameters.sea_level {
         return Err("profile sea level differs from dimension parameters".into());
     }

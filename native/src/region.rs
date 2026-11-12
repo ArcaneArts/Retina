@@ -899,10 +899,30 @@ impl Default for ChunkScratch {
     }
 }
 
-pub(crate) fn material_nbt(material: &serde_json::Value) -> Vec<u8> {
+/// Chunk storage names are distinct from the canonical profile keys.
+#[derive(Clone, Copy)]
+pub(crate) enum ChunkStorageFormat {
+    Modern,
+    Minecraft1201,
+}
+
+impl ChunkStorageFormat {
+    pub(crate) fn for_data_version(data_version: i32) -> Self {
+        match data_version {
+            3465 => Self::Minecraft1201,
+            _ => Self::Modern,
+        }
+    }
+}
+
+pub(crate) fn material_nbt(material: &serde_json::Value, format: ChunkStorageFormat) -> Vec<u8> {
+    let (id, properties_key) = match format {
+        ChunkStorageFormat::Modern => ("id", "properties"),
+        ChunkStorageFormat::Minecraft1201 => ("Name", "Properties"),
+    };
     let mut nbt = Nbt::default();
     nbt.string(
-        "id",
+        id,
         material
             .as_str()
             .unwrap_or_else(|| material["id"].as_str().unwrap()),
@@ -911,7 +931,7 @@ pub(crate) fn material_nbt(material: &serde_json::Value) -> Vec<u8> {
         .get("properties")
         .and_then(serde_json::Value::as_object)
     {
-        nbt.compound("properties");
+        nbt.compound(properties_key);
         for (key, value) in properties {
             nbt.string(key, value.as_str().unwrap());
         }
@@ -1381,7 +1401,7 @@ mod palette_tests {
                 .as_array()
                 .unwrap()
                 .iter()
-                .map(material_nbt)
+                .map(|material| material_nbt(material, ChunkStorageFormat::Modern))
                 .collect();
             let bytes = fs::read(root.join(format!("{name}-sections.bin"))).unwrap();
             assert_eq!(bytes.len() % 8192, 0);

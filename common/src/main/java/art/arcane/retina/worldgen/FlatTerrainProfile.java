@@ -1,5 +1,6 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.definition.FlatProfileModel;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
@@ -14,6 +15,8 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+
+import static art.arcane.retina.definition.FlatProfileModel.array;
 
 /** Flat source layers and adjusted features; no density graph or borrowed Overworld terrain settings. */
 final class FlatTerrainProfile {
@@ -45,8 +48,6 @@ final class FlatTerrainProfile {
         world.addProperty("deepslate", material(palette, Blocks.DEEPSLATE.defaultBlockState()));
         world.addProperty("snow", material(palette, Blocks.SNOW_BLOCK.defaultBlockState()));
         world.addProperty("ice", material(palette, Blocks.ICE.defaultBlockState()));
-        var flat = new JsonObject();
-        flat.add("settings", encoded);
         var base = new JsonArray();
         var deferred = new JsonArray();
         int y = 0;
@@ -58,33 +59,9 @@ final class FlatTerrainProfile {
                 if (later) deferred.add(array(y, id));
             }
         }
-        flat.add("base_layers", base);
-        flat.add("deferred_layers", deferred);
-        world.add("flat", flat);
-        var entries = new JsonArray();
-        var entry = new JsonObject();
-        entry.addProperty("id", settings.getBiome().unwrapKey().orElseThrow().identifier().toString());
-        entry.addProperty("temperature", settings.getBiome().value().getBaseTemperature());
-        entry.add("climate", array(0, 0, 0, 0));
-        entry.add("terrain", array(0, 0, 0));
-        int top = base.asList().stream().mapToInt(v -> v.getAsInt()).filter(id -> id != 0).reduce((a, b) -> b).orElse(0);
-        entry.addProperty("top", top);
-        entry.addProperty("filler", top);
-        entry.addProperty("underwater", top);
-        entry.addProperty("flags", 0);
-        entries.add(entry);
-        world.add("biomes", entries);
-        world.add("climate_targets", new JsonArray());
-        var noises = new JsonArray();
-        // Shared GPU buffer layout reserves four noise slots; flat terrain never evaluates them.
-        for (int i = 0; i < 4; i++) {
-            var noise = new JsonObject();
-            noise.addProperty("frequency", 1);
-            noise.addProperty("amplitude", 1);
-            noise.add("modifiers", array(1));
-            noises.add(noise);
-        }
-        world.add("noises", noises);
+        var entries = FlatProfileModel.writeLayers(world, encoded, base, deferred,
+                settings.getBiome().unwrapKey().orElseThrow().identifier().toString(),
+                settings.getBiome().value().getBaseTemperature());
         var disks = Collections.newSetFromMap(new IdentityHashMap<PlacedFeature, Boolean>());
         world.add("decorations", DecorationProfile.export(registry, biomes, entries, palette, world, disks, b -> effective));
         TerrainFeatureProfile.export(registry, biomes, entries, palette, world, null, seed, List.of(), b -> effective);
@@ -103,7 +80,7 @@ final class FlatTerrainProfile {
         StructureProfile.finishMaterials(world.getAsJsonObject("structures"),palette);
         var air = new JsonArray();
         palette.forEach((state, id) -> { if (state.isAir()) air.add(id); });
-        flat.add("air_materials", air);
+        world.getAsJsonObject("flat").add("air_materials", air);
         var materials = new JsonArray();
         for (var state : palette.keySet()) materials.add(BlockState.CODEC.encodeStart(JsonOps.INSTANCE, state).getOrThrow());
         world.add("materials", materials);
@@ -112,11 +89,5 @@ final class FlatTerrainProfile {
 
     private static int material(LinkedHashMap<BlockState, Integer> palette, BlockState state) {
         return palette.computeIfAbsent(state, ignored -> palette.size());
-    }
-
-    private static JsonArray array(int... values) {
-        var result = new JsonArray();
-        for (int value : values) result.add(value);
-        return result;
     }
 }
