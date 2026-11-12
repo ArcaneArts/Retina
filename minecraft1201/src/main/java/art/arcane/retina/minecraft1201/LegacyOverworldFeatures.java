@@ -56,6 +56,7 @@ import net.minecraft.world.level.levelgen.feature.configurations.SimpleRandomFea
 import net.minecraft.world.level.levelgen.feature.configurations.SpringConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.UnderwaterMagmaConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.TreeConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.RootSystemConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.VegetationPatchConfiguration;
 import net.minecraft.world.level.levelgen.feature.stateproviders.RuleBasedBlockStateProvider;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
@@ -73,6 +74,7 @@ import java.util.function.Predicate;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
+import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.type;
 import static art.arcane.retina.minecraft1201.LegacyNetherFeatures.nativeFeature;
 
 final class LegacyOverworldFeatures {
@@ -324,6 +326,7 @@ final class LegacyOverworldFeatures {
             surfaceFreeze = true;
             return new Recipe(kind("freeze_top_layer"), 15);
         }
+        if (feature == Feature.ROOT_SYSTEM) return rootSystem((RootSystemConfiguration) config, depth);
         if (feature == Feature.FOSSIL) {
             var fossil = fossils.compile((FossilFeatureConfiguration) config);
             return new Recipe(fossil.data(), fossil.reach());
@@ -362,6 +365,80 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.SIMPLE_RANDOM_SELECTOR) return choices((SimpleRandomFeatureConfiguration) config, depth);
         if (feature == Feature.RANDOM_BOOLEAN_SELECTOR) return either((RandomBooleanFeatureConfiguration) config, depth);
         throw new IllegalArgumentException(BuiltInRegistries.FEATURE.getKey(feature).toString());
+    }
+
+    private Recipe rootSystem(RootSystemConfiguration config, int depth) {
+        var child = config.treeFeature.value();
+        var program = placement(child, true);
+        var configured = child.feature().value();
+        Recipe tree;
+        if (configured.config() instanceof TreeConfiguration treeConfig) {
+            if (treeConfig.rootPlacer.isPresent() || !treeConfig.decorators.isEmpty()) {
+                throw new IllegalArgumentException("root-system:child-tree-roots-or-decorators");
+            }
+            var shape = trees.tree(treeConfig);
+            var treeData = kind("rooted_tree");
+            var site = new JsonObject();
+            treeData.add("tree", site);
+            site.add("recipe", LegacyFeaturePlacement.recipe("root-system-tree", 0, 0, new JsonArray(), shape.data(), shape.reach()));
+            site.add("grow", predicates.material(state -> state.isAir() || state.is(BlockTags.REPLACEABLE_BY_TREES)));
+            var clear = predicates.material(state -> state.isAir() || state.is(BlockTags.REPLACEABLE_BY_TREES)
+                    || state.is(BlockTags.LOGS));
+            var geometry = shape.data().getAsJsonObject("geometry");
+            var trunk = geometry == null ? null : geometry.getAsJsonObject("trunk");
+            if (trunk != null && trunk.get("kind").getAsString().equals("upwards_branching")) {
+                clear = LegacyFeaturePredicates.any(clear, trunk.getAsJsonObject("can_grow_through"));
+            }
+            if (!treeConfig.ignoreVines) {
+                clear = LegacyFeaturePredicates.all(clear, predicates.material(state -> !state.is(Blocks.VINE)));
+            }
+            site.add("clear", clear);
+            site.add("dirt", predicates.material(state -> state.is(BlockTags.DIRT)
+                    && !state.is(Blocks.GRASS_BLOCK) && !state.is(Blocks.MYCELIUM)));
+            site.addProperty("force_dirt", treeConfig.forceDirt);
+            var size = decode(TreeConfiguration.CODEC.encodeStart(ops, treeConfig)).getAsJsonObject().getAsJsonObject("minimum_size");
+            site.add("clearance", clearance(size));
+            tree = new Recipe(treeData, shape.reach());
+        } else {
+            tree = compile(configured, depth + 1);
+        }
+        var data = kind("root_system");
+        var root = new JsonObject();
+        data.add("roots", root);
+        root.add("tree", LegacyFeaturePlacement.placed(program, tree.data()));
+        root.addProperty("column_height", config.rootColumnMaxHeight);
+        root.addProperty("clearance", config.requiredVerticalSpaceForTree);
+        root.addProperty("water_depth", config.allowedVerticalWaterForTree);
+        root.addProperty("radius", config.rootRadius);
+        root.addProperty("attempts", config.rootPlacementAttempts);
+        root.addProperty("hanging_radius", config.hangingRootRadius);
+        root.addProperty("hanging_span", config.hangingRootsVerticalSpan);
+        root.addProperty("hanging_attempts", config.hangingRootPlacementAttempts);
+        root.add("allowed", predicate(config.allowedTreePosition));
+        root.add("air", predicates.material(BlockState::isAir));
+        root.add("water", predicates.material(state -> state.getFluidState().is(FluidTags.WATER)));
+        root.add("ground", predicates.material(state -> state.isSolid() && !state.getFluidState().is(FluidTags.LAVA)));
+        root.add("replaceable", predicates.material(state -> state.is(config.rootReplaceable)));
+        root.add("root", providers.encode(config.rootStateProvider).data());
+        var hanging = plants.simple(providers.encode(config.hangingRootStateProvider));
+        hanging.add("target", predicates.material(array(0, 1, 0), state ->
+                state.isFaceSturdy(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, Direction.DOWN)));
+        root.add("hanging", hanging);
+        return new Recipe(data, Math.max(Math.max(config.rootRadius, config.hangingRootRadius) - 1,
+                LegacyFeaturePlacement.nestedHorizontalReach(program) + tree.reach()));
+    }
+
+    private static JsonObject clearance(JsonObject size) {
+        var data = new JsonObject();
+        switch (type(size)) {
+            case "two_layers_feature_size" -> data.addProperty("layers", 2);
+            case "three_layers_feature_size" -> data.addProperty("layers", 3);
+            default -> throw new IllegalArgumentException("root-system:tree-clearance:" + type(size));
+        }
+        for (String key : List.of("limit", "upper_limit", "lower_size", "middle_size", "upper_size", "min_clipped_height")) {
+            if (size.has(key)) data.add(key, size.get(key));
+        }
+        return data;
     }
 
     private Recipe geode(GeodeConfiguration config) {

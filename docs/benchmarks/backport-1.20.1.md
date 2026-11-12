@@ -1890,3 +1890,46 @@ payloads per comparison, including structure data. Median process
 throughput was 1,395 chunks/s on revision 555 and 1,368 on
 revision 556. The ranges from the two processes per revision
 overlap.
+
+### Rooted azaleas
+
+The 1.20.1 adapter exports the loaded root system, its nested
+placement, the bending trunk and the root block providers. The
+shared generator searches upward from an air pocket, validates
+the tree's available space, and writes rooted dirt and supported
+hanging roots after the child succeeds. Tree clearance and
+foliage use the live cavity, including below a higher terrain
+roof. Leaf distances are computed from the placed logs.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyRootedAzaleas \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Repeat with CPU in a fresh directory. The datapack uses an
+upward scan under a stone ledge, a tree cavity below bedrock
+and a loaded tag that permits the stone ledge. The low-roof
+and wrong-substrate controls reject the tree and its roots.
+Nested trees with their own root placers or decorators are
+reported as unsupported.
+
+CPU and Metal matched all 3,072 fixture chunk payloads. The
+open cavity contained 36,802 rooted-dirt blocks, 352 hanging
+roots, 2,727 logs and 11,042 leaves along chunk seams. Both
+controls produced zero tree or root blocks. Stock coverage is
+119 of 121 non-ore Overworld roots. The stock verifier and all
+15 catalog parity cases passed. In stock seed `12345`, region
+`1,-2`, the normal and Bukkit catalogs produced 2,717 matching
+rooted-dirt and hanging-root block states.
+
+Packaged Java 17 Fabric, Forge and Spigot read the five tree
+and root samples and retained a player edit and the original
+definition across restart. The four revision 557 JARs carry
+the same macOS ARM64 native bytes and version-specific catalogs.
+
+The retained revision 556 1.20.1 Overworld matched all 1,024
+payloads. The 26.3 Overworld Metal A/B/B/A run matched all
+3,072 measured payloads per comparison. Median process
+throughput was 3,858 chunks/s on revision 556 and 4,006 on
+revision 557. This small sample records the local regression check.

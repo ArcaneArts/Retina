@@ -95,6 +95,10 @@ final class LegacyOverworldPlants {
             return all(predicates.material(below, state -> state.getFluidState().is(Fluids.WATER) || state.getBlock() instanceof IceBlock),
                     predicates.material(origin, state -> state.getFluidState().isEmpty()));
         }
+        if (output.is(Blocks.HANGING_ROOTS)) {
+            return predicates.material(offset(origin, 0, 1, 0), state ->
+                    state.isFaceSturdy(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, Direction.DOWN));
+        }
         if (output.is(Blocks.SPORE_BLOSSOM)) {
             return all(predicates.material(offset(origin, 0, 1, 0), state ->
                             state.isFaceSturdy(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, Direction.DOWN, SupportType.CENTER)),
