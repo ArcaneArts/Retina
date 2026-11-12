@@ -3,7 +3,9 @@ package art.arcane.retina.minecraft1201;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.serialization.JsonOps;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
@@ -58,7 +60,7 @@ final class LegacyFeaturePlacement {
     }
 
     static void bindOverworld(JsonArray program, WorldGenerationContext context, LegacyFeaturePredicates predicates,
-                              boolean nested) {
+                              Set<GenerationStep.Carving> emptyCarvingStages, boolean nested) {
         for (var value : program) {
             var op = value.getAsJsonObject();
             String kind = type(op);
@@ -69,6 +71,16 @@ final class LegacyFeaturePlacement {
                     if (nested) throw new IllegalArgumentException("nested-placement:" + kind);
                 }
                 case "height_range" -> bindHeight(op.get("height"), context);
+                case "carving_mask" -> {
+                    var stage = decode(GenerationStep.Carving.CODEC.parse(JsonOps.INSTANCE, op.get("step")));
+                    if (!emptyCarvingStages.contains(stage)) {
+                        throw new IllegalArgumentException("placement:carving_mask:" + stage.getSerializedName());
+                    }
+                    // Minecraft streams the set bits of this stage's mask. An empty stage emits no positions.
+                    op.addProperty("type", "count");
+                    op.addProperty("count", 0);
+                    op.remove("step");
+                }
                 case "block_predicate_filter" -> op.add("predicate", predicates.compile(op.getAsJsonObject("predicate")));
                 case "environment_scan" -> {
                     String direction = op.remove("direction_of_search").getAsString();
