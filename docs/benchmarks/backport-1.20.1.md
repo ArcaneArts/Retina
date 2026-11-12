@@ -340,3 +340,37 @@ Use the noise export verification commands above to reproduce these
 runs. The structured receipts report ore recipe and carver entry counts
 directly from the saved profiles. All eight 26.3 definition cases passed
 and both regenerated 26.3 catalogs matched the committed bytes.
+
+## Seed-independent 1.20.1 terrain catalog
+
+The vanilla catalog exporter uses the 1.20.1 server bootstrap. It removes
+the capture seed and replaces the terracotta table with a recipe tied to
+the version's positional random stream. The ordinary Rust catalog
+materializer recreates that table and publishes an authoritative
+`retina.dat`. The 26.3 recipe retains its existing stream.
+
+```sh
+./gradlew :minecraft1201:exportTerrainCatalog \
+  "-Porg.gradle.java.installations.paths=$jdk17" "-PretinaNativePath=$library" \
+  "-PretinaCatalog=$catalog" -PretinaVerifyCatalog
+```
+
+The compressed preview was 238,349 bytes and repeated export reproduced
+its bytes. All five variants matched
+live 1.20.1 NBT exports at seeds `0`, `12345` and
+`-9223372036854775791` after normalizing the equivalent byte and integer
+band arrays. All fifteen materialized definitions reopened through the
+ordinary native loader. A second reference check compared the older
+Java LCG positional stream against the actual 1.20.1 random source for
+the same three seeds.
+
+The standalone CLI materialized `bukkit-api`, generated 1,024 records
+for outer End region `-3,-1` and preserved all records on reopen. A
+before-and-after materialization of the 26.3 binary catalog at the
+negative seed produced byte-identical saved definitions. The seven enabled
+native catalog tests and the modern End random-stream regression test passed.
+
+The catalog is a development artifact. It still reflects the placement
+and structure coverage of the current 1.20.1 exporter. The installed
+Bukkit variant also needs the API delivery policy as decoration support
+lands.

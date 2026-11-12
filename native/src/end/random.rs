@@ -10,17 +10,25 @@ fn mix(mut value: u64) -> u64 {
 impl DecorationRandom {
     pub fn new(seed: u64) -> Self {
         let low = seed ^ 0x6a09e667f3bcc909;
-        let mut result = Self { low: mix(low), high: mix(low.wrapping_add(0x9e3779b97f4a7c15)) };
-        if result.low | result.high == 0 { result.low = 0x9e3779b97f4a7c15; result.high = 0x6a09e667f3bcc909; }
-        result
+        Self::from_words(mix(low), mix(low.wrapping_add(0x9e3779b97f4a7c15)))
     }
-    fn next_bits(&mut self, bits: u32) -> u32 {
+    pub(crate) fn from_words(low: u64, high: u64) -> Self {
+        if low | high == 0 {
+            Self { low: 0x9e3779b97f4a7c15, high: 0x6a09e667f3bcc909 }
+        } else {
+            Self { low, high }
+        }
+    }
+    pub(crate) fn next_raw(&mut self) -> u64 {
         let low = self.low; let high = self.high;
         let result = low.wrapping_add(high).rotate_left(17).wrapping_add(low);
         let high = high ^ low;
         self.low = low.rotate_left(49) ^ high ^ high.wrapping_shl(21);
         self.high = high.rotate_left(28);
-        (result >> (64 - bits)) as u32
+        result
+    }
+    fn next_bits(&mut self, bits: u32) -> u32 {
+        (self.next_raw() >> (64 - bits)) as u32
     }
     pub fn long(&mut self) -> u64 {
         let high = self.next_bits(32) as i32 as i64;

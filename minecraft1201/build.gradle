@@ -51,3 +51,19 @@ tasks.register('probeEndTerrain', JavaExec) {
     maxHeapSize = '768m'
     args providers.gradleProperty('retinaEndReference').getOrElse(layout.buildDirectory.file('end-reference.json').get().asFile.absolutePath)
 }
+
+tasks.register('exportTerrainCatalog', JavaExec) {
+    group = 'verification'
+    description = 'Export the seed-independent 1.20.1 terrain preview catalog from the vanilla server.'
+    dependsOn 'datagenClasses'
+    classpath = sourceSets.datagen.runtimeClasspath
+    mainClass = 'art.arcane.retina.minecraft1201.CatalogExport'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+    jvmArgs '-Djava.awt.headless=true', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '768m'
+    args providers.gradleProperty('retinaCatalog').getOrElse(layout.buildDirectory.file('terrain-catalog/retina-catalog.dat').get().asFile.absolutePath)
+    if (providers.gradleProperty('retinaVerifyCatalog').isPresent()) args '--verify'
+    if (providers.gradleProperty('retinaNativePath').isPresent()) {
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    }
+}

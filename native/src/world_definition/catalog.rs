@@ -137,12 +137,9 @@ impl WorldCatalog {
         let states = states.clone();
         let dimensions = compound_mut(required_mut(root, "dimensions")?)?;
         for (key, recipe) in &selected.seed_derivations {
-            if recipe.algorithm != "retina:badlands_bands/1" {
-                return Err(format!(
-                    "unsupported seed derivation {} in {key}",
-                    recipe.algorithm
-                ));
-            }
+            let random = BandsRandom::for_recipe(seed, &recipe.algorithm).ok_or_else(|| {
+                format!("unsupported seed derivation {} in {key}", recipe.algorithm)
+            })?;
             if recipe.materials.len() != BAND_NAMES.len() {
                 return Err(format!("badlands recipe needs seven materials in {key}"));
             }
@@ -173,7 +170,7 @@ impl WorldCatalog {
             }
             terrain.insert(
                 "bands".into(),
-                Value::IntArray(IntArray::new(bands(seed, &recipe.materials))),
+                Value::IntArray(IntArray::new(bands(random, &recipe.materials))),
             );
         }
         for (key, dimension) in dimensions.iter() {
@@ -277,10 +274,58 @@ impl WorldCatalog {
     }
 }
 
-/// Same existing 48-bit Java RNG as native structure placement. Fixed provider
-/// seeds and captured permutations are intentionally untouched.
-fn bands(seed: i64, materials: &[i32]) -> Vec<i32> {
-    let mut random = crate::structures::Random::new(seed as u64 ^ 0x6a09e667f3bcc909);
+enum BandsRandom {
+    Legacy(crate::structures::Random),
+    Xoroshiro(crate::end::DecorationRandom),
+}
+
+impl BandsRandom {
+    fn for_recipe(seed: i64, algorithm: &str) -> Option<Self> {
+        use crate::{end::DecorationRandom, structures::Random};
+        let seed = seed as u64;
+        match algorithm {
+            "retina:badlands_bands/1" => Some(Self::Legacy(Random::new(seed ^ 0x6a09e667f3bcc909))),
+            "retina:badlands_bands/1.20.1/legacy" => {
+                // LegacyPositionalRandomFactory XORs the Java hash of minecraft:clay_bands.
+                let positional = Random::new(seed).long();
+                Some(Self::Legacy(Random::new(positional ^ 0x6342616d)))
+            }
+            "retina:badlands_bands/1.20.1/xoroshiro" => {
+                // XoroshiroPositionalRandomFactory uses the two big-endian halves of
+                // MD5("minecraft:clay_bands") with the world stream's first two longs.
+                let mut source = DecorationRandom::new(seed);
+                let low = source.next_raw() ^ 0x16568f44636e3bc9;
+                let high = source.next_raw() ^ 0xc1fdd67395e0296c;
+                Some(Self::Xoroshiro(DecorationRandom::from_words(low, high)))
+            }
+            _ => None,
+        }
+    }
+
+    fn int(&mut self, bound: u32) -> u32 {
+        match self {
+            Self::Legacy(random) => random.int(bound),
+            Self::Xoroshiro(random) => {
+                let threshold = bound.wrapping_neg() % bound;
+                loop {
+                    let product = u64::from(random.next_raw() as u32) * u64::from(bound);
+                    if product as u32 >= threshold {
+                        return (product >> 32) as u32;
+                    }
+                }
+            }
+        }
+    }
+
+    fn boolean(&mut self) -> bool {
+        match self {
+            Self::Legacy(random) => random.int(2) != 0,
+            Self::Xoroshiro(random) => random.next_raw() & 1 != 0,
+        }
+    }
+}
+
+fn bands(mut random: BandsRandom, materials: &[i32]) -> Vec<i32> {
     let mut out = vec![materials[0]; 192];
     let mut i = 0;
     while i < out.len() {
@@ -307,10 +352,10 @@ fn bands(seed: i64, materials: &[i32]) -> Vec<i32> {
             break;
         }
         out[start] = materials[5];
-        if start > 1 && random.int(2) != 0 {
+        if start > 1 && random.boolean() {
             out[start - 1] = materials[6];
         }
-        if start + 1 < out.len() && random.int(2) != 0 {
+        if start + 1 < out.len() && random.boolean() {
             out[start + 1] = materials[6];
         }
         start += random.int(16) as usize + 4;
