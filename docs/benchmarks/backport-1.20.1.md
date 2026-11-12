@@ -1459,3 +1459,43 @@ cases. The 26.3 regression region matched all 1,024 prior chunk payloads.
 Stronghold layout and metadata use vanilla piece rules. Brick patterns,
 portal eyes and cave exposure use the captured geometry. Multi-noise
 relocation still uses Retina's biome sampling as described above.
+
+### Submerged plants and underwater magma
+
+The 1.20.1 adapter now exports kelp, the eight ordinary seagrass
+placements, sea pickles and underwater magma. The shared ordered
+decoration engine reads live ocean-floor heights, water and support
+states. It retains the loaded seagrass probabilities, sea pickle
+count provider and magma search, radius and probability settings.
+Kelp caps a column when the water runs out, and tall seagrass places
+both halves together. These recipes use the engine's seeded
+decoration stream.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifySubmerged \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Run again in a fresh directory with `-PretinaGpuBackend=cpu`. The
+fixture generates and reopens six Flat regions and reads each through
+the 1.20.1 chunk reader. CPU and Metal produced identical NBT for all
+6,144 chunks. Seed 12345 produced 1,024 deep-water kelp columns,
+1,468 short seagrass blocks, 1,606 tall pairs, 6,041 waterlogged sea
+pickle placements and 18,432 magma blocks. The two-block water
+column capped its nested kelp at the floor. The one-block water
+column stayed clear of kelp and tall seagrass.
+
+The stock Overworld inventory records 101 supported and 20 omitted
+non-ore roots. Coral and the carver-mask seagrass placement are
+among the remaining omissions. The 26.3 regression matched all
+1,024 previous chunk payloads.
+
+With the stock seed-12345 definition, the standalone CLI generated
+cold-ocean region `-1,-1` in 2.23 seconds and warm-ocean region
+`2,-2` in 2.58 seconds on Metal. The cold region contained kelp in
+470 chunks and seagrass in 929. The warm region contained sea
+pickles in 138 chunks and tall seagrass in 939. Both contained magma.
+Packaged Fabric and Forge read all four fixture samples through
+the game and preserved a player edit and the original `retina.dat`
+across restart.

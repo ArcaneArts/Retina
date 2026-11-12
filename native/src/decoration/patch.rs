@@ -98,6 +98,7 @@ impl Disk {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Feature {
     NetherFeature { nether: nether::Feature },
+    Submerged { submerged: submerged::Recipe },
     Disk {
         #[serde(flatten)]
         disk: Disk,
@@ -157,6 +158,7 @@ impl Placed {
             })
             && match self.feature.as_ref() {
                 Feature::NetherFeature { nether } => nether.validate(palette),
+                Feature::Submerged { submerged } => submerged.validate(palette),
                 Feature::Disk { disk } => disk.validate(palette),
                 Feature::Sequence { features } | Feature::Overlay { features } => {
                     !features.is_empty() && features.iter().all(|v| v.validate(palette))
@@ -323,6 +325,7 @@ impl World<'_> {
     fn feature(&mut self, feature: &Feature, at: [i32; 3], rng: &mut Rng) -> bool {
         match feature {
             Feature::NetherFeature { nether } => nether.place(self, at, rng),
+            Feature::Submerged { submerged } => submerged.place(self, at, rng),
             Feature::Disk { disk } => self.disk(disk, at, rng),
             Feature::Sequence { features } => self.composite(features, true, at, rng),
             Feature::Overlay { features } => self.composite(features, false, at, rng),
@@ -803,6 +806,7 @@ pub(super) fn place_registered(
     };
     match feature {
         Kind::NetherFeature { nether } => nether.place(&mut world, at, rng),
+        Kind::Submerged { submerged } => submerged.place(&mut world, at, rng),
         Kind::Disk { disk } => world.disk(disk, at, rng),
         Kind::Sequence { features } => world.composite(features, true, at, rng),
         Kind::Overlay { features } => world.composite(features, false, at, rng),
@@ -812,3 +816,4 @@ pub(super) fn place_registered(
 
 #[cfg(test)]
 mod live_overlay_tests;
+pub(super) mod submerged;

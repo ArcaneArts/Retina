@@ -246,6 +246,7 @@ impl WorldProfile {
                     crate::decoration::Kind::BlockColumn { .. }
                         | crate::decoration::Kind::Bamboo { .. }
                         | crate::decoration::Kind::Aquatic { .. }
+                        | crate::decoration::Kind::Submerged { .. }
                         | crate::decoration::Kind::HugeMushroom { .. }
                         | crate::decoration::Kind::FallenTree { .. }
                 )
