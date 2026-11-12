@@ -14,6 +14,7 @@ apply plugin: 'org.spongepowered.mixin'
 def game = '1.20.1'
 def forge = '47.4.28'
 def minimumForge = '47.2.0'
+def refmap = 'retina1201.refmap.json'
 def repo = rootDir.parentFile
 def core = file(providers.gradleProperty('retinaCore').get())
 version = providers.gradleProperty('retinaVersion').get()
@@ -28,8 +29,16 @@ tasks.withType(JavaCompile).configureEach {
 jarJar.enable()
 minecraft { mappings channel: 'official', version: game }
 mixin {
-    add sourceSets.main, 'retina1201.refmap.json'
+    add sourceSets.main, refmap
     config 'retina1201-forge.mixins.json'
+}
+tasks.named('compileJava', JavaCompile) {
+    // MixinGradle emits these files in the compile task's temporary directory.
+    // They must travel with the classes when a clean build restores the task.
+    inputs.files(tasks.named('createMcpToSrg')).withPathSensitivity(PathSensitivity.NONE)
+    outputs.files(new File(temporaryDir, "${name}-refmap.json"),
+            new File(temporaryDir, "${name}-mappings.tsrg"),
+            new File(temporaryDir, refmap)).withPropertyName('mixinMappings')
 }
 repositories {
     mavenCentral()
@@ -64,6 +73,7 @@ tasks.named('processResources') {
     }
     from(providers.gradleProperty('retinaHostNatives'))
     from(providers.gradleProperty('retinaCrossNatives'))
+    from(providers.gradleProperty('retinaNativeManifests'))
 }
 tasks.withType(Jar).configureEach {
     from(zipTree(core)) { exclude 'META-INF/MANIFEST.MF' }

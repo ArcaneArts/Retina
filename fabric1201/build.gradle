@@ -38,6 +38,7 @@ processResources {
 tasks.named('jar') {
     from project(':core17').sourceSets.main.output
     from rootProject.tasks.named('packageCrossNatives')
+    from rootProject.tasks.named('packageNativeManifests')
     from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
     manifest { attributes('Implementation-Version': project.version, 'Retina-Minecraft-Version': game) }
     preserveFileTimestamps = false

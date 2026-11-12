@@ -37,6 +37,14 @@ tasks.register('packageNative', Sync) {
     into nativeResources
 }
 
+tasks.register('packageNativeManifests', Sync) {
+    if (suppliedNatives.isPresent()) {
+        from(new File(suppliedNatives.get(), 'manifests')) {
+            into 'META-INF/retina/natives'
+        }
+    }
+    into layout.buildDirectory.dir('generated/native-manifest-resources')
+}
 
 // Only distributable JARs require foreign libraries. Keep them out of the
 // runtime resource source set so runClient/runServer and tests stay host-only.

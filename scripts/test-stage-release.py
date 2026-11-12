@@ -1,10 +1,12 @@
 """Release catalog checks reject broken packaged assets, not source declarations."""
 import importlib.util
+import gzip
 import io
 import json
 import hashlib
 import unittest
 from pathlib import Path
+from struct import pack
 from zipfile import ZipFile
 
 spec = importlib.util.spec_from_file_location('stage_release', Path(__file__).with_name('stage-release.py'))
@@ -59,6 +61,47 @@ class PackagedCatalogTest(unittest.TestCase):
         manifest = json.loads(entries[name]); manifest['minecraft_version'] = 'wrong-version'
         entries[name] = json.dumps(manifest).encode()
         with self.assertRaisesRegex(ValueError, 'minecraft_version'): self.inspect(entries)
+
+    def test_legacy_catalog_checks_embedded_version_and_catalog_path(self):
+        def text(value):
+            value = value.encode()
+            return pack('>H', len(value)) + value
+
+        def compound(entries):
+            def payload(value):
+                if isinstance(value, int):
+                    return 3, pack('>i', value)
+                if isinstance(value, str):
+                    return 8, text(value)
+                if isinstance(value, bytes):
+                    return 7, pack('>i', len(value)) + value
+                return 10, compound(value)
+            fields = [(name, *payload(value)) for name, value in entries.items()]
+            return b''.join(bytes([kind]) + text(name) + value for name, kind, value in fields) + b'\0'
+
+        def nbt(entries):
+            return gzip.compress(b'\x0a\0\0' + compound(entries))
+
+        def inspect(game, extra_catalog=False):
+            variant = nbt({'template': {'minecraft_version': game, 'data_version': 3465,
+                                        'dimensions': dict.fromkeys(['minecraft:overworld', 'minecraft:the_nether',
+                                                                     'minecraft:the_end'], {})}})
+            catalog = nbt({'catalog_version': 2, 'materialization_version': 1,
+                           'compressed_variants': dict.fromkeys(stage_release.CATALOG_VARIANTS, variant)})
+            data = io.BytesIO()
+            with ZipFile(data, 'w') as archive:
+                archive.writestr('catalogs/1.20.1/retina-catalog.dat', catalog)
+                if extra_catalog:
+                    archive.writestr('catalogs/26.3/vanilla-binary/retina-catalog.dat', catalog)
+            with ZipFile(data) as archive:
+                self.assertEqual(stage_release.inspect_legacy_catalog(archive, '1.20.1'),
+                                 hashlib.sha256(catalog).hexdigest())
+
+        inspect('1.20.1')
+        with self.assertRaisesRegex(ValueError, 'different Minecraft version'):
+            inspect('26.3')
+        with self.assertRaisesRegex(ValueError, 'Unexpected 1.20.1 catalogs'):
+            inspect('1.20.1', extra_catalog=True)
 
 
 if __name__ == '__main__': unittest.main()

@@ -42,6 +42,7 @@ tasks.named('shadowJar') {
     relocate 'com.google.gson', 'art.arcane.retina.internal.gson'
     relocate 'net.kyori', 'art.arcane.retina.internal.kyori'
     from rootProject.tasks.named('packageCrossNatives')
+    from rootProject.tasks.named('packageNativeManifests')
     from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
     manifest { attributes('Implementation-Version': project.version, 'Retina-Minecraft-Version': game) }
     exclude 'module-info.class', 'META-INF/versions/**/module-info.class'

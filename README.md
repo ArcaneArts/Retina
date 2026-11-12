@@ -328,7 +328,8 @@ and [the standalone Rust runner](docs/WORLD_DEFINITION.md).
 ## Build and develop
 
 For local development, install JDK 25, Rust/Cargo 1.87+ and a platform C compiler
-(Clang, GCC or MSVC). Use `gradlew.bat` instead of `./gradlew` on Windows.
+(Clang, GCC or MSVC). Minecraft 1.20.1 builds also use JDK 17.
+Use `gradlew.bat` instead of `./gradlew` on Windows.
 
 | Command | Result |
 | --- | --- |
@@ -339,13 +340,18 @@ For local development, install JDK 25, Rust/Cargo 1.87+ and a platform C compile
 | `./gradlew build -PretinaHostOnly --no-watch-fs` | Local mod/plugin builds with this host's native library |
 | `./gradlew buildBukkit -PretinaHostOnly --no-watch-fs` | Bukkit development plugin |
 | `./gradlew universalJar -PretinaHostOnly --no-watch-fs` | Universal JAR for this host |
+| `./gradlew buildFabric1201`, `buildForge1201`, `buildBukkit1201` | Individual Minecraft 1.20.1 JARs |
+| `./gradlew build1201 -PretinaHostOnly` | All three Minecraft 1.20.1 JARs for this host |
+| `./gradlew buildSupported -PretinaHostOnly` | Both Minecraft lines for this host |
 | `./gradlew release-26` | Advance `release-26` to fetched `origin/main` and release Minecraft 26.3 |
+| `./gradlew release-1.20` | Advance `release-1.20` to fetched `origin/main` and release Minecraft 1.20.1 |
 
 Development module JARs are separate from the universal release artifact. The
-release workflow builds and publishes the universal distribution with Windows x64,
-macOS ARM64 and Linux x64 natives. The version is `<game_version>-<commit_count>`,
-for example `26.3-511`. Run the [acceptance commands](docs/CPU_ACCEPTANCE.md)
-locally before release.
+26.3 release publishes the universal distribution. The explicit 1.20 release
+publishes separate Fabric, Forge and Bukkit JARs. Both package Windows x64,
+macOS ARM64 and Linux x64 natives. Versions use `<game_version>-<commit_count>`,
+for example `26.3-511` and `1.20.1-511`. Run the
+[acceptance commands](docs/CPU_ACCEPTANCE.md) locally before release.
 The developer Windows GPU probe is not a regular release asset.
 
 See [universal builds and release instructions](docs/UNIVERSAL_RELEASE.md),

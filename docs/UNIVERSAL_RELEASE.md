@@ -107,14 +107,27 @@ platforms, source commit, and artifact SHA-256 follow the change list.
 
 A rerun verifies an already published tag and downloads its asset to compare actual
 bytes; it never replaces a different published artifact. Draft recovery can replace
-an incomplete upload. Each publisher reconciles Latest against the newest published
-Retina commit count after writing, so a late older run cannot simply mark itself
-Latest. Concurrent builds retain distinct artifact identities and do not cancel
+an incomplete upload. The 26 publisher reconciles Latest against the newest
+published 26 release by commit count after writing. Concurrent builds retain
+distinct artifact identities and do not cancel
 one another merely because another release advances.
 
 `python3 scripts/test-publish.py` exercises the actual Gradle task using disposable
 local Git repositories, including remote advancement, dirty work preservation,
 initial branch creation, no-op repeat, and rejected divergence.
+
+## Publishing Minecraft 1.20.1
+
+`./gradlew release-1.20` advances `origin/release-1.20` to fetched
+`origin/main`. The branch selects `build1201` and publishes
+`retina-fabric-1.20.1-<commit>.jar`, `retina-forge-1.20.1-<commit>.jar` and
+`retina-bukkit-1.20.1-<commit>.jar`. All three carry the same versioned
+catalog and native libraries. The 26.3 release retains the Latest label.
+
+Both publication workflows build from the triggering commit and stage
+the exact JARs for their line. Run acceptance locally. The build and
+validation commands for 1.20.1 are in the
+[backport validation record](benchmarks/backport-1.20.1.md).
 
 ## Installed-loader acceptance
 

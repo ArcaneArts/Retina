@@ -12,7 +12,8 @@ pluginManagement {
 rootProject.name = 'retina'
 
 // Publishing is Git-only: do not configure Minecraft plugins or build modules.
-def gitOnlyTasks = ['publish', ':publish', 'releaseRetina', ':releaseRetina', 'release-26', ':release-26']
+def gitOnlyTasks = ['publish', ':publish', 'releaseRetina', ':releaseRetina',
+                    'release-26', ':release-26', 'release-1.20', ':release-1.20']
 if (!gradle.startParameter.taskNames.empty && gradle.startParameter.taskNames.every { it in gitOnlyTasks }) {
     rootProject.buildFileName = 'gradle/publish-only.gradle'
 } else {
