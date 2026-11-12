@@ -1,4 +1,4 @@
-package art.arcane.retina.bukkit;
+package art.arcane.retina.core;
 
 import java.util.LinkedHashMap;
 import java.util.concurrent.CompletableFuture;
@@ -7,22 +7,22 @@ import java.util.concurrent.Semaphore;
 import java.util.function.Supplier;
 
 /** Coalesces admitted work and bounds completed values plus concurrent loaders. */
-final class GenerationCache<K, V> implements AutoCloseable {
+public final class GenerationCache<K, V> implements AutoCloseable {
     private final LinkedHashMap<K, CompletableFuture<V>> entries = new LinkedHashMap<>(16, .75F, true);
     private final Semaphore loaders;
     private final int retained;
     private int active;
     private boolean closed;
     private long hits, loads, evictions, loadNanos;
-    record Statistics(long hits, long loads, long evictions, long loadNanos, int entries) { }
-    synchronized Statistics statistics() { return new Statistics(hits, loads, evictions, loadNanos, entries.size()); }
+    public record Statistics(long hits, long loads, long evictions, long loadNanos, int entries) { }
+    public synchronized Statistics statistics() { return new Statistics(hits, loads, evictions, loadNanos, entries.size()); }
 
-    GenerationCache(int retained, int concurrent) {
+    public GenerationCache(int retained, int concurrent) {
         if (retained < 1 || concurrent < 1) throw new IllegalArgumentException("Cache sizes must be positive");
         this.retained = retained; this.loaders = new Semaphore(concurrent, true);
     }
 
-    V get(K key, Supplier<V> load) {
+    public V get(K key, Supplier<V> load) {
         CompletableFuture<V> result;
         synchronized (this) {
             requireOpen(); result = entries.get(key); if (result != null) hits++;
@@ -60,7 +60,7 @@ final class GenerationCache<K, V> implements AutoCloseable {
         return value(result);
     }
 
-    V getIfPresent(K key) {
+    public V getIfPresent(K key) {
         CompletableFuture<V> result;
         synchronized (this) { requireOpen(); result = entries.get(key); }
         return result == null ? null : value(result);

@@ -422,3 +422,41 @@ The Java 17 build uses only the public Bukkit API. It reports unsupported
 registry identities, structure metadata, weighted or customized spawns
 and entity fields outside its supported set. The bundled catalog retains
 the feature and structure coverage of the current 1.20.1 exporter.
+
+## Fabric 1.20.1 dedicated-server terrain
+
+`./gradlew buildFabric1201` produces a remapped mod JAR in
+`fabric1201/build/libs`. The JAR bundles the 1.20.1 catalog, Java 17
+JNI bridge, shared native image and the configuration parsers. The
+server mixins open one saved definition before dimensions are
+constructed, keep each original `LevelStem` in world settings, and
+install the saved generator only for supported dimensions.
+
+The adapter decodes native sections with the 1.20.1 game codecs and lets
+the game own lighting, chunk-status transitions and region writes. It
+decodes a separate mutable palette for each live section because the
+1.20.1 palette copy can retain the old resize callback. Chunk generation
+and base queries share the same bounded cache. The runtime currently
+installs one chunk at a time and uses the placement and structure
+coverage of the exported definition.
+
+Run the headless acceptance with the official Fabric server launcher
+for Minecraft 1.20.1 and the host library embedded in the mod JAR.
+
+```sh
+python3 scripts/minecraft1201-server-test.py \
+  --java "$jdk17/bin/java" --server "$fabric_launcher" --mod "$fabric_mod" \
+  --library "$library" --pack minecraft1201/src/datagen/fixtures/noise-pack \
+  --output "$output" --backend metal
+```
+
+On an M4 Max and Java 17, Fabric Loader 0.16.14 ran on Metal and
+0.20.1 ran on CPU. Both runs compared 688,128 blocks, 10,752 quart
+biomes and 24 unedited heightmaps across nine chunks at each stage.
+All three edits persisted, and the world kept its original definition.
+A separate server loaded the noise datapack, compiled its effective
+registries and saved 229 emerald ore blocks and 4,608 Desert quart
+biomes in three sampled chunks in each run. The process reached startup
+in 16.6 s on Metal and 23.4 s on CPU for the cold vanilla world, then in
+8.3 s and 5.1 s on restart. These are single observations that include
+the launcher and use different Fabric Loader versions.

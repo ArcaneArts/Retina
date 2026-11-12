@@ -1,5 +1,7 @@
 package art.arcane.retina.bukkit;
 
+import art.arcane.retina.core.GenerationCache;
+
 import java.nio.file.Path;
 import java.util.function.Function;
 import java.util.logging.Logger;

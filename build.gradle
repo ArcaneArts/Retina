@@ -65,3 +65,11 @@ if (findProject(':bukkit1201') != null) {
         dependsOn ':bukkit1201:shadowJar'
     }
 }
+
+if (findProject(':fabric1201') != null) {
+    tasks.register('buildFabric1201') {
+        group = 'build'
+        description = 'Build the Minecraft 1.20.1 Fabric mod.'
+        dependsOn ':fabric1201:remapJar'
+    }
+}
