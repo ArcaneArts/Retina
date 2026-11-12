@@ -1099,3 +1099,46 @@ In the final concurrent smoke runs, DH 2.4.5 pregen took
 and 18.32 s, respectively. These timings include local load.
 The repeat suite also covered the shared biome palette lookup
 after removing Minecraft's mutable memoizer from the decoder.
+
+## Overworld landmarks
+
+The structure-enabled 1.20.1 catalogs include desert pyramids,
+jungle temples and swamp huts. The exporter captures the actual
+1.20.1 pieces and the pyramid archaeology pass against a
+controlled surface. Each family has one deterministic captured
+layout. The shared native planner projects and rotates those
+templates, uses the saved registry placements and biome rules,
+and writes the resulting starts, references, and metadata.
+Fabric registers the piece before the built-in registries freeze.
+Forge registers it through its registry event.
+
+Copy `minecraft1201/src/datagen/fixtures/landmark-pack` to
+`<fresh-world>/datapacks/retina-landmarks` and run:
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaGenerateStructures \
+  -PretinaVerifyNoiseTerrain "-PretinaWorld=$FRESH_WORLD" \
+  "-PretinaNativePath=$RETINA_NATIVE" -PretinaGpuBackend=metal
+```
+
+The seed 12345 fixture checks actual random-spread placements
+from the loaded pack and generates Overworld region `-2,2`.
+The reader found three starts and nine references, six brushable
+pyramid blocks, four pyramid chests, two temple chests, two
+temple dispensers, and both swamp hut residents. Reopening
+preserved all 1,024 records. A CPU run matched all 1,024 structure
+compounds and 1,011 complete decoded records. Region generation
+took 2.55 s on Metal and 15.13 s on CPU in separate local runs.
+All 15 bundled catalog parity checks passed.
+
+Run `scripts/minecraft1201-landmarks-test.py` with the headless
+MCA as `--reference` and the fixture directory as `--pack`.
+Packaged Java 17 servers on Fabric Loader 0.16.14 and Forge
+47.2.0 and 47.4.28 found all three starts before opening the
+destination region, then loaded the loot metadata and entities
+through Minecraft. The test repeated the same reads after
+restart and compared the saved starts with the headless
+records. A separate stock Fabric world materialized the bundled
+catalog and located and saved a desert pyramid at `128,-1520`.
+The native library and the 26.3 catalogs were byte-identical
+to the preceding build.

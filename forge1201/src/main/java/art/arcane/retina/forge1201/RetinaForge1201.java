@@ -1,11 +1,15 @@
 package art.arcane.retina.forge1201;
 
+import art.arcane.retina.minecraft1201.LegacyStructurePiece;
 import art.arcane.retina.minecraft1201.LegacyWorlds;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegisterEvent;
 
 import java.util.List;
 import java.util.Set;
@@ -15,6 +19,8 @@ public final class RetinaForge1201 {
     private static final Set<String> VANILLA_MODS = Set.of("minecraft", "forge", "retina", "mixinextras");
 
     public RetinaForge1201() {
+        FMLJavaModLoadingContext.get().getModEventBus().addListener((RegisterEvent event) ->
+                event.register(Registries.STRUCTURE_PIECE, LegacyStructurePiece.ID, () -> LegacyStructurePiece.TYPE));
         LegacyWorlds.configure(FMLPaths.CONFIGDIR.get(), RetinaForge1201::vanillaPacks);
     }
 
