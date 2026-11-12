@@ -313,3 +313,30 @@ uncompressed chunk records. The median paired process time changed by
 −1.06% on CPU and −0.46% on Metal. The median paired generation time changed
 by −1.73% and +0.87%, respectively. The repeat did not reproduce the larger
 Metal process-time variation seen in the initial three-pair sample.
+
+## Minecraft 1.20.1 ore and carver profiles
+
+The 1.20.1 adapter reads loaded biome generation settings, including placed
+ore and scattered-ore features, placement height distributions and block,
+state and tag replacement rules. It reserves all resulting block states
+before building the replacement tables. The same native ore planner
+executes those recipes on CPU and Metal. Both versions share the
+height-provider normalization.
+
+Normal vanilla export recorded 29 Overworld and 10 Nether ore recipes,
+plus 159 Overworld and five Nether carver entries across the biome
+profiles. The saved diagnostics record the shared carver approximations
+and omission of the separate large ore veins from the legacy noise router.
+The 1.20.1 region reader decoded ore blocks in both dimensions.
+
+The existing `retina:noise_probe` datapack now changes a placed diamond
+recipe to replace stone with emerald blocks. The CPU and Metal region
+runs both decoded that block, the pack's smooth sandstone surface and
+its Desert biome. All four region round trips preserved their 1,024
+records on reopen. The standalone Rust binary also generated the
+datapack Overworld using just a copy of its `retina.dat`.
+
+Use the noise export verification commands above to reproduce these
+runs. The structured receipts report ore recipe and carver entry counts
+directly from the saved profiles. All eight 26.3 definition cases passed
+and both regenerated 26.3 catalogs matched the committed bytes.
