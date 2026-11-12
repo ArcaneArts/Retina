@@ -2,6 +2,7 @@
 use super::{Predicate, Rng, World};
 use serde::Deserialize;
 
+mod desert_well;
 mod iceberg;
 
 type Pos = [i32; 3];
@@ -37,6 +38,9 @@ pub enum Recipe {
     Iceberg {
         iceberg: iceberg::Recipe,
     },
+    DesertWell {
+        well: desert_well::Recipe,
+    },
 }
 
 impl Recipe {
@@ -67,6 +71,7 @@ impl Recipe {
                     && replaceable.validate(palette)
             }
             Self::Iceberg { iceberg } => iceberg.validate(palette),
+            Self::DesertWell { well } => well.validate(palette),
         }
     }
 
@@ -86,6 +91,7 @@ impl Recipe {
                 replaceable,
             } => spike(world, at, rng, *block, air, snow, replaceable),
             Self::Iceberg { iceberg } => iceberg.place(world, at, rng),
+            Self::DesertWell { well } => well.place(world, at, rng),
         }
     }
 }

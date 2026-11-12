@@ -256,6 +256,9 @@ impl World<'_> {
         self.write_tick(at, material, 0);
     }
     fn write_tick(&mut self, at: [i32; 3], material: u16, tick: u16) {
+        self.write_command(at, material, FEATURE, tick);
+    }
+    fn write_command(&mut self, at: [i32; 3], material: u16, role: u8, tick: u16) {
         if at[1] < self.request.min_y
             || at[1] >= self.request.min_y + self.request.height as i32
             || self.field.column(at[0], at[2]).is_none()
@@ -269,7 +272,7 @@ impl World<'_> {
             z: at[2],
             material,
             upper: 0,
-            role: FEATURE,
+            role,
             tick,
         });
         self.overlay.write(self.profile, at, material);

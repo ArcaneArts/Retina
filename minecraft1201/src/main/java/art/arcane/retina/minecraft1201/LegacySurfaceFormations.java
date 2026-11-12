@@ -49,6 +49,17 @@ final class LegacySurfaceFormations {
             shape.add("replaceable", predicates.material(state -> state.isAir() || state.is(BlockTags.DIRT)
                     || state.is(Blocks.SNOW_BLOCK) || state.is(Blocks.ICE)));
             reach = 3;
+        } else if (feature == Feature.DESERT_WELL) {
+            shape.addProperty("shape", "desert_well");
+            var well = new JsonObject();
+            shape.add("well", well);
+            well.addProperty("sand", material.applyAsInt(Blocks.SAND.defaultBlockState()));
+            well.addProperty("sandstone", material.applyAsInt(Blocks.SANDSTONE.defaultBlockState()));
+            well.addProperty("slab", material.applyAsInt(Blocks.SANDSTONE_SLAB.defaultBlockState()));
+            well.addProperty("water", material.applyAsInt(Blocks.WATER.defaultBlockState()));
+            well.addProperty("suspicious_sand", material.applyAsInt(Blocks.SUSPICIOUS_SAND.defaultBlockState()));
+            well.add("air", predicates.material(BlockState::isAir));
+            reach = 2;
         } else if (feature == Feature.ICEBERG) {
             shape.addProperty("shape", "iceberg");
             var iceberg = new JsonObject();
