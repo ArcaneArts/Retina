@@ -141,17 +141,17 @@ final class LegacyTerrainProfile {
         program.add("surface_noises", surfaceNoises);
         compiler.approximations.add("material:preliminary-surface-from-final-height");
         compiler.approximations.add("material:shared-vertical-gradient-randomness");
+        compiler.approximations.add("geology:shared-carver-shapes");
+        compiler.approximations.add("geology:union-of-carver-replacement-sets");
+        compiler.approximations.add("geology:shared-ore-attempt-stream");
         var approximations = new JsonArray();
         compiler.approximations.forEach(approximations::add);
         program.add("approximations", approximations);
         world.add("registry_program", program);
 
         terrainPreviewOmissions(world);
-        world.addProperty("geology_min_y", volume.minY());
-        world.addProperty("geology_height", Math.max(0, volume.height()));
-        var carveable = new JsonArray();
-        palette.forEach((state, id) -> carveable.add(false));
-        world.add("carveable", carveable);
+        LegacyGeologyProfile.export(registries, biomeProfile, world, palette, context, storage,
+                type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
         WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight());
         return world;
     }
@@ -175,7 +175,7 @@ final class LegacyTerrainProfile {
     }
 
     static void terrainPreviewOmissions(JsonObject world) {
-        world.add("decoration_omissions", omissions("1.20.1 terrain preview omits placed features"));
+        world.add("decoration_omissions", omissions("1.20.1 terrain preview omits placed decorations"));
         world.add("geology_omissions", omissions("1.20.1 terrain preview omits configured carvers, ores and ore veins"));
         var structures = new JsonObject();
         structures.add("templates", new JsonArray());
@@ -192,7 +192,7 @@ final class LegacyTerrainProfile {
         return report;
     }
 
-    private static JsonObject fallbackNoise(LegacyDensityCompiler compiler, String id) {
+    static JsonObject fallbackNoise(LegacyDensityCompiler compiler, String id) {
         var parameters = compiler.noiseParameters(new JsonPrimitive("minecraft:" + id));
         var noise = new JsonObject();
         noise.addProperty("frequency", Math.scalb(1.0, parameters.get("base_octave").getAsInt()));

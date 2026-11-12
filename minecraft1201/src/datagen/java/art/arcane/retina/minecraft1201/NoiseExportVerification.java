@@ -3,6 +3,7 @@ package art.arcane.retina.minecraft1201;
 import art.arcane.retina.core.NativeWorldDefinition;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.Registry;
@@ -61,8 +62,16 @@ final class NoiseExportVerification {
         var definition = world.resolve("retina.dat");
         var region = world.resolve(directory).resolve("r." + rx + "." + rz + ".mca");
         Files.createDirectories(region.getParent());
-        long start = System.nanoTime();
+        int oreRecipes;
+        int carverEntries;
+        long start;
         try (var nativeWorld = NativeWorldDefinition.open(definition)) {
+            var profile = JsonParser.parseString(nativeWorld.diagnosticProfile(dimension)).getAsJsonObject();
+            oreRecipes = profile.has("ores") ? profile.getAsJsonArray("ores").size() : 0;
+            carverEntries = profile.getAsJsonArray("biomes").asList().stream()
+                    .map(value -> value.getAsJsonObject().getAsJsonArray("carvers"))
+                    .filter(java.util.Objects::nonNull).mapToInt(JsonArray::size).sum();
+            start = System.nanoTime();
             nativeWorld.bindDimension(dimension, 2);
             var receipt = nativeWorld.generateRegion(dimension, rx, rz, region);
             require(receipt.generated() == 1024 && receipt.preserved() == 0, "new region records");
@@ -138,6 +147,8 @@ final class NoiseExportVerification {
         event.addProperty("status", "pass");
         event.addProperty("dimension", dimension);
         event.addProperty("region", rx + "," + rz);
+        event.addProperty("ore_recipes", oreRecipes);
+        event.addProperty("carver_entries", carverEntries);
         event.addProperty("generated", 1024);
         event.addProperty("preserved", 1024);
         event.addProperty("milliseconds", elapsed);
