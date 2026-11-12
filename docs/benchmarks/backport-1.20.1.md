@@ -2030,3 +2030,43 @@ adapter in a direct native probe and lost the device before a terrain
 submission. The Java datagen Vulkan attempt used CPU fallback. Metal
 and CPU results above are the local generation evidence. Windows GPU
 execution remains unverified.
+
+## Backport acceptance
+
+Revision 560 staged separate Java 17 Fabric, Forge and Bukkit JARs
+and the Java 25 26.3 universal JAR. The actual archive checks covered
+loader descriptors, versioned catalogs, Forge remapping metadata,
+Java class versions and native manifests. All four JARs carry identical
+native images per platform. The final 26.3 build contains the same
+1,108 class, catalog and native entries as revision 559. Its exact
+staged JAR passed create and reopen on Java 25 Fabric, NeoForge and
+Spigot, with edits preserved in all three dimensions.
+
+The packaged JNI and FFM transports opened the same 1.20.1 catalog
+with matching CPU receipts for definition metadata, chunks, biome
+queries and region output. Both completed concurrent use, reopen,
+preservation and error checks. The single-process medians for a warm
+1,024-point batch were 22.7 µs on Java 17 JNI and 36.4 µs on Java 25
+FFM. The earlier rotating benchmark above has more observations.
+
+The final Java 17 Fabric, Forge and Spigot tests installed the actual
+revision 560 JARs. All generated the sculk fixture and read the five
+block types and three block entity types after restart. All preserved
+the original definition and the player edit. Earlier packaged tests
+covered bundled vanilla, effective Forge biome modifiers, custom
+dimensions, partial and corrupt records, shutdown during preparation,
+dimension travel, and optional Chunky and Distant Horizons integration.
+
+The final universal CLI printed `Retina 26.3-560` and generated 1,024
+zlib End records with DataVersion 3465 from a saved 1.20.1 definition.
+Amplified, Large Biomes, Single Biome and Superflat each exported
+three supported dimensions and generated one Overworld region on
+Metal. The native generation samples were 4.624 s, 2.458 s, 2.429 s
+and 0.083 s, respectively. The Debug preset preserved its explicit
+unsupported generator reason.
+
+Release qualification ran locally, including disposable Git branch
+promotion and line-specific artifact staging. The release commands
+are `./gradlew release-1.20` and `./gradlew release-26`. The aliases
+`publish` and `releaseRetina` select `release-26`. For both lines on
+the current host, use `./gradlew buildSupported -PretinaHostOnly`.
