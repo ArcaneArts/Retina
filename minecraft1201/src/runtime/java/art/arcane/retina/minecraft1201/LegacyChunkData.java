@@ -81,6 +81,7 @@ final class LegacyChunkData {
             target[i] = decoder.section(sections[i]);
         }
         heights.forEach((type, values) -> chunk.setHeightmap(type, values.getRaw().clone()));
+        LegacyGenerationTicks.install(chunk, root);
         for (var raw : root.getList("block_entities", Tag.TAG_COMPOUND))
             chunk.setBlockEntityNbt(((CompoundTag) raw).copy());
         if (chunk instanceof ProtoChunk proto)

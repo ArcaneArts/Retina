@@ -155,12 +155,44 @@ def compare_end(world, records):
     return checked
 
 
+def spring_fixture(path):
+    # Seed 12345 has one open side at this spring in region -1,0.
+    source, destination = (-360, 79, 41), (-360, 79, 40)
+    x, _, z = source
+    slot = ((z >> 4) & 31) * 32 + ((x >> 4) & 31)
+    chunk = next(iter(decode_nbt(mca_records(path)[slot]).values()))
+    unpack = sibling('bukkit-probe').unpack
+    assert block_at(chunk, *source, unpack) == 'minecraft:lava'
+    assert block_at(chunk, *destination, unpack) == 'minecraft:air'
+    assert any(tick['i'] == 'minecraft:lava' and tuple(tick[axis] for axis in 'xyz') == source
+               for tick in chunk['fluid_ticks'])
+    return source, destination
+
+
+def check_spring_flow(server, fixture, restart):
+    execute = 'execute in minecraft:the_nether'
+    (x, _, z), (target_x, target_y, target_z) = fixture
+    if not restart:
+        server.command(f'{execute} run forceload add {x} {z}', 'force loaded')
+    wait_chunk(server, execute, x >> 4, z >> 4)
+    deadline = time.monotonic() + 30
+    while True:
+        try:
+            server.command(f'{execute} if block {target_x} {target_y} {target_z} minecraft:lava run say RETINA_SPRING_FLOWED',
+                           'RETINA_SPRING_FLOWED', timeout=1)
+            break
+        except TimeoutError:
+            if time.monotonic() >= deadline:
+                raise
+    server.command('save-all flush', 'Saved the game')
+
+
 def compare(world, library, dimensions, edits):
     unpack = sibling('bukkit-probe').unpack
     lib = c.CDLL(str(library.resolve()))
     lib.retina_world_dimension_chunk.argtypes = [c.c_uint64, c.c_char_p, c.c_uint64, c.c_int32, c.c_int32,
                                                  c.POINTER(c.c_void_p), c.POINTER(c.c_uint64)]
-    receipt = {'chunks': 0, 'blocks': 0, 'biomes': 0, 'heightmaps': 0, 'player_edits': 0,
+    receipt = {'chunks': 0, 'blocks': 0, 'biomes': 0, 'heightmaps': 0, 'player_edits': 0, 'flowing_lava': 0,
                'emerald_ore': 0, 'gold_ore': 0, 'desert_biomes': 0}
     for dimension in dimensions:
         region = world / DIMENSIONS[dimension] / 'region'
@@ -179,6 +211,8 @@ def compare(world, library, dimensions, edits):
                 sections = {s['Y']: s for s in native['sections'] if 'block_states' in s}
                 saved_sections = {s['Y']: s for s in actual['sections'] if 'block_states' in s}
                 assert sections.keys() == saved_sections.keys()
+                spring_updates = dimension == 'the_nether' and any(
+                    tick['i'] == 'minecraft:lava' for tick in native.get('fluid_ticks', []))
                 edit = EDITS[dimension] if edits else None
                 edited_chunk = edit and (edit[0] >> 4, edit[2] >> 4) == (x, z)
                 for section_y, expected in sections.items():
@@ -188,7 +222,12 @@ def compare(world, library, dimensions, edits):
                         if edited_chunk and (x * 16 + (i & 15), section_y * 16 + (i >> 8), z * 16 + ((i >> 4) & 15)) == edit[:3]:
                             block = {'Name': edit[3]}
                             receipt['player_edits'] += 1
-                        assert unpack(observed['block_states'], i, 4) == block, (dimension, x, z, section_y, i, block)
+                        saved_block = unpack(observed['block_states'], i, 4)
+                        if spring_updates and block['Name'] == 'minecraft:air' and saved_block['Name'] == 'minecraft:lava':
+                            assert int(saved_block['Properties']['level']) > 0, (dimension, x, z, section_y, i, saved_block)
+                            receipt['flowing_lava'] += 1
+                        else:
+                            assert saved_block == block, (dimension, x, z, section_y, i, block, saved_block)
                         receipt['emerald_ore'] += not edits and block['Name'] == 'minecraft:emerald_block'
                         receipt['gold_ore'] += not edits and block['Name'] == 'minecraft:gold_block'
                     for i in range(64):
@@ -214,6 +253,7 @@ def main():
     loader.add_argument('--forge-install', type=Path, help='Directory produced by the Forge server installer')
     parser.add_argument('--backend', default='cpu', choices=('cpu', 'metal', 'vulkan'))
     parser.add_argument('--end-reference', type=Path, help='Headless End region directory for vanilla seed 12345')
+    parser.add_argument('--spring-reference', type=Path, help='Headless Nether r.-1.0.mca for vanilla seed 12345')
     args = parser.parse_args()
     support = sibling('bukkit-server-test')
     os.environ['RETINA_GPU_BACKEND'] = args.backend
@@ -228,6 +268,7 @@ def main():
     prepare(args, vanilla)
     definition = vanilla / 'world/retina.dat'
     end_records = read_end_reference(args.end_reference) if args.end_reference else None
+    spring = spring_fixture(args.spring_reference) if args.spring_reference else None
     report = {'backend': args.backend}
     for restart in (False, True):
         server = support.Server(launch, vanilla, restart)
@@ -246,12 +287,16 @@ def main():
                 sample(server, edits=True)
             if end_records:
                 load_end(server, end_records, restart)
+            if spring:
+                check_spring_flow(server, spring, restart)
         finally:
             server.stop()
         report[stage] = compare(vanilla / 'world', args.library, DIMENSIONS, edits=True)
         assert report[stage]['player_edits'] == len(EDITS)
         if end_records:
             report[stage]['end_features'] = compare_end(vanilla / 'world', end_records)
+        if spring:
+            report[stage]['spring_flow'] = True
 
     datapack = args.output.resolve() / 'datapack'
     prepare(args, datapack, args.pack)

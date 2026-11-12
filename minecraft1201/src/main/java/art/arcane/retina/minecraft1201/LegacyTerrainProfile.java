@@ -38,7 +38,8 @@ final class LegacyTerrainProfile {
 
         var world = baseProfile(settings, palette);
         int rock = world.get("stone").getAsInt();
-        world.add("biomes", biomeProfile.encode(rock, type.hasCeiling()));
+        var biomeEntries = biomeProfile.encode(rock, type.hasCeiling());
+        world.add("biomes", biomeEntries);
         world.add("climate_targets", biomeProfile.targets());
 
         // Keep the fallback noise metadata required by the profile layout. Registered
@@ -134,6 +135,9 @@ final class LegacyTerrainProfile {
         program.add("surface", array(volume.minY(), volume.getCellHeight(), 0));
         program.addProperty("density_composition", true);
         program.addProperty("material_layers", true);
+        // Nether features place inside caves and on ceilings. Column heights
+        // alone cannot distinguish those positions from solid netherrack.
+        if (type.hasCeiling()) program.addProperty("material_halo", true);
         var surfaceNoises = new JsonArray();
         for (String id : List.of("surface", "surface_secondary", "clay_bands_offset")) {
             surfaceNoises.add(compiler.noise(new JsonPrimitive("minecraft:" + id)));
@@ -150,8 +154,15 @@ final class LegacyTerrainProfile {
         world.add("registry_program", program);
 
         terrainPreviewOmissions(world);
+        var predicates = type.hasCeiling()
+                ? LegacyNetherFeatures.export(registries, List.copyOf(generator.getBiomeSource().possibleBiomes()),
+                        biomeProfile.biomes(), biomeEntries, palette, context, world)
+                : null;
         LegacyGeologyProfile.export(registries, biomeProfile, world, palette, context, storage,
                 type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
+        // Geology has added its output states. Both compilers bind against the
+        // complete palette so ore replacement masks and predicates agree.
+        if (predicates != null) predicates.finish(palette);
         WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight());
         return world;
     }

@@ -592,3 +592,53 @@ Both regenerated 26.3 catalog variants were byte-identical to the
 checked-in assets. The 2,048 decoded chunk records from the modern End
 Metal corpus had identical hashes before and after the change. The
 26.3 universal JAR also generated a complete End region on CPU.
+
+## Nether features and scheduled updates
+
+The 1.20.1 exporter records twelve loaded Nether roots for springs,
+glowstone, crimson and warped huge fungi, basalt and blackstone blobs,
+and deltas. These use the shared decoration engine and the generated
+cave materials. Placement anchors resolve against the 128-block
+generation volume in the vanilla Nether, which has 256 blocks of
+chunk storage. Standalone vines, vegetation and fire patches, basalt
+pillars and basalt columns still require adapters.
+
+```sh
+RETINA_GPU_BACKEND=metal ./gradlew :minecraft1201:exportNoiseTerrain \
+  -PretinaVerifyNoiseTerrain "-PretinaWorld=$world" \
+  "-PretinaNativePath=$native" "-Porg.gradle.java.installations.paths=$jdk17"
+```
+
+At seed 12345 the check reads regions `-1,0` and `0,-1` through the
+1.20.1 region reader. It finds glowstone and shroomlight and round-trips
+12,264 native spring ticks across 1,763 chunks through the game's
+`ProtoChunkTicks` and Retina's installation code. Synthetic records
+also exercise block ticks and packed post-processing positions through
+the same installer.
+
+For a live server check, add `--spring-reference "$world/DIM-1/region/r.-1.0.mca"`
+to the Fabric and Forge commands. It checks that a native spring flows
+into an adjacent block that was air in the headless output and that
+the flowing lava is still present after restart. The chunk comparisons
+record flowing lava in previously empty cells when the native chunk
+contains scheduled lava. Other sampled block differences still fail.
+
+The `nether-spring-pack` fixture under `minecraft1201/src/datagen/fixtures`
+changes the open spring's fluid to water. Export it with
+`exportNoiseTerrain` from a fresh world containing the pack and run
+headless generation for Nether region `-1,0`. The CPU corpus contained
+24 water ticks and 4,201 lava ticks. In the bundled `bukkit-api` variant
+the same region retained glowstone and produced zero scheduled fluid
+ticks. The Spigot suite passed the generation, imported-definition and
+save/restart checks with that catalog.
+
+Fresh headless generation of region `-1,0` on the M4 Max took
+2.86 s on CPU and 0.42 s on Metal with the previous terrain-only
+definition. The new definition took 11.75 s on CPU and 2.31 s on Metal,
+including the cave reads, feature placement, lighting and MCA output.
+
+The 15 live-versus-bundled catalog checks passed. Both regenerated
+26.3 catalogs matched their checked-in bytes. The decoded records of
+the sampled 26.3 Nether region matched before and after the change on
+Metal. The local Rust suite passed 485 tests, with 117 opt-in tests
+skipped.

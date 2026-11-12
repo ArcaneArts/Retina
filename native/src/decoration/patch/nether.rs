@@ -28,9 +28,12 @@ pub enum Feature {
         provider: Provider,
         neighbors: Predicate,
         can_replace: Predicate,
+        origin: Option<Predicate>,
         attempts: IntProvider,
         xz_offset: IntProvider,
         y_offset: IntProvider,
+        #[serde(default)]
+        invert_y: bool,
     },
     Pillar {
         provider: Provider,
@@ -126,13 +129,16 @@ impl Feature {
                 provider,
                 neighbors,
                 can_replace,
+                origin,
                 attempts,
                 xz_offset,
                 y_offset,
+                ..
             } => {
                 provider.validate(palette)
                     && neighbors.validate(palette)
                     && can_replace.validate(palette)
+                    && origin.as_ref().is_none_or(|p| p.validate(palette))
                     && bounded(attempts, 1, 3000)
                     && bounded(xz_offset, -16, 16)
                     && bounded(y_offset, -16, 16)
@@ -242,16 +248,22 @@ impl Feature {
                 provider,
                 neighbors,
                 can_replace,
+                origin,
                 attempts,
                 xz_offset,
                 y_offset,
+                invert_y,
             } => {
+                if origin.as_ref().is_some_and(|predicate| !w.test(predicate, at)) {
+                    return false;
+                }
                 put(w, provider, at, rng);
                 let attempts = attempts.sample(rng);
+                let y_direction = if *invert_y { -1 } else { 1 };
                 for _ in 0..attempts {
                     let p = [
                         at[0] + xz_offset.sample(rng),
-                        at[1] + y_offset.sample(rng),
+                        at[1] + y_direction * y_offset.sample(rng),
                         at[2] + xz_offset.sample(rng),
                     ];
                     if !w.test(can_replace, p) {
