@@ -1749,3 +1749,50 @@ chunk payloads per trial. The two baseline processes recorded
 2,385 and 3,302 chunks/s. The two candidate processes recorded
 3,263 and 3,855 chunks/s. These samples are a local regression
 check.
+
+### Shallow and deep monster rooms
+
+The 1.20.1 adapter compiles both stock monster room placements
+with their loaded height ranges and biome membership. A candidate
+requires a solid floor and ceiling and one to five two-block-high
+entrances. The shared feature writes cobblestone and mossy
+cobblestone, orients any chests, and uses the stock skeleton,
+zombie and spider weights. Chest loot seeds derive from the
+saved world seed and block coordinates. Ordered replay installs
+the native chest and spawner metadata in the owning chunks.
+Bukkit delivers it through the existing public container and
+spawner APIs.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyMonsterRooms \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Repeat with CPU in a fresh directory. The fixture places rooms at
+Y=24 and Y=-20 with entrances across chunk seams. The closed,
+roofless, and protected quartz controls exercise rejection and the
+loaded replaceability tag. The verifier loads the chest and
+spawner tags through Minecraft's 1.20.1 block entity reader and
+compares sampled direct chunks with the saved region.
+
+CPU and Metal matched all 4,096 fixture chunk payloads. The open
+fixture generated 1,024 shallow spawners, 1,024 deep spawners
+and 3,407 chests. None appeared in the controls. Stock seed
+`12345` generated eight spawners and 14 dungeon chests in
+Overworld region `-1,0`. Stock coverage is 115 of 121 non-ore
+roots. The stock verifier and all 15 catalog cases passed.
+
+Packaged Java 17 Fabric and Forge generated the datapack fixture.
+Spigot imported the definition and generated it through the
+public API. All three preserved the definition, six sampled block
+entities and a player edit across restart. The four revision 554
+JARs use the same macOS ARM64 native bytes with separate game
+version catalogs.
+
+The previous desert well definition still produces the same
+3,072 fixture payloads. The 26.3 Overworld Metal A/B/B/A run
+matched 3,072 measured payloads in every comparison. The two
+baseline processes recorded 2,577 and 3,192 chunks/s. The two
+candidate processes recorded 3,209 and 3,231 chunks/s. These
+samples are a local regression check.

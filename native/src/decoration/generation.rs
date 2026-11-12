@@ -115,9 +115,9 @@ impl Generation {
         {
             let end = event.map_or(placements.len(), |e| e.end);
             let commands = &placements[begin..end];
-            decorate_observed(Some(profile), commands, blocks, |index, before, after, role| {
-                if role == WELL_ARCHAEOLOGY {
-                    entities.insert(index, well_archaeology(request, index));
+            decorate_observed(Some(profile), commands, blocks, |index, before, after, placement| {
+                if placement.role == FEATURE_BLOCK_ENTITY {
+                    entities.insert(index, feature_entity(request, index, placement.upper));
                 } else if structures::block_name(profile, before) != structures::block_name(profile, after) {
                     entities.remove(&index);
                 }
@@ -180,18 +180,57 @@ impl Generation {
         })
     }
 }
-fn well_archaeology(request: ChunkRequest, index: usize) -> Value {
+#[repr(u16)]
+pub(super) enum FeatureEntity {
+    WellArchaeology,
+    DungeonChest,
+    SkeletonSpawner,
+    ZombieSpawner,
+    SpiderSpawner,
+}
+
+fn feature_entity(request: ChunkRequest, index: usize, kind: u16) -> Value {
     let x = request.chunk_x * 16 + (index % 16) as i32;
     let y = request.min_y + (index / 256) as i32;
     let z = request.chunk_z * 16 + (index % 256 / 16) as i32;
-    // BlockPos.asLong is the vanilla seed for each brushable block.
-    let seed = ((x as i64 & 0x3ff_ffff) << 38)
-        | ((z as i64 & 0x3ff_ffff) << 12)
-        | (y as i64 & 0xfff);
     let mut tag = nbt::compound();
-    nbt::put(&mut tag, "id", nbt::string("minecraft:brushable_block"));
-    nbt::put(&mut tag, "LootTable", nbt::string("minecraft:archaeology/desert_well"));
-    nbt::put(&mut tag, "LootTableSeed", nbt::long(seed));
+    let id = if kind == FeatureEntity::WellArchaeology as u16 {
+        // BlockPos.asLong is the vanilla seed for each brushable block.
+        let seed = ((x as i64 & 0x3ff_ffff) << 38)
+            | ((z as i64 & 0x3ff_ffff) << 12)
+            | (y as i64 & 0xfff);
+        nbt::put(&mut tag, "LootTable", nbt::string("minecraft:archaeology/desert_well"));
+        nbt::put(&mut tag, "LootTableSeed", nbt::long(seed));
+        "minecraft:brushable_block"
+    } else if kind == FeatureEntity::DungeonChest as u16 {
+        // A position-keyed seed stays stable across independent chunk and region replay.
+        let seed = mix(request.seed ^ structures::position_seed([x, y, z])) as i64;
+        nbt::put(&mut tag, "LootTable", nbt::string("minecraft:chests/simple_dungeon"));
+        nbt::put(&mut tag, "LootTableSeed", nbt::long(seed));
+        "minecraft:chest"
+    } else {
+        let mob = match kind {
+            k if k == FeatureEntity::SkeletonSpawner as u16 => "minecraft:skeleton",
+            k if k == FeatureEntity::ZombieSpawner as u16 => "minecraft:zombie",
+            k if k == FeatureEntity::SpiderSpawner as u16 => "minecraft:spider",
+            _ => unreachable!("unknown feature block entity"),
+        };
+        let mut entity = nbt::compound();
+        nbt::put(&mut entity, "id", nbt::string(mob));
+        let mut spawn = nbt::compound();
+        nbt::put(&mut spawn, "entity", entity);
+        nbt::put(&mut tag, "SpawnData", spawn);
+        nbt::put(&mut tag, "SpawnPotentials", nbt::list(10, Vec::new()));
+        for (name, value) in [
+            ("Delay", 20), ("MinSpawnDelay", 200), ("MaxSpawnDelay", 800),
+            ("SpawnCount", 4), ("MaxNearbyEntities", 6), ("RequiredPlayerRange", 16),
+            ("SpawnRange", 4),
+        ] {
+            nbt::put(&mut tag, name, serde_json::json!([2, value]));
+        }
+        "minecraft:mob_spawner"
+    };
+    nbt::put(&mut tag, "id", nbt::string(id));
     for (name, value) in [("x", x), ("y", y), ("z", z)] {
         nbt::put(&mut tag, name, nbt::int(value));
     }

@@ -103,6 +103,7 @@ pub enum Feature {
     Submerged { submerged: submerged::Recipe },
     SurfaceFormation { formation: formation::Recipe },
     Dripstone { dripstone: dripstone::Recipe },
+    MonsterRoom { room: monster_room::Recipe },
     FlatLake {
         #[serde(flatten)]
         lake: super::flat_features::Lake,
@@ -169,6 +170,7 @@ impl Placed {
                 Feature::Submerged { submerged } => submerged.validate(palette),
                 Feature::SurfaceFormation { formation } => formation.validate(palette),
                 Feature::Dripstone { dripstone } => dripstone.validate(palette),
+                Feature::MonsterRoom { room } => room.validate(palette),
                 Feature::FlatLake { lake } => lake.validate(palette),
                 Feature::Disk { disk } => disk.validate(palette),
                 Feature::Sequence { features } | Feature::Overlay { features } => {
@@ -256,9 +258,12 @@ impl World<'_> {
         self.write_tick(at, material, 0);
     }
     fn write_tick(&mut self, at: [i32; 3], material: u16, tick: u16) {
-        self.write_command(at, material, FEATURE, tick);
+        self.write_command(at, material, FEATURE, 0, tick);
     }
-    fn write_command(&mut self, at: [i32; 3], material: u16, role: u8, tick: u16) {
+    fn write_block_entity(&mut self, at: [i32; 3], material: u16, kind: super::generation::FeatureEntity) {
+        self.write_command(at, material, super::FEATURE_BLOCK_ENTITY, kind as u16, 0);
+    }
+    fn write_command(&mut self, at: [i32; 3], material: u16, role: u8, upper: u16, tick: u16) {
         if at[1] < self.request.min_y
             || at[1] >= self.request.min_y + self.request.height as i32
             || self.field.column(at[0], at[2]).is_none()
@@ -271,7 +276,7 @@ impl World<'_> {
             y: at[1],
             z: at[2],
             material,
-            upper: 0,
+            upper,
             role,
             tick,
         });
@@ -342,6 +347,7 @@ impl World<'_> {
             Feature::Submerged { submerged } => submerged.place(self, at, rng),
             Feature::SurfaceFormation { formation } => formation.place(self, at, rng),
             Feature::Dripstone { dripstone } => dripstone.place(self, at, rng),
+            Feature::MonsterRoom { room } => room.place(self, at, rng),
             Feature::FlatLake { lake } => {
                 let start = self.blocks.len();
                 let placed = super::flat_features::lake(lake, at, rng, self.field, self.profile,
@@ -832,6 +838,7 @@ pub(super) fn place_registered(
         Kind::Submerged { submerged } => submerged.place(&mut world, at, rng),
         Kind::SurfaceFormation { formation } => formation.place(&mut world, at, rng),
         Kind::Dripstone { dripstone } => dripstone.place(&mut world, at, rng),
+        Kind::MonsterRoom { room } => room.place(&mut world, at, rng),
         Kind::Disk { disk } => world.disk(disk, at, rng),
         Kind::Sequence { features } => world.composite(features, true, at, rng),
         Kind::Overlay { features } => world.composite(features, false, at, rng),
@@ -841,4 +848,5 @@ pub(super) fn place_registered(
 
 #[cfg(test)]
 mod live_overlay_tests;
+pub(super) mod monster_room;
 pub(super) mod submerged;

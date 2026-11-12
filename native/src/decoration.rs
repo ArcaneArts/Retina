@@ -101,6 +101,8 @@ pub enum Kind {
     Submerged { submerged: patch::submerged::Recipe },
     #[serde(rename = "surface_formation")]
     SurfaceFormation { formation: patch::formation::Recipe },
+    #[serde(rename = "monster_room")]
+    MonsterRoom { room: patch::monster_room::Recipe },
     #[serde(rename = "dripstone")]
     Dripstone { dripstone: patch::dripstone::Recipe },
     #[serde(rename = "flat_lake")]
@@ -225,6 +227,7 @@ impl Recipe {
             Kind::Submerged { submerged } => self.placement.is_some() && submerged.validate(material_count),
             Kind::SurfaceFormation { formation } => self.placement.is_some() && formation.validate(material_count),
             Kind::Dripstone { dripstone } => self.placement.is_some() && dripstone.validate(material_count),
+            Kind::MonsterRoom { room } => self.placement.is_some() && room.validate(material_count),
             Kind::FlatLake { lake } => self.placement.is_some() && lake.validate(material_count),
             Kind::FreezeTopLayer => self.placement.is_some() && self.reach.is_some_and(|reach| reach >= 15),
             Kind::VoidPlatform { platform } | Kind::EndPlatform { platform } => {
@@ -466,8 +469,8 @@ const FEATURE: u8 = 6;
 const DEFERRED_ORE: u8 = 7;
 /// Marks a position for chunk post-processing without changing its block.
 const POST_PROCESS: u8 = 8;
-/// A suspicious sand write carrying the desert well's lazy archaeology loot.
-const WELL_ARCHAEOLOGY: u8 = 9;
+/// A feature write carrying a block entity kind in the otherwise unused upper field.
+const FEATURE_BLOCK_ENTITY: u8 = 9;
 const SIDES: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
 /// A crown occupies a small local box. Direct byte lookup avoids hashing a world
@@ -1569,7 +1572,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
         let mut rng = Rng::new(candidate.seed);
         let feature_start = diagnostics::start(MEASURE);
         match &recipe.feature {
-            Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+            Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
                 patch::place_registered(
                     &recipe.feature,
                     position,
@@ -1688,7 +1691,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
             }
         }
         let commit_start = diagnostics::start(MEASURE);
-        let live_overlay = matches!(&recipe.feature, Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. }) || matches!(&recipe.feature,
+        let live_overlay = matches!(&recipe.feature, Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. }) || matches!(&recipe.feature,
             Kind::NetherFeature { nether } if nether.commits_overlay());
         if profile.ordered_decorations && !live_overlay {
             // Preserve the same within-feature replay as the live overlay,
@@ -1761,6 +1764,7 @@ pub(crate) fn feature_sample(
             | Kind::Submerged { .. }
             | Kind::SurfaceFormation { .. }
             | Kind::Dripstone { .. }
+            | Kind::MonsterRoom { .. }
             | Kind::VoidPlatform { .. }
             | Kind::EndPlatform { .. }
             | Kind::EndIsland { .. }
@@ -1788,7 +1792,7 @@ pub(crate) fn feature_sample(
     let mut overlay = placement::Overlay::default();
     let mut rng = Rng::new(seed);
     match &recipe.feature {
-        Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+        Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
             patch::place_registered(
                 &recipe.feature,
                 at,
@@ -2399,7 +2403,7 @@ pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
     profile: Option<&WorldProfile>,
     placements: &[Placement],
     blocks: &mut B,
-    mut write: impl FnMut(usize, u16, u16, u8),
+    mut write: impl FnMut(usize, u16, u16, &Placement),
 ) {
     let Some(profile) = profile else {
         return;
@@ -2409,7 +2413,7 @@ pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
     let roles: &[u8] = if profile.ordered_decorations {
         &[u8::MAX]
     } else {
-        &[SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE, WELL_ARCHAEOLOGY]
+        &[SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE, FEATURE_BLOCK_ENTITY]
     };
     for &pass in roles {
         for placement in placements
@@ -2424,7 +2428,7 @@ pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
             let previous = blocks.value(index);
             let flags = profile.material_flags[previous as usize];
             let replace = match role {
-                FEATURE | WELL_ARCHAEOLOGY => true,
+                FEATURE | FEATURE_BLOCK_ENTITY => true,
                 DEFERRED_ORE => previous == placement.upper,
                 SOIL => flags & 1 != 0 || previous == profile.snow,
                 LOG => previous == 0 || flags & (4 | 16) != 0,
@@ -2457,10 +2461,10 @@ pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
                 if index + COLUMNS >= blocks.len() || blocks.value(index + COLUMNS) != 0 {
                     continue;
                 }
-                write(index + COLUMNS, blocks.value(index + COLUMNS), placement.upper, PLANT);
+                write(index + COLUMNS, blocks.value(index + COLUMNS), placement.upper, placement);
                 blocks.put(index + COLUMNS, placement.upper);
             }
-            write(index, previous, placement.material, role);
+            write(index, previous, placement.material, placement);
             blocks.put(index, placement.material);
         }
     }
