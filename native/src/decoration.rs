@@ -101,6 +101,8 @@ pub enum Kind {
     Submerged { submerged: patch::submerged::Recipe },
     #[serde(rename = "surface_formation")]
     SurfaceFormation { formation: patch::formation::Recipe },
+    #[serde(rename = "geode")]
+    Geode { geode: patch::geode::Recipe },
     #[serde(rename = "monster_room")]
     MonsterRoom { room: patch::monster_room::Recipe },
     #[serde(rename = "dripstone")]
@@ -228,6 +230,8 @@ impl Recipe {
             Kind::SurfaceFormation { formation } => self.placement.is_some() && formation.validate(material_count),
             Kind::Dripstone { dripstone } => self.placement.is_some() && dripstone.validate(material_count),
             Kind::MonsterRoom { room } => self.placement.is_some() && room.validate(material_count),
+            Kind::Geode { geode } => self.placement.is_some() && geode.validate(material_count)
+                && self.reach.is_some_and(|reach| reach >= geode.reach()),
             Kind::FlatLake { lake } => self.placement.is_some() && lake.validate(material_count),
             Kind::FreezeTopLayer => self.placement.is_some() && self.reach.is_some_and(|reach| reach >= 15),
             Kind::VoidPlatform { platform } | Kind::EndPlatform { platform } => {
@@ -471,6 +475,8 @@ const DEFERRED_ORE: u8 = 7;
 const POST_PROCESS: u8 = 8;
 /// A feature write carrying a block entity kind in the otherwise unused upper field.
 const FEATURE_BLOCK_ENTITY: u8 = 9;
+/// Schedules an update on the existing material without replacing that material.
+const TICK_ONLY: u8 = 10;
 const SIDES: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
 /// A crown occupies a small local box. Direct byte lookup avoids hashing a world
@@ -1572,7 +1578,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
         let mut rng = Rng::new(candidate.seed);
         let feature_start = diagnostics::start(MEASURE);
         match &recipe.feature {
-            Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+            Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
                 patch::place_registered(
                     &recipe.feature,
                     position,
@@ -1691,7 +1697,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
             }
         }
         let commit_start = diagnostics::start(MEASURE);
-        let live_overlay = matches!(&recipe.feature, Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. }) || matches!(&recipe.feature,
+        let live_overlay = matches!(&recipe.feature, Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. }) || matches!(&recipe.feature,
             Kind::NetherFeature { nether } if nether.commits_overlay());
         if profile.ordered_decorations && !live_overlay {
             // Preserve the same within-feature replay as the live overlay,
@@ -1765,6 +1771,7 @@ pub(crate) fn feature_sample(
             | Kind::SurfaceFormation { .. }
             | Kind::Dripstone { .. }
             | Kind::MonsterRoom { .. }
+            | Kind::Geode { .. }
             | Kind::VoidPlatform { .. }
             | Kind::EndPlatform { .. }
             | Kind::EndIsland { .. }
@@ -1792,7 +1799,7 @@ pub(crate) fn feature_sample(
     let mut overlay = placement::Overlay::default();
     let mut rng = Rng::new(seed);
     match &recipe.feature {
-        Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+        Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::SurfaceFormation { .. } | Kind::Dripstone { .. } | Kind::MonsterRoom { .. } | Kind::Geode { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
             patch::place_registered(
                 &recipe.feature,
                 at,
@@ -1847,7 +1854,7 @@ pub(crate) fn feature_sample(
     Ok(blocks
         .into_iter()
         .filter(|b| b.y >= request.min_y && b.y < request.min_y + request.height as i32)
-        .filter(|b| !ticks || b.tick != 0)
+        .filter(|b| if ticks { b.tick != 0 } else { b.role != TICK_ONLY })
         .map(|b| {
             [
                 b.x,
@@ -2413,12 +2420,13 @@ pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
     let roles: &[u8] = if profile.ordered_decorations {
         &[u8::MAX]
     } else {
-        &[SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE, FEATURE_BLOCK_ENTITY]
+        &[SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE]
     };
     for &pass in roles {
         for placement in placements
             .iter()
-            .filter(|p| p.role != POST_PROCESS && (pass == u8::MAX || p.role == pass))
+            .filter(|p| !matches!(p.role, POST_PROCESS | TICK_ONLY)
+                && (pass == u8::MAX || p.role == pass || pass == FEATURE && p.role == FEATURE_BLOCK_ENTITY))
         {
             let role = placement.role;
             let index = placement.index as usize;
@@ -2713,6 +2721,7 @@ mod tests {
             terrain_kind: Default::default(),
             mca_compression: Default::default(),
             decoration_ticks: Vec::new(),
+            decoration_fluid_ticks: Vec::new(),
             flat: None,
             end: None,
             lighting: None,

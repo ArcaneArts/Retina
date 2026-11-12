@@ -21,7 +21,7 @@ impl Updates {
     }
     pub fn placements(&mut self, profile: &WorldProfile, placements: &[Placement]) {
         for p in placements {
-            if p.role == super::POST_PROCESS {
+            if matches!(p.role, super::POST_PROCESS | super::TICK_ONLY) {
                 continue;
             }
             self.record(profile, p.index as usize, p.material);

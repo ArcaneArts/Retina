@@ -1316,7 +1316,7 @@ impl Overlay {
         // Their root proof excludes material-dependent placement and preserves
         // heights; ordered dependency/final replay performs their replacement.
         for role in [SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE] {
-            for b in blocks[start..].iter().filter(|b| b.role == role) {
+            for b in blocks[start..].iter().filter(|b| b.role == role || role == FEATURE && b.role == FEATURE_BLOCK_ENTITY) {
                 if b.y < request.min_y || b.y >= request.min_y + request.height as i32 {
                     continue;
                 }

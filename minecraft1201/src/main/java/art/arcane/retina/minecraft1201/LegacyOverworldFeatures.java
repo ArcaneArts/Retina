@@ -24,6 +24,7 @@ import net.minecraft.world.level.block.BambooStalkBlock;
 import net.minecraft.world.level.block.BaseCoralWallFanBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.BuddingAmethystBlock;
 import net.minecraft.world.level.block.DoublePlantBlock;
 import net.minecraft.world.level.block.KelpBlock;
 import net.minecraft.world.level.block.SeaPickleBlock;
@@ -41,6 +42,7 @@ import net.minecraft.world.level.levelgen.feature.configurations.BlockColumnConf
 import net.minecraft.world.level.levelgen.feature.configurations.CountConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.HugeMushroomFeatureConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.GeodeConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.MultifaceGrowthConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.ProbabilityFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.RandomBooleanFeatureConfiguration;
@@ -94,6 +96,7 @@ final class LegacyOverworldFeatures {
     private final LegacyFeatureTicks ticks = new LegacyFeatureTicks();
     private final List<JsonArray> poolWaterlogging = new ArrayList<>();
     private boolean surfaceFreeze;
+    private boolean geodeTicks;
 
     LegacyOverworldFeatures(RegistryAccess registries, WorldGenerationContext context,
                             LevelHeightAccessor storage, LinkedHashMap<BlockState, Integer> palette,
@@ -160,7 +163,6 @@ final class LegacyOverworldFeatures {
         omissions.forEach(report::add);
         world.add("decorations", recipes);
         world.add("decoration_omissions", report);
-        world.add("decoration_ticks", ticks.export());
         world.addProperty("ordered_decorations", true);
         world.addProperty("decoration_source_order", true);
         world.addProperty("decoration_biome_3d", true);
@@ -206,6 +208,15 @@ final class LegacyOverworldFeatures {
     void finish(JsonObject world, List<Holder<Biome>> biomes) {
         if (surfaceFreeze) LegacyFreezeFeatures.export(world, biomes, palette);
         predicates.finish(palette);
+        if (geodeTicks) {
+            var fluidTicks = new JsonArray();
+            for (var state : palette.keySet()) {
+                var fluid = state.getFluidState();
+                fluidTicks.add(fluid.isEmpty() ? 0 : ticks.fluid(BuiltInRegistries.FLUID.getKey(fluid.getType()).toString()));
+            }
+            world.add("decoration_fluid_ticks", fluidTicks);
+        }
+        world.add("decoration_ticks", ticks.export());
         var halves = new JsonArray();
         var plants = new LinkedHashMap<Block, Integer>();
         for (var state : palette.keySet()) {
@@ -304,6 +315,7 @@ final class LegacyOverworldFeatures {
             surfaceFreeze = true;
             return new Recipe(kind("freeze_top_layer"), 15);
         }
+        if (feature == Feature.GEODE) return geode((GeodeConfiguration) config);
         if (feature == Feature.MONSTER_ROOM) return monsterRoom();
         if (feature == Feature.LAKE) return lake((LakeFeature.Configuration) config);
         if (flat && depth == 0 && feature == Feature.VOID_START_PLATFORM) {
@@ -337,6 +349,58 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.SIMPLE_RANDOM_SELECTOR) return choices((SimpleRandomFeatureConfiguration) config, depth);
         if (feature == Feature.RANDOM_BOOLEAN_SELECTOR) return either((RandomBooleanFeatureConfiguration) config, depth);
         throw new IllegalArgumentException(BuiltInRegistries.FEATURE.getKey(feature).toString());
+    }
+
+    private Recipe geode(GeodeConfiguration config) {
+        int lo = config.minGenOffset, hi = config.maxGenOffset;
+        if (lo < -32 || hi > 32 || lo > hi) throw new IllegalArgumentException("geode:generation-offsets");
+        var data = kind("geode");
+        var geode = new JsonObject();
+        data.add("geode", geode);
+        geode.add("offsets", array(lo, hi));
+        geode.add("point_count", integer(config.distributionPoints));
+        geode.add("wall_distance", integer(config.outerWallDistance));
+        geode.add("point_offset", integer(config.pointOffset));
+        geode.addProperty("noise_multiplier", config.noiseMultiplier);
+        geode.addProperty("invalid_threshold", config.invalidBlocksThreshold);
+        var layers = config.geodeLayerSettings;
+        var layerValues = new JsonArray();
+        for (double value : new double[]{layers.filling, layers.innerLayer, layers.middleLayer, layers.outerLayer}) {
+            layerValues.add(value);
+        }
+        geode.add("layers", layerValues);
+        var crack = config.geodeCrackSettings;
+        geode.addProperty("crack_chance", crack.generateCrackChance);
+        geode.addProperty("crack_size", crack.baseCrackSize);
+        geode.addProperty("crack_offset", crack.crackPointOffset);
+        geode.addProperty("alternate_chance", config.useAlternateLayer0Chance);
+        geode.addProperty("placement_chance", config.usePotentialPlacementsChance);
+        geode.addProperty("require_alternate", config.placementsRequireLayer0Alternate);
+        var blocks = config.geodeBlockSettings;
+        geode.add("filling", providers.encode(blocks.fillingProvider).data());
+        geode.add("inner", providers.encode(blocks.innerLayerProvider).data());
+        geode.add("alternate", providers.encode(blocks.alternateInnerLayerProvider).data());
+        geode.add("middle", providers.encode(blocks.middleLayerProvider).data());
+        geode.add("outer", providers.encode(blocks.outerLayerProvider).data());
+        geode.addProperty("air", material(Blocks.AIR.defaultBlockState()));
+        geode.add("replaceable", predicates.material(state -> !state.is(blocks.cannotReplace)));
+        // The 1.20.1 feature checks the global invalid-block tag when choosing points.
+        geode.add("invalid", predicates.material(state -> state.isAir() || state.is(BlockTags.GEODE_INVALID_BLOCKS)));
+        geode.add("grow_at", predicates.material(BuddingAmethystBlock::canClusterGrowAtState));
+        geode.add("source_fluid", predicates.material(state -> state.getFluidState().isSource()));
+        var placements = new JsonArray();
+        for (var state : blocks.innerPlacements) {
+            var directions = new JsonArray();
+            for (var direction : Direction.values()) {
+                var facing = state.trySetValue(BlockStateProperties.FACING, direction);
+                directions.add(array(material(facing.trySetValue(BlockStateProperties.WATERLOGGED, false)),
+                        material(facing.trySetValue(BlockStateProperties.WATERLOGGED, true))));
+            }
+            placements.add(directions);
+        }
+        geode.add("placements", placements);
+        geodeTicks = true;
+        return new Recipe(data, Math.max(Math.max(-lo, hi) + 1, config.outerWallDistance.getMaxValue()));
     }
 
     private Recipe monsterRoom() {
