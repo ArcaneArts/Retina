@@ -42,6 +42,9 @@ dependencies {
         if (mode == 'flat' && providers.gradleProperty('retinaVerifyFlatWorldgen').isPresent()) {
             args '--structures', '--verify-flat-worldgen'
         }
+        if (mode == 'flat' && providers.gradleProperty('retinaVerifySurfaceFreeze').isPresent()) {
+            args '--verify-surface-freeze'
+        }
         if (providers.gradleProperty('retinaNativePath').isPresent()) {
             systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
         }

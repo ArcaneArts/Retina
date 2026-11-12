@@ -186,12 +186,13 @@ final class LegacyTerrainProfile {
         var geology = LegacyGeologyProfile.collect(registries, biomeProfile, world, palette, context);
         LegacyStructureProcessors.prepare(structuresProfile, palette);
         LegacyPortalProfile.prepare(structuresProfile, palette);
+        if (overworld != null) overworld.reserveSurfaceFreeze();
         // Build all material masks only after geology and structures have reserved their output states.
         geology.finish(world, storage, type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
         LegacyNetherStructures.finish(structuresProfile, palette);
         LegacyStructureProcessors.finish(structuresProfile, palette);
         if (predicates != null) predicates.finish(palette);
-        if (overworld != null) overworld.finish(world);
+        if (overworld != null) overworld.finish(world, biomeProfile.biomes());
         WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight(), overworld != null);
         return world;
     }

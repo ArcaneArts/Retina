@@ -2,6 +2,29 @@
 use super::{Noise, Query};
 
 impl Noise {
+    pub(crate) fn sample_precise(&self, [x, z]: [f64; 2]) -> f64 {
+        let sqrt3 = 3.0_f64.sqrt();
+        let skew = (x + z) * (0.5 * (sqrt3 - 1.0));
+        let [i, j] = [x, z].map(|v| (v + skew).floor() as i32);
+        let shift = (3.0 - sqrt3) / 6.0;
+        let unskew = f64::from(i.wrapping_add(j)) * shift;
+        let a = [x - (f64::from(i) - unskew), z - (f64::from(j) - unskew)];
+        let [di, dj] = if a[0] > a[1] { [1, 0] } else { [0, 1] };
+        let b = [a[0] - f64::from(di) + shift, a[1] - f64::from(dj) + shift];
+        let c = a.map(|v| v - 1.0 + 2.0 * shift);
+        let permute = |v: i32| self.permutation[(v & 255) as usize];
+        let corner = |i: i32, j: i32, [x, z]: [f64; 2]| {
+            let gradient = permute(i.wrapping_add(permute(j) as i32)) % 12;
+            let [gx, gz] = GRADIENTS[gradient as usize];
+            let t = (0.5 - x * x - z * z).max(0.0);
+            let t2 = t * t;
+            t2 * t2 * (f64::from(gx) * x + f64::from(gz) * z)
+        };
+        70.0 * (corner(i, j, a)
+            + corner(i.wrapping_add(di), j.wrapping_add(dj), b)
+            + corner(i.wrapping_add(1), j.wrapping_add(1), c))
+    }
+
     pub(crate) fn sample(&self, point: [f32; 2]) -> f32 {
         let skew = (point[0] + point[1]) * 0.3660254037844386_f32;
         let cell = point.map(|v| (v + skew).floor() as i32);
@@ -51,21 +74,22 @@ impl Noise {
         count.max(0)
     }
 }
+const GRADIENTS: [[f32; 2]; 12] = [
+    [1., 1.],
+    [-1., 1.],
+    [1., -1.],
+    [-1., -1.],
+    [1., 0.],
+    [-1., 0.],
+    [1., 0.],
+    [-1., 0.],
+    [0., 1.],
+    [0., -1.],
+    [0., 1.],
+    [0., -1.],
+];
+
 fn corner(gradient: u32, p: [f32; 2]) -> f32 {
-    const GRADIENTS: [[f32; 2]; 12] = [
-        [1., 1.],
-        [-1., 1.],
-        [1., -1.],
-        [-1., -1.],
-        [1., 0.],
-        [-1., 0.],
-        [1., 0.],
-        [-1., 0.],
-        [0., 1.],
-        [0., -1.],
-        [0., 1.],
-        [0., -1.],
-    ];
     let g = GRADIENTS[gradient as usize];
     let t = (0.5 - (p[0] * p[0] + p[1] * p[1])).max(0.0);
     let square = t * t;

@@ -6,6 +6,7 @@ use serde::Deserialize;
 #[serde(default)]
 pub struct TerrainFeatures {
     pub snow_layer: u16,
+    pub surface_freeze: Option<crate::decoration::surface_freeze::Climate>,
     pub bands: Vec<u16>,
     pub band_frequency: f32,
     pub band_amplitude: f32,
@@ -33,6 +34,9 @@ pub struct CaveFeatures {
 }
 impl TerrainFeatures {
     pub fn validate(&self, p: &WorldProfile) -> Result<(), String> {
+        if let Some(climate) = &self.surface_freeze {
+            climate.validate(p)?;
+        }
         if self.snow_layer as usize >= p.materials.len()
             || self.bands.len() > 256
             || self.bands.iter().any(|m| *m as usize >= p.materials.len())
