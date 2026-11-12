@@ -311,6 +311,11 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.BLOCK_COLUMN) return column((BlockColumnConfiguration) config);
         if (feature == Feature.DISK) return disk((DiskConfiguration) config);
         if (feature == Feature.BAMBOO) return bamboo((ProbabilityFeatureConfiguration) config);
+        if (feature == Feature.FOREST_ROCK || feature == Feature.BLUE_ICE || feature == Feature.ICE_SPIKE
+                || feature == Feature.ICEBERG) {
+            var formation = LegacySurfaceFormations.compile(configured, predicates, this::material);
+            return new Recipe(formation.data(), formation.reach());
+        }
         if (feature == Feature.KELP || feature == Feature.SEAGRASS || feature == Feature.SEA_PICKLE
                 || feature == Feature.UNDERWATER_MAGMA || feature == Feature.CORAL_TREE
                 || feature == Feature.CORAL_CLAW || feature == Feature.CORAL_MUSHROOM) return submerged(configured);
