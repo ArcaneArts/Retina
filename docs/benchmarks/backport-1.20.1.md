@@ -128,3 +128,22 @@ still need runtime extraction and validation.
 The modern `universalJar` build packaged the rebuilt macOS image. Its local
 native and CPU smoke tests passed. The twelve chunk hashes and both saved
 definition hashes matched the published 26.3 baseline.
+
+## Shared structural definition encoding
+
+The Java 17 sources in `definition/src/main/java` own schema metadata, ordered
+material and biome palettes, and structural encoding of normalized profiles.
+The 26.3 adapter still creates its native NBT objects, including exact
+negative-zero doubles.
+
+Local `:common:worldDefinitionCompileTest` passed eight definition cases,
+including vanilla, flat and datapack exports and typed NBT values. Local
+`:data:generateCatalogs` reproduced both committed 26.3 catalogs byte for byte.
+
+| Catalog | SHA-256 |
+| --- | --- |
+| Recompiled | `d34080051d84bf4ca0c2e59d17c294fa22495fc592d212f4ed92d8e0bffc9f17` |
+| Binary | `5237034015aedda6ebd06288427bba5ac28f4a1bc72e0c3342bf4661644eb810` |
+
+Java 17 compiled the shared source against the Gson 2.10 library from the
+1.20.1 server distribution. Its only dependencies are Gson and `java.base`.

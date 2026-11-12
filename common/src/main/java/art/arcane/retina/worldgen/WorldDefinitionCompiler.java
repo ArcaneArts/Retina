@@ -1,5 +1,6 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.definition.DefinitionAssembler;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.*;
@@ -13,8 +14,8 @@ import java.util.*;
 
 /** One-time compilation only. No native library or GPU is initialized here. */
 public final class WorldDefinitionCompiler {
-    public static final int FORMAT_VERSION = 2;
-    public static final int GENERATION_VERSION = 1;
+    public static final int FORMAT_VERSION = DefinitionAssembler.FORMAT_VERSION;
+    public static final int GENERATION_VERSION = DefinitionAssembler.GENERATION_VERSION;
 
     private WorldDefinitionCompiler() { }
 
