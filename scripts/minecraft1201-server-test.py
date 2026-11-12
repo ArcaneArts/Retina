@@ -4,7 +4,9 @@ import ctypes as c
 import json
 import os
 import shutil
+import struct
 import time
+import zlib
 from argparse import Namespace
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -27,6 +29,7 @@ EDITS = {
     'the_nether': (-1, 130, -1, 'minecraft:emerald_block'),
     'the_end': (1, 100, 1, 'minecraft:gold_block'),
 }
+PARTIAL_MARKER = 123456789
 
 
 def prepare(args, directory, pack=None):
@@ -46,6 +49,31 @@ def prepare(args, directory, pack=None):
             fixture = Path(__file__).resolve().parent.parent / 'minecraft1201/src/datagen/fixtures/forge-biome-modifier'
             shutil.copytree(fixture, target, dirs_exist_ok=True)
     (directory / 'server.properties').write_text(properties)
+
+
+def seed_partial_overworld(world, reference):
+    raw = mca_records(reference)[0]
+    chunk = next(iter(decode_nbt(raw).values()))
+    assert (chunk['DataVersion'], chunk['xPos'], chunk['zPos']) == (3465, 0, 0)
+    name = b'InhabitedTime'
+    field = struct.pack('>BH', 4, len(name)) + name
+    assert raw.count(field) == 1 and chunk['InhabitedTime'] < PARTIAL_MARKER
+    offset = raw.index(field) + len(field)
+    raw = raw[:offset] + struct.pack('>q', PARTIAL_MARKER) + raw[offset + 8:]
+    compressed = zlib.compress(raw)
+    record = struct.pack('>IB', len(compressed) + 1, 2) + compressed
+    sectors = (len(record) + 4095) // 4096
+    header = struct.pack('>I', (2 << 8) | sectors).ljust(8192, b'\0')
+    destination = world / 'region/r.0.0.mca'
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(header + record.ljust(sectors * 4096, b'\0'))
+
+
+def verify_partial_overworld(world):
+    records = mca_records(world / 'region/r.0.0.mca')
+    assert len(records) == 1024
+    existing = next(iter(decode_nbt(records[0]).values()))
+    assert existing['InhabitedTime'] >= PARTIAL_MARKER
 
 
 def wait_chunk(server, execute, x, z):
@@ -276,6 +304,7 @@ def main():
     parser.add_argument('--backend', default='cpu', choices=('cpu', 'metal', 'vulkan'))
     parser.add_argument('--end-reference', type=Path, help='Headless End region directory for vanilla seed 12345')
     parser.add_argument('--spring-reference', type=Path, help='Headless Nether r.-1.0.mca for vanilla seed 12345')
+    parser.add_argument('--partial-overworld-region', type=Path, help='Headless Overworld r.0.0.mca for vanilla seed 12345')
     args = parser.parse_args()
     support = sibling('bukkit-server-test')
     os.environ['RETINA_GPU_BACKEND'] = args.backend
@@ -285,9 +314,12 @@ def main():
         command = ['@' + str(launch_file.resolve())]
     else:
         command = ['-jar', str(args.server.resolve())]
-    launch = Namespace(java=args.java.resolve(), launch_args=command, jvm_args=[])
+    jvm_args = ['-Dretina.qa=true'] if args.partial_overworld_region else []
+    launch = Namespace(java=args.java.resolve(), launch_args=command, jvm_args=jvm_args)
     vanilla = args.output.resolve() / 'vanilla'
     prepare(args, vanilla)
+    if args.partial_overworld_region:
+        seed_partial_overworld(vanilla / 'world', args.partial_overworld_region)
     definition = vanilla / 'world/retina.dat'
     end_records = read_end_reference(args.end_reference) if args.end_reference else None
     spring = spring_fixture(args.spring_reference) if args.spring_reference else None
@@ -315,6 +347,11 @@ def main():
             server.stop()
         report[stage] = compare(vanilla / 'world', args.library, DIMENSIONS, edits=True)
         assert report[stage]['player_edits'] == len(EDITS)
+        if args.partial_overworld_region:
+            verify_partial_overworld(vanilla / 'world')
+            if not restart:
+                assert 'retina_1201_published minecraft:overworld 0,0 generated=1023 preserved=1' in server.output
+            report[stage]['partial_region_preserved'] = True
         if end_records:
             report[stage]['end_features'] = compare_end(vanilla / 'world', end_records)
         if spring:

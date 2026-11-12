@@ -4,6 +4,6 @@
   "package": "art.arcane.retina.minecraft1201.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "retina1201.refmap.json",
-  "mixins": ["MinecraftServerMixin", "ServerLevelMixin"],
+  "mixins": ["MinecraftServerMixin", "ServerLevelMixin", "LegacyChunkMapMixin", "LegacyIOWorkerMixin", "LegacyRegionFileStorageMixin"],
   "injectors": { "defaultRequire": 1 }
 }

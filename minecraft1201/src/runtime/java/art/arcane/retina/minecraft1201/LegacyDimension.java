@@ -2,6 +2,7 @@ package art.arcane.retina.minecraft1201;
 
 import art.arcane.retina.config.RetinaConfiguration;
 import art.arcane.retina.core.GenerationCache;
+import art.arcane.retina.core.NativeRegionBudget;
 import art.arcane.retina.core.NativeWorldDefinition;
 import com.google.gson.JsonObject;
 import net.minecraft.core.Holder;
@@ -29,9 +30,10 @@ final class LegacyDimension implements AutoCloseable {
     private final LegacyChunkData.Decoder decoder;
     private final GenerationCache<Long, LegacyChunkData> chunks;
     private final GenerationCache<Long, short[]> biomeGrids;
+    final LegacyRegionCoordinator regions;
 
     LegacyDimension(String key, DimensionType type, RegistryAccess registries, NativeWorldDefinition definition,
-                    JsonObject dimension, JsonObject sharedTypes) {
+                    JsonObject dimension, JsonObject sharedTypes, NativeRegionBudget regionBudget) {
         this.key = key;
         this.definition = definition;
         var params = dimension.getAsJsonObject("parameters");
@@ -58,6 +60,7 @@ final class LegacyDimension implements AutoCloseable {
         chunks = new GenerationCache<>(64, parallel);
         biomeGrids = new GenerationCache<>(128, parallel);
         definition.bindDimension(key, 2);
+        regions = new LegacyRegionCoordinator(definition, key, regionBudget);
     }
 
     LegacyChunkData chunk(int x, int z) {
@@ -74,6 +77,7 @@ final class LegacyDimension implements AutoCloseable {
 
     @Override
     public void close() {
+        regions.close();
         chunks.close();
         biomeGrids.close();
     }

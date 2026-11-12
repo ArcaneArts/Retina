@@ -1,4 +1,8 @@
-package art.arcane.retina.worldgen;
+package art.arcane.retina.core;
+
+import art.arcane.retina.core.RegionPreparation;
+
+import art.arcane.retina.core.RegionCancellation;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,7 +16,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /** Defers enqueueing reads until their immutable region is ready. Live storage stays on its I/O queue. */
-final class RegionLoadScheduler implements AutoCloseable {
+public final class RegionLoadScheduler implements AutoCloseable {
     private static final class Entry {
         final CompletableFuture<AutoCloseable> prepared = new CompletableFuture<>();
         final CompletableFuture<Void> stopped = new CompletableFuture<>();
@@ -31,25 +35,25 @@ final class RegionLoadScheduler implements AutoCloseable {
     private CompletableFuture<Void> available = new CompletableFuture<>();
     private boolean closed;
 
-    RegionLoadScheduler(Executor executor, int capacity, Consumer<AutoCloseable> release) {
+    public RegionLoadScheduler(Executor executor, int capacity, Consumer<AutoCloseable> release) {
         if (capacity < 1) throw new IllegalArgumentException("Region capacity must be positive");
         this.executor = executor;
         this.capacity = capacity;
         this.release = release;
     }
 
-    <T> CompletableFuture<T> load(long key, BooleanSupplier needsPreparation,
+    public <T> CompletableFuture<T> load(long key, BooleanSupplier needsPreparation,
                                 Supplier<AutoCloseable> prepare, Supplier<CompletableFuture<T>> read) {
         return load(key, false, needsPreparation, ignored -> prepare.get(), () -> {}, read);
     }
 
-    <T> CompletableFuture<T> load(long key, boolean foreground, BooleanSupplier needsPreparation,
+    public <T> CompletableFuture<T> load(long key, boolean foreground, BooleanSupplier needsPreparation,
                                 Function<BooleanSupplier, AutoCloseable> prepare, Runnable promote,
                                 Supplier<CompletableFuture<T>> read) {
         return load(key, foreground, needsPreparation, (priority, cancellation) -> prepare.apply(priority), promote, read);
     }
 
-    <T> CompletableFuture<T> load(long key, boolean foreground, BooleanSupplier needsPreparation,
+    public <T> CompletableFuture<T> load(long key, boolean foreground, BooleanSupplier needsPreparation,
                                 BiFunction<BooleanSupplier, RegionCancellation, AutoCloseable> prepare, Runnable promote,
                                 Supplier<CompletableFuture<T>> read) {
         Entry entry;

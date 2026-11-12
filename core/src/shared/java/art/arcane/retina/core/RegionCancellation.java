@@ -1,16 +1,16 @@
-package art.arcane.retina.worldgen;
+package art.arcane.retina.core;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /** Signals that all observers abandoned preparation; callbacks only cancel unclaimed work. */
-final class RegionCancellation implements AutoCloseable {
+public final class RegionCancellation implements AutoCloseable {
     private final List<Runnable> callbacks = new ArrayList<>();
     private boolean cancelled;
 
-    synchronized boolean isCancelled() { return cancelled; }
+    public synchronized boolean isCancelled() { return cancelled; }
 
-    Runnable onCancel(Runnable callback) {
+    public Runnable onCancel(Runnable callback) {
         synchronized (this) {
             if (!cancelled) {
                 callbacks.add(callback);

@@ -158,13 +158,7 @@ impl DimensionLease {
         z: i32,
         destination: &Path,
     ) -> Result<RegionReport, String> {
-        let x = x
-            .checked_mul(32)
-            .ok_or("region X overflows chunk coordinates")?;
-        let z = z
-            .checked_mul(32)
-            .ok_or("region Z overflows chunk coordinates")?;
-        let request = self.request(x, z)?;
+        let request = self.region_request(x, z)?;
         let dimension = self.world.definition.dimension(&self.key)?;
         let biome = &dimension.profile()?.biomes[0].id;
         region::generate_region(
@@ -174,6 +168,17 @@ impl DimensionLease {
             self.world.definition.data_version(),
             biome,
         )
+    }
+
+    pub fn publish_region(&self, x: i32, z: i32, preview: &Path, destination: &Path) -> Result<RegionReport, String> {
+        let request = self.region_request(x, z)?;
+        region::publish_cached_region(&self.world.engine, request, destination, preview)
+    }
+
+    fn region_request(&self, x: i32, z: i32) -> Result<ChunkRequest, String> {
+        let x = x.checked_mul(32).ok_or("region X overflows chunk coordinates")?;
+        let z = z.checked_mul(32).ok_or("region Z overflows chunk coordinates")?;
+        self.request(x, z)
     }
 }
 

@@ -47,6 +47,12 @@ final class FfmDefinitionTransport implements DefinitionTransport {
                         ADDRESS, JAVA_LONG, ADDRESS));
     }
 
+    private static final class PublicationCall {
+        static final MethodHandle PUBLISH = Calls.call("retina_world_dimension_publish_region",
+                FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT,
+                        ADDRESS, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS));
+    }
+
     @Override
     public long open(Path path) {
         try (var arena = Arena.ofConfined()) {
@@ -123,9 +129,28 @@ final class FfmDefinitionTransport implements DefinitionTransport {
             check((int) RegionCall.GENERATE.invokeExact(handle,
                     arena.allocateFrom(JAVA_BYTE, dimension), (long) dimension.length, x, z,
                     arena.allocateFrom(JAVA_BYTE, path), (long) path.length, report));
-            return new NativeWorldDefinition.RegionResult(Integer.toUnsignedLong(report.get(JAVA_INT, 0)),
-                    Integer.toUnsignedLong(report.get(JAVA_INT, 4)), report.get(JAVA_LONG, 32));
+            return regionResult(report);
         } catch (Throwable error) { throw failure(error); }
+    }
+
+    @Override
+    public NativeWorldDefinition.RegionResult publishRegion(long handle, String key, int x, int z, Path preview, Path destination) {
+        try (var arena = Arena.ofConfined()) {
+            byte[] dimension = key.getBytes(StandardCharsets.UTF_8);
+            byte[] source = preview.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
+            byte[] path = destination.toAbsolutePath().toString().getBytes(StandardCharsets.UTF_8);
+            var report = arena.allocate(40, Long.BYTES);
+            check((int) PublicationCall.PUBLISH.invokeExact(handle,
+                    arena.allocateFrom(JAVA_BYTE, dimension), (long) dimension.length, x, z,
+                    arena.allocateFrom(JAVA_BYTE, source), (long) source.length,
+                    arena.allocateFrom(JAVA_BYTE, path), (long) path.length, report));
+            return regionResult(report);
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    private static NativeWorldDefinition.RegionResult regionResult(MemorySegment report) {
+        return new NativeWorldDefinition.RegionResult(Integer.toUnsignedLong(report.get(JAVA_INT, 0)),
+                Integer.toUnsignedLong(report.get(JAVA_INT, 4)), report.get(JAVA_LONG, 32));
     }
 
     @Override

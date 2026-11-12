@@ -68,6 +68,11 @@ public final class NativeWorldDefinition implements AutoCloseable {
         return TRANSPORT.generateRegion(openHandle(), key, x, z, destination);
     }
 
+    /** Publish a prepared region into missing slots while exclusively owning destination I/O. */
+    public RegionResult publishRegion(String key, int x, int z, Path preview, Path destination) {
+        return TRANSPORT.publishRegion(openHandle(), key, x, z, preview, destination);
+    }
+
     /** Generate storage-shaped uncompressed chunk NBT using the loaded world. */
     public byte[] chunk(String key, int x, int z) {
         // Native lookup leases the world for the call. Independent generation

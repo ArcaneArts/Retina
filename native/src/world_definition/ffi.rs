@@ -344,6 +344,28 @@ pub unsafe extern "C" fn retina_world_dimension_region(
     })
 }
 
+/// Publish missing records from a region prepared by the same saved dimension.
+/// # Safety
+/// The key and paths are readable UTF-8 buffers; report is a writable aligned RegionReport.
+/// The caller exclusively owns destination region-file I/O and retains the preview for the call.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_world_dimension_publish_region(
+    handle: u64, key: *const u8, length: u64, x: i32, z: i32,
+    preview: *const u8, preview_length: u64, destination: *const u8, destination_length: u64,
+    report: *mut crate::region::RegionReport,
+) -> i32 {
+    boundary(|| {
+        if report.is_null() { return Err("null dimension region report".into()); }
+        let owner = world(handle)?;
+        let dimension = owner.session()?.dimension(unsafe { text(key, length) }?)?;
+        let preview = std::path::Path::new(unsafe { text(preview, preview_length) }?);
+        let destination = std::path::Path::new(unsafe { text(destination, destination_length) }?);
+        let result = dimension.publish_region(x, z, preview, destination)?;
+        unsafe { *report = result; }
+        Ok(())
+    })
+}
+
 /// # Safety
 /// key is length readable UTF-8 bytes; output and size are writable. Free with retina_free_bytes.
 #[unsafe(no_mangle)]

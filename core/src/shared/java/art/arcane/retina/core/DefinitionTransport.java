@@ -11,6 +11,7 @@ interface DefinitionTransport {
     int bind(long handle, String key, int compression, NativeWorldDefinition.ProgramExecution execution);
     TerrainRequest request(long handle, String key, int x, int z);
     NativeWorldDefinition.RegionResult generateRegion(long handle, String key, int x, int z, Path destination);
+    NativeWorldDefinition.RegionResult publishRegion(long handle, String key, int x, int z, Path preview, Path destination);
     byte[] chunk(long handle, String key, int x, int z);
     short[] biomes(TerrainRequest request);
     int[] biomePoints(TerrainRequest request, int[] xyz);

@@ -78,6 +78,7 @@ final class LegacyChunkGenerator extends ChunkGenerator {
     }
 
     @Override public int getSeaLevel() { return saved.seaLevel; }
+    LegacyRegionCoordinator regions() { return saved.regions; }
     @Override public int getMinY() { return saved.minY; }
     @Override public int getGenDepth() { return saved.generatorDepth; }
     @Override public int getSpawnHeight(LevelHeightAccessor bounds) { return saved.spawnHeight; }
