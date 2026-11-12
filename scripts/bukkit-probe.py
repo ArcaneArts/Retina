@@ -73,8 +73,8 @@ def compare(probe: Path, definition: Path, library_path: Path, expect_test_edits
                         expected = edit; edited += 1
                     if palette[actual_id] != expected:
                         at = (x * 16 + block_x, y, z * 16 + block_z)
-                        if at in crystal_positions and expected == 'minecraft:air' and palette[actual_id] == state_text(
-                                'minecraft:fire', defaults.get('minecraft:fire', {})):
+                        if at in crystal_positions and expected == 'minecraft:air' and crystal_fire(
+                                palette[actual_id], defaults.get('minecraft:fire', {})):
                             crystal_tick_updates += 1
                             continue
                         differences += 1
@@ -106,6 +106,15 @@ def parse_state(text):
     if "[" not in text: return text, {}
     identity, properties = text[:-1].split("[", 1)
     return identity, dict(p.split("=", 1) for p in properties.split(","))
+
+
+def crystal_fire(state, defaults):
+    # Normal fire ticks can advance the age after the crystal lights this block.
+    identity, properties = parse_state(state)
+    if identity != 'minecraft:fire' or properties.get('age') not in map(str, range(16)):
+        return False
+    properties['age'] = defaults.get('age', '0')
+    return properties == defaults
 
 
 def state_text(identity, properties):

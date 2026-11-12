@@ -148,6 +148,10 @@ final class LegacyTerrainProfile {
         compiler.approximations.add("geology:shared-carver-shapes");
         compiler.approximations.add("geology:union-of-carver-replacement-sets");
         compiler.approximations.add("geology:shared-ore-attempt-stream");
+        if (type.hasCeiling()) {
+            compiler.approximations.add("decoration:nether-fire-sturdy-floor");
+            compiler.approximations.add("decoration:nether-mushroom-generation-dark");
+        }
         var approximations = new JsonArray();
         compiler.approximations.forEach(approximations::add);
         program.add("approximations", approximations);
@@ -156,7 +160,7 @@ final class LegacyTerrainProfile {
         terrainPreviewOmissions(world);
         var predicates = type.hasCeiling()
                 ? LegacyNetherFeatures.export(registries, List.copyOf(generator.getBiomeSource().possibleBiomes()),
-                        biomeProfile.biomes(), biomeEntries, palette, context, world)
+                        biomeProfile.biomes(), biomeEntries, palette, context, storage, world)
                 : null;
         LegacyGeologyProfile.export(registries, biomeProfile, world, palette, context, storage,
                 type.hasCeiling(), settings.oreVeinsEnabled(), compiler);

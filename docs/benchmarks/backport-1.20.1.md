@@ -642,3 +642,63 @@ The 15 live-versus-bundled catalog checks passed. Both regenerated
 the sampled 26.3 Nether region matched before and after the change on
 Metal. The local Rust suite passed 485 tests, with 117 opt-in tests
 skipped.
+
+## Remaining vanilla Nether placements
+
+The 1.20.1 normal definition now exports all 27 non-ore Nether roots.
+The additional recipes cover fire and mushroom patches, forest
+vegetation, twisting and weeping vines, basalt pillars, and small
+and large basalt columns. The exporter uses the loaded configured
+and placed features. Ore roots still use the geology exporter.
+
+The legacy column layout samples the clustered and dispersed forms
+and permits lava replacement through sea level. In the region
+`-1,0` comparison, positions such as `-512,23,47` changed from lava
+to basalt. Vine lengths follow the distinct upward and downward
+source loops. Nether mushroom survival uses the darkness of the
+generation stage. Normal fire checks a sturdy floor, as used by the
+bundled patch's netherrack predicate. Custom support on an adjacent
+flammable face is outside this rule.
+
+Use the preceding `exportNoiseTerrain -PretinaVerifyNoiseTerrain`
+command with a fresh world. It verifies all 27 roots, the generated
+fire, soul fire, mushrooms, vegetation and vines, and the 12,264
+scheduled spring ticks across the two vanilla Nether regions.
+
+The `nether-biomes-pack` fixture adds fixed-biome Nether dimensions
+for Warped Forest and Soul Sand Valley. Copy it to `$world/datapacks`,
+run `exportNoiseTerrain` in that world, and generate the two regions.
+
+```sh
+for dimension in warped_forest soul_sand_valley; do
+  RETINA_GPU_BACKEND=cpu retina generate --definition "$world/retina.dat" \
+    --dimension "retina:$dimension" --region-min=0,0 --region-max=0,0 --output "$world"
+done
+```
+
+The Java 17 export contained five dimensions. The CPU output contained
+twisting vine heads and stems, Nether sprouts, and warped roots in the
+Warped Forest, and basalt and soul fire in the Soul Sand Valley. The
+1,024-chunk regions took 15.38 s and 14.82 s, respectively, on the M4 Max.
+
+The 15 live-versus-bundled catalog checks passed. Both regenerated 26.3
+catalogs and the 1,024 decoded 26.3 Nether chunk records matched the
+baseline. Across three alternating cold Metal runs per revision, the
+26.3 region took 1.43–1.57 s before and 1.24–1.81 s after, excluding
+definition loading. All six runs produced the same decoded records.
+The native library suite passed 485 tests with 117 skipped.
+
+`buildSupported` packaged identical native bytes across the four JARs
+and identical 1.20.1 catalogs across the three legacy JARs. The Java 17
+Fabric and Forge server probes each matched 688,128 blocks and 10,752
+biome samples per boot, including 44 expected live lava-flow updates,
+and preserved three player edits across restart. The live datapack and
+Forge biome modifier checks passed as well.
+
+Spigot completed its generation, imported-definition, and save and
+restart probes. The cold run timed out at 240 s alongside other tests,
+so the isolated retry used `--startup-timeout 480`. Each boot matched
+917,504 blocks and 14,336 biome samples after counting one live fire
+tick update at the generated End crystal's position. The restart
+preserved three player edits and all ten generated End crystals. The
+comparator was corrected for fire age and rerun on the saved snapshots.

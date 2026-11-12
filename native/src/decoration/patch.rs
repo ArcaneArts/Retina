@@ -35,6 +35,7 @@ pub struct Simple {
     pub provider: Provider,
     pub states: Vec<SimpleState>,
     pub water: Predicate,
+    pub target: Option<Predicate>,
     #[serde(default)]
     pub current_survival: bool,
 }
@@ -42,6 +43,7 @@ impl Simple {
     pub(super) fn validate(&self, palette: usize) -> bool {
         self.provider.validate(palette)
             && self.water.validate(palette)
+            && self.target.as_ref().is_none_or(|p| p.validate(palette))
             && self
                 .provider
                 .outputs()
@@ -280,6 +282,9 @@ impl World<'_> {
         else {
             return false;
         };
+        if simple.target.as_ref().is_some_and(|p| !self.test(p, at)) {
+            return false;
+        }
         let state = if let Some(state) = simple.states.iter().find(|s| s.source == id) {
             state
         } else {

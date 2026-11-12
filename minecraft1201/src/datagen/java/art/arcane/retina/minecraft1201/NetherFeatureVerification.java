@@ -25,6 +25,12 @@ final class NetherFeatureVerification {
     private NetherFeatureVerification() { }
 
     static void verify(Path world, RegistryAccess registries) throws Exception {
+        var profile = NbtIo.readCompressed(world.resolve("retina.dat").toFile())
+                .getCompound("dimensions").getCompound("minecraft:the_nether").getCompound("profile");
+        var omissions = profile.getList("decoration_omissions", Tag.TAG_STRING);
+        require(omissions.isEmpty(), "unhandled vanilla Nether roots " + omissions);
+        int roots = profile.getList("decorations", Tag.TAG_COMPOUND).size();
+        require(roots == 27, "vanilla Nether placed root count");
         Path directory = world.resolve("DIM-1/region");
         var materials = new HashSet<String>();
         int checked = 0;
@@ -51,9 +57,11 @@ final class NetherFeatureVerification {
             }
         }
         require(checked > 0, "generated spring queues");
-        require(materials.containsAll(Set.of("minecraft:glowstone", "minecraft:shroomlight")), "generated glowstone and fungi");
+        require(materials.containsAll(Set.of("minecraft:glowstone", "minecraft:shroomlight", "minecraft:fire",
+                "minecraft:soul_fire", "minecraft:red_mushroom", "minecraft:brown_mushroom",
+                "minecraft:crimson_roots", "minecraft:crimson_fungus", "minecraft:weeping_vines")), "generated Nether features");
         System.out.println("QA_EVT {\"event\":\"nether_1201_feature_ticks\",\"status\":\"pass\",\"chunks\":"
-                + checked + ",\"fluid_ticks\":" + ticks + "}");
+                + checked + ",\"fluid_ticks\":" + ticks + ",\"placed_roots\":" + roots + "}");
     }
 
     private static void verifyTicks(CompoundTag data, ListTag fluids, ChunkPos pos, RegistryAccess registries) {

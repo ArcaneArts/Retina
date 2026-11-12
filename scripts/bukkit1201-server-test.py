@@ -59,6 +59,7 @@ def main():
     for option in ('java', 'server', 'plugin', 'probe', 'imported', 'output'):
         parser.add_argument('--' + option, type=Path, required=True)
     parser.add_argument('--backend', choices=('cpu', 'metal', 'vulkan'), default='cpu')
+    parser.add_argument('--startup-timeout', type=float, default=240, help='Seconds allowed for server startup')
     args = parser.parse_args()
     support = sibling('bukkit-server-test')
     probe = sibling('bukkit-probe')
@@ -78,7 +79,7 @@ def main():
     report = {'backend': args.backend}
     server = support.Server(args, directory)
     try:
-        server.wait('Done (')
+        server.wait('Done (', timeout=args.startup_timeout)
         report['first_start_seconds'] = time.monotonic() - server.started
         assert {p for p in directory.glob('*/retina.dat')} == {definition, imported}
         original = support.digest(definition)
@@ -101,7 +102,7 @@ def main():
 
     server = support.Server(args, directory, True)
     try:
-        server.wait('Done (')
+        server.wait('Done (', timeout=args.startup_timeout)
         report['restart_seconds'] = time.monotonic() - server.started
         server.command('retinaprobe', 'RETINA_PROBE_PASS ')
         server.command('retinaprobe imported 12345', 'RETINA_PROBE_IMPORTED_PASS')
