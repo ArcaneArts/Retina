@@ -7,8 +7,11 @@ import art.arcane.retina.definition.TerrainBandModel;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.SharedConstants;
+import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
@@ -25,6 +28,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 import java.util.zip.Deflater;
 import java.util.zip.GZIPOutputStream;
@@ -51,7 +55,9 @@ final class CatalogExport {
             variants.putByteArray("normal", compressedVariant(normal));
             byte[] withoutStructuresBytes = compressedVariant(withoutStructures);
             variants.putByteArray("normal-no-structures", withoutStructuresBytes);
-            variants.putByteArray("bukkit-api", withoutStructuresBytes);
+            var bukkit = withoutStructures.copy();
+            filterBukkit(bukkit.getCompound("template"));
+            variants.putByteArray("bukkit-api", compressedVariant(bukkit));
             normal.getCompound("template").putBoolean("bonus_chest", true);
             withoutStructures.getCompound("template").putBoolean("bonus_chest", true);
             variants.putByteArray("normal-bonus-chest", compressedVariant(normal));
@@ -142,6 +148,41 @@ final class CatalogExport {
         return bytes.toByteArray();
     }
 
+    private static void filterBukkit(CompoundTag definition) {
+        var dimensions = definition.getCompound("dimensions");
+        for (String key : dimensions.getAllKeys()) {
+            var profile = dimensions.getCompound(key).getCompound("profile");
+            var recipes = profile.getList("decorations", Tag.TAG_COMPOUND);
+            if (recipes.isEmpty()) continue;
+            var removed = new BitSet(recipes.size());
+            var omissions = profile.getList("decoration_omissions", Tag.TAG_STRING);
+            for (int i = 0; i < recipes.size(); i++) {
+                var recipe = recipes.getCompound(i).getCompound("v");
+                if (recipe.getCompound("nether").getString("kind").equals("spring")) {
+                    removed.set(i);
+                    omissions.add(StringTag.valueOf("bukkit-api:scheduled-spring-root:" + recipe.getString("source")));
+                }
+            }
+            if (removed.isEmpty()) continue;
+            profile.put("decoration_omissions", omissions);
+            for (var row : profile.getList("biomes", Tag.TAG_COMPOUND)) {
+                var biome = ((CompoundTag) row).getCompound("v");
+                Tag selected = biome.get("decorations");
+                int[] ids;
+                if (selected instanceof ByteArrayTag bytes) {
+                    byte[] values = bytes.getAsByteArray();
+                    ids = new int[values.length];
+                    for (int i = 0; i < values.length; i++) ids[i] = Byte.toUnsignedInt(values[i]);
+                } else if (selected instanceof IntArrayTag ints) {
+                    ids = ints.getAsIntArray();
+                } else {
+                    continue;
+                }
+                biome.putIntArray("decorations", Arrays.stream(ids).filter(id -> !removed.get(id)).toArray());
+            }
+        }
+    }
+
     private static void verify(Path catalog, RegistryExport.Loaded loaded, Path temporary) throws Exception {
         int checks = 0;
         for (var variant : List.of("normal", "normal-no-structures", "normal-bonus-chest",
@@ -161,6 +202,7 @@ final class CatalogExport {
                     }
                     var actual = NbtIo.readCompressed(definition.toFile());
                     var expected = live(loaded, seed, structures, bonusChest);
+                    if (variant.equals("bukkit-api")) filterBukkit(expected);
                     normalizeBands(expected);
                     if (!expected.equals(actual)) {
                         throw new AssertionError("Live export differs from " + variant + " for seed " + seed);

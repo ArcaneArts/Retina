@@ -39,9 +39,14 @@ import java.util.concurrent.TimeUnit;
 final class NoiseExportVerification {
     private NoiseExportVerification() { }
 
-    static void verify(Path world, RegistryAccess registries, Registry<LevelStem> dimensions, long seed) throws Exception {
+    static void verify(Path world, RegistryAccess registries, Registry<LevelStem> dimensions, long seed,
+                       boolean vanillaFixture) throws Exception {
         verify(world, registries, dimensions, LevelStem.OVERWORLD, "region", -1, 0, seed);
         verify(world, registries, dimensions, LevelStem.NETHER, "DIM-1/region", -1, 0, seed);
+        if (vanillaFixture) {
+            verify(world, registries, dimensions, LevelStem.NETHER, "DIM-1/region", 0, -1, seed);
+            NetherFeatureVerification.verify(world, registries);
+        }
         verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -1, 0, seed);
         verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -3, -1, seed);
     }

@@ -19,19 +19,15 @@ import net.minecraft.world.level.block.ChorusFlowerBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.configurations.EndGatewayConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.SpikeConfiguration;
-import net.minecraft.world.level.levelgen.placement.PlacedFeature;
-import net.minecraft.world.level.levelgen.placement.PlacementModifier;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.TreeSet;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
-import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
 import static art.arcane.retina.minecraft1201.LegacyTerrainProfile.material;
 
 /** Translates loaded 1.20.1 End features to the shared native replay recipes. */
@@ -64,7 +60,7 @@ final class LegacyEndFeatures {
                     omissions.add(source + ":" + BuiltInRegistries.FEATURE.getKey(feature));
                     continue;
                 }
-                var placement = placement(root, ops);
+                var placement = LegacyFeaturePlacement.encode(root, ops);
                 if (!EndPlacementProfile.supported(placement)
                         || (feature == Feature.END_SPIKE || feature == Feature.END_GATEWAY) && !EndPlacementProfile.owned(placement)
                         || feature == Feature.END_SPIKE && placement.asList().stream().anyMatch(LegacyEndFeatures::movesAnchor)) {
@@ -102,46 +98,6 @@ final class LegacyEndFeatures {
         world.addProperty("ordered_decorations", true);
         world.addProperty("decoration_source_order", true);
         world.addProperty("decoration_biome_3d", true);
-    }
-
-    private static JsonArray placement(PlacedFeature feature, RegistryOps<JsonElement> ops) {
-        var result = new JsonArray();
-        for (var modifier : feature.placement()) {
-            var op = decode(PlacementModifier.CODEC.encodeStart(ops, modifier)).getAsJsonObject();
-            String kind = LegacyDensityCompiler.type(op);
-            op.addProperty("type", kind);
-            switch (kind) {
-                case "count" -> op.add("count", intProvider(op.get("count")));
-                case "heightmap" -> op.addProperty("map", Heightmap.Types.valueOf(op.remove("heightmap").getAsString()).ordinal());
-                case "random_offset" -> {
-                    var horizontal = intProvider(op.remove("xz_spread"));
-                    op.addProperty("type", "offset");
-                    op.add("x", horizontal);
-                    op.add("y", intProvider(op.remove("y_spread")));
-                    op.add("z", horizontal.deepCopy());
-                }
-                default -> { }
-            }
-            result.add(op);
-        }
-        return result;
-    }
-
-    private static JsonElement intProvider(JsonElement value) {
-        if (!value.isJsonObject()) return value;
-        var provider = value.getAsJsonObject().deepCopy();
-        provider.addProperty("type", LegacyDensityCompiler.type(provider));
-        if (provider.get("value") instanceof JsonObject limits) {
-            provider.remove("value");
-            limits.entrySet().forEach(entry -> provider.add(entry.getKey(), entry.getValue()));
-        }
-        if (provider.get("distribution") instanceof JsonArray distribution) {
-            for (var raw : distribution) {
-                var entry = raw.getAsJsonObject();
-                entry.add("data", intProvider(entry.get("data")));
-            }
-        }
-        return provider;
     }
 
     private static boolean movesAnchor(JsonElement value) {

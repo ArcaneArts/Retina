@@ -21,6 +21,7 @@ import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.levelgen.WorldDimensions;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
+import net.minecraft.world.level.levelgen.presets.WorldPresets;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -63,8 +64,12 @@ public final class RegistryExport {
         event.addProperty("elapsed_ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
         System.out.println("QA_EVT " + event);
         if (args.length > 4 && args[4].equals("--verify")) {
-            if (noise) NoiseExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed);
-            else FlatExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed);
+            if (noise) {
+                boolean vanilla = seed == 12345 && preset.equals(WorldPresets.NORMAL) && loaded.packs().equals(List.of("vanilla"));
+                NoiseExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed, vanilla);
+            } else {
+                FlatExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed);
+            }
         }
     }
 
