@@ -46,12 +46,13 @@ fn material_voxel(x:u32,y:i32,z:u32,c:Column,r:Request)->MaterialVoxel {
         if !lake && icy && y==waterline-1 {return MaterialVoxel(caves.base[1].x,false);}
         return MaterialVoxel(caves.base[0].w,false);
     }
-    if caves.aquifer[0].x!=0u && caves.base[1].w!=0u {
+    let apply_caves=caves.globals.w!=0u || caves.base[1].w!=0u;
+    if caves.aquifer[0].x!=0u && apply_caves {
         let fluid=aquifer_fluid(x,y,z,r);
         if fluid!=0u {return MaterialVoxel(select(caves.base[0].w,caves.base[1].y,fluid==2u),false);}
         if material_carved(x,y,z,r) {return MaterialVoxel(0u,false);}
     }
-    if caves.aquifer[0].x==0u && caves.base[1].w!=0u && material_carved(x,y,z,r) {
+    if caves.aquifer[0].x==0u && apply_caves && material_carved(x,y,z,r) {
         if y<bitcast<i32>(caves.base[1].z) {return MaterialVoxel(caves.base[1].y,false);}
         if (u32(caves.biomes[c.packed&65535u].selection.w)&4u)!=0u && y<waterline {
             return MaterialVoxel(caves.base[0].w,false);

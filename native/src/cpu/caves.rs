@@ -213,7 +213,7 @@ impl<'a> Caves<'a> {
             [self.sampler.bounds()[1] as f32, 1.0]
         } else {
             let mut roof = column.height;
-            if self.registered_caves()
+            if !self.profile.geology.density_cavities && self.registered_caves()
                 && self.profile.registry_program.as_ref().unwrap().surface[2] == 0
             {
                 roof = column.height - 1;
@@ -249,7 +249,9 @@ impl<'a> Caves<'a> {
         }
         let column = self.column(x, z)?;
         let enclosed = self.enclosed();
-        if y >= column.height || (!enclosed && y < self.request.min_y + 5) {
+        let density_cavities = self.profile.geology.density_cavities;
+        let below_carver_floor = !enclosed && y < self.request.min_y + 5;
+        if y >= column.height || (!density_cavities && below_carver_floor) {
             return Ok(false);
         }
         if column.packed & (1 << 29) != 0 && y >= column.height - 4 {
@@ -259,18 +261,21 @@ impl<'a> Caves<'a> {
         let roof = (1.0 - entrance) * (1.0 - smoothstep(0.0, 24.0, (column.height - 1 - y) as f32));
         let mut values = None;
         let mut carved = false;
-        if self.registered_caves() && (y as f32) < exterior {
+        if self.registered_caves() && (density_cavities || (y as f32) < exterior) {
             let r = self.profile.registry_program.as_ref().unwrap();
-            let threshold = -roof * 0.20;
+            let threshold = if density_cavities { 0.0 } else { -roof * 0.20 };
+            let density_open = |value: f32| {
+                value < threshold || (density_cavities && value == threshold)
+            };
             let bounds = if r.surface[2] == 0 {
                 self.sampler.density_certificate(1, p)
             } else {
                 super::program::bounds::Bounds::UNKNOWN
             };
-            if bounds.hi < threshold {
+            if density_open(bounds.hi) {
                 self.proof_stats.air += 1;
                 carved = true;
-            } else if bounds.lo >= threshold {
+            } else if bounds.lo > threshold || (!density_cavities && bounds.lo == threshold) {
                 self.proof_stats.solid += 1;
             } else {
                 self.proof_stats.scalar += 1;
@@ -283,11 +288,14 @@ impl<'a> Caves<'a> {
                     values = Some(v);
                     v[0]
                 };
-                carved = self.density(p, sampled)? < threshold;
+                carved = density_open(self.density(p, sampled)?);
             }
         }
         if carved {
             return Ok(true);
+        }
+        if density_cavities && (below_carver_floor || !self.profile.geology.base_carveable(self.profile)) {
+            return Ok(false);
         }
         if enclosed && (y <= min || y >= self.sampler.generation_top() - 7) {
             return Ok(false);

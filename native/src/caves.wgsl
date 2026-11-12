@@ -271,7 +271,7 @@ fn cave_exterior(@builtin(global_invocation_id) id: vec3<u32>) {
         let column=column_at(x,z,r.tile_side);
         var roof=column.height;
         if enclosed_world() {limits[b]=f32(generation_max(r));entrances[b]=1.0;continue;}
-        if caves.globals.y>0u && bytecode[5]==0u {
+        if caves.globals.w==0u && caves.globals.y>0u && bytecode[5]==0u {
             // Surface extraction defines the terrain envelope. Account for voxel
             // rounding at its zero crossing without stripping the selected topsoil.
             roof=column.height-1;
@@ -303,7 +303,9 @@ fn biome_sample(x: u32, y: i32, z: u32, r: Request) -> u32 {
 }
 fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
     if !generation_contains(y,r) {return true;}
-    if y >= column.height || (!enclosed_world() && y < r.min_y+5) { return false; }
+    let density_cavities=caves.globals.w!=0u;
+    let below_carver_floor=!enclosed_world() && y<r.min_y+5;
+    if y >= column.height || (!density_cavities && below_carver_floor) { return false; }
     if (column.packed & (1u<<29u)) != 0u && y >= column.height-4 { return false; }
     let bottom = i32(floor(f32(r.min_y)/4.0))*4;
     let values = interpolate(vec3<f32>(f32(x),f32(y-bottom),f32(z))*0.25,r.tile_side*4u+1u);
@@ -315,15 +317,23 @@ fn is_cave(x: u32, y: i32, z: u32, column: Column, r: Request) -> bool {
     // entrance domains. All ordinary cave decisions 24+ blocks down are unchanged.
     let roof=(1.0-entrance)*(1.0-smoothstep(0.0,24.0,f32(column.height-1-y)));
     var carved=false;
-    if caves.globals.y>0u && f32(y)<exterior {
-        let threshold=-roof*0.20;
+    if caves.globals.y>0u && (density_cavities || f32(y)<exterior) {
+        let threshold=select(-roof*0.20,0.0,density_cavities);
         if bytecode[5]==0u && density_composed(r) {
             let point=vec3<f32>(f32(r.origin_x+i32(x)),f32(y),f32(r.origin_z+i32(z)));
             let bounds=density_point_bounds(point,r);
-            if bounds.y<threshold {carved=true;}
-            else if bounds.x<threshold {carved=registered_density(point,r)<threshold;}
-        }else {carved=chamber_density(x,y,z,values.x,r)<threshold;}
+            if bounds.y<threshold || (density_cavities && bounds.y==threshold) {carved=true;}
+            else if bounds.x<threshold || (density_cavities && bounds.x==threshold) {
+                let density=registered_density(point,r);
+                carved=density<threshold || (density_cavities && density==threshold);
+            }
+        }else {
+            let density=chamber_density(x,y,z,values.x,r);
+            carved=density<threshold || (density_cavities && density==threshold);
+        }
     }
+    // The material runs consume this effective mask directly for new profiles.
+    if density_cavities && (carved || below_carver_floor || caves.base[1].w==0u) {return carved;}
     // Vanilla protects the bottom block and the top seven blocks from carvers, independently of density.
     if enclosed_world() {
         if y<=generation_min(r) || y>=generation_top(r)-7 {return carved;}
