@@ -58,8 +58,9 @@ def compare(probe: Path, definition: Path, library_path: Path, expect_test_edits
                     section = sections[y // 16 * 16]
                     block = unpack(section["block_states"], (y & 15) * 256 + local, 4)
                     if isinstance(block, str): block = {"id": block}
-                    identity = block["id"]
-                    properties = dict(defaults.get(identity, {})); properties.update(block.get("properties", {}))
+                    identity = block.get("id", block.get("Name"))
+                    properties = dict(defaults.get(identity, {}))
+                    properties.update(block.get("properties", block.get("Properties", {})))
                     expected = state_text(identity, properties)
                     edit = edits.get((name, x * 16 + block_x, y, z * 16 + block_z))
                     if edit is not None:

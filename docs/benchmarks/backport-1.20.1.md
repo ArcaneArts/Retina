@@ -374,3 +374,51 @@ The catalog is a development artifact. It still reflects the placement
 and structure coverage of the current 1.20.1 exporter. The installed
 Bukkit variant also needs the API delivery policy as decoration support
 lands.
+
+## Bukkit 1.20.1 on Java 17
+
+`./gradlew buildBukkit1201` assembles the plugin in `bukkit1201/build/libs`.
+The build embeds the 1.20.1 catalog and uses the Java 17 JNI bridge. The
+26.3 plugin uses the same world ownership, caching and delivery code with
+its own compiled API adapters and FFM bridge. The local validation embedded
+the same macOS ARM64 native image in both JARs.
+
+Run the disposable acceptance server with an actual Spigot 1.20.1 server
+JAR and the saved definition from the noise datapack export above. The
+output directory must be new or empty.
+
+```sh
+./gradlew :bukkit1201:serverTest \
+  "-Porg.gradle.java.installations.paths=$jdk17" \
+  "-Pbukkit1201ServerJar=$spigot1201" \
+  "-PretinaImported1201=$definition" \
+  "-PretinaBukkit1201TestOutput=$output" \
+  -PretinaGpuBackend=metal
+```
+
+The test starts the packaged plugin on Java 17, opens all three dimensions
+from one root definition, compares sampled chunks against the native
+output, imports the emerald ore and Desert datapack definition, checks
+that its unloaded generator rejects callbacks, and verifies that edits
+survive a restart with catalog materialization disabled. The server
+fixture also exercises public API delivery for a gateway, chest items
+with legacy NBT, a loot table with a signed 64-bit seed, a single-type
+spawner and an armor stand. The saved 1.20.1 chunk and entity region
+records retain the fixture fields and the armor stand UUID across restart.
+
+Spigot `3871-Spigot-d2eba2c-3f9263b` ran on Java 17 on an M4 Max.
+CPU and Metal each matched the 917,504 block states and 14,336 quart
+biomes sampled from 12 chunks at initial generation and after restart.
+The saved definitions kept their original digests and all three edits
+survived. The process reached startup in 120.2 s on CPU and 71.3 s on
+Metal for the cold world, then in 6.9 s and 7.1 s on restart. A sample
+during the CPU cold start found vanilla structure-ring placement querying
+biomes through Retina's Bukkit provider.
+
+The 26.3 Bukkit unit suite passed all 24 tests. The 26.3 universal JAR
+also passed its packaged FFM smoke test with both modern catalog variants.
+
+The Java 17 build uses only the public Bukkit API. It reports unsupported
+registry identities, structure metadata, weighted or customized spawns
+and entity fields outside its supported set. The bundled catalog retains
+the feature and structure coverage of the current 1.20.1 exporter.

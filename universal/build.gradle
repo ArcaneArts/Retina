@@ -30,14 +30,15 @@ def mergeRuntime = tasks.register('mergeRuntime', Exec) {
 }
 processResources {
     def metadata = [version: project.version, minecraft_version: minecraft_version,
-                    loader_version: loader_version, neoforge_version: neoforge_version]
+                    loader_version: loader_version, neoforge_version: neoforge_version,
+                    bukkit_api_level: minecraft_version]
     inputs.properties(metadata)
     from rootProject.file('common/src/main/resources')
     from rootProject.file('common/src/client/resources')
     from rootProject.file('fabric/src/main/resources')
     from rootProject.file('neoforge/src/main/resources')
     from rootProject.file('bukkit/src/main/resources')
-    filesMatching(['fabric.mod.json', 'META-INF/neoforge.mods.toml', 'plugin.yml']) { expand(metadata) }
+    filesMatching(['fabric.mod.json', 'META-INF/neoforge.mods.toml', 'plugin.yml', 'retina-bukkit.properties']) { expand(metadata) }
     from(project(':data').tasks.named('generateVanillaRecompiled')) {
         into "catalogs/${minecraft_version}/vanilla-recompiled"
     }

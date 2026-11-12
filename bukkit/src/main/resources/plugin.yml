@@ -1,7 +1,7 @@
 name: Retina
 version: '${version}'
 main: art.arcane.retina.bukkit.RetinaPlugin
-api-version: '${minecraft_version}'
+api-version: '${bukkit_api_level}'
 load: STARTUP
 description: GPU world generation from persistent Retina definitions and bundled vanilla data.
 author: ArcaneArts

@@ -19,10 +19,12 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 base { archivesName = 'retina-bukkit' }
+sourceSets.main.java.srcDir 'src/modern/java'
 processResources {
-    def metadata = [version: project.version, minecraft_version: minecraft_version]
+    def metadata = [version: project.version, minecraft_version: minecraft_version,
+                    bukkit_api_level: minecraft_version]
     inputs.properties(metadata)
-    filesMatching('plugin.yml') { expand(metadata) }
+    filesMatching(['plugin.yml', 'retina-bukkit.properties']) { expand(metadata) }
     from rootProject.tasks.named('packageNative')
     from(rootProject.file("assets/world-definitions/${minecraft_version}/vanilla")) {
         into "catalogs/${minecraft_version}"

@@ -104,7 +104,7 @@ final class DimensionContext implements AutoCloseable {
     Biome biome(int x, int y, int z) {
         // A one-entry saved palette has no other possible canonical result,
         // including fitted storage outside the native generation range.
-        if (biomes.size() == 1) return biomes.getFirst();
+        if (biomes.size() == 1) return biomes.get(0);
         // Out-of-native-range storage uses the engine's fitted chunk data, not a guessed clamp.
         if (y < nativeMinimum || y >= nativeMinimum + nativeHeight) {
             String canonical = chunk(x >> 4, z >> 4).biome(x, y, z);

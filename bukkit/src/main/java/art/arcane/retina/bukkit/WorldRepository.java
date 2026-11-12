@@ -132,7 +132,7 @@ final class WorldRepository implements AutoCloseable {
         if (created) {
             String variant = plugin.getConfig().getString("catalog-variant", "bukkit-api");
             // The resource is read only for genuinely absent definitions. Upgrades/restarts skip it entirely.
-            try (var input = plugin.getResource("catalogs/" + plugin.getDescription().getAPIVersion() + "/retina-catalog.dat")) {
+            try (var input = plugin.getResource("catalogs/" + plugin.minecraftVersion() + "/retina-catalog.dat")) {
                 if (input == null) throw new IllegalStateException("This plugin JAR lacks its vanilla catalog");
                 Path temporary = Files.createTempFile("retina-catalog-", ".dat");
                 try {
@@ -149,6 +149,10 @@ final class WorldRepository implements AutoCloseable {
         }
         try {
             var owner = new Owner(root, definition, plugin.getLogger());
+            String savedVersion = owner.metadata.get("minecraft_version").getAsString();
+            if (!savedVersion.equals(plugin.minecraftVersion()))
+                throw new IllegalStateException("Saved definition in " + root + " targets Minecraft " + savedVersion
+                        + ", but this plugin targets " + plugin.minecraftVersion());
             plugin.getLogger().info((created ? "Created and reopened " : "Opened ") + root.resolve("retina.dat")
                     + " seed=" + owner.seed + " in " + ((System.nanoTime() - started) / 1_000_000) + "ms");
             return owner;

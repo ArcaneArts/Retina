@@ -94,7 +94,13 @@ final class PersistentBiomeCache implements AutoCloseable {
     }
     private void retain(BiomeTileCache.Tile tile, int[] biomes) {
         tiles.put(tile, biomes);
-        while (tiles.size() > capacity) tiles.pollFirstEntry();
+        if (tiles.size() > capacity) {
+            var oldest = tiles.keySet().iterator();
+            do {
+                oldest.next();
+                oldest.remove();
+            } while (tiles.size() > capacity);
+        }
     }
     synchronized Statistics statistics() { return new Statistics(hits, misses, restored, tiles.size()); }
 
