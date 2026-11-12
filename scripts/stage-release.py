@@ -57,7 +57,7 @@ def inspect_bukkit(archive: ZipFile, minecraft: str, version: str) -> None:
 def stage(minecraft: str, version: str) -> None:
     destination = Path('build/release')
     destination.mkdir(parents=True, exist_ok=True)
-    jar = Path('universal/build/libs', f'retina-{minecraft}-{version}.jar')
+    jar = Path('universal/build/libs', f'retina-{version}.jar')
     libraries = {
         'aarch64-apple-darwin': ('macos-aarch64', 'libretina_worldgen.dylib'),
         'x86_64-pc-windows-msvc': ('windows-x86_64', 'retina_worldgen.dll'),

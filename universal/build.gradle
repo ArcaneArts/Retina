@@ -11,7 +11,7 @@ dependencies {
     shadedLibraries 'com.electronwill.night-config:toml:3.9.0'
     shadedLibraries 'org.snakeyaml:snakeyaml-engine:2.10'
 }
-base { archivesName = "retina-${minecraft_version}" }
+base { archivesName = 'retina' }
 def inputsByName = [
     core: project(':core').tasks.named('compileJava').flatMap { it.destinationDirectory },
     fabric: project(':fabric').tasks.named('compileJava').flatMap { it.destinationDirectory },

@@ -36,7 +36,10 @@ def release_for_tag(tag):
 
 
 def release_count(tag):
-    # Recognize current and historical Retina version schemes during migration.
+    # Recognize the Minecraft-version tags and their historical predecessors.
+    current = re.fullmatch(r'[0-9]+(?:\.[0-9]+)+-([0-9]+)', tag)
+    if current:
+        return int(current[1])
     if re.fullmatch(r'v[0-9]+\.[0-9]+\.[0-9]+', tag) or re.fullmatch(r'v0\.[0-9]+', tag):
         return int(tag.rsplit('.', 1)[1])
     return -1
@@ -77,7 +80,7 @@ def changes(notes_commits, pull_requests, author):
 
 
 def release_notes(info, tag, sha256, jar):
-    older = sorted((r for r in published() if release_count(r['tag_name']) < int(info['version'].rsplit('.', 1)[1])),
+    older = sorted((r for r in published() if release_count(r['tag_name']) < info['revision']),
                    key=lambda r: release_count(r['tag_name']), reverse=True)
     previous = None
     for release in older:
@@ -136,11 +139,11 @@ def publish():
     # The checkout is the event SHA; never follow the moving release branch here.
     if info['commit'] != os.environ['GITHUB_SHA']:
         raise ValueError('Checkout does not match the triggering commit')
-    jar = Path('dist') / f'retina-{info["minecraft"]}-{info["version"]}.jar'
+    jar = Path('dist') / f'retina-{info["version"]}.jar'
     expected = {jar.name: jar.read_bytes()}
     contents = expected[jar.name]
     sha256 = hashlib.sha256(contents).hexdigest()
-    tag = 'v' + info['version']
+    tag = info['version']
     existing = release_for_tag(tag)
     source = tag_commit(tag)
     if source is not None and source != info['commit']:

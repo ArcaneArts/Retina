@@ -48,9 +48,9 @@ with tempfile.TemporaryDirectory(prefix='retina-publish-test-') as temporary:
     (caller / 'untracked.txt').write_text('untracked user data\n')
     status = git(caller, 'status', '--porcelain')
 
-    def publish(success=True, alias=False):
+    def publish(task='release-26', success=True):
         log = run(caller, str(ROOT / 'gradlew'), '-p', str(caller),
-                  'releaseRetina' if alias else 'publish', '--no-daemon', '--configuration-cache', success=success)
+                  task, '--no-daemon', '--configuration-cache', success=success)
         if any(token in log for token in ('compileJava', 'buildNative', 'Fabric Loom', 'generateVanilla')):
             raise AssertionError('Publish configured build tooling: ' + log)
         assert git(caller, 'rev-parse', 'HEAD') == local_head
@@ -61,26 +61,26 @@ with tempfile.TemporaryDirectory(prefix='retina-publish-test-') as temporary:
         return log
 
     publish()
-    assert git(remote, 'rev-parse', 'release') == initial
+    assert git(remote, 'rev-parse', 'release-26') == initial
     print('PASS initial release uses remote main and preserves dirty local branch')
     upstream = root / 'upstream'
     git(root, 'clone', str(remote), str(upstream)); identity(upstream)
     (upstream / 'next.txt').write_text('next main\n')
     git(upstream, 'add', '.'); git(upstream, 'commit', '-m', 'Advance main'); git(upstream, 'push', 'origin', 'main')
     advanced = git(upstream, 'rev-parse', 'HEAD')
-    publish(alias=True)
-    assert git(remote, 'rev-parse', 'release') == advanced
+    publish('releaseRetina')
+    assert git(remote, 'rev-parse', 'release-26') == advanced
     print('PASS fast-forward fetches newer remote main through compatibility alias')
-    log = publish()
-    assert git(remote, 'rev-parse', 'release') == advanced
+    log = publish('publish')
+    assert git(remote, 'rev-parse', 'release-26') == advanced
     assert 'Everything up-to-date' in log
     print('PASS already-current publish is a no-op')
     git(upstream, 'switch', '-c', 'divergent-release')
     (upstream / 'release-only.txt').write_text('release divergence\n')
     git(upstream, 'add', '.'); git(upstream, 'commit', '-m', 'Release-only commit')
     divergent = git(upstream, 'rev-parse', 'HEAD')
-    git(upstream, 'push', 'origin', 'HEAD:release')
+    git(upstream, 'push', 'origin', 'HEAD:release-26')
     log = publish(success=False)
     assert 'rejected' in log
-    assert git(remote, 'rev-parse', 'release') == divergent
+    assert git(remote, 'rev-parse', 'release-26') == divergent
     print('PASS Git rejects divergence without changing remote or local work')

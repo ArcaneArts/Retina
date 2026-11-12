@@ -64,7 +64,7 @@ unsupported primitives, features and structure processors are reported. See
 ### Fabric or NeoForge
 
 1. Install the matching Minecraft 26.3 loader and Java 25.
-2. Put the release `retina-26.3-<version>.jar` in `mods/`.
+2. Put the release `retina-26.3-<commit>.jar` in `mods/`.
    Fabric also needs Fabric API; NeoForge does not need Fabric API.
 3. Add `--enable-native-access=ALL-UNNAMED` to the launcher's JVM arguments.
    For NeoForge, also add `--illegal-native-access=allow`.
@@ -147,7 +147,7 @@ For example, with `level-name=world`:
 
 ```text
 server/
-  mods/retina-26.3-<version>.jar
+  mods/retina-26.3-<commit>.jar
   world/datapacks/my-worldgen-pack.zip
   server.properties
 ```
@@ -304,9 +304,9 @@ The universal JAR is also a headless generator. These commands require Java 25;
 CPU automatically; use `-Dretina.gpuBackend=cpu` to select CPU explicitly:
 
 ```sh
-java -jar retina-26.3-<version>.jar init --world ./world --seed 12345
-java -jar retina-26.3-<version>.jar inspect --world ./world
-java -jar retina-26.3-<version>.jar generate --world ./world \
+java -jar retina-26.3-<commit>.jar init --world ./world --seed 12345
+java -jar retina-26.3-<commit>.jar inspect --world ./world
+java -jar retina-26.3-<commit>.jar generate --world ./world \
   --dimension minecraft:overworld --region-radius 1
 ```
 
@@ -314,7 +314,7 @@ Radius 1 selects a 3 × 3 square of regions centered at 0,0. For custom generati
 use a mod-created definition instead of `init`:
 
 ```sh
-java -jar retina-26.3-<version>.jar generate --world ./output \
+java -jar retina-26.3-<commit>.jar generate --world ./output \
   --definition /path/to/retina.dat --dimension minecraft:the_end \
   --region-min=-1,-1 --region-max=1,1
 ```
@@ -339,12 +339,13 @@ For local development, install JDK 25, Rust/Cargo 1.87+ and a platform C compile
 | `./gradlew build -PretinaHostOnly --no-watch-fs` | Local mod/plugin builds with this host's native library |
 | `./gradlew buildBukkit -PretinaHostOnly --no-watch-fs` | Bukkit development plugin |
 | `./gradlew universalJar -PretinaHostOnly --no-watch-fs` | Universal JAR for this host |
-| `./gradlew publish --no-watch-fs` | Advance the release branch to fetched `origin/main` and trigger GitHub Actions |
+| `./gradlew release-26` | Advance `release-26` to fetched `origin/main` and release Minecraft 26.3 |
 
 Development module JARs are separate from the universal release artifact. The
-release workflow builds the universal distribution with all six native targets,
-checks it on the platform runners and publishes the JAR. Its version is
-`<major>.<minor>.<Git commit count>`, with major/minor from `version.json`.
+release workflow builds and publishes the universal distribution with Windows x64,
+macOS ARM64 and Linux x64 natives. The version is `<game_version>-<commit_count>`,
+for example `26.3-511`. Run the [acceptance commands](docs/CPU_ACCEPTANCE.md)
+locally before release.
 The developer Windows GPU probe is not a regular release asset.
 
 See [universal builds and release instructions](docs/UNIVERSAL_RELEASE.md),

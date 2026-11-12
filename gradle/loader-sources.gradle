@@ -13,7 +13,7 @@ processResources {
         }
     }
 }
-base { archivesName = "retina-${project.name}-${minecraft_version}" }
+base { archivesName = "retina-${project.name}" }
 tasks.named('jar') {
     // Flatten the neutral runtime into the loader artifact: no split-package
     // module or second native-library owner is introduced at installation.

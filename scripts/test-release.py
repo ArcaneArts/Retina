@@ -75,7 +75,7 @@ class ReleaseTest(unittest.TestCase):
                 manifest.write_text(json.dumps({**original, 'bytes': library.stat().st_size,
                                                'sha256': native.digest(library.read_bytes())}))
                 # Packaging-only files do not invalidate reusable natives.
-                (root / 'version.json').write_text('{"major":1,"minor":2}')
+                (root / 'gradle.properties').write_text('minecraft_version=26.3\n')
                 self.assertEqual(native.fingerprint(target), original)
                 with patch('builtins.print'):
                     native.verify(target)
@@ -94,20 +94,19 @@ class ReleaseTest(unittest.TestCase):
                 backend.unlink()
                 self.assertNotEqual(native.fingerprint(target)['key'], original['key'])
 
-    def test_major_minor_and_real_commit_count(self):
+    def test_minecraft_version_and_real_commit_count(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             def git(*args):
                 subprocess.run(['git', *args], cwd=root, check=True, capture_output=True)
             git('init', '--initial-branch=main')
             git('config', 'user.name', 'Version test'); git('config', 'user.email', 'version@example.invalid')
-            (root / 'version.json').write_text(json.dumps({'major': '1', 'minor': 1}))
             (root / 'gradle.properties').write_text('minecraft_version=26.3\n')
             git('add', '.'); git('commit', '-m', 'First')
-            self.assertEqual(metadata(root)['version'], '1.1.1')
-            (root / 'version.json').write_text(json.dumps({'major': 1, 'minor': '2'}))
-            git('add', '.'); git('commit', '-m', 'Next minor')
-            self.assertEqual(metadata(root)['version'], '1.2.2')
+            self.assertEqual(metadata(root)['version'], '26.3-1')
+            git('commit', '--allow-empty', '-m', 'Advance revision')
+            self.assertEqual(metadata(root)['version'], '26.3-2')
+            self.assertEqual(metadata(root)['revision'], 2)
 
     def test_pr_and_direct_commits_are_both_linked(self):
         with patch.object(publisher, 'REPO', 'ArcaneArts/Retina'):
@@ -127,11 +126,11 @@ class ReleaseTest(unittest.TestCase):
             run.assert_not_called()
 
     def test_concurrent_newer_publication_repairs_stale_latest_update(self):
-        old = {'tag_name': 'v1.1.449'}; new = {'tag_name': 'v1.1.450'}
+        old = {'tag_name': 'v1.1.449'}; new = {'tag_name': '26.3-450'}
         with patch.object(publisher, 'published', side_effect=[[old], [old, new], [old, new]]), \
              patch.object(publisher, 'api', side_effect=[None, old, new]), patch.object(publisher, 'run') as run:
             publisher.reconcile_latest()
-            self.assertEqual([call.args[3] for call in run.call_args_list], ['v1.1.449', 'v1.1.450'])
+            self.assertEqual([call.args[3] for call in run.call_args_list], ['v1.1.449', '26.3-450'])
 
 
 if __name__ == '__main__':
