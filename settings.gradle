@@ -16,5 +16,5 @@ def gitOnlyTasks = ['publish', ':publish', 'releaseRetina', ':releaseRetina', 'r
 if (!gradle.startParameter.taskNames.empty && gradle.startParameter.taskNames.every { it in gitOnlyTasks }) {
     rootProject.buildFileName = 'gradle/publish-only.gradle'
 } else {
-    include 'core', 'common', 'fabric', 'neoforge', 'bukkit', 'data', 'universal'
+    include 'core', 'core17', 'common', 'fabric', 'neoforge', 'bukkit', 'data', 'universal'
 }

@@ -1,0 +1,9 @@
+plugins { id 'java-library' }
+apply from: rootProject.file('gradle/java-toolchain.gradle')
+
+sourceSets.main.java.srcDir rootProject.file('core/src/shared/java')
+tasks.withType(JavaCompile).configureEach {
+    // The root build already uses JDK 25. Keep JDK 17 for runtime qualification.
+    options.release = 17
+}
+base { archivesName = 'retina-core-java17' }

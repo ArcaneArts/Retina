@@ -5,6 +5,7 @@
 mod adapter;
 pub mod catalog;
 mod ffi;
+mod jni;
 pub(crate) mod residency;
 pub mod runtime;
 mod value;

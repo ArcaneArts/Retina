@@ -55,6 +55,7 @@ sha2 = "0.10"
 fastnbt = "2.6.3"
 ctrlc = { version = "3", features = ["termination"] }
 fs2 = "0.4"
+jni = { version = "=0.21.1", default-features = false }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # v3 crashes after transient JVM host threads exit (microsoft/mimalloc#1356).

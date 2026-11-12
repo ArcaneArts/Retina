@@ -67,3 +67,64 @@ paired CPU process-time change was +6.9%, and the median paired generation
 change was −1.5%. Individual process-time changes ranged from −19.4% to
 +15.4%. The startup result remains inconclusive. Recheck it with the JNI
 comparison before final qualification.
+
+## Java 17 native transport
+
+`:core17:jar` compiles the shared definition owner and JNI provider with
+`--release 17`. It uses the root build's JDK 25 compiler. The Java 17 runtime
+probe uses Temurin 17.0.21. FFM remains the modern provider. Both use the
+same library extraction, backend configuration, cache flush and Rust C ABI.
+
+Build and probe from the repository root with the actual paths to both JDKs
+and the compiled library:
+
+```sh
+cargo build --manifest-path native/Cargo.toml --locked --release --lib
+./gradlew :core:jar :core17:jar :core:cliTest
+catalog=assets/world-definitions/26.3/vanilla-binary/retina-catalog.dat
+export RETINA_REGION_THREADS=4 RAYON_NUM_THREADS=2
+"$java17" -Xcheck:jni -Dretina.gpuBackend=cpu "-Dretina.native.path=$library" \
+  -cp "$core17Jar" scripts/DefinitionTransportSmoke.java "$catalog" --ascii-path
+"$java25" --enable-native-access=ALL-UNNAMED -Dretina.gpuBackend=cpu \
+  "-Dretina.native.path=$library" -cp "$coreJar" \
+  scripts/DefinitionTransportSmoke.java "$catalog" --ascii-path
+```
+
+The probe uses a real catalog and writes a disposable saved definition. It
+checks missing and malformed files, backend configuration after initialization,
+concurrent chunk and biome calls, reopen, idempotent close, and preservation of
+all 1,024 records when generating into an existing zlib region. CPU transport
+receipts matched with the same macOS ARM64 library bytes. Java 17 also loaded
+the library from a packaged resource and completed the probe on CPU and Metal.
+
+The ASCII-path `-Xcheck:jni` run produced no warnings. The Unicode-path run
+also passed. The diagnostics printed during Unicode file operations reproduce
+in a Java-only `Files.createTempDirectory` and `Files.writeString` test on
+this JDK and host.
+
+The release-mode macOS ARM64 native image had SHA-256
+`ba2435fbf281235362e0ea86d25d335fe1db16cf7a0d09c0b47e6d569f5e85c4`.
+A rotating comparison used one warmup launch and five measured launches per
+provider. All eighteen runs emitted identical output receipts. The point
+measurement includes the JNI or FFM call, the warm native query and checking
+1,024 returned biome indices.
+
+| Provider | Median warm batch | Median whole probe |
+| --- | ---: | ---: |
+| FFM / Java 25 | 27.7 µs | 7,587 ms |
+| JNI / Java 25 | 21.9 µs | 7,481 ms |
+| JNI / Java 17 | 21.6 µs | 7,613 ms |
+
+The Java 25 JNI run helps separate transport costs from JVM differences.
+This benchmark covers warm biome queries and a small headless CPU workload.
+
+Separately, the cached vanilla 1.20.1 server JAR ran its actual report
+generator on Java 17 using `-DbundlerMainClass=net.minecraft.data.Main`
+and `--reports`. It produced five reports, including block and registry
+inventories and Overworld/Nether biome parameters. Those reports describe
+vanilla inputs. Effective loader registries and the 1.20.1 Retina definition
+still need runtime extraction and validation.
+
+The modern `universalJar` build packaged the rebuilt macOS image. Its local
+native and CPU smoke tests passed. The twelve chunk hashes and both saved
+definition hashes matched the published 26.3 baseline.
