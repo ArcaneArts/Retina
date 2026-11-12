@@ -460,3 +460,46 @@ biomes in three sampled chunks in each run. The process reached startup
 in 16.6 s on Metal and 23.4 s on CPU for the cold vanilla world, then in
 8.3 s and 5.1 s on restart. These are single observations that include
 the launcher and use different Fabric Loader versions.
+
+## Forge 1.20.1 dedicated-server terrain
+
+`./gradlew buildForge1201` runs ForgeGradle 6.0.54 under the pinned
+Gradle 8.8 wrapper on Java 17. ForgeGradle rejected a direct run under
+Gradle 9.7.1. The root build prepares the catalog, JNI classes and native
+resources once. The Forge build consumes them and reobfuscates the
+Minecraft adapter shared with Fabric. Its installable JAR is in
+`forge1201/build/libs`.
+
+`./gradlew build1201` assembles the three 1.20.1 JARs.
+`./gradlew buildSupported` also assembles the 26.3 universal JAR.
+All four artifacts built locally, the 24 modern Bukkit tests passed,
+and the 26.3 universal JAR opened both catalogs through its embedded
+FFM transport. The three 1.20.1 artifacts carried the same catalog and
+the same macOS ARM64 native image.
+
+Use the headless acceptance with a Forge server directory prepared by
+the official installer.
+
+```sh
+python3 scripts/minecraft1201-server-test.py \
+  --java "$jdk17/bin/java" --forge-install "$forge_server" --mod "$forge_mod" \
+  --library "$library" --pack minecraft1201/src/datagen/fixtures/noise-pack \
+  --output "$output" --backend cpu
+```
+
+On an M4 Max and Java 17, Forge 47.4.28 ran on Metal and Forge 47.2.0 ran
+on CPU. Both matched the native blocks and biomes across nine sampled
+chunks in all three dimensions and retained all three player edits.
+Startup and restart took 15.2 s and 8.1 s on Metal, and 24.1 s and 7.0 s
+on CPU. These are single process observations using different Forge
+versions. The bundled catalog was selected for the plain server.
+The datapack run exported the live registries after Forge applied its
+biome modifiers, then saved 226 gold blocks from the modifier, 229
+emerald blocks from the noise fixture, and 4,608 Desert quart biomes.
+
+Live exports from the packaged Forge mod matched the bundled data in
+all three dimensions for seeds `0`, `12345` and `-9223372036854775791`,
+with structures enabled for seed `0` and disabled for the other seeds.
+The comparison normalized the equivalent terracotta byte and integer
+arrays and omitted the datapack provenance list. An empty datapack
+forced the live path for two runs.

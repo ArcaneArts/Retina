@@ -1,0 +1,30 @@
+package art.arcane.retina.forge1201;
+
+import art.arcane.retina.minecraft1201.LegacyWorlds;
+import net.minecraft.server.MinecraftServer;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.registries.ForgeRegistries;
+
+import java.util.List;
+import java.util.Set;
+
+@Mod("retina")
+public final class RetinaForge1201 {
+    private static final Set<String> VANILLA_MODS = Set.of("minecraft", "forge", "retina", "mixinextras");
+
+    public RetinaForge1201() {
+        LegacyWorlds.configure(FMLPaths.CONFIGDIR.get(), RetinaForge1201::vanillaPacks);
+    }
+
+    private static boolean vanillaPacks(MinecraftServer server, List<String> packs) {
+        var mods = ModList.get();
+        String forgePack = mods.getModFileById("forge").getFile().getFilePath().getFileName().toString();
+        var registries = server.registryAccess();
+        return packs.equals(List.of("vanilla", forgePack))
+                && mods.getMods().stream().allMatch(mod -> VANILLA_MODS.contains(mod.getModId()))
+                && registries.registryOrThrow(ForgeRegistries.Keys.BIOME_MODIFIERS).size() == 0
+                && registries.registryOrThrow(ForgeRegistries.Keys.STRUCTURE_MODIFIERS).size() == 0;
+    }
+}

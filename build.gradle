@@ -72,4 +72,15 @@ if (findProject(':fabric1201') != null) {
         description = 'Build the Minecraft 1.20.1 Fabric mod.'
         dependsOn ':fabric1201:remapJar'
     }
+    apply from: 'gradle/forge1201.gradle'
+    tasks.register('build1201') {
+        group = 'build'
+        description = 'Build the installable Fabric, Forge and Bukkit artifacts for Minecraft 1.20.1.'
+        dependsOn 'buildFabric1201', 'buildForge1201', 'buildBukkit1201'
+    }
+    tasks.register('buildSupported') {
+        group = 'build'
+        description = 'Build all installable Minecraft distributions.'
+        dependsOn 'build1201', 'universalJar'
+    }
 }

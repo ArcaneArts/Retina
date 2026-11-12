@@ -34,12 +34,16 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiPredicate;
 
 /** Owns one authoritative native definition for the lifetime of each server world. */
 public final class LegacyWorlds {
     static final Logger LOG = LogUtils.getLogger();
     private static final String GAME = "1.20.1";
     private static final Map<MinecraftServer, LegacyWorlds> WORLDS = new IdentityHashMap<>();
+    private static final BiPredicate<MinecraftServer, List<String>> VANILLA_ONLY =
+            (server, packs) -> packs.equals(List.of("vanilla"));
+    private static volatile BiPredicate<MinecraftServer, List<String>> vanillaPacks = VANILLA_ONLY;
 
     private final NativeWorldDefinition definition;
     private final JsonObject metadata;
@@ -54,6 +58,11 @@ public final class LegacyWorlds {
     }
 
     public static void configure(Path configDir) {
+        configure(configDir, VANILLA_ONLY);
+    }
+
+    public static void configure(Path configDir, BiPredicate<MinecraftServer, List<String>> vanillaPacks) {
+        LegacyWorlds.vanillaPacks = vanillaPacks;
         RetinaConfiguration.initialize(configDir);
         var settings = RetinaConfiguration.get();
         NativeLibrary.configureDebug(settings.debug());
@@ -75,7 +84,7 @@ public final class LegacyWorlds {
             var stems = registries.registryOrThrow(Registries.LEVEL_STEM);
             var packs = server.getResourceManager().listPacks().map(PackResources::packId).toList();
             try {
-                String variant = vanillaVariant(registries, stems, options, packs);
+                String variant = vanillaPacks.test(server, packs) ? vanillaVariant(registries, stems, options) : null;
                 if (variant == null) {
                     BinaryDefinitionTags.writeNew(root, WorldDefinitionCompiler.compile(registries, stems, options, packs, true));
                     nativeWorld = NativeWorldDefinition.open(path);
@@ -129,8 +138,7 @@ public final class LegacyWorlds {
         }
     }
 
-    private static String vanillaVariant(RegistryAccess registry, Registry<LevelStem> stems, WorldOptions options, List<String> packs) {
-        if (!packs.equals(List.of("vanilla"))) return null;
+    private static String vanillaVariant(RegistryAccess registry, Registry<LevelStem> stems, WorldOptions options) {
         var normal = registry.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.NORMAL)
                 .value().createWorldDimensions().dimensions();
         if (!normal.keySet().equals(stems.keySet())) return null;

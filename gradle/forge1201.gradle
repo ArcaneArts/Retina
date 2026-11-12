@@ -1,0 +1,31 @@
+// ForgeGradle uses a pinned Gradle 8 build with the actual Java 17 runtime.
+evaluationDependsOn(':minecraft1201')
+evaluationDependsOn(':core17')
+
+def forgeBuild = layout.projectDirectory.dir('forge1201')
+def core = project(':core17').tasks.named('jar', Jar)
+def catalog = project(':minecraft1201').tasks.named('exportTerrainCatalog')
+def hostNatives = tasks.named('packageNative', Sync)
+def crossNatives = tasks.named('packageCrossNatives', Sync)
+def java17 = project(':core17').extensions.getByType(JavaToolchainService).launcherFor {
+    languageVersion = JavaLanguageVersion.of(17)
+}
+def releaseVersion = "1.20.1-${rootProject.ext.retinaRevision}"
+
+tasks.register('buildForge1201', Exec) {
+    group = 'build'
+    description = 'Build the installable Java 17 Forge mod for Minecraft 1.20.1.'
+    dependsOn core, catalog, hostNatives, crossNatives
+    workingDir forgeBuild
+    def java = java17.get()
+    environment 'JAVA_HOME', java.metadata.installationPath.asFile.absolutePath
+    commandLine java.executablePath.asFile, '-cp', forgeBuild.file('gradle/wrapper/gradle-wrapper.jar').asFile,
+            'org.gradle.wrapper.GradleWrapperMain', 'jarJar',
+            "-PretinaVersion=${releaseVersion}",
+            "-PretinaCore=${core.get().archiveFile.get().asFile.absolutePath}",
+            "-PretinaCatalog=${catalog.get().outputs.files.singleFile.absolutePath}",
+            "-PretinaHostNatives=${hostNatives.get().destinationDir.absolutePath}",
+            "-PretinaCrossNatives=${crossNatives.get().destinationDir.absolutePath}"
+    if (gradle.startParameter.offline) args '--offline'
+    if (gradle.startParameter.buildCacheEnabled) args '--build-cache'
+}
