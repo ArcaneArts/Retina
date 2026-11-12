@@ -866,3 +866,48 @@ decoded chunks with the old and new libraries. On the M4 Max,
 three alternating runs of the same tree-bearing 26.3 region
 produced 1,024 identical decoded chunks per pair. Baseline Metal
 times were 687–782 ms and candidate times were 681–761 ms.
+
+## End cities
+
+The 1.20.1 adapter exports the loaded End city biome membership,
+weighted random-spread sets and all 19 resource templates into the
+shared native city program. The structure-enabled normal catalog
+variants include cities. The structure-disabled and default Bukkit
+variants omit them. Fabric and Forge read and install the saved city
+starts and references through the 1.20.1 structure codecs.
+
+Generate a fresh seed 12345 world using
+`./gradlew :minecraft1201:exportNoiseTerrain -PretinaGenerateStructures -PretinaVerifyNoiseTerrain`
+with the Java 17 toolchain and host native library as above.
+The verifier derives a city with a ship using the actual 1.20.1
+planner, generates the containing region, and reloads the saved
+pieces with Minecraft's structure reader. The vanilla case at chunk
+`-198,-38` matched all 59 piece tags and included 48 references,
+four loot chests, one elytra frame, and 25 shulkers. Reopening
+preserved all 1,024 records.
+
+Copy `minecraft1201/src/datagen/fixtures/end-city-pack` into another
+world's `datapacks` directory and repeat. The loaded salt of 700131
+selected a different city at chunk `-176,85` with 60 matching pieces
+and 28 references. Seed 12345 vanilla Metal and CPU output matched
+all 1,024 uncompressed records in region `-7,-2`. Single local runs
+took 244 ms on Metal and 481 ms on CPU.
+
+Pass the generated vanilla `DIM1/region/r.-7.-2.mca` to
+`scripts/minecraft1201-end-city-test.py --reference`. The script
+uses the packaged Java 17 mod, a local Fabric launcher or Forge
+installation, and the bundled structure-enabled definition. It
+checks the loot table and elytra through live server commands,
+compares the saved start and reference, and reopens the entity
+storage after restart with the same frame UUID. In the concurrent
+local run, Fabric reached startup in 23.3 s and Forge in 19.3 s.
+Their restarts took 8.1 s and 9.0 s, respectively.
+
+All 15 catalog cases passed. The four local JARs carry the same
+native binary. A separate 26.3 Metal comparison of region `-7,-2`
+matched all 1,024 decoded records, including city data and the
+ship frame. Single region runs took 162 ms with each library.
+
+The 1.20.1 structure exporter covers End cities in this cycle.
+Placement exclusions, entities embedded in custom city templates,
+and the native structure locator remain open.

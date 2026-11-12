@@ -9,12 +9,18 @@ import net.minecraft.commands.Commands;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.server.WorldLoader;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.repository.ServerPacksSource;
+import net.minecraft.server.packs.resources.CloseableResourceManager;
+import net.minecraft.util.datafix.DataFixTypes;
+import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.WorldDataConfiguration;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
@@ -22,10 +28,15 @@ import net.minecraft.world.level.levelgen.WorldDimensions;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPreset;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /** Headless datagen using the same pack and registry loading path as the 1.20.1 server. */
@@ -42,9 +53,17 @@ public final class RegistryExport {
         long started = System.nanoTime();
         boolean noise = args[2].equals("noise");
         var preset = ResourceKey.create(Registries.WORLD_PRESET, new ResourceLocation(args[3]));
-        Loaded loaded = load(packFolder, preset);
+        boolean structures = Arrays.asList(args).contains("--structures");
+        boolean verify = Arrays.asList(args).contains("--verify");
+        try (var loaded = load(packFolder, preset)) {
+            export(world, seed, started, noise, preset, loaded, structures, verify);
+        }
+    }
+
+    private static void export(Path world, long seed, long started, boolean noise, ResourceKey<WorldPreset> preset,
+                               Loaded loaded, boolean structures, boolean verify) throws Exception {
         var definition = WorldDefinitionCompiler.compile(loaded.registries(), loaded.dimensions(),
-                new WorldOptions(seed, false, false), loaded.packs(), noise);
+                new WorldOptions(seed, structures, false), loaded.packs(), noise, loaded::template);
         Path path = BinaryDefinitionTags.writeNew(world, definition);
         var event = new JsonObject();
         event.addProperty("event", noise ? "noise_1201_definition_export" : "flat_1201_definition_export");
@@ -63,8 +82,10 @@ public final class RegistryExport {
         }
         event.addProperty("elapsed_ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
         System.out.println("QA_EVT " + event);
-        if (args.length > 4 && args[4].equals("--verify")) {
-            if (noise) {
+        if (verify) {
+            if (structures) {
+                EndCityVerification.verify(world, loaded, seed);
+            } else if (noise) {
                 boolean vanilla = seed == 12345 && preset.equals(WorldPresets.NORMAL) && loaded.packs().equals(List.of("vanilla"));
                 NoiseExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed, vanilla);
             } else {
@@ -83,13 +104,30 @@ public final class RegistryExport {
             var dimensions = presets.getHolderOrThrow(preset).value().createWorldDimensions();
             var complete = dimensions.bake(context.datapackDimensions().registryOrThrow(Registries.LEVEL_STEM));
             return new WorldLoader.DataLoadOutput<>(complete, complete.dimensionsRegistryAccess());
-        }, (resources, reloaded, layers, dimensions) -> {
-            try (resources) {
-                return new Loaded(layers.compositeAccess(), dimensions.dimensions(),
-                        resources.listPacks().map(PackResources::packId).toList());
-            }
-        }, Util.backgroundExecutor(), Runnable::run).get(120, TimeUnit.SECONDS);
+        }, (resources, reloaded, layers, dimensions) ->
+                new Loaded(layers.compositeAccess(), dimensions.dimensions(),
+                        resources.listPacks().map(PackResources::packId).toList(), resources),
+                Util.backgroundExecutor(), Runnable::run).get(120, TimeUnit.SECONDS);
     }
 
-    record Loaded(RegistryAccess.Frozen registries, Registry<LevelStem> dimensions, List<String> packs) { }
+    record Loaded(RegistryAccess.Frozen registries, Registry<LevelStem> dimensions, List<String> packs,
+                  CloseableResourceManager resources) implements AutoCloseable {
+        Optional<CompoundTag> template(ResourceLocation id) {
+            var path = id.withPath("structures/" + id.getPath() + ".nbt");
+            return resources.getResource(path).map(resource -> {
+                try (var input = resource.open()) {
+                    var raw = NbtIo.readCompressed(input);
+                    var updated = DataFixTypes.STRUCTURE.updateToCurrentVersion(DataFixers.getDataFixer(),
+                            raw, NbtUtils.getDataVersion(raw, 500));
+                    var template = new StructureTemplate();
+                    template.load(registries.lookupOrThrow(Registries.BLOCK), updated);
+                    return template.save(new CompoundTag());
+                } catch (IOException error) {
+                    throw new UncheckedIOException("Cannot read structure template " + id, error);
+                }
+            });
+        }
+
+        @Override public void close() { resources.close(); }
+    }
 }

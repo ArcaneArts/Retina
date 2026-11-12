@@ -47,8 +47,7 @@ final class CatalogExport {
         var catalog = Path.of(args[0]).toAbsolutePath();
         Files.createDirectories(catalog.getParent());
         var temporary = Files.createTempDirectory(catalog.getParent(), "registry-export-");
-        try {
-            var loaded = RegistryExport.load(temporary.resolve("datapacks"), WorldPresets.NORMAL);
+        try (var loaded = RegistryExport.load(temporary.resolve("datapacks"), WorldPresets.NORMAL)) {
             var variants = new CompoundTag();
             var normal = variant(loaded, true);
             var withoutStructures = variant(loaded, false);
@@ -127,7 +126,7 @@ final class CatalogExport {
     private static CompoundTag live(RegistryExport.Loaded loaded, long seed, boolean structures, boolean bonusChest)
             throws IOException {
         var definition = WorldDefinitionCompiler.compile(loaded.registries(), loaded.dimensions(),
-                new WorldOptions(seed, structures, bonusChest), loaded.packs(), true);
+                new WorldOptions(seed, structures, bonusChest), loaded.packs(), true, loaded::template);
         var bytes = new ByteArrayOutputStream();
         try (var output = new DataOutputStream(bytes)) {
             BinaryDefinitionTags.write(output, definition);

@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 pub struct Resident {
     pub templates: BTreeMap<String, TemplateRef>,
     #[serde(default)]
+    pub legacy_entity_nbt: bool,
+    #[serde(default)]
     pub containers: Vec<u16>,
     #[serde(default)]
     pub block_entities: BTreeMap<u16, Value>,

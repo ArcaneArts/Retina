@@ -6,7 +6,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.FixedBiomeSource;
 import net.minecraft.world.level.biome.TheEndBiomeSource;
 import net.minecraft.world.level.block.state.BlockState;
@@ -27,6 +29,8 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.Set;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
@@ -44,7 +48,8 @@ final class LegacyEndProfile {
                 || source == FixedBiomeSource.class && stem.type().value().effectsLocation().equals(BuiltinDimensionTypes.END_EFFECTS);
     }
 
-    static JsonObject compile(RegistryAccess registries, LevelStem stem, NoiseBasedChunkGenerator generator) {
+    static JsonObject compile(RegistryAccess registries, LevelStem stem, NoiseBasedChunkGenerator generator,
+                              boolean structures, Function<ResourceLocation, Optional<CompoundTag>> templates) {
         var source = generator.getBiomeSource();
         boolean fixed = source.getClass() == FixedBiomeSource.class;
         if (!fixed && source.getClass() != TheEndBiomeSource.class) {
@@ -87,6 +92,11 @@ final class LegacyEndProfile {
         world.add("noises", noises);
         LegacyTerrainProfile.terrainPreviewOmissions(world);
         LegacyEndFeatures.export(registries, List.copyOf(source.possibleBiomes()), biomes, biomeEntries, palette, world);
+        if (structures) {
+            world.add("structures", LegacyEndCities.export(registries, biomes, palette, templates));
+        } else {
+            world.getAsJsonObject("structures").add("omissions", new JsonArray());
+        }
         WorldDefinitionCompiler.writePalette(world, palette, stem.type().value().hasSkyLight());
         return world;
     }

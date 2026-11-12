@@ -13,6 +13,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
@@ -24,6 +25,7 @@ import net.minecraft.world.level.chunk.storage.ChunkScanAccess;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 
@@ -89,7 +91,9 @@ public final class LegacyWorlds {
             try {
                 String variant = vanillaPacks.test(server, packs) ? vanillaVariant(registries, stems, options) : null;
                 if (variant == null) {
-                    BinaryDefinitionTags.writeNew(root, WorldDefinitionCompiler.compile(registries, stems, options, packs, true));
+                    var templates = server.getStructureManager();
+                    BinaryDefinitionTags.writeNew(root, WorldDefinitionCompiler.compile(registries, stems, options, packs, true,
+                            id -> templates.get(id).map(template -> template.save(new CompoundTag()))));
                     nativeWorld = NativeWorldDefinition.open(path);
                     source = "registry-export";
                 } else {
@@ -128,7 +132,9 @@ public final class LegacyWorlds {
                 world.metadata.getAsJsonObject("shared_types"), world.regionBudget);
         world.dimensions.put(key, bound);
         LOG.info("Retina activated for {} with a saved 1.20.1 definition", key);
-        return new LegacyChunkGenerator(generator, bound);
+        var context = new StructurePieceSerializationContext(server.getResourceManager(), server.registryAccess(),
+                server.getStructureManager());
+        return new LegacyChunkGenerator(generator, bound, context);
     }
 
     public static void attachRegionIo(ChunkGenerator generator, ChunkScanAccess worker) {

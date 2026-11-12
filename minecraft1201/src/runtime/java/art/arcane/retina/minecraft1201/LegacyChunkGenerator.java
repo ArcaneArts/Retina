@@ -23,6 +23,7 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
 
 import java.util.List;
@@ -35,11 +36,13 @@ import java.util.stream.Stream;
 final class LegacyChunkGenerator extends ChunkGenerator {
     private final ChunkGenerator original;
     private final LegacyDimension saved;
+    private final StructurePieceSerializationContext structureContext;
 
-    LegacyChunkGenerator(ChunkGenerator original, LegacyDimension saved) {
+    LegacyChunkGenerator(ChunkGenerator original, LegacyDimension saved, StructurePieceSerializationContext structureContext) {
         super(new SavedBiomes(saved));
         this.original = original;
         this.saved = saved;
+        this.structureContext = structureContext;
     }
 
     @Override protected Codec<? extends ChunkGenerator> codec() { return Codec.unit(this); }
@@ -89,8 +92,20 @@ final class LegacyChunkGenerator extends ChunkGenerator {
     @Override public void applyBiomeDecoration(WorldGenLevel level, ChunkAccess chunk, StructureManager structures) { }
     @Override public void spawnOriginalMobs(WorldGenRegion region) { }
     @Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state, StructureManager structures,
-                                          ChunkAccess chunk, StructureTemplateManager templates) { }
-    @Override public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) { }
+                                          ChunkAccess chunk, StructureTemplateManager templates) {
+        if (saved.hasStructures) {
+            var pos = chunk.getPos();
+            saved.chunk(pos.x, pos.z).installStarts(chunk, structureContext, state.getLevelSeed());
+        }
+    }
+
+    @Override
+    public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) {
+        if (saved.hasStructures) {
+            var pos = chunk.getPos();
+            saved.chunk(pos.x, pos.z).installReferences(chunk, level.registryAccess());
+        }
+    }
 
     private static final class SavedBiomes extends BiomeSource {
         private final LegacyDimension saved;
