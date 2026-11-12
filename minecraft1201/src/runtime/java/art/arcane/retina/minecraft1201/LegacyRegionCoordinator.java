@@ -4,6 +4,8 @@ import art.arcane.retina.core.NativeRegionBudget;
 import art.arcane.retina.core.NativeWorldDefinition;
 import art.arcane.retina.core.RegionCancellation;
 import art.arcane.retina.core.RegionLoadScheduler;
+import art.arcane.retina.worldgen.GenerationMetrics;
+import art.arcane.retina.worldgen.NativeTimings;
 import net.minecraft.world.level.ChunkPos;
 
 import java.io.IOException;
@@ -38,6 +40,7 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
     private final ConcurrentHashMap<Long, Preview> previews = new ConcurrentHashMap<>();
     private final ExecutorService workers;
     private final RegionLoadScheduler loads;
+    private final GenerationMetrics metrics = new GenerationMetrics();
     private volatile boolean closing;
 
     LegacyRegionCoordinator(NativeWorldDefinition definition, String dimension, NativeRegionBudget budget) {
@@ -76,11 +79,22 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
                 preview.directory = Files.createTempDirectory("retina-1201-preview-");
                 preview.path = preview.directory.resolve(fileName(position));
                 long started = System.nanoTime();
-                var result = definition.generateRegion(dimension, position.getRegionX(), position.getRegionZ(), preview.path);
-                if (result.generated() != 1024) throw new IllegalStateException("Incomplete Retina region preview " + preview.path);
+                long generated;
+                metrics.begin();
+                try {
+                    generated = definition.generateRegion(dimension, position.getRegionX(), position.getRegionZ(), preview.path).generated();
+                    if (generated != 1024) throw new IllegalStateException("Incomplete Retina region preview " + preview.path);
+                    metrics.completedPreviewRegion((int) generated, System.nanoTime() - started, NativeTimings.EMPTY);
+                } catch (CancellationException error) {
+                    metrics.cancelled();
+                    throw error;
+                } catch (RuntimeException | Error error) {
+                    metrics.failed();
+                    throw error;
+                }
                 if (Boolean.getBoolean("retina.qa")) LegacyWorlds.LOG.info(
                         "QA_EVT retina_1201_prepared {} {},{} chunks={} ms={}", dimension,
-                        position.getRegionX(), position.getRegionZ(), result.generated(), (System.nanoTime() - started) / 1_000_000);
+                        position.getRegionX(), position.getRegionZ(), generated, (System.nanoTime() - started) / 1_000_000);
                 retained = true;
                 return () -> discard(key, preview);
             } finally {
@@ -100,13 +114,25 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
         if (preview == null) throw new IllegalStateException("Missing Retina region lease for " + position);
         if (preview.published) return;
         storage.retina$closeRegion(position);
-        var result = definition.publishRegion(dimension, position.getRegionX(), position.getRegionZ(),
-                preview.path, storage.retina$folder().resolve(fileName(position)));
+        long started = System.nanoTime();
+        metrics.begin();
+        NativeWorldDefinition.RegionResult result;
+        try {
+            result = definition.publishRegion(dimension, position.getRegionX(), position.getRegionZ(),
+                    preview.path, storage.retina$folder().resolve(fileName(position)));
+            if (result.generated() > 0) metrics.completedPromotion(System.nanoTime() - started);
+            else metrics.cancelled();
+        } catch (RuntimeException | Error error) {
+            metrics.failed();
+            throw error;
+        }
         preview.published = true;
         if (Boolean.getBoolean("retina.qa")) LegacyWorlds.LOG.info(
                 "QA_EVT retina_1201_published {} {},{} generated={} preserved={}", dimension,
                 position.getRegionX(), position.getRegionZ(), result.generated(), result.preserved());
     }
+
+    GenerationMetrics.Snapshot metrics() { return metrics.snapshot(); }
 
     public void stopAdmission() {
         closing = true;

@@ -983,3 +983,32 @@ invalid-index error. A Java 25 FFM probe returned the same End city
 and Nether fossil starts for the exported 1.20.1 definition.
 All 15 catalog parity cases passed. On 26.3, a before/after Metal
 run in End region `-7,-2` matched all 1,024 decoded chunks.
+
+## Optional F3 telemetry
+
+On 1.20.1 Fabric and Forge, open F3 in a Retina client with
+`f3_overlay = true`. It shows the current dimension's completed
+terrain throughput, recent region latency, in-flight work,
+prepared and published regions, and failures. Publication
+counts are separate from terrain throughput. A server answers
+only clients requesting the overlay. It uses the same rolling
+throughput and latency calculations as 26.3.
+
+Run `scripts/minecraft1201-telemetry-test.py` with the packaged
+Fabric server launcher or a Forge server installation, Java 17,
+and the matching mod JAR. A protocol 763 client with no loader or
+Retina negotiation logged in and received terrain on both
+servers. It received no unsolicited reply, a malformed request
+was ignored, and 12 immediate valid requests received one
+reply. After a console teleport to the Nether, the next reply
+identified the Nether. On both runs the Overworld and Nether
+samples reported four prepared regions, four publications,
+4,096 completed chunks, and no failures.
+
+A Java 17 Fabric client pre-launch probe loaded the packaged
+client mixins and exited before graphics initialization. The
+Forge package contains reobfuscated injection mappings for
+both client mixins. Graphical rendering was not exercised.
+The 26.3 `generationMetricsTest` verified the rolling statistics,
+packet round trip, and F3 formatting after the shared types
+moved into the Java core.

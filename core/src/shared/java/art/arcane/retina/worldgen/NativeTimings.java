@@ -1,7 +1,5 @@
 package art.arcane.retina.worldgen;
 
-import net.minecraft.network.RegistryFriendlyByteBuf;
-
 /** Stage snapshot. Session CPU counters add across workers; region CPU counters estimate wall shares. */
 public record NativeTimings(int flags, long chunks, long gpuColumns, long gpuJobs, long[] nanos) {
     public static final int VERSION = 8;
@@ -34,14 +32,5 @@ public record NativeTimings(int flags, long chunks, long gpuColumns, long gpuJob
         for(int i=0;i<STAGES;i++) delta[i]=Math.max(0,nanos[i]-baseline.nanos[i]);
         return new NativeTimings(flags,Math.max(0,chunks-baseline.chunks),Math.max(0,gpuColumns-baseline.gpuColumns),
                 Math.max(0,gpuJobs-baseline.gpuJobs),delta);
-    }
-    public void write(RegistryFriendlyByteBuf buffer) {
-        buffer.writeVarInt(flags); buffer.writeVarLong(chunks); buffer.writeVarLong(gpuColumns); buffer.writeVarLong(gpuJobs);
-        for(long value:nanos) buffer.writeVarLong(value);
-    }
-    public static NativeTimings read(RegistryFriendlyByteBuf buffer) {
-        int flags=buffer.readVarInt(); long chunks=buffer.readVarLong(), columns=buffer.readVarLong(), jobs=buffer.readVarLong();
-        long[] values=new long[STAGES]; for(int i=0;i<STAGES;i++) values[i]=buffer.readVarLong();
-        return new NativeTimings(flags,chunks,columns,jobs,values);
     }
 }

@@ -7,11 +7,11 @@ def loader = '0.16.14'
 version = "${game}-${rootProject.ext.retinaRevision}"
 base { archivesName = 'retina-fabric' }
 
-loom { serverOnlyMinecraftJar() }
 tasks.withType(JavaCompile).configureEach { options.release = 17 }
 sourceSets.main {
     java.srcDirs rootProject.file('minecraft1201/src/main/java'),
             rootProject.file('minecraft1201/src/runtime/java'),
+            rootProject.file('minecraft1201/src/client/java'),
             rootProject.file('definition/src/main/java'),
             rootProject.file('common/src/main/java/art/arcane/retina/config')
     resources.srcDirs rootProject.file('minecraft1201/src/main/resources'),
