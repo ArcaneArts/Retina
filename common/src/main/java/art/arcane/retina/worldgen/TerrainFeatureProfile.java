@@ -1,5 +1,6 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.definition.TerrainBandModel;
 import com.google.gson.*;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.*;
@@ -36,11 +37,12 @@ final class TerrainFeatureProfile {
         if (hasBands(materialRule)) {
             // Palette identity is independent of which colored band happens to
             // appear first. Reserve the recipe's complete type set before draws.
-            for (var block : List.of(Blocks.TERRACOTTA, Blocks.DYED_TERRACOTTA.orange(),
+            var states = List.of(Blocks.TERRACOTTA, Blocks.DYED_TERRACOTTA.orange(),
                     Blocks.DYED_TERRACOTTA.yellow(), Blocks.DYED_TERRACOTTA.brown(),
-                    Blocks.DYED_TERRACOTTA.red(), Blocks.DYED_TERRACOTTA.white(), Blocks.DYED_TERRACOTTA.lightGray()))
-                material(palette, block.defaultBlockState());
-            for (var state : bands(seed)) bands.add(material(palette, state));
+                    Blocks.DYED_TERRACOTTA.red(), Blocks.DYED_TERRACOTTA.white(), Blocks.DYED_TERRACOTTA.lightGray());
+            int[] materials = states.stream().mapToInt(block -> material(palette, block.defaultBlockState())).toArray();
+            var random = RandomSource.create(seed ^ 0x6a09e667f3bcc909L);
+            for (int color : TerrainBandModel.colors(random::nextInt, random::nextBoolean)) bands.add(materials[color]);
         }
         terrain.add("bands", bands);
         terrain.addProperty("snow_layer",material(palette,Blocks.SNOW.defaultBlockState()));
@@ -226,24 +228,6 @@ final class TerrainFeatureProfile {
         if (rule instanceof ConditionRule c) return hasBands(c.thenRun());
         if (rule instanceof SequenceRule s) return s.sequence().stream().anyMatch(TerrainFeatureProfile::hasBands);
         return false;
-    }
-    private static BlockState[] bands(long seed) {
-        var random = RandomSource.create(seed ^ 0x6a09e667f3bcc909L);
-        var bands = new BlockState[192]; Arrays.fill(bands, Blocks.TERRACOTTA.defaultBlockState());
-        for (int i = 0; i < bands.length; i++) { i += random.nextInt(5) + 1; if (i < bands.length) bands[i] = Blocks.DYED_TERRACOTTA.orange().defaultBlockState(); }
-        for (int color = 0; color < 3; color++) {
-            var state = (color == 0 ? Blocks.DYED_TERRACOTTA.yellow() : color == 1 ? Blocks.DYED_TERRACOTTA.brown() : Blocks.DYED_TERRACOTTA.red()).defaultBlockState();
-            int count = random.nextIntBetweenInclusive(6, 15);
-            for (int i = 0; i < count; i++) { int width = (color == 1 ? 2 : 1) + random.nextInt(3), start = random.nextInt(bands.length);
-                for (int p = 0; p < width && start + p < bands.length; p++) bands[start + p] = state; }
-        }
-        int count = random.nextIntBetweenInclusive(9, 15), start = 0;
-        for (int i = 0; i < count && start < bands.length; i++, start += random.nextInt(16) + 4) {
-            bands[start] = Blocks.DYED_TERRACOTTA.white().defaultBlockState();
-            if (start - 1 > 0 && random.nextBoolean()) bands[start - 1] = Blocks.DYED_TERRACOTTA.lightGray().defaultBlockState();
-            if (start + 1 < bands.length && random.nextBoolean()) bands[start + 1] = Blocks.DYED_TERRACOTTA.lightGray().defaultBlockState();
-        }
-        return bands;
     }
     private static int material(LinkedHashMap<BlockState,Integer> palette, BlockState state) { return palette.computeIfAbsent(state, ignored -> palette.size()); }
     private static JsonArray array(double... values) { var a = new JsonArray(); for (double v : values) a.add(v); return a; }

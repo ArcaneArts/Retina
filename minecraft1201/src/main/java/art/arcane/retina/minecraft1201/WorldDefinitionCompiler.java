@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 
@@ -27,14 +28,14 @@ import java.util.List;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
 
-/** Resolves 1.20.1 Flat generators and explicitly records unhandled dimensions. */
-public final class FlatDefinitionCompiler {
+/** Resolves supported 1.20.1 generators and records the reason for each unhandled dimension. */
+public final class WorldDefinitionCompiler {
     private static final BinaryDefinitionTags TAGS = BinaryDefinitionTags.INSTANCE;
 
-    private FlatDefinitionCompiler() { }
+    private WorldDefinitionCompiler() { }
 
     public static BinaryDefinitionTags.Compound compile(RegistryAccess registries, Registry<LevelStem> stems,
-                                                         WorldOptions options, List<String> packs) {
+                                                         WorldOptions options, List<String> packs, boolean noiseTerrainPreview) {
         var version = SharedConstants.getCurrentVersion();
         var assembly = new DefinitionAssembler<>(TAGS, version.getName(), version.getDataVersion().getVersion(),
                 "Retina Minecraft 1.20.1", options.seed(), options.generateStructures(),
@@ -44,6 +45,17 @@ public final class FlatDefinitionCompiler {
             String id = entry.getKey().location().toString();
             LevelStem stem = entry.getValue();
             var parameters = parameters(stem);
+            if (noiseTerrainPreview && stem.generator() instanceof NoiseBasedChunkGenerator noise) {
+                JsonObject profile;
+                try {
+                    profile = LegacyTerrainProfile.compile(registries, stem, noise, options.seed());
+                } catch (IllegalArgumentException unsupported) {
+                    assembly.unsupported(id, parameters, unsupported.getMessage());
+                    continue;
+                }
+                assembly.supported(id, parameters, profile, null);
+                continue;
+            }
             if (stem.generator().getClass() != FlatLevelSource.class) {
                 assembly.unsupported(id, parameters, "No 1.20.1 definition adapter for " + stem.generator().getClass().getName());
                 continue;
@@ -126,6 +138,12 @@ public final class FlatDefinitionCompiler {
         FlatProfileModel.writeLayers(world, encoded, base, deferred,
                 biome.unwrapKey().orElseThrow().location().toString(), biome.value().getBaseTemperature());
 
+        var air = writePalette(world, palette, stem.type().value().hasSkyLight());
+        world.getAsJsonObject("flat").add("air_materials", air);
+        return world;
+    }
+
+    static JsonArray writePalette(JsonObject world, LinkedHashMap<BlockState, Integer> palette, boolean skylight) {
         var materials = new JsonArray();
         var air = new JsonArray();
         var flags = new JsonArray();
@@ -145,9 +163,8 @@ public final class FlatDefinitionCompiler {
         world.add("materials", materials);
         world.add("material_flags", flags);
         world.add("heightmap_masks", masks);
-        world.getAsJsonObject("flat").add("air_materials", air);
-        world.add("lighting", LightingExport.export(palette.keySet(), stem.type().value().hasSkyLight()));
-        return world;
+        world.add("lighting", LightingExport.export(palette.keySet(), skylight));
+        return air;
     }
 
     private static int material(LinkedHashMap<BlockState, Integer> palette, BlockState state) {
