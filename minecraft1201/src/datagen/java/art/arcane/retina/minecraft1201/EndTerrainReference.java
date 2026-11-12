@@ -26,7 +26,12 @@ final class EndTerrainReference {
         Bootstrap.bootStrap();
         var output = Path.of(args[0]).toAbsolutePath();
         Files.createDirectories(output.getParent());
-        var loaded = RegistryExport.load(output.getParent().resolve("datapacks"), WorldPresets.NORMAL);
+        try (var loaded = RegistryExport.load(output.getParent().resolve("datapacks"), WorldPresets.NORMAL)) {
+            sample(output, loaded);
+        }
+    }
+
+    private static void sample(Path output, RegistryExport.Loaded loaded) throws Exception {
         var end = loaded.dimensions().getHolderOrThrow(LevelStem.END).value();
         var generator = (NoiseBasedChunkGenerator) end.generator();
         var settings = generator.generatorSettings().value();

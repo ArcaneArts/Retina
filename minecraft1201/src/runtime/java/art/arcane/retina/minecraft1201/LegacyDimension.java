@@ -24,6 +24,7 @@ final class LegacyDimension implements AutoCloseable {
     final int generatorDepth;
     final int seaLevel;
     final int spawnHeight;
+    final boolean hasStructures;
     final List<Holder<Biome>> biomes;
     private final String key;
     private final NativeWorldDefinition definition;
@@ -42,6 +43,8 @@ final class LegacyDimension implements AutoCloseable {
         generatorDepth = params.get("generator_depth").getAsInt();
         seaLevel = params.get("sea_level").getAsInt();
         spawnHeight = params.get("spawn_height").getAsInt();
+        var profile = dimension.getAsJsonObject("profile_metadata");
+        hasStructures = profile != null && profile.has("structure_sets") && profile.get("structure_sets").getAsInt() != 0;
         if (type.minY() != minY || type.height() != height
                 || type.hasSkyLight() != params.get("skylight").getAsBoolean()
                 || type.hasCeiling() != params.get("ceiling").getAsBoolean()

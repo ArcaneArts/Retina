@@ -47,6 +47,8 @@ impl WorldDefinition {
                         "material_halo":profile.material_halo(),
                         "density_composition":profile.registry_program.as_ref().is_some_and(|p|p.density_composition)});
                 }
+                summary["structure_sets"] = json!(profile.structures.sets.iter()
+                    .filter(|set| !set.placement_only).count());
                 data["profile_metadata"] = summary;
                 data["limitations"] = limitations(self.source().dimensions[key].profile.as_ref().expect("supported profile"));
             }

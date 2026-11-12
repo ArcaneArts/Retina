@@ -10,7 +10,9 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Blocks;
@@ -26,6 +28,8 @@ import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
 
@@ -36,7 +40,8 @@ public final class WorldDefinitionCompiler {
     private WorldDefinitionCompiler() { }
 
     public static BinaryDefinitionTags.Compound compile(RegistryAccess registries, Registry<LevelStem> stems,
-                                                         WorldOptions options, List<String> packs, boolean noiseTerrainPreview) {
+                                                         WorldOptions options, List<String> packs, boolean noiseTerrainPreview,
+                                                         Function<ResourceLocation, Optional<CompoundTag>> templates) {
         var version = SharedConstants.getCurrentVersion();
         var assembly = new DefinitionAssembler<>(TAGS, version.getName(), version.getDataVersion().getVersion(),
                 "Retina Minecraft 1.20.1", options.seed(), options.generateStructures(),
@@ -50,7 +55,7 @@ public final class WorldDefinitionCompiler {
                 JsonObject profile;
                 try {
                     profile = LegacyEndProfile.selected(stem, noise)
-                            ? LegacyEndProfile.compile(registries, stem, noise)
+                            ? LegacyEndProfile.compile(registries, stem, noise, options.generateStructures(), templates)
                             : LegacyTerrainProfile.compile(registries, stem, noise, options.seed());
                 } catch (IllegalArgumentException unsupported) {
                     assembly.unsupported(id, parameters, unsupported.getMessage());

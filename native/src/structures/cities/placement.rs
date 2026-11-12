@@ -333,6 +333,7 @@ impl Placement {
                         pos,
                         piece.rotation,
                         identity,
+                        kit.legacy_entity_nbt,
                     ));
                 }
             }
@@ -340,7 +341,7 @@ impl Placement {
         (count, placed)
     }
 }
-fn entity(shulker: bool, pos: [i32; 3], rotation: usize, key: u64) -> Value {
+fn entity(shulker: bool, pos: [i32; 3], rotation: usize, key: u64, legacy: bool) -> Value {
     let a = structures::rand64(key ^ 0x656e645f63697479);
     let b = structures::rand64(a);
     let mut tag = nbt::compound();
@@ -364,10 +365,15 @@ fn entity(shulker: bool, pos: [i32; 3], rotation: usize, key: u64) -> Value {
         ("OnGround", json!([1, 0])),
         ("Fire", json!([2, 0])),
         ("Air", json!([2, 300])),
-        ("fall_distance", json!([6, 0.0])),
+
         ("PortalCooldown", nbt::int(0)),
     ] {
         nbt::put(&mut tag, name, value);
+    }
+    if legacy {
+        nbt::put(&mut tag, "FallDistance", json!([5, 0.0]));
+    } else {
+        nbt::put(&mut tag, "fall_distance", json!([6, 0.0]));
     }
     let mut point = [pos[0] as f64 + 0.5, pos[1] as f64, pos[2] as f64 + 0.5];
     let yaw = if shulker {
@@ -403,7 +409,13 @@ fn entity(shulker: bool, pos: [i32; 3], rotation: usize, key: u64) -> Value {
         point[0] -= [0.0, -1.0, 0.0, 1.0][rotation] * 0.46875;
         point[2] -= [1.0, 0.0, -1.0, 0.0][rotation] * 0.46875;
         nbt::put(&mut tag, "Facing", json!([1, ([3, 4, 2, 5][rotation])]));
-        nbt::put(&mut tag, "block_pos", json!([11, pos]));
+        if legacy {
+            for (name, value) in ["TileX", "TileY", "TileZ"].into_iter().zip(pos) {
+                nbt::put(&mut tag, name, nbt::int(value));
+            }
+        } else {
+            nbt::put(&mut tag, "block_pos", json!([11, pos]));
+        }
         for (name, value) in [
             ("ItemRotation", json!([1, 0])),
             ("ItemDropChance", json!([5, 1.0])),
@@ -414,7 +426,11 @@ fn entity(shulker: bool, pos: [i32; 3], rotation: usize, key: u64) -> Value {
         }
         let mut item = nbt::compound();
         nbt::put(&mut item, "id", nbt::string("minecraft:elytra"));
-        nbt::put(&mut item, "count", nbt::int(1));
+        if legacy {
+            nbt::put(&mut item, "Count", json!([1, 1]));
+        } else {
+            nbt::put(&mut item, "count", nbt::int(1));
+        }
         nbt::put(&mut tag, "Item", item);
     }
     nbt::put(

@@ -11,6 +11,7 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.util.SimpleBitStorage;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -24,6 +25,8 @@ import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
 import net.minecraft.world.level.chunk.ProtoChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -87,6 +90,27 @@ final class LegacyChunkData {
         if (chunk instanceof ProtoChunk proto)
             for (var raw : root.getList("entities", Tag.TAG_COMPOUND))
                 proto.addEntity(((CompoundTag) raw).copy());
+    }
+
+    void installStarts(ChunkAccess chunk, StructurePieceSerializationContext context, long seed) {
+        var starts = root.getCompound("structures").getCompound("starts");
+        for (String id : starts.getAllKeys()) {
+            var start = StructureStart.loadStaticStart(context, starts.getCompound(id), seed);
+            if (start == null || !start.isValid()) {
+                throw new IllegalStateException("Cannot bind saved Retina structure " + id + " in " + chunk.getPos());
+            }
+            chunk.setStartForStructure(start.getStructure(), start);
+        }
+    }
+
+    void installReferences(ChunkAccess chunk, RegistryAccess registry) {
+        var references = root.getCompound("structures").getCompound("References");
+        var structures = registry.registryOrThrow(Registries.STRUCTURE);
+        for (String id : references.getAllKeys()) {
+            var structure = structures.getOptional(new ResourceLocation(id))
+                    .orElseThrow(() -> new IllegalStateException("Cannot bind saved Retina structure reference " + id));
+            for (long start : references.getLongArray(id)) chunk.addReferenceForStructure(structure, start);
+        }
     }
 
     static final class Decoder {
