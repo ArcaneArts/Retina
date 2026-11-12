@@ -158,7 +158,7 @@ final class LegacyOverworldPlants {
                         any(wet.toArray(JsonObject[]::new))));
     }
 
-    private static boolean sturdyUp(BlockState state) {
+    static boolean sturdyUp(BlockState state) {
         return state.isFaceSturdy(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, Direction.UP);
     }
 

@@ -97,6 +97,8 @@ pub struct Recipe {
 pub enum Kind {
     #[serde(rename = "nether_feature")]
     NetherFeature { nether: patch::nether::Feature },
+    #[serde(rename = "submerged")]
+    Submerged { submerged: patch::submerged::Recipe },
     #[serde(rename = "flat_lake")]
     FlatLake {
         #[serde(flatten)]
@@ -216,6 +218,7 @@ impl Recipe {
             Kind::NetherFeature { nether } => {
                 self.placement.is_some() && nether.validate(material_count)
             }
+            Kind::Submerged { submerged } => self.placement.is_some() && submerged.validate(material_count),
             Kind::FlatLake { lake } => self.placement.is_some() && lake.validate(material_count),
             Kind::FreezeTopLayer => self.placement.is_some() && self.reach.is_some_and(|reach| reach >= 15),
             Kind::VoidPlatform { platform } | Kind::EndPlatform { platform } => {
@@ -1556,7 +1559,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
         let mut rng = Rng::new(candidate.seed);
         let feature_start = diagnostics::start(MEASURE);
         match &recipe.feature {
-            Kind::NetherFeature { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+            Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
                 patch::place_registered(
                     &recipe.feature,
                     position,
@@ -1675,7 +1678,7 @@ fn evaluate_anchor_impl<const MEASURE: bool>(
             }
         }
         let commit_start = diagnostics::start(MEASURE);
-        let live_overlay = matches!(&recipe.feature,
+        let live_overlay = matches!(&recipe.feature, Kind::Submerged { .. }) || matches!(&recipe.feature,
             Kind::NetherFeature { nether } if nether.commits_overlay());
         if profile.ordered_decorations && !live_overlay {
             // Preserve the same within-feature replay as the live overlay,
@@ -1745,6 +1748,7 @@ pub(crate) fn feature_sample(
         Kind::FlatLake { .. }
             | Kind::FreezeTopLayer
             | Kind::NetherFeature { .. }
+            | Kind::Submerged { .. }
             | Kind::VoidPlatform { .. }
             | Kind::EndPlatform { .. }
             | Kind::EndIsland { .. }
@@ -1772,7 +1776,7 @@ pub(crate) fn feature_sample(
     let mut overlay = placement::Overlay::default();
     let mut rng = Rng::new(seed);
     match &recipe.feature {
-        Kind::NetherFeature { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
+        Kind::NetherFeature { .. } | Kind::Submerged { .. } | Kind::Disk { .. } | Kind::Sequence { .. } | Kind::Overlay { .. } => {
             patch::place_registered(
                 &recipe.feature,
                 at,

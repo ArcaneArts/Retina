@@ -41,6 +41,7 @@ dependencies {
         if (mode == 'noise' && providers.gradleProperty('retinaVerifyAttachments').isPresent()) args '--verify-attachments'
         if (mode == 'noise' && providers.gradleProperty('retinaVerifyRings').isPresent()) args '--structures', '--verify-rings'
         if (mode == 'noise' && providers.gradleProperty('retinaVerifyStrongholds').isPresent()) args '--structures', '--verify-strongholds'
+        if (mode == 'noise' && providers.gradleProperty('retinaVerifySubmerged').isPresent()) args '--verify-submerged'
         if (mode == 'flat' && providers.gradleProperty('retinaVerifyFlatWorldgen').isPresent()) {
             args '--structures', '--verify-flat-worldgen'
         }

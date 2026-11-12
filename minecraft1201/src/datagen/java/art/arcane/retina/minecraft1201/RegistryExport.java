@@ -61,6 +61,8 @@ public final class RegistryExport {
         if (verifyRings) RingPlacementVerification.pack(packFolder);
         boolean verifyStrongholds = Arrays.asList(args).contains("--verify-strongholds");
         if (verifyStrongholds) StrongholdVerification.pack(packFolder);
+        boolean verifySubmerged = Arrays.asList(args).contains("--verify-submerged");
+        if (verifySubmerged) SubmergedVerification.pack(packFolder);
         try (var loaded = load(packFolder, preset)) {
             export(world, seed, started, noise, preset, loaded, structures, verify);
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
@@ -70,6 +72,7 @@ public final class RegistryExport {
             if (verifySurfaceFreeze) SurfaceFreezeVerification.verify(world, loaded);
             if (verifyRings) RingPlacementVerification.verify(world, loaded, seed);
             if (verifyStrongholds) StrongholdVerification.verify(world, loaded, seed);
+            if (verifySubmerged) SubmergedVerification.verify(world);
         }
     }
 

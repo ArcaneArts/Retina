@@ -12,6 +12,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -22,6 +23,9 @@ import net.minecraft.world.level.block.BambooStalkBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoublePlantBlock;
+import net.minecraft.world.level.block.KelpBlock;
+import net.minecraft.world.level.block.SeaPickleBlock;
+import net.minecraft.world.level.block.TallSeagrassBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BambooLeaves;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -32,6 +36,7 @@ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.LakeFeature;
 import net.minecraft.world.level.levelgen.feature.configurations.BlockColumnConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.CountConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.HugeMushroomFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.MultifaceGrowthConfiguration;
@@ -42,6 +47,7 @@ import net.minecraft.world.level.levelgen.feature.configurations.RandomPatchConf
 import net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.SimpleRandomFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.SpringConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.UnderwaterMagmaConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.TreeConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.VegetationPatchConfiguration;
 import net.minecraft.world.level.levelgen.feature.stateproviders.RuleBasedBlockStateProvider;
@@ -303,6 +309,8 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.BLOCK_COLUMN) return column((BlockColumnConfiguration) config);
         if (feature == Feature.DISK) return disk((DiskConfiguration) config);
         if (feature == Feature.BAMBOO) return bamboo((ProbabilityFeatureConfiguration) config);
+        if (feature == Feature.KELP || feature == Feature.SEAGRASS || feature == Feature.SEA_PICKLE
+                || feature == Feature.UNDERWATER_MAGMA) return submerged(configured);
         if (feature == Feature.VEGETATION_PATCH || feature == Feature.WATERLOGGED_VEGETATION_PATCH) {
             return vegetationPatch((VegetationPatchConfiguration) config, feature == Feature.WATERLOGGED_VEGETATION_PATCH, depth);
         }
@@ -314,6 +322,60 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.SIMPLE_RANDOM_SELECTOR) return choices((SimpleRandomFeatureConfiguration) config, depth);
         if (feature == Feature.RANDOM_BOOLEAN_SELECTOR) return either((RandomBooleanFeatureConfiguration) config, depth);
         throw new IllegalArgumentException(BuiltInRegistries.FEATURE.getKey(feature).toString());
+    }
+
+    private Recipe submerged(ConfiguredFeature<?, ?> configured) {
+        var data = kind("submerged");
+        var growth = new JsonObject();
+        data.add("submerged", growth);
+        growth.add("water", predicates.blocks(array(0, 0, 0), Blocks.WATER));
+        var below = array(0, -1, 0);
+        int reach;
+        if (configured.feature() == Feature.KELP) {
+            growth.addProperty("growth", "kelp");
+            growth.addProperty("body", material(Blocks.KELP_PLANT.defaultBlockState()));
+            var tips = new JsonArray();
+            for (int age = 20; age <= 23; age++) tips.add(material(Blocks.KELP.defaultBlockState().setValue(KelpBlock.AGE, age)));
+            growth.add("tips", tips);
+            growth.add("support", predicates.material(below, state -> !state.is(Blocks.MAGMA_BLOCK)
+                    && (state.is(Blocks.KELP) || state.is(Blocks.KELP_PLANT) || LegacyOverworldPlants.sturdyUp(state))));
+            growth.add("below_is_not_tip", predicates.material(below, state -> !state.is(Blocks.KELP)));
+            reach = 0;
+        } else if (configured.feature() == Feature.SEAGRASS) {
+            var config = (ProbabilityFeatureConfiguration) configured.config();
+            growth.addProperty("growth", "seagrass");
+            growth.addProperty("tall_probability", config.probability);
+            growth.addProperty("short", material(Blocks.SEAGRASS.defaultBlockState()));
+            var tall = Blocks.TALL_SEAGRASS.defaultBlockState();
+            growth.add("tall", array(material(tall.setValue(TallSeagrassBlock.HALF, DoubleBlockHalf.LOWER)),
+                    material(tall.setValue(TallSeagrassBlock.HALF, DoubleBlockHalf.UPPER))));
+            growth.add("support", predicates.material(below, state -> !state.is(Blocks.MAGMA_BLOCK) && LegacyOverworldPlants.sturdyUp(state)));
+            growth.add("full_water", predicates.material(state -> state.getFluidState().is(FluidTags.WATER)
+                    && state.getFluidState().getAmount() == 8));
+            reach = 7;
+        } else if (configured.feature() == Feature.SEA_PICKLE) {
+            growth.addProperty("growth", "sea_pickle");
+            growth.add("count", integer(((CountConfiguration) configured.config()).count()));
+            var pickles = new JsonArray();
+            for (int count = 1; count <= 4; count++) {
+                pickles.add(material(Blocks.SEA_PICKLE.defaultBlockState().setValue(SeaPickleBlock.PICKLES, count)
+                        .setValue(BlockStateProperties.WATERLOGGED, true)));
+            }
+            growth.add("pickles", pickles);
+            growth.add("support", predicates.material(below, state -> LegacyOverworldPlants.sturdyUp(state)
+                    || !state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).getFaceShape(Direction.UP).isEmpty()));
+            reach = 7;
+        } else {
+            var config = (UnderwaterMagmaConfiguration) configured.config();
+            growth.addProperty("growth", "underwater_magma");
+            growth.addProperty("material", material(Blocks.MAGMA_BLOCK.defaultBlockState()));
+            growth.addProperty("floor_search_range", config.floorSearchRange);
+            growth.addProperty("radius", config.placementRadiusAroundFloor);
+            growth.addProperty("probability", config.placementProbabilityPerValidPosition);
+            growth.add("solid", predicates.material(state -> !state.isAir() && !state.is(Blocks.WATER)));
+            reach = config.placementRadiusAroundFloor + 1;
+        }
+        return new Recipe(data, reach);
     }
 
     private Recipe lake(LakeFeature.Configuration config) {
