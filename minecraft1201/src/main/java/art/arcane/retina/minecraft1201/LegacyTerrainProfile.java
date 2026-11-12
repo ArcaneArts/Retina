@@ -135,9 +135,9 @@ final class LegacyTerrainProfile {
         program.add("surface", array(volume.minY(), volume.getCellHeight(), 0));
         program.addProperty("density_composition", true);
         program.addProperty("material_layers", true);
-        // Nether features place inside caves and on ceilings. Column heights
-        // alone cannot distinguish those positions from solid netherrack.
-        if (type.hasCeiling()) program.addProperty("material_halo", true);
+        // Springs, floor disks and cave placements read actual neighboring
+        // materials below the surface, including across chunk boundaries.
+        program.addProperty("material_halo", true);
         var surfaceNoises = new JsonArray();
         for (String id : List.of("surface", "surface_secondary", "clay_bands_offset")) {
             surfaceNoises.add(compiler.noise(new JsonPrimitive("minecraft:" + id)));
@@ -151,6 +151,8 @@ final class LegacyTerrainProfile {
         if (type.hasCeiling()) {
             compiler.approximations.add("decoration:nether-fire-sturdy-floor");
             compiler.approximations.add("decoration:nether-mushroom-generation-dark");
+        } else if (type.hasSkyLight()) {
+            compiler.approximations.add("decoration:overworld-mushrooms-require-grow-block");
         }
         var approximations = new JsonArray();
         compiler.approximations.forEach(approximations::add);
@@ -158,15 +160,22 @@ final class LegacyTerrainProfile {
         world.add("registry_program", program);
 
         terrainPreviewOmissions(world);
+        var sourceOrder = List.copyOf(generator.getBiomeSource().possibleBiomes());
         var predicates = type.hasCeiling()
-                ? LegacyNetherFeatures.export(registries, List.copyOf(generator.getBiomeSource().possibleBiomes()),
+                ? LegacyNetherFeatures.export(registries, sourceOrder,
                         biomeProfile.biomes(), biomeEntries, palette, context, storage, world)
                 : null;
+        var overworld = type.hasCeiling() ? null : new LegacyOverworldFeatures(registries, context, palette, type.hasSkyLight());
+        if (overworld != null) {
+            overworld.export(registries, sourceOrder, biomeProfile.biomes(), biomeEntries, world);
+            overworld.reserveWaterlogging();
+        }
         LegacyGeologyProfile.export(registries, biomeProfile, world, palette, context, storage,
                 type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
         // Geology has added its output states. Both compilers bind against the
         // complete palette so ore replacement masks and predicates agree.
         if (predicates != null) predicates.finish(palette);
+        if (overworld != null) overworld.finish(world);
         WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight());
         return world;
     }

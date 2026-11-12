@@ -1,0 +1,365 @@
+package art.arcane.retina.minecraft1201;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.RegistryOps;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.util.valueproviders.IntProvider;
+import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.FeatureSorter;
+import net.minecraft.world.level.block.BambooStalkBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.DoublePlantBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BambooLeaves;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.levelgen.WorldGenerationContext;
+import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
+import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
+import net.minecraft.world.level.levelgen.feature.Feature;
+import net.minecraft.world.level.levelgen.feature.configurations.BlockColumnConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.ProbabilityFeatureConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.RandomBooleanFeatureConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.RandomFeatureConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.RandomPatchConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.SimpleRandomFeatureConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.SpringConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.VegetationPatchConfiguration;
+import net.minecraft.world.level.levelgen.feature.stateproviders.RuleBasedBlockStateProvider;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.TreeSet;
+
+import static art.arcane.retina.definition.FlatProfileModel.array;
+import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
+import static art.arcane.retina.minecraft1201.LegacyNetherFeatures.nativeFeature;
+
+final class LegacyOverworldFeatures {
+    private record Recipe(JsonObject data, int reach) { }
+    private record Nested(JsonObject data, int reach) { }
+
+    private final RegistryOps<JsonElement> ops;
+    private final WorldGenerationContext context;
+    private final LinkedHashMap<BlockState, Integer> palette;
+    private final LegacyFeaturePredicates predicates = new LegacyFeaturePredicates();
+    private final LegacyDecorationNoise noise = new LegacyDecorationNoise();
+    private final LegacyBlockProviders providers;
+    private final LegacyOverworldPlants plants;
+    private final LinkedHashMap<String, Integer> fluidTicks = new LinkedHashMap<>();
+    private final List<JsonArray> poolWaterlogging = new ArrayList<>();
+
+    LegacyOverworldFeatures(RegistryAccess registries, WorldGenerationContext context,
+                            LinkedHashMap<BlockState, Integer> palette, boolean skylight) {
+        this.ops = RegistryOps.create(JsonOps.INSTANCE, registries);
+        this.context = context;
+        this.palette = palette;
+        this.providers = new LegacyBlockProviders(ops, predicates, this::material, noise);
+        this.plants = new LegacyOverworldPlants(predicates, this::material, skylight);
+        predicates.bindSurvival(plants::survival);
+    }
+
+    void export(RegistryAccess registries, List<Holder<Biome>> sourceOrder, List<Holder<Biome>> biomes,
+                JsonArray biomeEntries, JsonObject world) {
+        var features = registries.registryOrThrow(Registries.PLACED_FEATURE);
+        var steps = FeatureSorter.buildFeaturesPerStep(sourceOrder, biome -> biome.value().getGenerationSettings().features(), true);
+        var recipes = new JsonArray();
+        var omissions = new TreeSet<String>();
+        for (var entry : biomeEntries) entry.getAsJsonObject().add("decorations", new JsonArray());
+        int order = 0;
+        for (int step = 0; step < steps.size(); step++) {
+            var members = membership(biomes, step);
+            var roots = steps.get(step);
+            for (var root : roots.features()) {
+                int rootOrder = order++;
+                var configured = root.feature().value();
+                if (configured.feature() == Feature.ORE || configured.feature() == Feature.SCATTERED_ORE) continue;
+                int index = roots.indexMapping().applyAsInt(root);
+                String source = features.getResourceKey(root).map(key -> key.location().toString())
+                        .orElse("inline/overworld/" + step + "/" + index);
+                try {
+                    var placement = placement(root, false);
+                    var recipe = compile(configured, 0);
+                    var biomesForRoot = members.get(root);
+                    for (int biome = biomesForRoot.nextSetBit(0); biome >= 0; biome = biomesForRoot.nextSetBit(biome + 1)) {
+                        biomeEntries.get(biome).getAsJsonObject().getAsJsonArray("decorations").add(recipes.size());
+                    }
+                    recipes.add(LegacyFeaturePlacement.recipe(source, step, rootOrder, placement, recipe.data(), recipe.reach()));
+                } catch (IllegalArgumentException unsupported) {
+                    omissions.add(source + ":" + unsupported.getMessage());
+                }
+            }
+        }
+        var report = new JsonArray();
+        omissions.forEach(report::add);
+        world.add("decorations", recipes);
+        world.add("decoration_omissions", report);
+        world.add("decoration_ticks", LegacyNetherFeatures.fluidTickTable(fluidTicks));
+        world.addProperty("ordered_decorations", true);
+        world.addProperty("decoration_source_order", true);
+        world.addProperty("decoration_biome_3d", true);
+        world.addProperty("decoration_patch_halo", true);
+        noise.export(world);
+    }
+
+    private static IdentityHashMap<PlacedFeature, BitSet> membership(List<Holder<Biome>> biomes, int step) {
+        var result = new IdentityHashMap<PlacedFeature, BitSet>();
+        for (int index = 0; index < biomes.size(); index++) {
+            var features = biomes.get(index).value().getGenerationSettings().features();
+            if (step >= features.size()) continue;
+            for (var holder : features.get(step)) {
+                result.computeIfAbsent(holder.value(), ignored -> new BitSet()).set(index);
+            }
+        }
+        return result;
+    }
+
+    void reserveWaterlogging() {
+        if (!poolWaterlogging.isEmpty()) {
+            for (var state : List.copyOf(palette.keySet())) {
+                if (state.hasProperty(BlockStateProperties.WATERLOGGED) && !state.getValue(BlockStateProperties.WATERLOGGED)) {
+                    var pair = array(material(state), material(state.setValue(BlockStateProperties.WATERLOGGED, true)));
+                    poolWaterlogging.forEach(table -> table.add(pair));
+                }
+            }
+        }
+    }
+
+    void finish(JsonObject world) {
+        predicates.finish(palette);
+        var halves = new JsonArray();
+        var plants = new LinkedHashMap<Block, Integer>();
+        for (var state : palette.keySet()) {
+            int half = 0;
+            if (state.getBlock() instanceof DoublePlantBlock) {
+                half = plants.computeIfAbsent(state.getBlock(), ignored -> plants.size() + 1);
+                if (state.getValue(DoublePlantBlock.HALF) == DoubleBlockHalf.UPPER) half = -half;
+            }
+            halves.add(half);
+        }
+        world.add("plant_halves", halves);
+    }
+
+    private Recipe compile(ConfiguredFeature<?, ?> configured, int depth) {
+        if (depth > 16) throw new IllegalArgumentException("feature:recursion");
+        var feature = configured.feature();
+        var config = configured.config();
+        if (feature == Feature.RANDOM_PATCH || feature == Feature.FLOWER || feature == Feature.NO_BONEMEAL_FLOWER) {
+            var patch = (RandomPatchConfiguration) config;
+            var child = nested(patch.feature().value(), depth);
+            var spread = LegacyNetherFeatures.spreadPatch(patch.tries(), patch.xzSpread(), patch.ySpread(), child.data(), null);
+            return new Recipe(nativeFeature(spread), patch.xzSpread() + child.reach());
+        }
+        if (feature == Feature.SIMPLE_BLOCK) {
+            var simple = (SimpleBlockConfiguration) config;
+            return new Recipe(plants.simple(providers.encode(simple.toPlace())), 0);
+        }
+        if (feature == Feature.BLOCK_COLUMN) return column((BlockColumnConfiguration) config);
+        if (feature == Feature.DISK) return disk((DiskConfiguration) config);
+        if (feature == Feature.BAMBOO) return bamboo((ProbabilityFeatureConfiguration) config);
+        if (feature == Feature.VEGETATION_PATCH || feature == Feature.WATERLOGGED_VEGETATION_PATCH) {
+            return vegetationPatch((VegetationPatchConfiguration) config, feature == Feature.WATERLOGGED_VEGETATION_PATCH, depth);
+        }
+        if (feature == Feature.SPRING) {
+            return new Recipe(nativeFeature(LegacyNetherFeatures.spring((SpringConfiguration) config, predicates,
+                    this::material, fluidTicks)), 0);
+        }
+        if (feature == Feature.RANDOM_SELECTOR) return random((RandomFeatureConfiguration) config, depth);
+        if (feature == Feature.SIMPLE_RANDOM_SELECTOR) return choices((SimpleRandomFeatureConfiguration) config, depth);
+        if (feature == Feature.RANDOM_BOOLEAN_SELECTOR) return either((RandomBooleanFeatureConfiguration) config, depth);
+        throw new IllegalArgumentException(BuiltInRegistries.FEATURE.getKey(feature).toString());
+    }
+
+    private JsonArray placement(PlacedFeature feature, boolean nested) {
+        var program = LegacyFeaturePlacement.encode(feature, ops);
+        LegacyFeaturePlacement.bindOverworld(program, context, predicates, nested);
+        return program;
+    }
+
+    private Nested nested(PlacedFeature feature, int depth) {
+        var placement = placement(feature, true);
+        var recipe = compile(feature.feature().value(), depth + 1);
+        int reach = LegacyFeaturePlacement.nestedHorizontalReach(placement) + recipe.reach();
+        return new Nested(LegacyFeaturePlacement.placed(placement, recipe.data()), reach);
+    }
+
+    private Recipe random(RandomFeatureConfiguration config, int depth) {
+        var data = kind("random_selector");
+        var options = new JsonArray();
+        var fallback = nested(config.defaultFeature.value(), depth);
+        int reach = fallback.reach();
+        for (var option : config.features) {
+            var child = nested(option.feature.value(), depth);
+            var row = new JsonObject();
+            row.addProperty("chance", option.chance);
+            row.add("placed", child.data());
+            options.add(row);
+            reach = Math.max(reach, child.reach());
+        }
+        data.add("options", options);
+        data.add("default", fallback.data());
+        return composite(data, reach);
+    }
+
+    private Recipe choices(SimpleRandomFeatureConfiguration config, int depth) {
+        var data = kind("simple_selector");
+        var choices = new JsonArray();
+        int reach = 0;
+        for (var option : config.features) {
+            var child = nested(option.value(), depth);
+            choices.add(child.data());
+            reach = Math.max(reach, child.reach());
+        }
+        data.add("features", choices);
+        return composite(data, reach);
+    }
+
+    private Recipe either(RandomBooleanFeatureConfiguration config, int depth) {
+        var data = kind("boolean_selector");
+        var yes = nested(config.featureTrue.value(), depth);
+        var no = nested(config.featureFalse.value(), depth);
+        data.add("when_true", yes.data());
+        data.add("when_false", no.data());
+        return composite(data, Math.max(yes.reach(), no.reach()));
+    }
+
+    private static Recipe composite(JsonObject selector, int reach) {
+        var data = kind("sequence");
+        var features = new JsonArray();
+        features.add(LegacyFeaturePlacement.placed(new JsonArray(), selector));
+        data.add("features", features);
+        return new Recipe(data, reach);
+    }
+
+    private Recipe column(BlockColumnConfiguration config) {
+        var direction = config.direction();
+        long maxLength = config.layers().stream().mapToLong(layer -> layer.height().getMaxValue()).sum();
+        boolean horizontal = direction.getAxis().isHorizontal();
+        if (maxLength > (horizontal ? 15 : 4096) || config.layers().isEmpty() || config.layers().size() > 128) {
+            throw new IllegalArgumentException("block-column:layers");
+        }
+        var data = kind("block_column");
+        data.add("direction", array(direction.getStepX(), direction.getStepY(), direction.getStepZ()));
+        data.addProperty("prioritize_tip", config.prioritizeTip());
+        data.add("allowed", predicate(config.allowedPlacement()));
+        var layers = new JsonArray();
+        for (var layer : config.layers()) {
+            var row = new JsonObject();
+            row.add("height", integer(layer.height()));
+            row.add("provider", providers.encode(layer.state()).data());
+            layers.add(row);
+        }
+        data.add("layers", layers);
+        return new Recipe(data, horizontal ? (int) maxLength : 0);
+    }
+
+    private Recipe disk(DiskConfiguration config) {
+        int radius = config.radius().getMaxValue();
+        if (radius > 8 || config.halfHeight() > 4) throw new IllegalArgumentException("disk:bounds");
+        var data = kind("disk");
+        var source = decode(RuleBasedBlockStateProvider.CODEC.encodeStart(ops, config.stateProvider())).getAsJsonObject();
+        data.add("provider", providers.ruleBased(source).data());
+        data.add("target", predicate(config.target()));
+        data.add("radius", integer(config.radius()));
+        data.addProperty("half_height", config.halfHeight());
+        return new Recipe(data, radius);
+    }
+
+    private Recipe bamboo(ProbabilityFeatureConfiguration config) {
+        var data = kind("bamboo");
+        data.addProperty("probability", config.probability);
+        var trunk = Blocks.BAMBOO.defaultBlockState().setValue(BambooStalkBlock.AGE, 1)
+                .setValue(BambooStalkBlock.LEAVES, BambooLeaves.NONE).setValue(BambooStalkBlock.STAGE, 0);
+        var large = trunk.setValue(BambooStalkBlock.LEAVES, BambooLeaves.LARGE);
+        data.addProperty("trunk", material(trunk));
+        data.add("crown", array(material(large.setValue(BambooStalkBlock.STAGE, 1)), material(large),
+                material(trunk.setValue(BambooStalkBlock.LEAVES, BambooLeaves.SMALL))));
+        data.addProperty("podzol", material(Blocks.PODZOL.defaultBlockState()));
+        data.add("survival", plants.survival(trunk, array(0, 0, 0)));
+        data.add("podzol_allowed", predicates.material(state -> state.is(BlockTags.DIRT)));
+        return new Recipe(data, 4);
+    }
+
+    private Recipe vegetationPatch(VegetationPatchConfiguration config, boolean waterPool, int depth) {
+        var child = nested(config.vegetationFeature.value(), depth);
+        int reach = config.xzRadius.getMaxValue() + 1 + child.reach();
+        if (reach > 15 || config.depth.getMinValue() < 1 || config.depth.getMaxValue() > 128
+                || config.verticalRange < 1 || config.verticalRange > 256) {
+            throw new IllegalArgumentException("vegetation-patch:bounds");
+        }
+        var data = kind("vegetation_patch");
+        var ground = providers.encode(config.groundState);
+        data.add("ground", ground.data());
+        var sameBlocks = new JsonArray();
+        for (var state : ground.states()) {
+            var same = new JsonObject();
+            same.addProperty("source", material(state));
+            same.add("predicate", predicates.blocks(array(0, 0, 0), state.getBlock()));
+            sameBlocks.add(same);
+        }
+        data.add("same_blocks", sameBlocks);
+        data.add("vegetation", child.data());
+        data.add("replaceable", predicates.material(state -> state.is(config.replaceable)));
+        data.add("air", predicates.material(BlockState::isAir));
+        var direction = config.surface.getDirection();
+        data.add("sturdy", sturdy(array(0, 0, 0), direction.getOpposite()));
+        data.addProperty("direction", direction.getStepY());
+        data.add("depth", integer(config.depth));
+        data.add("xz_radius", integer(config.xzRadius));
+        data.addProperty("vertical_range", config.verticalRange);
+        data.addProperty("extra_bottom_block_chance", config.extraBottomBlockChance);
+        data.addProperty("extra_edge_column_chance", config.extraEdgeColumnChance);
+        data.addProperty("vegetation_chance", config.vegetationChance);
+        data.addProperty("water_pool", waterPool);
+        var enclosed = new JsonArray();
+        var waterlogged = new JsonArray();
+        if (waterPool) {
+            for (var face : List.of(Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.DOWN)) {
+                enclosed.add(sturdy(array(face.getStepX(), face.getStepY(), face.getStepZ()), face.getOpposite()));
+            }
+            poolWaterlogging.add(waterlogged);
+        }
+        data.add("enclosed", enclosed);
+        data.add("waterlogged_states", waterlogged);
+        return new Recipe(data, reach);
+    }
+
+    private JsonObject sturdy(JsonArray offset, Direction face) {
+        return predicates.material(offset, state -> state.isFaceSturdy(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, face));
+    }
+
+    private JsonObject predicate(BlockPredicate predicate) {
+        return predicates.compile(decode(BlockPredicate.CODEC.encodeStart(ops, predicate)).getAsJsonObject());
+    }
+
+    private static JsonElement integer(IntProvider value) {
+        return LegacyFeaturePlacement.integer(decode(IntProvider.CODEC.encodeStart(JsonOps.INSTANCE, value)));
+    }
+
+    private static JsonObject kind(String name) {
+        var data = new JsonObject();
+        data.addProperty("kind", name);
+        return data;
+    }
+
+    private int material(BlockState state) {
+        return LegacyTerrainProfile.material(palette, state);
+    }
+}
