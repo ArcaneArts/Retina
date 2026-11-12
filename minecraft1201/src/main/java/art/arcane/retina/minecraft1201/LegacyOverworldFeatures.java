@@ -85,6 +85,7 @@ final class LegacyOverworldFeatures {
     private final LinkedHashMap<BlockState, Integer> palette;
     private final LegacyFeaturePredicates predicates;
     private final boolean flat;
+    private final int height;
     private final LegacyDecorationNoise noise = new LegacyDecorationNoise();
     private final LegacyBlockProviders providers;
     private final LegacyOverworldPlants plants;
@@ -98,6 +99,7 @@ final class LegacyOverworldFeatures {
                             LevelHeightAccessor storage, LinkedHashMap<BlockState, Integer> palette,
                             boolean skylight, boolean flat) {
         this.flat = flat;
+        this.height = storage.getHeight();
         this.predicates = new LegacyFeaturePredicates(storage);
         this.ops = RegistryOps.create(JsonOps.INSTANCE, registries);
         this.context = context;
@@ -315,6 +317,10 @@ final class LegacyOverworldFeatures {
                 || feature == Feature.ICEBERG) {
             var formation = LegacySurfaceFormations.compile(configured, predicates, this::material);
             return new Recipe(formation.data(), formation.reach());
+        }
+        if (feature == Feature.POINTED_DRIPSTONE || feature == Feature.DRIPSTONE_CLUSTER || feature == Feature.LARGE_DRIPSTONE) {
+            var dripstone = LegacyDripstoneFeatures.compile(configured, ops, predicates, this::material, height);
+            return new Recipe(dripstone.data(), dripstone.reach());
         }
         if (feature == Feature.KELP || feature == Feature.SEAGRASS || feature == Feature.SEA_PICKLE
                 || feature == Feature.UNDERWATER_MAGMA || feature == Feature.CORAL_TREE
