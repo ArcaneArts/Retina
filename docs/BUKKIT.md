@@ -12,7 +12,7 @@ Retina's Rust engine and JDK-only `core` runtime with the other distributions.
 ./gradlew :bukkit:build -PretinaHostOnly
 ```
 
-The installable file is `bukkit/build/libs/retina-bukkit-<minecraft>-<version>.jar`.
+The installable file is `bukkit/build/libs/retina-bukkit-<version>.jar`.
 The sources JAR is not a plugin. Universal builds use the existing six-platform
 native packaging pipeline; `retinaHostOnly` packages the current host's library
 for development. Ordinary builds consume committed vanilla catalogs without

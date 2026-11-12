@@ -18,7 +18,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
-base { archivesName = "retina-bukkit-${minecraft_version}" }
+base { archivesName = 'retina-bukkit' }
 processResources {
     def metadata = [version: project.version, minecraft_version: minecraft_version]
     inputs.properties(metadata)

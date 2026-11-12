@@ -8,16 +8,14 @@ evidence.
 
 ## Packaged native checks
 
-The release workflow executes the following against the same assembled JAR on
-Windows x64, macOS ARM64 and Linux x64:
+Run the following locally against the assembled JAR on the platform under test.
 
 ```sh
-java --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -Xmx768m \
-  -cp dist/retina-26.3-<version>.jar scripts/UniversalCpuSmoke.java 26.3 disabled
+RETINA_REGION_THREADS=4 RAYON_NUM_THREADS=2 java --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -Xmx768m \
+  -cp dist/retina-26.3-<commit>.jar scripts/UniversalCpuSmoke.java 26.3 disabled
 ```
 
-The workflow sets `RETINA_REGION_THREADS=4` and `RAYON_NUM_THREADS=2`, exercising
-small worker counts as well as backend selection. CPU dependency/terrain handoffs
+These settings exercise small worker counts as well as backend selection. CPU dependency/terrain handoffs
 must not steal an unrelated feature task while holding a terrain initializer.
 
 This sets all three API permissions false while leaving the backend override on
@@ -33,28 +31,22 @@ is deleted after extracting compact hashes. The helper prints actual JAR and nat
 image SHA-256 plus backend/OS/architecture markers. A local classpath resource
 fixture is labeled `classpath-fixture`; it is not final release acceptance.
 
-Linux additionally runs the same JAR with all graphics APIs permitted in a JDK
-container without GPU devices or an installed graphics stack:
+On Linux, run the same JAR with all graphics APIs permitted in a JDK container
+without GPU devices or an installed graphics stack.
 
 ```sh
 docker run --rm --network none -e RETINA_REGION_THREADS=4 -e RAYON_NUM_THREADS=2 \
   -v "$PWD:/retina:ro" -w /retina eclipse-temurin:25-jdk-noble \
   java --enable-native-access=ALL-UNNAMED -Djava.awt.headless=true -Xmx768m \
-  -cp dist/retina-26.3-<version>.jar scripts/UniversalCpuSmoke.java 26.3 auto
+  -cp dist/retina-26.3-<commit>.jar scripts/UniversalCpuSmoke.java 26.3 auto
 ```
 
 `auto` actually attempts permitted adapter/device initialization, then requires a
 CPU result. Forced CPU alone is not proof of this entry condition. No software
 graphics renderer is installed or selected for this test. The image follows the
 [official Adoptium JDK recipe](https://github.com/adoptium/containers/blob/main/25/jdk/ubuntu/noble/Dockerfile).
-Blacksmith supports [cached Docker images](https://docs.blacksmith.sh/blacksmith-caching/docker-container-caching);
-the existing GitHub runner fallback also supports the command.
-
-Linux also runs `cargo test ... cpu::` and `program::opcode::tests`, including the
-actual shader-switch coverage contract. Its compilation/dependency cache restores
-are accelerators; tests execute regardless of cache hits. Exact native-output reuse
-retains the existing complete input/byte verification. No release triggers, assets,
-versioning or publish permissions change.
+Run `bash scripts/test-native-contracts.sh` for the shared CPU and shader contracts,
+including actual shader-switch coverage. The command uses the local Cargo cache.
 
 ## Installed adapters
 
@@ -81,7 +73,5 @@ diagnostic stage sums separate from elapsed latency and identify any contention.
 Native-loading/CPU checks do not establish GPU execution. Hardware regressions
 are separately recorded on real supported hardware.
 
-After implementation PRs merge, use the real Git-only `./gradlew publish`, follow
-Actions publication, download its JAR and verify identity. Use that artifact for
-adapter/CLI acceptance. A bounded rerun of the same workflow can establish warm
-cache reuse and immutable release/asset identity without artificial commits.
+Use the assembled JAR for local adapter and CLI acceptance before publishing.
+Record its hash with the results.

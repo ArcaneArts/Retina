@@ -26,22 +26,24 @@ abstract class PromoteRetinaRelease extends DefaultTask {
             standardOutput = revision
         }
         String commit = revision.toString('UTF-8').trim()
-        logger.lifecycle("Promoting fetched origin/main {} to origin/release", commit)
+        logger.lifecycle("Promoting fetched origin/main {} to origin/release-26", commit)
         execOperations.exec {
             workingDir directory
             // The server checks the actual remote ref. No force, checkout or reset.
-            commandLine 'git', 'push', 'origin', "${commit}:refs/heads/release"
+            commandLine 'git', 'push', 'origin', "${commit}:refs/heads/release-26"
         }
     }
 }
 
-tasks.register('publish', PromoteRetinaRelease) {
+tasks.register('release-26', PromoteRetinaRelease) {
     group = 'publishing'
-    description = 'Fetch origin/main and fast-forward origin/release, triggering the GitHub release build.'
+    description = 'Fetch origin/main and fast-forward origin/release-26, triggering the GitHub release build.'
     repository = rootProject.layout.projectDirectory
 }
-tasks.register('releaseRetina') {
-    group = 'publishing'
-    description = 'Compatibility alias for the Git-only publish command.'
-    dependsOn 'publish'
+['publish', 'releaseRetina'].each { alias ->
+    tasks.register(alias) {
+        group = 'publishing'
+        description = 'Release the latest Minecraft line through release-26.'
+        dependsOn 'release-26'
+    }
 }

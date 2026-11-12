@@ -1,6 +1,6 @@
 # Universal Retina distribution
 
-`./gradlew universalJar` assembles `universal/build/libs/retina-<minecraft>-<version>.jar`.
+`./gradlew universalJar` assembles `universal/build/libs/retina-<version>.jar`.
 Use `-PretinaHostOnly` for a local artifact containing only this host's native library.
 The universal task compiles the existing adapters without producing their separate
 installable distributions or source JARs. Existing loader development tasks remain available.
@@ -68,35 +68,39 @@ to `true` to use the corresponding GitHub-hosted runners if Blacksmith execution
 unavailable. This is an explicit provider selection, not a speculative runtime
 availability check. The publish job uses a GitHub-hosted Linux runner.
 
-After assembly, each native platform runs `UniversalNativeSmoke.java` against the
-same actual JAR on a JDK-only classpath. It loads the embedded library, materializes
-and reopens both vanilla snapshots, verifies dimensions/seed and unchanged saved
-bytes, then deletes its temporary definitions. This is a CPU-side native loading
-check; it does not claim GPU-generation or game-loader acceptance.
-`UniversalCpuSmoke.java` additionally generates a few adjacent/End chunks through
-the packaged library, exercises biome/height queries and lighting, then compares
-reopen/reverse-order output for both snapshots. All native platforms run with all
-graphics APIs disabled. Linux also runs `auto` in a JDK container without GPU
-access. CPU opcode/shader-contract checks execute in the Linux native job. See
-[CPU acceptance](CPU_ACCEPTANCE.md) for the commands and evidence boundaries.
+Run release acceptance locally against the assembled JAR. From the repository root:
+
+```sh
+python3 scripts/test-release.py
+python3 scripts/test-stage-release.py
+python3 scripts/test-merge-universal.py
+python3 scripts/test-publish.py
+bash scripts/test-native-contracts.sh
+java --enable-native-access=ALL-UNNAMED -cp "$jar" scripts/UniversalNativeSmoke.java 26.3
+```
+
+Set `jar` to the assembled JAR's absolute path. The native smoke test loads its
+embedded library, materializes and reopens both vanilla snapshots, and checks
+dimensions, seed and saved bytes. [CPU acceptance](CPU_ACCEPTANCE.md) covers
+generation, queries, lighting and automatic fallback.
 
 ## Publishing
 
-Run `./gradlew publish` (or the compatibility alias `releaseRetina`). A publish-only
+Run `./gradlew release-26` (aliases `publish` and `releaseRetina`). A publish-only
 invocation selects a minimal Gradle build with no Minecraft plugins or toolchains.
 It fetches remote branches, captures the fetched `origin/main` commit, and pushes
-that commit to `origin/release` without force. The current branch, tracked edits,
+that commit to `origin/release-26` without force. The current branch, tracked edits,
 and untracked files remain untouched. Initial branch creation works; an unchanged
 release is a no-op; divergence is rejected by the real Git push.
 
-Only a push to `release` starts the workflow. Every job checks out that event's SHA;
+Only a push to `release-26` starts the workflow. Every job checks out that event's SHA;
 artifacts are named by SHA. A failed run can be rerun without another branch push.
-`version.json` supplies major and minor as integers or integer strings, and full
-Git history supplies the patch count: major 1, minor 1, 450 commits produces
-`1.1.450`, tag `v1.1.450`, and title `Retina 1.1.450`.
+The configured Minecraft version and full Git commit count form the version.
+Minecraft 26.3 at 511 commits produces version and tag `26.3-511`, title
+`Retina 26.3-511`, and asset `retina-26.3-511.jar`.
 
-Publication creates a draft, uploads the one universal JAR, then publishes it after
-native checks pass. Notes use a “What's Changed” list with PR titles, author mentions,
+Publication creates a draft, uploads the assembled JAR, then publishes it.
+Notes use a “What's Changed” list with PR titles, author mentions,
 and PR links, plus direct mainline commits and a Full Changelog link. Merge commits
 represent their PR once. The first release links its complete history. Minecraft,
 platforms, source commit, and artifact SHA-256 follow the change list.
@@ -136,13 +140,13 @@ normal entry points. The native engine does the batch region generation and
 file publication; Java does not transfer individual blocks.
 
 ```sh
-java -jar retina-26.3-<version>.jar --help
-java -jar retina-26.3-<version>.jar init --world ./world --seed 12345
-java -jar retina-26.3-<version>.jar inspect --world ./world
-java -jar retina-26.3-<version>.jar generate --world ./world \
+java -jar retina-26.3-<commit>.jar --help
+java -jar retina-26.3-<commit>.jar init --world ./world --seed 12345
+java -jar retina-26.3-<commit>.jar inspect --world ./world
+java -jar retina-26.3-<commit>.jar generate --world ./world \
   --dimension minecraft:the_end --region-radius 0
 # Or create and generate in one command (only for a new definition):
-java -jar retina-26.3-<version>.jar generate --world ./new-world --seed 12345 \
+java -jar retina-26.3-<commit>.jar generate --world ./new-world --seed 12345 \
   --dimension minecraft:overworld --region-min=-1,0 --region-max=0,1
 ```
 
