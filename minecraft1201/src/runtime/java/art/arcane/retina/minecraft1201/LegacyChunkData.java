@@ -4,6 +4,8 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.Holder;
+import net.minecraft.core.QuartPos;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -11,11 +13,13 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.util.SimpleBitStorage;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Climate;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -34,6 +38,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.Optional;
 
 /** Decodes the native storage layout with the same 1.20.1 codecs as the game. */
 final class LegacyChunkData {
@@ -92,6 +97,15 @@ final class LegacyChunkData {
                 proto.addEntity(((CompoundTag) raw).copy());
     }
 
+    void installBiomes(ChunkAccess chunk, Climate.Sampler sampler) {
+        var palettes = Arrays.stream(sections).map(decoder::biomePalette).toList();
+        int base = QuartPos.fromBlock(minY);
+        chunk.fillBiomesFromNoise((x, y, z, ignored) -> {
+            int offset = y - base;
+            return palettes.get(offset >> 2).get(x & 3, offset & 3, z & 3);
+        }, sampler);
+    }
+
     void installStarts(ChunkAccess chunk, StructurePieceSerializationContext context, long seed) {
         var starts = root.getCompound("structures").getCompound("starts");
         for (String id : starts.getAllKeys()) {
@@ -120,7 +134,13 @@ final class LegacyChunkData {
         private final RegistryOps<Tag> ops;
 
         Decoder(RegistryAccess registry, Holder<Biome> fallback) {
-            ops = RegistryOps.create(NbtOps.INSTANCE, registry);
+            // The provider overload memoizes in a HashMap that parallel biome decoders can both mutate.
+            ops = RegistryOps.create(NbtOps.INSTANCE, new RegistryOps.RegistryInfoLookup() {
+                @Override
+                public <T> Optional<RegistryOps.RegistryInfo<T>> lookup(ResourceKey<? extends Registry<? extends T>> key) {
+                    return registry.lookup(key).map(found -> new RegistryOps.RegistryInfo<>(found, found, found.registryLifecycle()));
+                }
+            });
             biomes = PalettedContainer.codecRO(registry.registryOrThrow(Registries.BIOME).asHolderIdMap(),
                     Biome.CODEC, PalettedContainer.Strategy.SECTION_BIOMES, fallback);
         }
@@ -132,6 +152,10 @@ final class LegacyChunkData {
             } catch (IOException error) {
                 throw new UncheckedIOException("Cannot decode Retina chunk " + x + "," + z, error);
             }
+            return read(root, x, z, minY, height);
+        }
+
+        LegacyChunkData read(CompoundTag root, int x, int z, int minY, int height) {
             if (root.getInt("DataVersion") != SharedConstants.getCurrentVersion().getDataVersion().getVersion()
                     || root.getInt("xPos") != x || root.getInt("zPos") != z)
                 throw new IllegalStateException("Unexpected Retina chunk version or position for " + x + "," + z);
@@ -152,7 +176,11 @@ final class LegacyChunkData {
         }
 
         private LevelChunkSection section(CompoundTag section) {
-            return new LevelChunkSection(states(section), require(biomes.parse(ops, section.getCompound("biomes"))));
+            return new LevelChunkSection(states(section), biomePalette(section));
+        }
+
+        private PalettedContainerRO<Holder<Biome>> biomePalette(CompoundTag section) {
+            return require(biomes.parse(ops, section.getCompound("biomes")));
         }
 
         private static <T> T require(DataResult<T> result) {

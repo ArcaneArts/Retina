@@ -26,12 +26,7 @@ abstract class DistantHorizonsChunkyMixin {
             try {
                 original.call();
             } catch (IllegalStateException error) {
-                var trace = error.getStackTrace();
-                if (!"Chunky is not loaded.".equals(error.getMessage()) || trace.length == 0
-                        || !trace[0].getClassName().equals("org.popcraft.chunky.ChunkyProvider")
-                        || !trace[0].getMethodName().equals("get")) {
-                    throw error;
-                }
+                if (!ChunkyLifecycle.providerNotLoaded(error)) throw error;
                 // DH sets this before binding. Leave setup pending so the next chunk
                 // update binds the real listener once Chunky has initialized.
                 listenerBound = false;

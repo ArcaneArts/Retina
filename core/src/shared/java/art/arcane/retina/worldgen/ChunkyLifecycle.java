@@ -10,4 +10,11 @@ public final class ChunkyLifecycle {
 
     public static long generation() { return GENERATION.get(); }
     public static void changed() { GENERATION.incrementAndGet(); }
+
+    public static boolean providerNotLoaded(IllegalStateException error) {
+        var trace = error.getStackTrace();
+        return "Chunky is not loaded.".equals(error.getMessage()) && trace.length != 0
+                && trace[0].getClassName().equals("org.popcraft.chunky.ChunkyProvider")
+                && trace[0].getMethodName().equals("get");
+    }
 }

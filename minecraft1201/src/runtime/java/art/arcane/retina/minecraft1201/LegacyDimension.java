@@ -31,6 +31,7 @@ final class LegacyDimension implements AutoCloseable {
     private final NativeWorldDefinition definition;
     private final LegacyChunkData.Decoder decoder;
     private final GenerationCache<Long, LegacyChunkData> chunks;
+    private final GenerationCache<Long, LegacyChunkData> detachedChunks;
     private final GenerationCache<Long, short[]> biomeGrids;
     final LegacyRegionCoordinator regions;
 
@@ -62,6 +63,7 @@ final class LegacyDimension implements AutoCloseable {
         decoder = new LegacyChunkData.Decoder(registries, biomes.get(0));
         int parallel = Math.min(4, RetinaConfiguration.get().regionParallelism());
         chunks = new GenerationCache<>(64, parallel);
+        detachedChunks = new GenerationCache<>(64, parallel);
         biomeGrids = new GenerationCache<>(128, parallel);
         definition.bindDimension(key, 2);
         locator = hasStructures ? new LegacyStructureLocator(definition, key, profile) : null;
@@ -70,6 +72,10 @@ final class LegacyDimension implements AutoCloseable {
 
     LegacyChunkData chunk(int x, int z) {
         return chunks.get(ChunkPos.asLong(x, z), () -> decoder.read(definition.chunk(key, x, z), x, z, minY, height));
+    }
+
+    LegacyChunkData previewChunk(ChunkPos pos) {
+        return detachedChunks.get(pos.toLong(), () -> decoder.read(regions.preview(pos), pos.x, pos.z, minY, height));
     }
 
     Holder<Biome> biome(int x, int y, int z) {
@@ -84,6 +90,7 @@ final class LegacyDimension implements AutoCloseable {
     public void close() {
         regions.close();
         chunks.close();
+        detachedChunks.close();
         biomeGrids.close();
     }
 }
