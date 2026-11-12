@@ -30,7 +30,7 @@ public enum BinaryDefinitionTags implements DefinitionTags<BinaryDefinitionTags.
                  var buffered = new BufferedOutputStream(Channels.newOutputStream(channel));
                  var gzip = new DefinitionGzip(buffered);
                  var output = new DataOutputStream(gzip)) {
-                named(output, "", definition);
+                write(output, definition);
                 output.flush();
                 gzip.finish();
                 buffered.flush();
@@ -42,6 +42,10 @@ public enum BinaryDefinitionTags implements DefinitionTags<BinaryDefinitionTags.
         } finally {
             Files.deleteIfExists(temporary);
         }
+    }
+
+    public static void write(DataOutput output, Compound definition) throws IOException {
+        named(output, "", definition);
     }
 
     public sealed interface Value permits Compound, Sequence, Scalar {
