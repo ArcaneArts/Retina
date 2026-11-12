@@ -15,6 +15,8 @@ import java.util.logging.Logger;
 
 /** Public-API metadata delivery with explicit errors or reported opt-in loss. */
 final class MetadataDelivery {
+    private static final Set<String> DEFAULT_SCULK_ENTITIES = Set.of(
+            "minecraft:sculk_catalyst", "minecraft:sculk_sensor", "minecraft:sculk_shrieker");
     private final Logger log;
     private final boolean allowLoss;
     private final Set<String> reported = ConcurrentHashMap.newKeySet();
@@ -49,6 +51,11 @@ final class MetadataDelivery {
             String id = tag.getString("id");
             if (SpawnerDelivery.accepts(id)) SpawnerDelivery.validate(tag, this);
             else if (InventoryDelivery.TYPES.contains(id)) InventoryDelivery.validate(tag, this);
+            else if (DEFAULT_SCULK_ENTITIES.contains(id)) {
+                // ChunkData installs these tiles from their block states. The legacy generator
+                // supplies no custom catalyst cursors, vibration listeners or warning state.
+                fields(tag, Set.of("id", "x", "y", "z", "keepPacked"), id);
+            }
             else if (id.equals("minecraft:brushable_block")) {
                 fields(tag, Set.of("id", "x", "y", "z", "keepPacked", "LootTable", "LootTableSeed"), "brushable block");
             }

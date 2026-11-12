@@ -1933,3 +1933,52 @@ payloads. The 26.3 Overworld Metal A/B/B/A run matched all
 3,072 measured payloads per comparison. Median process
 throughput was 3,858 chunks/s on revision 556 and 4,006 on
 revision 557. This small sample records the local regression check.
+
+### Deep Dark sculk patches
+
+The 1.20.1 adapter exports charge and growth settings, both sculk
+replacement tags, block shapes and wet and dry states. The shared
+native engine replays charge cursors on the live decoration overlay.
+It handles vein attachment, substrate conversion, charge decay and
+catalyst, sensor and summon-capable shrieker placement. Native output
+includes default block entities and wet feature updates. The Bukkit
+catalog retains the blocks and leaves default tile construction to
+the server, with the same public API limitation on saved fluid queues
+as other decorations.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifySculkPatches \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Repeat with CPU in a fresh directory. CPU and Metal matched all 4,096
+fixture chunk payloads. The dry and flooded caves each contained 39,864
+solid sculk blocks, including 5,188 at chunk seams. The flooded cave
+contained 17,837 waterlogged veins and 56,870 water updates. The
+protected floor had zero solid sculk. The sealed control emitted zero
+sculk states. The verifier also checked default tile records, direct
+chunk output and reopening all four regions. The existing standalone
+multiface fixture still passed, including 574 cross-chunk supports.
+
+Stock coverage is 120 of 121 non-ore Overworld roots. The stock verifier
+and all 15 catalog parity cases passed. The structure-disabled normal
+and Bukkit catalogs produced 115,669 matching sculk states in seed
+`12345`, region `6,-7`. The remaining root is `minecraft:seagrass_simple`,
+which samples the liquid carving mask. All 64 bundled 1.20.1 biome
+definitions were inspected. Their nonempty carver lists use the air
+stage.
+
+Packaged Java 17 Fabric, Forge and Spigot read all five fixture block
+types and the three tile types after generation and restart. Each
+retained a player edit and the original definition. All four revision
+558 JARs contain the same macOS ARM64 native bytes and the appropriate
+Minecraft catalog. The retained 1.20.1 definition matched all 1,024
+chunk payloads from its reference region.
+
+The initial 26.3 Overworld Metal comparison matched all 3,072
+payloads, with median throughput of 3,855 chunks/s on revision 557
+and 3,435 on revision 558. An eight-process repeat with two warmups
+and six measured regions matched all 6,144 payloads per comparison.
+Its medians were 3,882 and 4,086 chunks/s, respectively, with
+overlapping ranges. The initial slowdown did not reproduce.

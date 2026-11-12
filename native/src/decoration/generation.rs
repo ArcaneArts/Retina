@@ -187,6 +187,9 @@ pub(super) enum FeatureEntity {
     SkeletonSpawner,
     ZombieSpawner,
     SpiderSpawner,
+    SculkCatalyst,
+    SculkSensor,
+    SculkShrieker,
 }
 
 fn feature_entity(request: ChunkRequest, index: usize, kind: u16) -> Value {
@@ -208,6 +211,12 @@ fn feature_entity(request: ChunkRequest, index: usize, kind: u16) -> Value {
         nbt::put(&mut tag, "LootTable", nbt::string("minecraft:chests/simple_dungeon"));
         nbt::put(&mut tag, "LootTableSeed", nbt::long(seed));
         "minecraft:chest"
+    } else if kind == FeatureEntity::SculkCatalyst as u16 {
+        "minecraft:sculk_catalyst"
+    } else if kind == FeatureEntity::SculkSensor as u16 {
+        "minecraft:sculk_sensor"
+    } else if kind == FeatureEntity::SculkShrieker as u16 {
+        "minecraft:sculk_shrieker"
     } else {
         let mob = match kind {
             k if k == FeatureEntity::SkeletonSpawner as u16 => "minecraft:skeleton",

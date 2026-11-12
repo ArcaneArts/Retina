@@ -107,6 +107,7 @@ pub enum Feature {
     Geode { geode: geode::Recipe },
     Fossil { fossil: fossil::Recipe },
     RootSystem { roots: root_system::Recipe },
+    SculkPatch { sculk: Box<sculk::Recipe> },
     RootedTree { tree: root_system::Tree },
     FlatLake {
         #[serde(flatten)]
@@ -178,6 +179,7 @@ impl Placed {
                 Feature::Geode { geode } => geode.validate(palette),
                 Feature::Fossil { fossil } => fossil.validate(palette),
                 Feature::RootSystem { roots } => roots.validate(palette),
+                Feature::SculkPatch { sculk } => sculk.validate(palette),
                 Feature::RootedTree { tree } => tree.validate(palette),
                 Feature::FlatLake { lake } => lake.validate(palette),
                 Feature::Disk { disk } => disk.validate(palette),
@@ -369,6 +371,7 @@ impl World<'_> {
             Feature::Geode { geode } => geode.place(self, at, rng),
             Feature::Fossil { fossil } => fossil.place(self, at, rng),
             Feature::RootSystem { roots } => roots.place(self, at, rng),
+            Feature::SculkPatch { sculk } => sculk.place(self, at, rng),
             Feature::RootedTree { tree } => tree.place(self, at, rng),
             Feature::FlatLake { lake } => {
                 let start = self.blocks.len();
@@ -864,6 +867,7 @@ pub(super) fn place_registered(
         Kind::Geode { geode } => geode.place(&mut world, at, rng),
         Kind::Fossil { fossil } => fossil.place(&mut world, at, rng),
         Kind::RootSystem { roots } => roots.place(&mut world, at, rng),
+        Kind::SculkPatch { sculk } => sculk.place(&mut world, at, rng),
         Kind::Disk { disk } => world.disk(disk, at, rng),
         Kind::Sequence { features } => world.composite(features, true, at, rng),
         Kind::Overlay { features } => world.composite(features, false, at, rng),
@@ -877,4 +881,5 @@ pub(super) mod fossil;
 pub(super) mod geode;
 pub(super) mod monster_room;
 pub(super) mod root_system;
+pub(super) mod sculk;
 pub(super) mod submerged;

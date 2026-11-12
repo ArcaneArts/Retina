@@ -52,6 +52,7 @@ import net.minecraft.world.level.levelgen.feature.configurations.RandomBooleanFe
 import net.minecraft.world.level.levelgen.feature.configurations.RandomFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.RandomPatchConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.SculkPatchConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.SimpleRandomFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.SpringConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.UnderwaterMagmaConfiguration;
@@ -60,6 +61,8 @@ import net.minecraft.world.level.levelgen.feature.configurations.RootSystemConfi
 import net.minecraft.world.level.levelgen.feature.configurations.VegetationPatchConfiguration;
 import net.minecraft.world.level.levelgen.feature.stateproviders.RuleBasedBlockStateProvider;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+import net.minecraft.world.level.material.Fluids;
+
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -104,7 +107,7 @@ final class LegacyOverworldFeatures {
     private final LegacyFeatureTicks ticks = new LegacyFeatureTicks();
     private final List<JsonArray> poolWaterlogging = new ArrayList<>();
     private boolean surfaceFreeze;
-    private boolean geodeTicks;
+    private boolean surfaceFluidTicks;
 
     LegacyOverworldFeatures(RegistryAccess registries, WorldGenerationContext context,
                             LevelHeightAccessor storage, LinkedHashMap<BlockState, Integer> palette,
@@ -219,7 +222,7 @@ final class LegacyOverworldFeatures {
         if (surfaceFreeze) LegacyFreezeFeatures.export(world, biomes, palette);
         predicates.finish(palette);
         fossils.finish();
-        if (geodeTicks) {
+        if (surfaceFluidTicks) {
             var fluidTicks = new JsonArray();
             for (var state : palette.keySet()) {
                 var fluid = state.getFluidState();
@@ -326,6 +329,7 @@ final class LegacyOverworldFeatures {
             surfaceFreeze = true;
             return new Recipe(kind("freeze_top_layer"), 15);
         }
+        if (feature == Feature.SCULK_PATCH) return sculkPatch((SculkPatchConfiguration) config);
         if (feature == Feature.ROOT_SYSTEM) return rootSystem((RootSystemConfiguration) config, depth);
         if (feature == Feature.FOSSIL) {
             var fossil = fossils.compile((FossilFeatureConfiguration) config);
@@ -365,6 +369,39 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.SIMPLE_RANDOM_SELECTOR) return choices((SimpleRandomFeatureConfiguration) config, depth);
         if (feature == Feature.RANDOM_BOOLEAN_SELECTOR) return either((RandomBooleanFeatureConfiguration) config, depth);
         throw new IllegalArgumentException(BuiltInRegistries.FEATURE.getKey(feature).toString());
+    }
+
+    private Recipe sculkPatch(SculkPatchConfiguration config) {
+        var data = kind("sculk_patch");
+        var sculk = new JsonObject();
+        data.add("sculk", sculk);
+        sculk.add("veins", LegacyAttachmentFeatures.sculkVeins(predicates, this::material));
+        sculk.addProperty("charge_count", config.chargeCount());
+        sculk.addProperty("amount_per_charge", config.amountPerCharge());
+        sculk.addProperty("spread_attempts", config.spreadAttempts());
+        sculk.addProperty("spread_rounds", config.spreadRounds());
+        sculk.addProperty("growth_rounds", config.growthRounds());
+        sculk.addProperty("catalyst_chance", config.catalystChance());
+        sculk.add("extra_rare_growths", integer(config.extraRareGrowths()));
+        sculk.add("worldgen_replaceable", predicates.material(state -> state.is(BlockTags.SCULK_REPLACEABLE_WORLD_GEN)));
+        sculk.add("runtime_replaceable", predicates.material(state -> state.is(BlockTags.SCULK_REPLACEABLE)));
+        sculk.add("collision_full", predicates.material(state -> state.isCollisionShapeFullBlock(
+                EmptyBlockGetter.INSTANCE, BlockPos.ZERO)));
+        sculk.add("air", predicates.material(BlockState::isAir));
+        sculk.add("source_water", predicates.material(state -> state.is(Blocks.WATER)
+                && state.getFluidState().isSourceOfType(Fluids.WATER)));
+        sculk.add("wet", predicates.material(state -> state.getFluidState().isSourceOfType(Fluids.WATER)));
+        sculk.add("existing_growth", predicates.material(state -> state.is(Blocks.SCULK_SENSOR) || state.is(Blocks.SCULK_SHRIEKER)));
+        sculk.addProperty("air_state", material(Blocks.AIR.defaultBlockState()));
+        sculk.addProperty("water_state", material(Blocks.WATER.defaultBlockState()));
+        sculk.addProperty("sculk", material(Blocks.SCULK.defaultBlockState()));
+        sculk.addProperty("catalyst", material(Blocks.SCULK_CATALYST.defaultBlockState()));
+        var sensor = Blocks.SCULK_SENSOR.defaultBlockState();
+        var shrieker = Blocks.SCULK_SHRIEKER.defaultBlockState().setValue(BlockStateProperties.CAN_SUMMON, true);
+        sculk.add("sensor", array(material(sensor), material(sensor.setValue(BlockStateProperties.WATERLOGGED, true))));
+        sculk.add("shrieker", array(material(shrieker), material(shrieker.setValue(BlockStateProperties.WATERLOGGED, true))));
+        surfaceFluidTicks = true;
+        return new Recipe(data, 18);
     }
 
     private Recipe rootSystem(RootSystemConfiguration config, int depth) {
@@ -489,7 +526,7 @@ final class LegacyOverworldFeatures {
             placements.add(directions);
         }
         geode.add("placements", placements);
-        geodeTicks = true;
+        surfaceFluidTicks = true;
         return new Recipe(data, Math.max(Math.max(-lo, hi) + 1, config.outerWallDistance.getMaxValue()));
     }
 

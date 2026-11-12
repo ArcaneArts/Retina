@@ -44,9 +44,13 @@ final class LegacyAttachmentFeatures {
         return encode(block, growth, predicates, material);
     }
 
+    static JsonObject sculkVeins(LegacyFeaturePredicates predicates, ToIntFunction<BlockState> material) {
+        return encode(Blocks.SCULK_VEIN, null, predicates, material);
+    }
+
     private static JsonObject encode(Block block, MultifaceGrowthConfiguration growth, LegacyFeaturePredicates predicates,
                                      ToIntFunction<BlockState> material) {
-        boolean vines = growth == null;
+        boolean vines = block == Blocks.VINE;
         boolean sculk = block == Blocks.SCULK_VEIN;
         var initial = block.defaultBlockState();
         var wet = initial.hasProperty(BlockStateProperties.WATERLOGGED)
@@ -83,20 +87,20 @@ final class LegacyAttachmentFeatures {
         if (vines) {
             for (var face : Direction.values()) if (face != Direction.DOWN) directions.add(face.ordinal());
         } else {
-            if (growth.canPlaceOnCeiling) directions.add(Direction.UP.ordinal());
-            if (growth.canPlaceOnFloor) directions.add(Direction.DOWN.ordinal());
-            if (growth.canPlaceOnWall) Direction.Plane.HORIZONTAL.forEach(face -> directions.add(face.ordinal()));
+            if (growth == null || growth.canPlaceOnCeiling) directions.add(Direction.UP.ordinal());
+            if (growth == null || growth.canPlaceOnFloor) directions.add(Direction.DOWN.ordinal());
+            if (growth == null || growth.canPlaceOnWall) Direction.Plane.HORIZONTAL.forEach(face -> directions.add(face.ordinal()));
             for (var spread : MultifaceSpreader.DEFAULT_SPREAD_ORDER) spreadOrder.add(spread.ordinal());
         }
         result.add("directions", directions);
         result.add("spread_order", spreadOrder);
-        result.addProperty("search_range", vines ? 0 : growth.searchRange);
-        result.addProperty("spread_chance", vines ? 0 : growth.chanceOfSpreading);
+        result.addProperty("search_range", vines ? 0 : growth == null ? 1 : growth.searchRange);
+        result.addProperty("spread_chance", growth == null ? 0 : growth.chanceOfSpreading);
         result.add("air", predicates.material(BlockState::isAir));
         result.add("water", vines ? LegacyFeaturePredicates.always() : predicates.material(state -> state.is(Blocks.WATER)));
         result.add("source_water", vines ? LegacyFeaturePredicates.always()
                 : predicates.material(state -> state.getFluidState().isSourceOfType(Fluids.WATER)));
-        result.add("placed_on", vines ? LegacyFeaturePredicates.always()
+        result.add("placed_on", growth == null ? LegacyFeaturePredicates.always()
                 : predicates.material(state -> state.is(growth.canBePlacedOn)));
         result.add("spread_replaceable", sculk ? predicates.material(state -> !state.is(BlockTags.FIRE)
                 && (state.getFluidState().isEmpty() || state.getFluidState().is(Fluids.WATER)) && state.canBeReplaced())
