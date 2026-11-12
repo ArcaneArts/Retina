@@ -1,5 +1,6 @@
 package art.arcane.retina.bukkit;
 
+import art.arcane.retina.core.GenerationCache;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import java.util.concurrent.*;

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "retina",
+  "version": "${version}",
+  "name": "Retina",
+  "description": "GPU world generation from persistent Retina definitions.",
+  "authors": ["ArcaneArts"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": { "main": ["art.arcane.retina.fabric1201.RetinaFabric1201"] },
+  "mixins": ["retina1201.mixins.json"],
+  "depends": {
+    "minecraft": "${minecraft_version}",
+    "fabricloader": ">=${loader_version}",
+    "java": ">=17"
+  }
+}

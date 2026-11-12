@@ -11,7 +11,7 @@ def parsers = [
 ]
 parsers.each { parser ->
     dependencies.add('configurationLibraries', "${parser[0]}:${parser[1]}")
-    if (project.name == 'fabric') dependencies.add('include', "${parser[0]}:${parser[1]}")
+    if (project.name in ['fabric', 'fabric1201']) dependencies.add('include', "${parser[0]}:${parser[1]}")
     if (project.name == 'neoforge') {
         dependencies.add('jarJar', parser[0]) {
             version { strictly parser[2]; prefer parser[1] }

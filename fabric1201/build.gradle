@@ -1,0 +1,45 @@
+plugins { id 'net.fabricmc.fabric-loom-remap' }
+apply from: rootProject.file('gradle/java-toolchain.gradle')
+apply from: rootProject.file('gradle/configuration.gradle')
+
+def game = '1.20.1'
+def loader = '0.16.14'
+version = "${game}-${rootProject.ext.retinaRevision}"
+base { archivesName = 'retina-fabric' }
+
+loom { serverOnlyMinecraftJar() }
+tasks.withType(JavaCompile).configureEach { options.release = 17 }
+sourceSets.main {
+    java.srcDirs rootProject.file('minecraft1201/src/main/java'),
+            rootProject.file('minecraft1201/src/runtime/java'),
+            rootProject.file('definition/src/main/java'),
+            rootProject.file('common/src/main/java/art/arcane/retina/config')
+    resources.srcDirs rootProject.file('minecraft1201/src/main/resources'),
+            rootProject.file('minecraft1201/src/runtime/resources')
+}
+dependencies {
+    minecraft "com.mojang:minecraft:${game}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${loader}"
+    implementation project(':core17')
+}
+evaluationDependsOn(':minecraft1201')
+evaluationDependsOn(':core17')
+processResources {
+    def metadata = [version: project.version, minecraft_version: game, loader_version: loader]
+    inputs.properties(metadata)
+    filesMatching('fabric.mod.json') { expand(metadata) }
+    from(rootProject.tasks.named('packageNative'))
+    from(project(':minecraft1201').tasks.named('exportTerrainCatalog')) {
+        into "catalogs/${game}"
+        rename { 'retina-catalog.dat' }
+    }
+}
+tasks.named('jar') {
+    from project(':core17').sourceSets.main.output
+    from rootProject.tasks.named('packageCrossNatives')
+    from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
+    manifest { attributes('Implementation-Version': project.version, 'Retina-Minecraft-Version': game) }
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

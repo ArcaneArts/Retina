@@ -1,5 +1,6 @@
 package art.arcane.retina.bukkit;
 
+import art.arcane.retina.core.GenerationCache;
 import com.google.gson.JsonObject;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;

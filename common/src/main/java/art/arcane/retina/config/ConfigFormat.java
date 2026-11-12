@@ -53,7 +53,7 @@ public enum ConfigFormat implements ConfigCodec {
                 + "# Positive: explicit limit. Zero: available CPU processors.\n"
                 + "# Negative: ceil(processors / abs(value)), with a minimum of one.\n");
         writer.write("mca_parallelism" + separator + settings.mcaParallelism() + "\n\n");
-        writer.write("# MCA chunk compression: zlib (smaller saves) or lz4 (faster compression, larger saves).\n");
+        writer.write("# MCA chunk compression: zlib, or lz4 on Minecraft versions with an LZ4 reader. Minecraft 1.20.1 uses zlib.\n");
         writer.write("mca_compression" + separator + "\"" + settings.mcaCompression().id() + "\"\n\n");
         writer.write("# Detailed startup, shader/driver and generation diagnostics (restart required). Progress, warnings and errors remain enabled.\n");
         writer.write("debug" + separator + settings.debug() + "\n\n");
