@@ -1183,3 +1183,46 @@ headless End-city and Nether-fossil checks also passed. All 15
 catalog parity cases and Bukkit tests passed; all four locally
 built JARs used identical macOS arm64 native bytes, with the 26.3
 catalogs and native bytes unchanged from the previous cycle.
+
+### Jigsaw structures
+
+The 1.20.1 exporter binds villages, bastions, ancient cities, trail
+ruins and pillager outposts to the shared native planner. It reads
+template pools, blocks, connectors, entities and processors from the
+loaded game. It preserves outpost placement exclusions, the weighted
+fortress and bastion set, and the stable order of structure sets
+and template indices. Feature pool elements are reported as omissions,
+as in the current native jigsaw support.
+
+Run the stock export and region verifier on a fresh directory:
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyJigsaws \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+The seed 12345 run checked a 119-piece snowy village, an 80-piece
+ancient city, an 18-piece trail ruin, a 20-piece outpost and a
+53-piece bastion. The target reader opened all 5,120 chunks and
+native reopen preserved them. CPU and Metal runs agreed on all
+5,120 structure compounds. The weighted Nether fixture produced
+three fortress starts and one bastion start. Separate stock Java
+processes exported identical structure tables for all dimensions.
+
+For the live processor fixture, copy
+`minecraft1201/src/datagen/fixtures/jigsaw-pack` into a new world's
+`datapacks/retina-jigsaw` and repeat the export command. The fixture
+substitutes gold blocks for packed ice in the snowy town center.
+Run `scripts/minecraft1201-jigsaw-test.py` with the village region
+`r.-1.0.mca` and bastion region `r.0.0.mca` from headless generation.
+Use `--pack` with the fixture reference. The packaged Fabric server
+loaded the fixture's gold block, and a packaged Forge server used
+the stock bundled catalog. The servers located the structures and
+saved and reopened the same bastion brute with its initialized
+golden axe. A local Forge listener canceled the structure spawn
+and the mob stayed absent after save and reopen.
+
+All 15 catalog parity cases, the four local JAR builds and Bukkit
+unit tests passed. The native library and 26.3 catalogs were
+byte-identical to the previous build.

@@ -32,6 +32,9 @@ dependencies {
         def verify = mode == 'flat' ? 'retinaVerifyFlat' : 'retinaVerifyNoiseTerrain'
         if (providers.gradleProperty(verify).isPresent()) args '--verify'
         if (mode == 'noise' && providers.gradleProperty('retinaGenerateStructures').isPresent()) args '--structures'
+        if (mode == 'noise' && providers.gradleProperty('retinaVerifyJigsaws').isPresent()) {
+            args '--structures', '--verify-jigsaws'
+        }
         if (providers.gradleProperty('retinaNativePath').isPresent()) {
             systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
         }

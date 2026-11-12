@@ -5,17 +5,22 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -75,7 +80,12 @@ final class LegacyStructureSets {
         }
         var indexes = new LinkedHashMap<Structure, Integer>();
         var sourceSets = registry.registryOrThrow(Registries.STRUCTURE_SET);
-        for (var entry : sourceSets.entrySet()) {
+        var requiredPlacements = new LinkedHashMap<String, JsonObject>();
+        // Set and template indices must not depend on the registry map's iteration order.
+        var orderedSets = sourceSets.entrySet().stream()
+                .sorted(Comparator.comparing(entry -> entry.getKey().location()))
+                .toList();
+        for (var entry : orderedSets) {
             var set = entry.getValue();
             if (set.structures().stream().noneMatch(member -> executable.containsKey(member.structure().value()))) continue;
             String id = entry.getKey().location().toString();
@@ -84,10 +94,12 @@ final class LegacyStructureSets {
                 continue;
             }
             var placement = decode(StructurePlacement.CODEC.encodeStart(ops, set.placement())).getAsJsonObject();
-            if (placement.has("exclusion_zone")) {
-                omissions.add("placement:" + id + ":exclusion-zone");
+            var dependencies = new LinkedHashMap<String, JsonObject>();
+            if (!resolveDependencies(id, placement, sourceSets, ops, dependencies, new LinkedHashSet<>())) {
+                omissions.add("placement:" + id + ":unsupported-exclusion-zone");
                 continue;
             }
+            requiredPlacements.putAll(dependencies);
             var members = new JsonArray();
             for (var member : set.structures()) {
                 int definition = indexes.computeIfAbsent(member.structure().value(), ignored -> {
@@ -114,7 +126,37 @@ final class LegacyStructureSets {
             row.add("entries", members);
             sets.add(row);
         }
+        for (var entry : requiredPlacements.entrySet()) {
+            if (sets.asList().stream().anyMatch(row -> row.getAsJsonObject().get("id").getAsString().equals(entry.getKey()))) continue;
+            var row = new JsonObject();
+            row.addProperty("id", entry.getKey());
+            row.addProperty("placement_only", true);
+            row.add("placement", entry.getValue());
+            row.add("entries", new JsonArray());
+            sets.add(row);
+        }
         return result;
+    }
+
+    private static boolean resolveDependencies(String id, JsonObject placement, Registry<StructureSet> source,
+                                               RegistryOps<JsonElement> ops, Map<String, JsonObject> dependencies,
+                                               LinkedHashSet<String> path) {
+        if (!path.add(id)) return false;
+        var exclusion = placement.getAsJsonObject("exclusion_zone");
+        if (exclusion == null) {
+            path.remove(id);
+            return true;
+        }
+        var targetId = exclusion.get("other_set");
+        if (!targetId.isJsonPrimitive()) return false;
+        String other = targetId.getAsString();
+        var target = source.get(new ResourceLocation(other));
+        if (target == null || target.placement().getClass() != RandomSpreadStructurePlacement.class) return false;
+        var encoded = decode(StructurePlacement.CODEC.encodeStart(ops, target.placement())).getAsJsonObject();
+        if (!resolveDependencies(other, encoded, source, ops, dependencies, path)) return false;
+        dependencies.put(other, encoded);
+        path.remove(id);
+        return true;
     }
 
     static JsonObject missingTemplate(JsonObject result, String id) {

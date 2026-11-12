@@ -10,9 +10,11 @@ import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
@@ -53,25 +55,42 @@ final class LegacyTemplateNbt {
         return result;
     }
 
+    @FunctionalInterface
+    interface JointEncoder {
+        JsonObject encode(JsonArray pos, BlockState state, CompoundTag tag);
+    }
+
+    static JsonArray rotations(BlockState state, LinkedHashMap<BlockState, Integer> materials) {
+        var rotations = new JsonArray();
+        for (var rotation : Rotation.values()) rotations.add(LegacyTerrainProfile.material(materials, state.rotate(rotation)));
+        return rotations;
+    }
+
     static JsonObject template(String id, CompoundTag raw, int ground, LinkedHashMap<BlockState, Integer> materials,
-                                       JsonArray omissions) {
+                               JsonArray omissions) {
+        return template(id, raw, ground, materials, omissions, null);
+    }
+
+    static JsonObject template(String id, CompoundTag raw, int ground, LinkedHashMap<BlockState, Integer> materials,
+                               JsonArray omissions, JointEncoder joints) {
         var source = raw.getList("palettes", Tag.TAG_LIST);
         if (source.isEmpty()) source.add(raw.getList("palette", Tag.TAG_COMPOUND));
 
         var palettes = new JsonArray();
+        var primary = new ArrayList<BlockState>();
         for (var value : source) {
             var palette = new JsonArray();
             for (var entry : (ListTag) value) {
                 var state = decode(BlockState.CODEC.parse(NbtOps.INSTANCE, entry));
-                var rotations = new JsonArray();
-                for (var rotation : Rotation.values()) rotations.add(LegacyTerrainProfile.material(materials, state.rotate(rotation)));
-                palette.add(rotations);
+                if (palettes.isEmpty()) primary.add(state);
+                palette.add(rotations(state, materials));
             }
             palettes.add(palette);
         }
 
         var blocks = new JsonArray();
         var tags = new JsonObject();
+        var connectors = new JsonArray();
         int ordinal = 0;
         for (var value : raw.getList("blocks", Tag.TAG_COMPOUND)) {
             var block = (CompoundTag) value;
@@ -81,7 +100,13 @@ final class LegacyTemplateNbt {
             blocks.add(pos.getInt(2));
             blocks.add(block.getInt("state"));
             if (block.contains("nbt", Tag.TAG_COMPOUND)) {
-                tags.add(Integer.toString(ordinal), tag(block.getCompound("nbt")));
+                var data = block.getCompound("nbt");
+                var state = primary.get(block.getInt("state"));
+                if (joints != null && state.is(Blocks.JIGSAW)) {
+                    connectors.add(joints.encode(array(pos.getInt(0), pos.getInt(1), pos.getInt(2)), state, data));
+                } else if (joints == null || !state.is(Blocks.STRUCTURE_BLOCK)) {
+                    tags.add(Integer.toString(ordinal), tag(data));
+                }
             }
             ordinal++;
         }
@@ -93,10 +118,13 @@ final class LegacyTemplateNbt {
         template.add("size", array(size.getInt(0), size.getInt(1), size.getInt(2)));
         template.add("palettes", palettes);
         template.add("blocks", blocks);
-        template.add("joints", new JsonArray());
+        template.add("joints", connectors);
         template.add("tags", tags);
-        if (!raw.getList("entities", Tag.TAG_COMPOUND).isEmpty()) omissions.add("template_entities:" + id);
-        template.add("entities", new JsonArray());
+        var entities = new JsonArray();
+        var sourceEntities = raw.getList("entities", Tag.TAG_COMPOUND);
+        if (joints != null) sourceEntities.forEach(value -> entities.add(tag(value)));
+        else if (!sourceEntities.isEmpty()) omissions.add("template_entities:" + id);
+        template.add("entities", entities);
         return template;
     }
 }

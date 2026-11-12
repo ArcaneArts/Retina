@@ -1,9 +1,12 @@
 package art.arcane.retina.forge1201;
 
+import art.arcane.retina.minecraft1201.LegacyStructureMobs;
 import art.arcane.retina.minecraft1201.LegacyStructurePiece;
 import art.arcane.retina.minecraft1201.LegacyWorlds;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.entity.MobSpawnType;
+import net.minecraftforge.event.ForgeEventFactory;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -21,6 +24,10 @@ public final class RetinaForge1201 {
     public RetinaForge1201() {
         FMLJavaModLoadingContext.get().getModEventBus().addListener((RegisterEvent event) ->
                 event.register(Registries.STRUCTURE_PIECE, LegacyStructurePiece.ID, () -> LegacyStructurePiece.TYPE));
+        LegacyStructureMobs.configure((mob, level, difficulty, source) -> {
+            ForgeEventFactory.onFinalizeSpawn(mob, level, difficulty, MobSpawnType.STRUCTURE, null, source);
+            return !mob.isSpawnCancelled();
+        });
         LegacyWorlds.configure(FMLPaths.CONFIGDIR.get(), RetinaForge1201::vanillaPacks);
     }
 
