@@ -126,6 +126,10 @@ pub struct GeologyProfile {
     pub cave_noises: Vec<NoiseProfile>,
     #[serde(default)]
     pub carveable: Vec<bool>,
+    /// Registered final density determines cavities independently of carvers.
+    /// Saved profiles without this flag retain the original combined mask.
+    #[serde(default)]
+    pub density_cavities: bool,
     #[serde(default)]
     pub lava: u16,
     #[serde(default)]
@@ -145,6 +149,7 @@ impl Default for GeologyProfile {
             ores: Vec::new(),
             cave_noises: Vec::new(),
             carveable: Vec::new(),
+            density_cavities: false,
             lava: 0,
             lava_level: 0,
             geology_min_y: 0,
@@ -159,6 +164,11 @@ impl GeologyProfile {
         }
         let palette = profile.materials.len();
         let enclosed = profile.registry_program.as_ref().is_some_and(|p| p.enclosed());
+        if self.density_cavities && !profile.registry_program.as_ref().is_some_and(|p|
+            p.surface[2] == 0 && p.material_layers && p.material_halo)
+        {
+            return Err("density cavities require a registered material halo".into());
+        }
         if self.ores.is_empty() && self.cave_noises.is_empty() && !enclosed {
             return Ok(());
         }
@@ -228,12 +238,16 @@ impl GeologyProfile {
                     .iter()
                     .any(|b| b.carvers.iter().any(|c| c.probability > 0.0)))
     }
+    pub(crate) fn base_carveable(&self, profile: &WorldProfile) -> bool {
+        self.carveable.get(profile.stone as usize).copied().unwrap_or(false)
+    }
+
     pub fn gpu_bytes(&self, profile: &WorldProfile) -> Vec<u8> {
         let mut bytes = bytemuck::cast_slice(&[
             profile.biomes.len() as u32,
             u32::from(self.caves_enabled(profile) && profile.registry_program.is_some()),
             u32::from(profile.registry_program.is_some()),
-            0,
+            u32::from(self.density_cavities),
         ])
         .to_vec();
         bytes.extend_from_slice(bytemuck::cast_slice(&[
@@ -244,12 +258,7 @@ impl GeologyProfile {
             profile.ice as u32,
             self.lava as u32,
             self.lava_level as u32,
-            u32::from(
-                self.carveable
-                    .get(profile.stone as usize)
-                    .copied()
-                    .unwrap_or(false),
-            ),
+            u32::from(self.base_carveable(profile)),
         ]));
         let aquifer = profile
             .registry_program

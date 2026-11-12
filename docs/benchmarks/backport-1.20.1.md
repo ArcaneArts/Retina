@@ -1653,10 +1653,9 @@ fixture tests a surface bowl, an underground bowl chosen by a
 selector, a flooded cavity, and protected quartz. The noise range
 starts at Y=0 and chunk storage starts at Y=-64. The fixture checks
 the packed update coordinates in the stored sections and compares
-direct chunk metadata with the 1.20.1 region reader. The custom
-density cavity filled with stone when the fixture biome declared no
-carveable substrate. A zero-probability carver declares the substrates
-for this deterministic fixture.
+direct chunk metadata with the 1.20.1 region reader. Revision 551's
+fixture declared its substrate with a zero-probability carver. The
+density cavity fixture below now runs with an empty carver list.
 
 CPU and Metal matched all 4,096 fixture chunk payloads. The stock
 Overworld now exports 112 non-ore roots with nine omissions. In stock
@@ -1675,3 +1674,37 @@ it again after restart. Its first cold force-load reported 55.5 seconds
 of tick delay with spawn preloading disabled for the test. All 15
 catalog parity cases passed. All 1,024 payloads in the 26.3 regression
 region matched revision 550.
+
+### Density cavities and configured carvers
+
+New 1.20.1 noise exports save a density cavity option. A nonpositive
+final density opens a cavity and passes it through the saved aquifer
+configuration. Configured carvers still use the loaded replaceable
+set and their height limits. Saved definitions without the option
+continue to use their original cave and material rules.
+
+Run `exportNoiseTerrain -PretinaVerifyLavaLakes` with the same
+CPU and Metal invocations above. The updated fixture exercises the
+dry and flooded cavities with empty carver lists, and a zero-density
+layer at Y=3 in terrain that starts at Y=0. An active cave carver
+opens the stone roof and leaves the quartz roof intact.
+
+CPU and Metal produced identical payloads for all 6,144 chunks in
+the six fixture regions. The configured carver opened 44,706 roof
+voxels in the stone case and zero in the quartz case. Packaged Java
+17 Fabric and Forge loaded the custom datapack and read both lava
+samples and their dry density layers on fresh start and restart.
+The definition and a player edit survived restart. Spigot reopened
+revision 551's stock definition with the new plugin and read its
+original lava sample. The stock verifier and all 15 catalog parity
+cases passed. The four local revision 552 JARs carry identical
+macOS ARM64 native bytes and version-specific catalogs.
+
+The saved-definition regression used the same inputs and MCA
+coordinates as revision 551. All 1,024 chunk payloads matched for
+each of the retained 1.20.1 and 26.3 Overworld definitions. The
+26.3 Metal benchmark ran in A/B/B/A order with three measured
+regions and one warmup per process. All 3,072 compared payloads
+matched. Median process throughput was 3,061 chunks/s on revision
+551 and 3,944 on revision 552 on the M4 Max. This small sample
+records the local regression check.

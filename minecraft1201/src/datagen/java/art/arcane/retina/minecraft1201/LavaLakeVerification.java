@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 final class LavaLakeVerification {
-    private static final List<String> DIMENSIONS = List.of("surface", "underground", "wet", "protected");
+    private static final List<String> DIMENSIONS = List.of("surface", "underground", "wet", "protected", "carver", "blocked_carver");
     private static final int STORAGE_MIN_Y = -64;
     private static final String FLOOR = """
             {"type":"minecraft:y_clamped_gradient","from_y":14,"to_y":16,"from_value":1,"to_value":-1}
@@ -36,7 +36,14 @@ final class LavaLakeVerification {
              "argument1":{"type":"minecraft:y_clamped_gradient","from_y":30,"to_y":36,"from_value":-1,"to_value":1},
              "argument2":{"type":"minecraft:y_clamped_gradient","from_y":50,"to_y":56,"from_value":1,"to_value":-1}}
             """;
-    private static final String DENSITY = "{\"type\":\"minecraft:max\",\"argument1\":" + FLOOR + ",\"argument2\":" + ROOF + "}";
+    private static final String ZERO_DENSITY = """
+            {"type":"minecraft:max",
+             "argument1":{"type":"minecraft:y_clamped_gradient","from_y":2,"to_y":3,"from_value":1,"to_value":0},
+             "argument2":{"type":"minecraft:y_clamped_gradient","from_y":3,"to_y":4,"from_value":0,"to_value":1}}
+            """;
+    private static final String FLOOR_WITH_GAP = "{\"type\":\"minecraft:min\",\"argument1\":" + FLOOR
+            + ",\"argument2\":" + ZERO_DENSITY + "}";
+    private static final String DENSITY = "{\"type\":\"minecraft:max\",\"argument1\":" + FLOOR_WITH_GAP + ",\"argument2\":" + ROOF + "}";
     private static final String SURFACE = "{\"type\":\"minecraft:heightmap\",\"heightmap\":\"WORLD_SURFACE_WG\"}";
     private static final String UNDERGROUND = """
             {"type":"minecraft:height_range","height":{"type":"minecraft:constant","value":{"absolute":26}}},
@@ -68,27 +75,32 @@ final class LavaLakeVerification {
                 {"type":"minecraft:simple_random_selector",
                  "config":{"features":[{"feature":"retina:lake_basin","placement":[]}]}}
                 """);
-        write(data(pack, "worldgen/configured_carver", "substrate"), """
-                {"type":"minecraft:cave","config":{"probability":0,
-                  "y":{"type":"minecraft:constant","value":{"absolute":12}},"yScale":1,
-                  "lava_level":{"absolute":-54},"replaceable":["minecraft:stone","minecraft:quartz_block"],
+        write(data(pack, "worldgen/configured_carver", "active"), """
+                {"type":"minecraft:cave","config":{"probability":1,
+                  "y":{"type":"minecraft:constant","value":{"absolute":42}},"yScale":1,
+                  "lava_level":{"absolute":-54},"replaceable":["minecraft:stone"],
                   "horizontal_radius_multiplier":1,"vertical_radius_multiplier":1,"floor_level":-1}}
                 """);
         for (var name : DIMENSIONS) {
-            var placement = switch (name) {
-                case "surface" -> SURFACE;
-                case "wet" -> WET;
-                default -> UNDERGROUND;
-            };
-            write(data(pack, "worldgen/placed_feature", name), """
-                    {"feature":"retina:lake_%s","placement":[{"type":"minecraft:rarity_filter","chance":3},
-                     {"type":"minecraft:random_offset","xz_spread":15,"y_spread":0},%s,{"type":"minecraft:biome"}]}
-                    """.formatted(name.equals("underground") ? "selector" : "basin", placement));
+            boolean configuredCarver = name.endsWith("carver");
+            String features = "[]";
+            if (!configuredCarver) {
+                var placement = switch (name) {
+                    case "surface" -> SURFACE;
+                    case "wet" -> WET;
+                    default -> UNDERGROUND;
+                };
+                write(data(pack, "worldgen/placed_feature", name), """
+                        {"feature":"retina:lake_%s","placement":[{"type":"minecraft:rarity_filter","chance":3},
+                         {"type":"minecraft:random_offset","xz_spread":15,"y_spread":0},%s,{"type":"minecraft:biome"}]}
+                        """.formatted(name.equals("underground") ? "selector" : "basin", placement));
+                features = "[[],[\"retina:lake_" + name + "\"]]";
+            }
             write(data(pack, "worldgen/biome", name), """
                     {"has_precipitation":false,"temperature":0.8,"downfall":0,
                      "effects":{"fog_color":12638463,"water_color":4159204,"water_fog_color":329011,"sky_color":7907327},
-                     "carvers":{"air":["retina:lake_substrate"]},"features":[[],["retina:lake_%s"]],"spawners":{},"spawn_costs":{}}
-                    """.formatted(name));
+                     "carvers":%s,"features":%s,"spawners":{},"spawn_costs":{}}
+                    """.formatted(configuredCarver ? "{\"air\":[\"retina:lake_active\"]}" : "{}", features));
             write(data(pack, "dimension", name), """
                     {"type":"minecraft:overworld","generator":{"type":"minecraft:noise","settings":"retina:lake_%s",
                       "biome_source":{"type":"minecraft:fixed","biome":"retina:lake_%s"}}}
@@ -102,9 +114,13 @@ final class LavaLakeVerification {
                        "vein_gap":0,"vein_ridged":0,"vein_toggle":0,"final_density":%s,"initial_density_without_jaggedness":%s},
                      "ore_veins_enabled":false,"sea_level":%d,"spawn_target":[],
                      "surface_rule":{"type":"minecraft:sequence","sequence":[]}}
-                    """.formatted(name.equals("protected") ? "quartz_block" : "stone",
+                    """.formatted(substrate(name) == Blocks.QUARTZ_BLOCK ? "quartz_block" : "stone",
                     DENSITY, DENSITY, name.equals("wet") ? 28 : 0));
         }
+    }
+
+    private static Block substrate(String name) {
+        return name.equals("protected") || name.equals("blocked_carver") ? Blocks.QUARTZ_BLOCK : Blocks.STONE;
     }
 
     private static Path data(Path pack, String folder, String name) {
@@ -141,7 +157,7 @@ final class LavaLakeVerification {
     }
 
     private static JsonObject inspect(Path path, String name, NativeWorldDefinition definition, String dimension) throws Exception {
-        int lava = 0, barrier = 0, ticks = 0, marks = 0, crossed = 0;
+        int lava = 0, barrier = 0, ticks = 0, marks = 0, crossed = 0, roofAir = 0;
         BlockPos sample = null;
         CompoundTag sampleChunk = null;
         int floor = name.equals("surface") ? 45 : 8;
@@ -157,8 +173,15 @@ final class LavaLakeVerification {
                         int base = section.getByte("Y") * 16;
                         if (base < 0 || base >= 64 || !section.contains("block_states")) continue;
                         var states = LegacyDensityCompiler.decode(STATES.parse(NbtOps.INSTANCE, section.getCompound("block_states")));
+                        if (base == 0) {
+                            require(states.get(8, 2, 8).is(substrate(name)) && states.get(8, 4, 8).is(substrate(name)),
+                                    "solid neighbors of the zero-density cavity in " + name);
+                            require(name.equals("wet") ? states.get(8, 3, 8).is(Blocks.WATER) : states.get(8, 3, 8).isAir(),
+                                    "zero-density cavity in the bottom five layers of " + name);
+                        }
                         for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
                             var state = states.get(x, y, z);
+                            if (base + y >= 36 && base + y <= 50 && state.isAir()) roofAir++;
                             if (state.is(Blocks.LAVA)) {
                                 require(base + y >= floor && base + y <= ceiling, "lava altitude " + (base + y));
                                 lava++;
@@ -209,6 +232,8 @@ final class LavaLakeVerification {
             report.addProperty("sample_x", sample.getX());
             report.addProperty("sample_y", sample.getY());
             report.addProperty("sample_z", sample.getZ());
+        } else if (name.endsWith("carver")) {
+            require(name.equals("carver") ? roofAir > 0 : roofAir == 0, "configured carver replacement in " + name);
         } else {
             require(lava == 0 && barrier == 0, "water or protected rock rejects lake writes for " + name);
             if (name.equals("wet")) require(ticks == 0 && marks == 0, "water rejects all lake updates");
@@ -218,6 +243,7 @@ final class LavaLakeVerification {
         report.addProperty("cave_air_ticks", ticks);
         report.addProperty("post_processing", marks);
         report.addProperty("cross_chunk_lava", crossed);
+        report.addProperty("roof_air", roofAir);
         return report;
     }
 

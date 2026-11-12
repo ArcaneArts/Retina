@@ -84,14 +84,8 @@ impl<'a> Builder<'a> {
             0
         };
         let cavity = geometry && (!aquifer || fluid == 0);
-        let carveable = self
-            .profile
-            .geology
-            .carveable
-            .get(self.profile.stone as usize)
-            .copied()
-            .unwrap_or(false);
-        if geometry && carveable {
+        let geology = &self.profile.geology;
+        if geometry && (geology.density_cavities || geology.base_carveable(self.profile)) {
             let id = if aquifer {
                 match fluid {
                     0 => 0,

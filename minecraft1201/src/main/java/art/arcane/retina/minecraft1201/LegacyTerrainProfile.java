@@ -162,6 +162,7 @@ final class LegacyTerrainProfile {
         compiler.approximations.forEach(approximations::add);
         program.add("approximations", approximations);
         world.add("registry_program", program);
+        world.addProperty("density_cavities", true);
 
         terrainPreviewOmissions(world);
         var sourceOrder = List.copyOf(generator.getBiomeSource().possibleBiomes());
