@@ -38,6 +38,7 @@ dependencies {
         if (mode == 'noise' && providers.gradleProperty('retinaVerifyPortals').isPresent()) {
             args '--structures', '--verify-portals'
         }
+        if (mode == 'noise' && providers.gradleProperty('retinaVerifyAttachments').isPresent()) args '--verify-attachments'
         if (providers.gradleProperty('retinaNativePath').isPresent()) {
             systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
         }

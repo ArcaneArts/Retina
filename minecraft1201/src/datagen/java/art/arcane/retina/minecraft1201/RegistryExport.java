@@ -59,6 +59,7 @@ public final class RegistryExport {
             export(world, seed, started, noise, preset, loaded, structures, verify);
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
             if (Arrays.asList(args).contains("--verify-portals")) NetherPortalVerification.verify(world, loaded, seed);
+            if (Arrays.asList(args).contains("--verify-attachments")) AttachmentVerification.verify(world);
         }
     }
 
