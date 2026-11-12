@@ -1046,3 +1046,56 @@ and 7.83 s on Forge with no destination file, and 0.15 s and
 functional timings. Forge without Chunky also joined and
 generated terrain in the existing headless telemetry probe.
 The shared region-preparation suite and Bukkit unit tests passed.
+
+## Distant Horizons
+
+The 1.20.1 adapter serves detached Distant Horizons generation from
+the same saved definition and region scheduler as live Minecraft
+generation. Detached work uses background priority and retains up
+to eight temporary MCA regions per dimension, bounded by the
+configured region limit. Later Minecraft loads can publish a
+retained region on the owning I/O queue. Closing the world
+releases the temporary files.
+
+Run the headless server fixture with the published
+[DH 2.4.5-b](https://modrinth.com/mod/distanthorizons/version/lC6CwqPp)
+or [DH 3.3.3](https://modrinth.com/mod/distanthorizons/version/6UnEfsRQ)
+JAR:
+
+```sh
+python3 scripts/minecraft1201-distant-horizons-test.py --java "$JAVA17" \
+  --server "$FABRIC_SERVER" --fabric-api "$FABRIC_API" \
+  --mod "$RETINA_FABRIC_1201" --dh "$DISTANT_HORIZONS" \
+  --chunky "$CHUNKY_FABRIC_1201" --output "$FRESH_OUTPUT" --backend metal
+```
+
+On Forge, replace `--server` and `--fabric-api` with
+`--forge-install "$FORGE_INSTALL"` and use the Forge mod JARs.
+For the DH 2.4.5 comparison, run the old Retina JAR with
+`--baseline`, then pass its world directory to the new run as
+`--reference-world`. Use `--check-chunky` with DH 3.3.3 to
+exercise the interaction with Chunky 1.3.146.
+
+The 32-chunk End request touched nine Retina regions on Java 17
+Fabric and Forge. DH populated its own database and the request
+left the Minecraft region directory untouched. A subsequent
+Minecraft force-load reused the preview for `-29,28`, publishing
+all 1,024 slots without another native preparation. Both
+loaders preserved all 257 detailed LOD records from the 2.4.5
+baseline, including the payload, generation steps and mapping.
+Foreground chunk loads can add separate LOD records. Shutdown
+removed all temporary previews.
+
+DH 3.3.3 previously attempted to bind a Chunky listener while the
+provider was still starting, which crashed both test servers.
+Both now start with Chunky 1.3.146 installed and complete the
+detached and foreground phases. Each real Chunky test task
+caused DH to pause generation and then re-enable it.
+The shared region-preparation tests, Bukkit tests and targeted
+26.3 Fabric storage and Chunky startup tests passed locally.
+
+In the final concurrent smoke runs, DH 2.4.5 pregen took
+7.08 s on Fabric and 14.80 s on Forge. DH 3.3.3 took 8.50 s
+and 18.32 s, respectively. These timings include local load.
+The repeat suite also covered the shared biome palette lookup
+after removing Minecraft's mutable memoizer from the decoder.

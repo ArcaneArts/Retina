@@ -10,6 +10,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.WorldGenRegion;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
 import net.minecraft.world.level.StructureManager;
@@ -58,9 +59,21 @@ final class LegacyChunkGenerator extends ChunkGenerator {
     }
 
     @Override
+    public CompletableFuture<ChunkAccess> createBiomes(Executor executor, RandomState random, Blender blender,
+                                                       StructureManager structures, ChunkAccess chunk) {
+        if (!LegacyDistantHorizons.isGenerationThread()) return super.createBiomes(executor, random, blender, structures, chunk);
+        saved.previewChunk(chunk.getPos()).installBiomes(chunk, random.sampler());
+        return CompletableFuture.completedFuture(chunk);
+    }
+
+    @Override
     public CompletableFuture<ChunkAccess> fillFromNoise(Executor executor, Blender blender, RandomState random,
                                                        StructureManager structures, ChunkAccess chunk) {
         var pos = chunk.getPos();
+        if (LegacyDistantHorizons.isGenerationThread()) {
+            saved.previewChunk(pos).install(chunk);
+            return CompletableFuture.completedFuture(chunk);
+        }
         return CompletableFuture.supplyAsync(() -> {
             saved.chunk(pos.x, pos.z).install(chunk);
             return chunk;
@@ -104,17 +117,19 @@ final class LegacyChunkGenerator extends ChunkGenerator {
     @Override public void createStructures(RegistryAccess registry, ChunkGeneratorStructureState state, StructureManager structures,
                                           ChunkAccess chunk, StructureTemplateManager templates) {
         if (saved.hasStructures) {
-            var pos = chunk.getPos();
-            saved.chunk(pos.x, pos.z).installStarts(chunk, structureContext, state.getLevelSeed());
+            generationChunk(chunk.getPos()).installStarts(chunk, structureContext, state.getLevelSeed());
         }
     }
 
     @Override
     public void createReferences(WorldGenLevel level, StructureManager structures, ChunkAccess chunk) {
         if (saved.hasStructures) {
-            var pos = chunk.getPos();
-            saved.chunk(pos.x, pos.z).installReferences(chunk, level.registryAccess());
+            generationChunk(chunk.getPos()).installReferences(chunk, level.registryAccess());
         }
+    }
+
+    private LegacyChunkData generationChunk(ChunkPos pos) {
+        return LegacyDistantHorizons.isGenerationThread() ? saved.previewChunk(pos) : saved.chunk(pos.x, pos.z);
     }
 
     private static final class SavedBiomes extends BiomeSource {
