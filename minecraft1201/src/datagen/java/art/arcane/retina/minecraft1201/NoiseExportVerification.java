@@ -58,7 +58,9 @@ final class NoiseExportVerification {
         }
         if (dimensions.containsKey(new ResourceLocation("retina:forest_probe"))
                 && dimensions.containsKey(new ResourceLocation("retina:mushroom_probe"))) {
-            OverworldFeatureVerification.treesDatapack(world);
+            boolean specialized = dimensions.containsKey(new ResourceLocation("retina:cherry_probe"))
+                    && dimensions.containsKey(new ResourceLocation("retina:mangrove_probe"));
+            OverworldFeatureVerification.treesDatapack(world, specialized);
         }
         verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -1, 0, seed);
         verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -3, -1, seed);

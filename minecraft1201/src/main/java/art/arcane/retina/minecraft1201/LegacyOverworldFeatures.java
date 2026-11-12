@@ -212,7 +212,9 @@ final class LegacyOverworldFeatures {
     private void compileChoice(PlacedFeature child, JsonArray parent, String path, Root root, int depth,
                                int reach, double lower, double upper, List<JsonObject> rows) {
         if (lower == upper) return;
-        var branch = parent.deepCopy();
+        // Predicate material IDs are bound after all recipes have populated the palette.
+        var branch = new JsonArray();
+        branch.addAll(parent);
         var select = LegacyBlockProviders.operation("select");
         select.addProperty("min", lower);
         select.addProperty("max", upper);

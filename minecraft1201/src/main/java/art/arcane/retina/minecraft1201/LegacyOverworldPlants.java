@@ -79,6 +79,12 @@ final class LegacyOverworldPlants {
         var below = offset(origin, 0, -1, 0);
         if (output.is(Blocks.CACTUS)) return cactus(origin);
         if (output.is(Blocks.SUGAR_CANE)) return sugarCane(origin);
+        if (output.is(Blocks.MANGROVE_PROPAGULE)) {
+            if (output.getValue(BlockStateProperties.HANGING)) {
+                return predicates.material(offset(origin, 0, 1, 0), state -> state.is(Blocks.MANGROVE_LEAVES));
+            }
+            return predicates.material(below, state -> soil(state) || state.is(Blocks.CLAY));
+        }
         if (output.is(Blocks.BAMBOO)) return predicates.material(below, state -> state.is(BlockTags.BAMBOO_PLANTABLE_ON));
         if (output.is(Blocks.DEAD_BUSH)) return predicates.material(below, state -> state.is(BlockTags.DEAD_BUSH_MAY_PLACE_ON));
         if (output.is(Blocks.BROWN_MUSHROOM) || output.is(Blocks.RED_MUSHROOM)) {

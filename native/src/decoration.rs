@@ -35,6 +35,7 @@ pub mod provider_noise;
 #[cfg(test)]
 mod replay_tests;
 mod spatial;
+mod tree_geometry;
 #[cfg(test)]
 mod tree_scratch_tests;
 
@@ -175,6 +176,8 @@ pub enum Kind {
         root: u16,
         root_offset: [i32; 2],
         #[serde(default)]
+        geometry: Option<tree_geometry::Geometry>,
+        #[serde(default)]
         decorators: Vec<TreeDecorator>,
     },
 }
@@ -264,6 +267,7 @@ impl Recipe {
                 root,
                 radius,
                 decorators,
+                geometry,
                 ..
             } => {
                 !logs.is_empty()
@@ -281,6 +285,7 @@ impl Recipe {
                     })
                     && valid(*soil)
                     && valid(*root)
+                    && geometry.as_ref().is_none_or(|shape| shape.validate(material_count))
                     && decorators.iter().all(|d| {
                         d.probability.is_finite()
                             && (0.0..=1.0).contains(&d.probability)
@@ -1864,6 +1869,7 @@ fn tree(
         soil,
         root,
         root_offset,
+        geometry,
         decorators,
     } = &recipe.feature
     else {
@@ -1876,11 +1882,20 @@ fn tree(
         .unwrap_or_else(|| ground.material(ground_y - 1, request.min_y, Some(profile)));
     let snowy_soil = ground_material == profile.snow
         && profile.material_flags[(ground.materials >> 16) as usize] & 1 != 0;
-    if profile.material_flags[ground_material as usize] & 1 == 0 && !snowy_soil {
+    let geometry = geometry.as_ref();
+    let roots = geometry.and_then(|shape| shape.roots.as_ref());
+    let rooted_soil = roots.zip(placed).is_some_and(|(roots, (_, overlay))| {
+        roots.muddy_in.test([x, ground_y - 1, z], field, profile, request, overlay) == Some(true)
+    });
+    if profile.material_flags[ground_material as usize] & 1 == 0 && !snowy_soil && !rooted_soil {
         return;
     }
     let h = (height[0] + rng.below(height[1] + 1) + rng.below(height[2] + 1)).max(1);
-    let base_y = ground_y + rng.range(*root_offset);
+    let base_y = ground_y
+        + match roots {
+            Some(roots) => roots.trunk_offset.sample(rng),
+            None => rng.range(*root_offset),
+        };
     if base_y + h + 4 >= request.min_y + request.height as i32 {
         return;
     }
@@ -1899,9 +1914,27 @@ fn tree(
     {
         return;
     }
-    let (wood, crowns) = crate::tree_shapes::trunk(trunk_shape, x, base_y, z, h, width, rng);
+    let trunk = geometry.and_then(|shape| shape.trunk.as_ref());
+    let (wood, crowns) = match trunk {
+        Some(trunk) => trunk.place(x, base_y, z, h, rng),
+        None => crate::tree_shapes::trunk(trunk_shape, x, base_y, z, h, width, rng),
+    };
+    let growth = match trunk {
+        Some(tree_geometry::Trunk::UpwardsBranching {
+            can_grow_through, ..
+        }) => placed.map(|p| (can_grow_through, p.1)),
+        _ => None,
+    };
     // Validate the entire trunk against GPU terrain, including neighboring columns.
     if wood.iter().any(|&(wx, wy, wz, _)| {
+        if geometry.is_some() && !(request.min_y..request.min_y + request.height as i32).contains(&wy) {
+            return true;
+        }
+        if growth.is_some_and(|(predicate, overlay)| {
+            predicate.test([wx, wy, wz], field, profile, request, overlay) == Some(true)
+        }) {
+            return false;
+        }
         field
             .column(wx, wz)
             .is_none_or(|c| wy < c.surface_height(Some(profile)))
@@ -1912,6 +1945,16 @@ fn tree(
     }) {
         return;
     }
+    let prepared_roots = if let Some((roots, (_, overlay))) = roots.zip(placed) {
+        let Some(positions) =
+            roots.positions([x, base_y, z], ground_y, field, profile, request, overlay, rng)
+        else {
+            return;
+        };
+        Some((roots, overlay, positions))
+    } else {
+        None
+    };
     let tree_start = blocks.len();
     for &(wx, wy, wz, axis) in &wood {
         blocks.push(WorldBlock {
@@ -1922,7 +1965,7 @@ fn tree(
             z: wz,
             material: log.axes[axis],
             upper: 0,
-            role: LOG,
+            role: if growth.is_some() { FEATURE } else { LOG },
         });
     }
     if *soil != 0 {
@@ -1941,7 +1984,9 @@ fn tree(
             }
         }
     }
-    if *root != 0 {
+    if let Some((roots, overlay, positions)) = prepared_roots {
+        roots.place(*root, positions, field, profile, request, overlay, rng, blocks);
+    } else if *root != 0 {
         for (rx, rz) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
             for distance in 0..=3 {
                 let px = x + rx * distance;
@@ -1963,18 +2008,6 @@ fn tree(
             }
         }
     }
-    let dark_oak = foliage_shape == "dark_oak_foliage_placer";
-    let r = rng.range(*radius).clamp(i32::from(!dark_oak), 4);
-    let o = rng.range(*offset);
-    let conifer = foliage_shape.contains("spruce") || foliage_shape.contains("pine");
-    let fh = if foliage_shape.contains("spruce") {
-        (h - rng.range(*trunk_height)).max(4)
-    } else if foliage_shape.contains("mega_pine") {
-        rng.range(*foliage_height).max(6)
-    } else {
-        rng.range(*foliage_height).max(2)
-    }
-    .min(h + 2);
     let TreeScratch {
         leaves: leaf_positions,
         occupancy,
@@ -1983,71 +2016,93 @@ fn tree(
         decorator_positions,
     } = scratch;
     leaf_positions.clear();
-    for crown in &crowns {
-        if dark_oak {
-            leaf_positions.extend(
-                crate::tree_shapes::dark_oak_foliage(crown, r, o, rng)
-                    .into_iter()
-                    .filter(|p| {
-                        field
-                            .column(p.0, p.2)
-                            .is_some_and(|c| p.1 >= c.surface_height(Some(profile)))
-                    }),
-            );
-            continue;
-        }
-        let (cx, cy, cz) = crown.pos;
-        let jungle = foliage_shape == "jungle_foliage_placer";
-        let layers = if jungle && crown.width == 1 {
-            1 + rng.below(2)
-        } else if foliage_shape.contains("acacia") {
-            2
-        } else {
-            fh
-        };
-        for dy in 0..=layers {
-            let row_r = if jungle {
-                r + crown.radius_offset + 1 - o + dy
-            } else if foliage_shape == "fancy_foliage_placer" {
-                r + crown.radius_offset + i32::from(dy != 0 && dy != layers)
-            } else if foliage_shape == "bush_foliage_placer" {
-                r + crown.radius_offset - 1 - o + dy
-            } else if foliage_shape == "blob_foliage_placer" {
-                r + crown.radius_offset - 1 - (o - dy) / 2
-            } else if conifer {
-                (dy / 2 + 1).min(r + 1)
-            } else if foliage_shape.contains("acacia") {
-                r + 1 - dy
-            } else {
-                (r - 1 + dy / 2).min(5)
+    if let Some(foliage) = geometry.and_then(|shape| shape.foliage.as_ref()) {
+        foliage.visit(&crowns, rng, |pos| {
+            if (request.min_y..request.min_y + request.height as i32).contains(&pos.1)
+                && field.column(pos.0, pos.2).is_some_and(|c| pos.1 >= c.surface_height(Some(profile)))
+            {
+                leaf_positions.push(pos);
             }
-            .clamp(0, 6);
-            for lx in -row_r..=row_r + crown.width - 1 {
-                for lz in -row_r..=row_r + crown.width - 1 {
-                    // Giant crowns measure distance to either column of the 2x2 trunk.
-                    let ax = lx.abs().min((lx - crown.width + 1).abs());
-                    let az = lz.abs().min((lz - crown.width + 1).abs());
-                    let skip = if jungle {
-                        ax + az >= 7 || ax * ax + az * az > row_r * row_r
-                    } else if foliage_shape == "fancy_foliage_placer" {
-                        (ax as f64 + 0.5).powi(2) + (az as f64 + 0.5).powi(2)
-                            > (row_r * row_r) as f64
-                    } else {
-                        ax == row_r
-                            && az == row_r
-                            && (conifer
-                                || (foliage_shape != "bush_foliage_placer" && dy == 0)
-                                || rng.below(2) == 0)
-                    };
-                    if skip {
-                        continue;
-                    }
-                    let pos = (cx + lx, cy + o - dy, cz + lz);
-                    if field
-                        .column(pos.0, pos.2)
-                        .is_some_and(|c| pos.1 >= c.surface_height(Some(profile)))
-                    {
-                        leaf_positions.push(pos);
+        });
+    } else {
+        let dark_oak = foliage_shape == "dark_oak_foliage_placer";
+        let r = rng.range(*radius).clamp(i32::from(!dark_oak), 4);
+        let o = rng.range(*offset);
+        let conifer = foliage_shape.contains("spruce") || foliage_shape.contains("pine");
+        let fh = if foliage_shape.contains("spruce") {
+            (h - rng.range(*trunk_height)).max(4)
+        } else if foliage_shape.contains("mega_pine") {
+            rng.range(*foliage_height).max(6)
+        } else {
+            rng.range(*foliage_height).max(2)
+        }
+        .min(h + 2);
+        for crown in &crowns {
+            if dark_oak {
+                leaf_positions.extend(
+                    crate::tree_shapes::dark_oak_foliage(crown, r, o, rng)
+                        .into_iter()
+                        .filter(|p| {
+                            field
+                                .column(p.0, p.2)
+                                .is_some_and(|c| p.1 >= c.surface_height(Some(profile)))
+                        }),
+                );
+                continue;
+            }
+            let (cx, cy, cz) = crown.pos;
+            let jungle = foliage_shape == "jungle_foliage_placer";
+            let layers = if jungle && crown.width == 1 {
+                1 + rng.below(2)
+            } else if foliage_shape.contains("acacia") {
+                2
+            } else {
+                fh
+            };
+            for dy in 0..=layers {
+                let row_r = if jungle {
+                    r + crown.radius_offset + 1 - o + dy
+                } else if foliage_shape == "fancy_foliage_placer" {
+                    r + crown.radius_offset + i32::from(dy != 0 && dy != layers)
+                } else if foliage_shape == "bush_foliage_placer" {
+                    r + crown.radius_offset - 1 - o + dy
+                } else if foliage_shape == "blob_foliage_placer" {
+                    r + crown.radius_offset - 1 - (o - dy) / 2
+                } else if conifer {
+                    (dy / 2 + 1).min(r + 1)
+                } else if foliage_shape.contains("acacia") {
+                    r + 1 - dy
+                } else {
+                    (r - 1 + dy / 2).min(5)
+                }
+                .clamp(0, 6);
+                for lx in -row_r..=row_r + crown.width - 1 {
+                    for lz in -row_r..=row_r + crown.width - 1 {
+                        // Giant crowns measure distance to either column of the 2x2 trunk.
+                        let ax = lx.abs().min((lx - crown.width + 1).abs());
+                        let az = lz.abs().min((lz - crown.width + 1).abs());
+                        let skip = if jungle {
+                            ax + az >= 7 || ax * ax + az * az > row_r * row_r
+                        } else if foliage_shape == "fancy_foliage_placer" {
+                            (ax as f64 + 0.5).powi(2) + (az as f64 + 0.5).powi(2)
+                                > (row_r * row_r) as f64
+                        } else {
+                            ax == row_r
+                                && az == row_r
+                                && (conifer
+                                    || (foliage_shape != "bush_foliage_placer" && dy == 0)
+                                    || rng.below(2) == 0)
+                        };
+                        if skip {
+                            continue;
+                        }
+                        let pos = (cx + lx, cy + o - dy, cz + lz);
+                        if field
+                            .column(pos.0, pos.2)
+                            .is_some_and(|c| pos.1 >= c.surface_height(Some(profile)))
+                        {
+                            leaf_positions.push(pos);
+                        }
                     }
                 }
             }
@@ -2729,6 +2784,7 @@ mod tests {
                 soil: 2,
                 root: 0,
                 root_offset: [0, 0],
+                geometry: None,
                 decorators: Vec::new(),
             },
         };

@@ -115,7 +115,7 @@ final class LegacyFeaturePredicates {
         }
     }
 
-    private static Predicate<BlockState> selection(JsonElement value) {
+    static Predicate<BlockState> selection(JsonElement value) {
         if (value instanceof JsonArray array) {
             var children = array.asList().stream().map(LegacyFeaturePredicates::selection).toList();
             return state -> children.stream().anyMatch(child -> child.test(state));
