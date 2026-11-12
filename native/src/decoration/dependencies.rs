@@ -1548,7 +1548,7 @@ impl Planner<'_> {
         probe.feature_result(b.role, previous != b.material);
         let flags = self.profile.material_flags[previous as usize];
         let replace = match b.role {
-            FEATURE => true,
+            FEATURE | WELL_ARCHAEOLOGY => true,
             DEFERRED_ORE => previous == b.upper,
             SOIL => flags & 1 != 0 || previous == self.profile.snow,
             LOG => previous == 0 || flags & (4 | 16) != 0,

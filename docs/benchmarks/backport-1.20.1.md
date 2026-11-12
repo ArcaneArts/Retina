@@ -1708,3 +1708,44 @@ regions and one warmup per process. All 3,072 compared payloads
 matched. Median process throughput was 3,061 chunks/s on revision
 551 and 3,944 on revision 552 on the M4 Max. This small sample
 records the local regression check.
+
+### Desert wells and archaeology
+
+New 1.20.1 definitions compile the loaded desert well placement and
+its foundation, basin, supports and roof. Well generation buries
+two suspicious-sand blocks with the vanilla archaeology table and
+a seed packed from each block's coordinates. Chunk replay assigns
+each block entity to its owning chunk and drops its metadata when a
+later write changes the block type. Bukkit applies the same lazy
+loot table and seed through its public brushable block API.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyDesertWells \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Repeat with CPU in a fresh directory. The datapack uses the vanilla
+desert biome identity and places wells across two chunk seams on
+sand. Quartz and unsupported sand act as rejection controls. The
+verifier reads both brushable blocks through the 1.20.1 block
+entity loader and compares the direct native chunk to the MCA data.
+
+CPU and Metal matched all 3,072 fixture chunk payloads. The sand
+fixture generated 2,057 brushable blocks, including the samples at
+`(-16,50,31)` and `(-17,49,32)`. The two controls generated none.
+The stock Overworld exports 113 of 121 non-ore roots. All 15
+catalog parity cases passed, and the four revision 553 JARs
+packaged the same macOS ARM64 native library with their own
+Minecraft version's catalog.
+
+Packaged Java 17 Fabric and Forge generated the fixture from the
+datapack. Spigot imported the fixture definition, mapped its
+Overworld to the saved dimension and delivered both loot tables
+and seeds through its public API. All three servers preserved the
+definition, both saved brushable blocks and a player edit through
+restart. The 26.3 Metal A/B/B/A run matched all 3,072 measured
+chunk payloads per trial. The two baseline processes recorded
+2,385 and 3,302 chunks/s. The two candidate processes recorded
+3,263 and 3,855 chunks/s. These samples are a local regression
+check.

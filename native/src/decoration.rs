@@ -466,6 +466,8 @@ const FEATURE: u8 = 6;
 const DEFERRED_ORE: u8 = 7;
 /// Marks a position for chunk post-processing without changing its block.
 const POST_PROCESS: u8 = 8;
+/// A suspicious sand write carrying the desert well's lazy archaeology loot.
+const WELL_ARCHAEOLOGY: u8 = 9;
 const SIDES: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
 /// A crown occupies a small local box. Direct byte lookup avoids hashing a world
@@ -2391,13 +2393,13 @@ pub fn assemble_carved(
 }
 
 pub fn decorate(profile: Option<&WorldProfile>, placements: &[Placement], blocks: &mut [u16]) {
-    decorate_observed(profile, placements, blocks, |_, _, _| {});
+    decorate_observed(profile, placements, blocks, |_, _, _, _| {});
 }
 pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
     profile: Option<&WorldProfile>,
     placements: &[Placement],
     blocks: &mut B,
-    mut write: impl FnMut(usize, u16, u16),
+    mut write: impl FnMut(usize, u16, u16, u8),
 ) {
     let Some(profile) = profile else {
         return;
@@ -2407,7 +2409,7 @@ pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
     let roles: &[u8] = if profile.ordered_decorations {
         &[u8::MAX]
     } else {
-        &[SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE]
+        &[SOIL, LOG, LEAF, COCOA, VINE, PLANT, FEATURE, WELL_ARCHAEOLOGY]
     };
     for &pass in roles {
         for placement in placements
@@ -2422,7 +2424,7 @@ pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
             let previous = blocks.value(index);
             let flags = profile.material_flags[previous as usize];
             let replace = match role {
-                FEATURE => true,
+                FEATURE | WELL_ARCHAEOLOGY => true,
                 DEFERRED_ORE => previous == placement.upper,
                 SOIL => flags & 1 != 0 || previous == profile.snow,
                 LOG => previous == 0 || flags & (4 | 16) != 0,
@@ -2455,10 +2457,10 @@ pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
                 if index + COLUMNS >= blocks.len() || blocks.value(index + COLUMNS) != 0 {
                     continue;
                 }
-                write(index + COLUMNS, blocks.value(index + COLUMNS), placement.upper);
+                write(index + COLUMNS, blocks.value(index + COLUMNS), placement.upper, PLANT);
                 blocks.put(index + COLUMNS, placement.upper);
             }
-            write(index, previous, placement.material);
+            write(index, previous, placement.material, role);
             blocks.put(index, placement.material);
         }
     }

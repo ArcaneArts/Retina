@@ -30,15 +30,18 @@ final class InventoryDelivery {
             catch (IllegalArgumentException | UnsupportedOperationException error) { delivery.failed("inventory item " + saved.getString("id"), error); }
         }
         // Set lazy loot after touching the snapshot inventory, avoiding premature loot rolls.
-        if (container instanceof Lootable lootable) {
-            String name = tag.getString("LootTable");
-            var key = name.isEmpty() ? null : NamespacedKey.fromString(name);
-            var table = key == null ? null : Bukkit.getLootTable(key);
-            if (!name.isEmpty() && table == null) delivery.unavailable("loot table " + name);
-            lootable.setSeed(NbtMetadata.number(tag, "LootTableSeed", 0));
-            lootable.setLootTable(table);
-        } else if (!tag.getString("LootTable").isEmpty()) delivery.unavailable("loot table on " + tag.getString("id"));
+        if (container instanceof Lootable lootable) applyLoot(tag, lootable, delivery);
+        else if (!tag.getString("LootTable").isEmpty()) delivery.unavailable("loot table on " + tag.getString("id"));
         if (!container.update(true, false)) throw new IllegalStateException("Could not publish container metadata");
+    }
+
+    static void applyLoot(CompoundBinaryTag tag, Lootable lootable, MetadataDelivery delivery) {
+        String name = tag.getString("LootTable");
+        var key = name.isEmpty() ? null : NamespacedKey.fromString(name);
+        var table = key == null ? null : Bukkit.getLootTable(key);
+        if (!name.isEmpty() && table == null) delivery.unavailable("loot table " + name);
+        lootable.setSeed(NbtMetadata.number(tag, "LootTableSeed", 0));
+        lootable.setLootTable(table);
     }
 
 }

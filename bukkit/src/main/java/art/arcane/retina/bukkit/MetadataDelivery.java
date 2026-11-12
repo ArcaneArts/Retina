@@ -3,6 +3,7 @@ package art.arcane.retina.bukkit;
 import net.kyori.adventure.nbt.*;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.BrushableBlock;
 import org.bukkit.block.Container;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.block.EndGateway;
@@ -48,6 +49,9 @@ final class MetadataDelivery {
             String id = tag.getString("id");
             if (SpawnerDelivery.accepts(id)) SpawnerDelivery.validate(tag, this);
             else if (InventoryDelivery.TYPES.contains(id)) InventoryDelivery.validate(tag, this);
+            else if (id.equals("minecraft:brushable_block")) {
+                fields(tag, Set.of("id", "x", "y", "z", "keepPacked", "LootTable", "LootTableSeed"), "brushable block");
+            }
             else if (id.equals("minecraft:end_gateway")) {
                 fields(tag, Set.of("id", "x", "y", "z", "keepPacked", "Age", "ExactTeleport", "exit_portal", "ExitPortal"), "end gateway");
                 position(tag, "exit_portal", "ExitPortal");
@@ -99,9 +103,17 @@ final class MetadataDelivery {
             var tag = (CompoundBinaryTag) raw;
             int x = tag.getInt("x"), y = tag.getInt("y"), z = tag.getInt("z");
             String id = tag.getString("id");
-            if (!id.equals("minecraft:end_gateway") && !SpawnerDelivery.accepts(id) && !InventoryDelivery.TYPES.contains(id)) continue;
+            boolean brushable = id.equals("minecraft:brushable_block");
+            if (!brushable && !id.equals("minecraft:end_gateway") && !SpawnerDelivery.accepts(id)
+                    && !InventoryDelivery.TYPES.contains(id)) continue;
             if (!region.isInRegion(x, y, z)) throw new IllegalStateException("Native block entity outside its population region");
             var target = region.getBlockState(x, y, z);
+            if (brushable) {
+                if (!(target instanceof BrushableBlock sand)) throw new IllegalStateException("Brushable metadata has no brushable block");
+                InventoryDelivery.applyLoot(tag, sand, this);
+                if (!sand.update(true, false)) throw new IllegalStateException("Could not publish brushable block metadata");
+                continue;
+            }
             if (SpawnerDelivery.accepts(id)) {
                 if (!(target instanceof CreatureSpawner spawner)) throw new IllegalStateException("Spawner metadata has no spawner block");
                 SpawnerDelivery.populate(tag, spawner, this); continue;

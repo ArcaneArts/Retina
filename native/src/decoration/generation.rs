@@ -115,9 +115,10 @@ impl Generation {
         {
             let end = event.map_or(placements.len(), |e| e.end);
             let commands = &placements[begin..end];
-            decorate_observed(Some(profile), commands, blocks, |index, before, after| {
-                if structures::block_name(profile, before) != structures::block_name(profile, after)
-                {
+            decorate_observed(Some(profile), commands, blocks, |index, before, after, role| {
+                if role == WELL_ARCHAEOLOGY {
+                    entities.insert(index, well_archaeology(request, index));
+                } else if structures::block_name(profile, before) != structures::block_name(profile, after) {
                     entities.remove(&index);
                 }
             });
@@ -179,6 +180,24 @@ impl Generation {
         })
     }
 }
+fn well_archaeology(request: ChunkRequest, index: usize) -> Value {
+    let x = request.chunk_x * 16 + (index % 16) as i32;
+    let y = request.min_y + (index / 256) as i32;
+    let z = request.chunk_z * 16 + (index % 256 / 16) as i32;
+    // BlockPos.asLong is the vanilla seed for each brushable block.
+    let seed = ((x as i64 & 0x3ff_ffff) << 38)
+        | ((z as i64 & 0x3ff_ffff) << 12)
+        | (y as i64 & 0xfff);
+    let mut tag = nbt::compound();
+    nbt::put(&mut tag, "id", nbt::string("minecraft:brushable_block"));
+    nbt::put(&mut tag, "LootTable", nbt::string("minecraft:archaeology/desert_well"));
+    nbt::put(&mut tag, "LootTableSeed", nbt::long(seed));
+    for (name, value) in [("x", x), ("y", y), ("z", z)] {
+        nbt::put(&mut tag, name, nbt::int(value));
+    }
+    tag
+}
+
 fn append(root: &mut Value, key: &str, incoming: &[Value]) {
     if incoming.is_empty() {
         return;
