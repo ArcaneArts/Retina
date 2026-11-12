@@ -31,6 +31,7 @@ import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.configurations.BlockColumnConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.HugeMushroomFeatureConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.MultifaceGrowthConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.ProbabilityFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.RandomBooleanFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.RandomFeatureConfiguration;
@@ -252,6 +253,13 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.SIMPLE_BLOCK) {
             var simple = (SimpleBlockConfiguration) config;
             return new Recipe(plants.simple(providers.encode(simple.toPlace())), 0);
+        }
+        if (feature == Feature.VINES) {
+            return new Recipe(LegacyAttachmentFeatures.vines(predicates, this::material), 0);
+        }
+        if (feature == Feature.MULTIFACE_GROWTH) {
+            return new Recipe(LegacyAttachmentFeatures.multiface((MultifaceGrowthConfiguration) config, predicates, this::material),
+                    LegacyAttachmentFeatures.REACH);
         }
         if (feature == Feature.BLOCK_COLUMN) return column((BlockColumnConfiguration) config);
         if (feature == Feature.DISK) return disk((DiskConfiguration) config);

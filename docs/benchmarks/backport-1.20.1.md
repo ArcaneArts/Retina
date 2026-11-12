@@ -1265,3 +1265,46 @@ same starts and loot after restart.
 All 15 catalog parity cases, Bukkit unit tests and the four
 local JAR builds passed. The native library and 26.3 catalogs
 match the preceding build byte for byte.
+
+### Vines, glow lichen and sculk veins
+
+The 1.20.1 exporter now binds the loaded vine and multiface
+configurations to Retina's shared attachment planner. It uses
+the target game's face support, allowed block holders, spread
+order and waterlogged states. The stock Overworld inventory
+exports 88 of 121 placed roots, including both vine roots, glow
+lichen and sculk veins.
+
+Copy `minecraft1201/src/datagen/fixtures/attachment-pack` into a new
+world's `datapacks/retina-attachments` and run:
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyAttachments \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Seed 12345 generated 1,941 vines, 3,406 glow lichen blocks and
+8,548 sculk veins in custom dimension region `-1,0`. The target
+reader checked 14,646 attachment faces, including 564 that
+crossed a chunk boundary, 1,935 waterlogged blocks, and the
+fixture's wall and support tag restrictions. Reopen preserved
+all 1,024 chunks. CPU and Metal agreed on all attachment states
+and 1,018 complete decoded chunks. The region took 0.95 s on
+Metal and 11.46 s on CPU in separate local runs.
+
+Run `scripts/minecraft1201-attachments-test.py` with the generated
+`dimensions/retina/attachment_probe/region/r.-1.0.mca` as
+`--reference`. Packaged Fabric and Forge generated the custom
+dimension and preserved the exact sampled vine, waterlogged
+lichen and waterlogged sculk vein states after restart.
+
+All 15 bundled catalog parity cases, the stock headless
+round trips, Bukkit unit tests and the four local builds passed.
+The 26.3 catalogs and shared macOS arm64 native bytes match the
+previous build.
+
+The full Java 17 Spigot acceptance run on Metal matched 917,504
+block states and 14,336 quart biomes across 12 chunks both
+before and after restart. The imported definition, metadata
+and entity probes passed, and all three player edits survived.

@@ -78,7 +78,8 @@ final class OverworldFeatureVerification {
                 "minecraft:lush_caves_vegetation", "minecraft:lush_caves_clay", "minecraft:dark_forest_vegetation",
                 "minecraft:mushroom_island_vegetation", "minecraft:trees_birch", "minecraft:trees_savanna",
                 "minecraft:trees_old_growth_pine_taiga", "minecraft:trees_old_growth_spruce_taiga",
-                "minecraft:trees_cherry", "minecraft:trees_mangrove")), "supported vanilla roots");
+                "minecraft:trees_cherry", "minecraft:trees_mangrove", "minecraft:classic_vines_cave_feature",
+                "minecraft:vines", "minecraft:glow_lichen", "minecraft:sculk_vein")), "supported vanilla roots");
         var omitted = new HashSet<String>();
         for (var tag : profile.getList("decoration_omissions", Tag.TAG_STRING)) {
             String description = tag.getAsString();
