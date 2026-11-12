@@ -132,6 +132,8 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
                 position.getRegionX(), position.getRegionZ(), result.generated(), result.preserved());
     }
 
+    public int limit() { return budget.limit(); }
+
     GenerationMetrics.Snapshot metrics() { return metrics.snapshot(); }
 
     public void stopAdmission() {

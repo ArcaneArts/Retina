@@ -37,6 +37,58 @@ abstract class LegacyIOWorkerMixin implements LegacyRegionIo {
         retina$regions = regions;
     }
 
+    @Override public int retina$regionLimit() {
+        var regions = retina$regions;
+        return regions == null ? 0 : regions.limit();
+    }
+
+    @Override public CompletableFuture<Void> retina$generateAhead(ChunkPos position) {
+        var regions = retina$regions;
+        if (regions == null) return CompletableFuture.completedFuture(null);
+        var observer = new CompletableFuture<Void>();
+        retina$checkRegion(position).whenComplete((complete, error) -> {
+            if (observer.isDone()) return;
+            if (error != null) {
+                observer.completeExceptionally(error);
+            } else if (complete) {
+                observer.complete(null);
+            } else {
+                var load = regions.load(position, false, () -> retina$publishAhead(position, regions));
+                observer.whenComplete((value, failure) -> { if (observer.isCancelled()) load.cancel(false); });
+                load.whenComplete((value, failure) -> {
+                    if (failure != null) observer.completeExceptionally(failure);
+                    else observer.complete(null);
+                });
+            }
+        });
+        return observer;
+    }
+
+    @Unique
+    private synchronized CompletableFuture<Boolean> retina$checkRegion(ChunkPos position) {
+        if (retina$closing) return CompletableFuture.failedFuture(new CancellationException("Retina chunk I/O is closing"));
+        return retina$submit(() -> {
+            try {
+                return Either.left(((LegacyRegionStorage) (Object) storage).retina$hasFullRegion(position));
+            } catch (RuntimeException | IOException error) {
+                return Either.right(error);
+            }
+        });
+    }
+
+    @Unique
+    private synchronized CompletableFuture<Void> retina$publishAhead(ChunkPos position, LegacyRegionCoordinator regions) {
+        if (retina$closing) return CompletableFuture.failedFuture(new CancellationException("Retina chunk I/O is closing"));
+        return retina$submit(() -> {
+            try {
+                regions.publish(position, (LegacyRegionStorage) (Object) storage);
+                return Either.left(null);
+            } catch (RuntimeException | IOException error) {
+                return Either.right(error);
+            }
+        });
+    }
+
     @WrapMethod(method = "loadAsync")
     private CompletableFuture<Optional<CompoundTag>> retina$load(ChunkPos position,
             Operation<CompletableFuture<Optional<CompoundTag>>> original) {

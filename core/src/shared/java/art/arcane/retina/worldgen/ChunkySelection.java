@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 /** Optional Chunky API adapter. Uses its own iterator/shape, including CSV and custom shapes. */
 final class ChunkySelection {
@@ -16,13 +17,18 @@ final class ChunkySelection {
     private final long count;
 
     ChunkySelection(Object task) throws ReflectiveOperationException {
+        this(task, type -> "getWorld");
+    }
+
+    ChunkySelection(Object task, Function<Class<?>, String> worldGetter) throws ReflectiveOperationException {
         var loader = task.getClass().getClassLoader();
         var type = Class.forName("org.popcraft.chunky.GenerationTask", false, loader);
         selection = type.getMethod("getSelection").invoke(task);
         shape = type.getMethod("getShape").invoke(task);
         count = (long) type.getMethod("getCount").invoke(task);
         var platformWorld = selection.getClass().getMethod("world").invoke(selection);
-        world = platformWorld.getClass().getMethod("getWorld").invoke(platformWorld);
+        var worldType = platformWorld.getClass();
+        world = worldType.getMethod(worldGetter.apply(worldType)).invoke(platformWorld);
     }
 
     RegionAheadPump.Source regions() { return regions(selection, shape, count); }

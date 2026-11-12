@@ -1012,3 +1012,37 @@ both client mixins. Graphical rendering was not exercised.
 The 26.3 `generationMetricsTest` verified the rolling statistics,
 packet round trip, and F3 formatting after the shared types
 moved into the Java core.
+
+## Chunky 1.3.146
+
+Run the packaged Java 17 server probe with a fresh output directory:
+
+```sh
+python3 scripts/minecraft1201-chunky-test.py --java "$JAVA17" \
+  --server "$FABRIC_SERVER" --fabric-api "$FABRIC_API" \
+  --mod "$RETINA_FABRIC_1201" --chunky "$CHUNKY_FABRIC_1201" \
+  --output "$FRESH_OUTPUT" --backend metal
+```
+
+On Forge, replace `--server` and `--fabric-api` with
+`--forge-install "$FORGE_INSTALL"` and use the Forge Retina and
+Chunky JARs. The Fabric run used Loader 0.16.14 and Fabric API
+0.92.12+1.20.1. The Forge run used 47.4.28. Both used the published
+Chunky 1.3.146 artifacts. See the [Chunky integration notes](../CHUNKY_REGION_SCHEDULING.md#minecraft-1201).
+
+Both servers started, paused, resumed and cancelled real Chunky
+tasks. On a new nine-chunk selection in MCA region `-28,27`,
+Retina's ahead request finished before Chunky reported all nine
+chunks complete. After restart, the same selection completed
+without native preparation and preserved a diamond-block edit.
+After retaining only that edited record in the fixture, both
+servers reported 1,023 generated records and one preserved
+record, then read the diamond block through Minecraft. Each
+shutdown cleaned up all its temporary Retina region previews.
+
+Observed selection completion on Metal was 7.60 s on Fabric
+and 7.83 s on Forge with no destination file, and 0.15 s and
+0.14 s on the saved region. These concurrent smoke runs are
+functional timings. Forge without Chunky also joined and
+generated terrain in the existing headless telemetry probe.
+The shared region-preparation suite and Bukkit unit tests passed.
