@@ -1,5 +1,6 @@
 plugins { id 'java-library' }
 apply from: rootProject.file('gradle/java-toolchain.gradle')
+sourceSets.main.java.srcDir 'src/shared/java'
 
 // No Minecraft, loader, Bukkit, or parser dependencies belong in this runtime.
 base { archivesName = 'retina-core' }
