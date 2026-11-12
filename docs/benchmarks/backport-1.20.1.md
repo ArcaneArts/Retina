@@ -214,3 +214,50 @@ catalogs byte for byte after sharing the Flat and lighting table compilers.
 The modern universal JAR also passed its packaged CPU smoke test using the
 rebuilt native image. All twelve chunk hashes and both reopened definition
 hashes matched the published 26.3 baseline.
+
+## Minecraft 1.20.1 Overworld and Nether terrain preview
+
+The Java 17 export reads actual 1.20.1 density functions, noise amplitudes,
+surface rules, biome intervals and generation bounds. Both game adapters use
+the same program compiler and terracotta band recipe. The 1.20.1 band recipe
+uses the configured random source and its world-seeded clay-band stream.
+
+The preview runs the Overworld and Nether terrain, surface material and
+aquifer programs. The saved profile reports the approximations and omissions
+through `retina inspect`. Configured carvers, placed features, ore generation,
+structures and the End remain implementation work. Preview definitions are
+development inputs for headless generation.
+
+Run on a disposable world using Java 17 and the shared native library:
+
+```sh
+world=$(mktemp -d)
+RETINA_REGION_THREADS=4 RAYON_NUM_THREADS=2 ./gradlew :minecraft1201:exportNoiseTerrain \
+  "-Porg.gradle.java.installations.paths=$jdk17" "-PretinaNativePath=$library" \
+  "-PretinaWorld=$world" -PretinaSeed=12345 -PretinaGpuBackend=cpu -PretinaVerifyNoiseTerrain
+```
+
+Use `-PretinaGpuBackend=metal` for the macOS Metal run. To exercise the
+datapack, create the world's `datapacks` directory, copy
+`minecraft1201/src/datagen/fixtures/noise-pack` into it and select
+`-PretinaPreset=retina:noise_probe`. Its direct multi-noise source and custom
+terrain surface rule produced Desert and smooth sandstone in the decoded
+Overworld region.
+
+Each run generated 1,024 records per dimension in region `-1,0`. The 1.20.1
+reader decoded the block and biome palettes, sections, heightmaps and status
+of three sampled chunks per dimension. Reopen preserved all 1,024 records.
+These are individual local timings on an Apple M4 Max, including the first
+native open and bind for each dimension.
+
+| Input | Backend | Export | Overworld | Nether |
+| --- | --- | ---: | ---: | ---: |
+| Vanilla normal | CPU | 971 ms | 3,427 ms | 4,717 ms |
+| Vanilla normal | Metal | 991 ms | 280 ms | 178 ms |
+| Datapack | CPU | 833 ms | 1,994 ms | 4,685 ms |
+
+The standalone Rust binary generated the datapack Overworld from the
+saved definition in 1.89 s and preserved all 1,024 records on a second
+invocation. The vanilla Flat round-trip also passed after moving it onto the
+same registry bootstrap. The 26.3 definition suite passed all eight cases
+and both catalog outputs matched the committed bytes.

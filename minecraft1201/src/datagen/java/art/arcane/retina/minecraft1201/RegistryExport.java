@@ -9,6 +9,8 @@ import net.minecraft.commands.Commands;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.server.WorldLoader;
 import net.minecraft.server.packs.PackResources;
@@ -18,7 +20,7 @@ import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.levelgen.WorldDimensions;
 import net.minecraft.world.level.levelgen.WorldOptions;
-import net.minecraft.world.level.levelgen.presets.WorldPresets;
+import net.minecraft.world.level.levelgen.presets.WorldPreset;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,8 +28,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /** Headless datagen using the same pack and registry loading path as the 1.20.1 server. */
-public final class FlatExport {
-    private FlatExport() { }
+public final class RegistryExport {
+    private RegistryExport() { }
 
     public static void main(String[] args) throws Exception {
         SharedConstants.tryDetectVersion();
@@ -37,12 +39,15 @@ public final class FlatExport {
         Path packFolder = world.resolve("datapacks");
         Files.createDirectories(packFolder);
         long started = System.nanoTime();
-        Loaded loaded = load(packFolder);
-        var definition = FlatDefinitionCompiler.compile(loaded.registries(), loaded.dimensions(),
-                new WorldOptions(seed, false, false), loaded.packs());
+        boolean noise = args[2].equals("noise");
+        var preset = ResourceKey.create(Registries.WORLD_PRESET, new ResourceLocation(args[3]));
+        Loaded loaded = load(packFolder, preset);
+        var definition = WorldDefinitionCompiler.compile(loaded.registries(), loaded.dimensions(),
+                new WorldOptions(seed, false, false), loaded.packs(), noise);
         Path path = BinaryDefinitionTags.writeNew(world, definition);
         var event = new JsonObject();
-        event.addProperty("event", "flat_1201_definition_export");
+        event.addProperty("event", noise ? "noise_1201_definition_export" : "flat_1201_definition_export");
+        event.addProperty("preset", preset.location().toString());
         event.addProperty("version", SharedConstants.getCurrentVersion().getName());
         event.addProperty("data_version", SharedConstants.getCurrentVersion().getDataVersion().getVersion());
         event.addProperty("path", path.toString());
@@ -57,19 +62,20 @@ public final class FlatExport {
         }
         event.addProperty("elapsed_ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
         System.out.println("QA_EVT " + event);
-        if (args.length == 3 && args[2].equals("--verify")) {
-            FlatExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed);
+        if (args.length > 4 && args[4].equals("--verify")) {
+            if (noise) NoiseExportVerification.verify(world, loaded.registries(), loaded.dimensions());
+            else FlatExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed);
         }
     }
 
-    private static Loaded load(Path packs) throws Exception {
+    private static Loaded load(Path packs, ResourceKey<WorldPreset> preset) throws Exception {
         var repository = ServerPacksSource.createPackRepository(packs);
         var config = new WorldLoader.InitConfig(
                 new WorldLoader.PackConfig(repository, WorldDataConfiguration.DEFAULT, false, true),
                 Commands.CommandSelection.DEDICATED, 2);
         return WorldLoader.<WorldDimensions.Complete, Loaded>load(config, context -> {
             var presets = context.datapackWorldgen().registryOrThrow(Registries.WORLD_PRESET);
-            var dimensions = presets.getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions();
+            var dimensions = presets.getHolderOrThrow(preset).value().createWorldDimensions();
             var complete = dimensions.bake(context.datapackDimensions().registryOrThrow(Registries.LEVEL_STEM));
             return new WorldLoader.DataLoadOutput<>(complete, complete.dimensionsRegistryAccess());
         }, (resources, reloaded, layers, dimensions) -> {
