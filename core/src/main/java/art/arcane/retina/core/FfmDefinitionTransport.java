@@ -29,6 +29,8 @@ final class FfmDefinitionTransport implements DefinitionTransport {
         static final MethodHandle CHUNK = call("retina_world_dimension_chunk", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, ADDRESS, ADDRESS));
         static final MethodHandle BIOMES = call("retina_sample_biomes_u16", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG));
         static final MethodHandle POINTS = call("retina_query_points", FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS));
+        static final MethodHandle STRUCTURE_STARTS = call("retina_query_structure_starts",
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_LONG, ADDRESS));
         static final MethodHandle PROFILE = call("retina_world_definition_profile_json", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, ADDRESS, ADDRESS));
         static final MethodHandle CLOSE = call("retina_close_world_definition", FunctionDescriptor.of(JAVA_INT, JAVA_LONG));
         static final MethodHandle FREE = call("retina_free_bytes", FunctionDescriptor.ofVoid(ADDRESS, JAVA_LONG));
@@ -181,6 +183,17 @@ final class FfmDefinitionTransport implements DefinitionTransport {
             var output = arena.allocate(count * Integer.BYTES, Integer.BYTES);
             check((int) Calls.POINTS.invokeExact(encode(arena, request), arena.allocateFrom(JAVA_INT, xyz),
                     count, 0, output));
+            return output.toArray(JAVA_INT);
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    @Override
+    public int[] structureStarts(TerrainRequest request, int[] candidates) {
+        try (var arena = Arena.ofConfined()) {
+            long count = candidates.length / 3;
+            var output = arena.allocate(count * Integer.BYTES, Integer.BYTES);
+            check((int) Calls.STRUCTURE_STARTS.invokeExact(encode(arena, request),
+                    arena.allocateFrom(JAVA_INT, candidates), count, output));
             return output.toArray(JAVA_INT);
         } catch (Throwable error) { throw failure(error); }
     }

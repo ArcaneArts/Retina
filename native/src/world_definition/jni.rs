@@ -1,7 +1,7 @@
 //! Java 17 transport. The C ABI owns validation, world handles and engine work.
 use super::ffi::*;
 use crate::{
-    ChunkRequest, gpu_backend::retina_configure_gpu_backend, queries::retina_query_points,
+    ChunkRequest, gpu_backend::retina_configure_gpu_backend, queries::{retina_query_points, retina_query_structure_starts},
     region::RegionReport, retina_flush_pipeline_caches, retina_free_bytes, retina_last_error,
     retina_sample_biomes_u16, startup::retina_configure_debug,
 };
@@ -420,6 +420,55 @@ extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_pointsNati
         })?;
         let result = env.new_int_array(count)?;
         env.set_int_array_region(&result, 0, &biomes)?;
+        Ok(result.into_raw())
+    })
+}
+
+#[unsafe(no_mangle)]
+extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_structureStartsNative(
+    env: JNIEnv,
+    _class: JClass,
+    seed: jlong,
+    x: jint,
+    z: jint,
+    min_y: jint,
+    height: jint,
+    base_height: jfloat,
+    amplitude: jfloat,
+    frequency: jfloat,
+    profile: jint,
+    candidates: JIntArray,
+) -> jintArray {
+    call(env, ptr::null_mut(), |env| {
+        let length = env.get_array_length(&candidates)?;
+        if length % 3 != 0 || length > 3 * 64 {
+            return Err("Invalid structure start batch".into());
+        }
+        let request = ChunkRequest {
+            seed: seed as u64,
+            chunk_x: x,
+            chunk_z: z,
+            min_y,
+            height: height as u32,
+            base_height,
+            amplitude,
+            frequency,
+            reserved: profile as u32,
+        };
+        let count = length / 3;
+        let mut input = vec![0; length as usize];
+        env.get_int_array_region(&candidates, 0, &mut input)?;
+        let mut starts = vec![-1; count as usize];
+        check(unsafe {
+            retina_query_structure_starts(
+                &request,
+                input.as_ptr().cast(),
+                count as u64,
+                starts.as_mut_ptr(),
+            )
+        })?;
+        let result = env.new_int_array(count)?;
+        env.set_int_array_region(&result, 0, &starts)?;
         Ok(result.into_raw())
     })
 }

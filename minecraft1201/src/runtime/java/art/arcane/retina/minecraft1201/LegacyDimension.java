@@ -25,6 +25,7 @@ final class LegacyDimension implements AutoCloseable {
     final int seaLevel;
     final int spawnHeight;
     final boolean hasStructures;
+    final LegacyStructureLocator locator;
     final List<Holder<Biome>> biomes;
     private final String key;
     private final NativeWorldDefinition definition;
@@ -63,6 +64,7 @@ final class LegacyDimension implements AutoCloseable {
         chunks = new GenerationCache<>(64, parallel);
         biomeGrids = new GenerationCache<>(128, parallel);
         definition.bindDimension(key, 2);
+        locator = hasStructures ? new LegacyStructureLocator(definition, key, profile) : null;
         regions = new LegacyRegionCoordinator(definition, key, regionBudget);
     }
 

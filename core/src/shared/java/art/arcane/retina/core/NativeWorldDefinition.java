@@ -94,6 +94,15 @@ public final class NativeWorldDefinition implements AutoCloseable {
         return TRANSPORT.biomePoints(request(key, 0, 0), xyz);
     }
 
+    /** Chunk X, chunk Z and saved set index triples. Returns saved definition indexes or -1. */
+    public int[] structureStarts(String key, int[] candidates) {
+        if (candidates.length % 3 != 0 || candidates.length / 3 > 64) {
+            throw new IllegalArgumentException("Invalid structure start batch");
+        }
+        if (candidates.length == 0) return new int[0];
+        return TRANSPORT.structureStarts(request(key, 0, 0), candidates);
+    }
+
     /** Explicit QA/diagnostic output, decoded from the same loaded file without rereading it. */
     public synchronized String diagnosticProfile(String key) {
         return TRANSPORT.diagnosticProfile(openHandle(), key);
