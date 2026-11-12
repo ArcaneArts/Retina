@@ -83,6 +83,8 @@ public final class RegistryExport {
         if (verifyAzaleas) RootedAzaleaVerification.pack(packFolder);
         boolean verifySculk = Arrays.asList(args).contains("--verify-sculk-patches");
         if (verifySculk) SculkPatchVerification.pack(packFolder);
+        boolean verifyMasks = Arrays.asList(args).contains("--verify-carving-masks");
+        if (verifyMasks) CarvingMaskVerification.pack(packFolder);
         try (var loaded = load(packFolder, preset)) {
             export(world, seed, started, noise, preset, loaded, structures, verify);
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
@@ -103,6 +105,7 @@ public final class RegistryExport {
             if (verifyFossils) OverworldFossilVerification.verify(world);
             if (verifyAzaleas) RootedAzaleaVerification.verify(world);
             if (verifySculk) SculkPatchVerification.verify(world);
+            if (verifyMasks) CarvingMaskVerification.verify(world, loaded);
         }
     }
 

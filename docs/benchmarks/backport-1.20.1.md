@@ -1982,3 +1982,51 @@ and 3,435 on revision 558. An eight-process repeat with two warmups
 and six measured regions matched all 6,144 payloads per comparison.
 Its medians were 3,882 and 4,086 chunks/s, respectively, with
 overlapping ranges. The initial slowdown did not reproduce.
+
+### Cave seagrass and carving stages
+
+Minecraft 1.20.1 cave seagrass streams the liquid carving mask.
+The adapter checks the effective carver lists across the dimension's
+possible biomes. A stage with no carvers normalizes to zero placements
+in the saved definition. A nonempty stage continues to report the
+specific unsupported carving-mask placement. Air carving and density
+cavities never substitute for a liquid mask.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyCarvingMasks \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Repeat with CPU in a fresh directory. Both backends passed a loaded
+datapack with air carvers and an empty liquid stage, and a control
+with a registered liquid carver. The verifier exercised Minecraft's
+mask stream, checked the saved placement and omission records, and
+read the resulting chunks with the 1.20.1 NBT reader. Ordinary
+decoration placed its marker in both dimensions. Neither mask
+emitted a phantom placement.
+
+The stock verifier accounted for all 121 non-ore Overworld roots
+with zero placement omissions. The three first-round regions from
+the Overworld, Nether and End matched all 3,072 chunk payloads from
+revision 558.
+
+Revision 559 passed all 15 catalog parity cases and the three legacy
+band cases. Fabric, Forge and Spigot on Java 17 generated and reopened
+the saved sculk fixture, including its default block entities and
+an edit. The 26.3 universal JAR passed packaged Metal catalog loading
+and installed Fabric, NeoForge and Spigot create/reopen tests. The
+modern tests generated and saved edits in all three dimensions.
+
+Linux x64 and Windows x64 were cross-compiled with Cargo Zigbuild
+and Cargo Xwin. The two release-line staging commands accepted all
+four JARs. Each JAR contains identical native bytes for macOS ARM64,
+Linux x64 and Windows x64, with its own Minecraft catalog and loader
+metadata. Release unit tests, workflow lint and the real Gradle
+promotion test against disposable Git refs passed.
+
+The separate macOS `vulkan-portability` build reached the MoltenVK
+adapter in a direct native probe and lost the device before a terrain
+submission. The Java datagen Vulkan attempt used CPU fallback. Metal
+and CPU results above are the local generation evidence. Windows GPU
+execution remains unverified.

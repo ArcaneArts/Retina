@@ -35,6 +35,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BambooLeaves;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
+import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
@@ -66,6 +67,7 @@ import net.minecraft.world.level.material.Fluids;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.EnumSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -106,6 +108,7 @@ final class LegacyOverworldFeatures {
     private final TreeSet<String> approximations = new TreeSet<>();
     private final LegacyFeatureTicks ticks = new LegacyFeatureTicks();
     private final List<JsonArray> poolWaterlogging = new ArrayList<>();
+    private final EnumSet<GenerationStep.Carving> emptyCarvingStages = EnumSet.noneOf(GenerationStep.Carving.class);
     private boolean surfaceFreeze;
     private boolean surfaceFluidTicks;
 
@@ -134,6 +137,13 @@ final class LegacyOverworldFeatures {
     void export(RegistryAccess registries, List<Holder<Biome>> sourceOrder, List<Holder<Biome>> biomes,
                 JsonArray biomeEntries, JsonObject world, Function<Holder<Biome>, BiomeGenerationSettings> settings,
                 Predicate<PlacedFeature> deferredLayer) {
+        emptyCarvingStages.clear();
+        for (var stage : GenerationStep.Carving.values()) {
+            // Noise carvers can enter from neighboring chunks. Consider the entire biome source.
+            if (sourceOrder.stream().noneMatch(biome -> settings.apply(biome).getCarvers(stage).iterator().hasNext())) {
+                emptyCarvingStages.add(stage);
+            }
+        }
         var features = registries.registryOrThrow(Registries.PLACED_FEATURE);
         var steps = FeatureSorter.buildFeaturesPerStep(sourceOrder, biome -> settings.apply(biome).features(), true);
         var recipes = new JsonArray();
@@ -666,7 +676,7 @@ final class LegacyOverworldFeatures {
 
     private JsonArray placement(PlacedFeature feature, boolean nested) {
         var program = LegacyFeaturePlacement.encode(feature, ops);
-        LegacyFeaturePlacement.bindOverworld(program, context, predicates, nested);
+        LegacyFeaturePlacement.bindOverworld(program, context, predicates, emptyCarvingStages, nested);
         return program;
     }
 
