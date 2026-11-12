@@ -176,7 +176,7 @@ final class LegacyTerrainProfile {
         // complete palette so ore replacement masks and predicates agree.
         if (predicates != null) predicates.finish(palette);
         if (overworld != null) overworld.finish(world);
-        WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight());
+        WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight(), overworld != null);
         return world;
     }
 

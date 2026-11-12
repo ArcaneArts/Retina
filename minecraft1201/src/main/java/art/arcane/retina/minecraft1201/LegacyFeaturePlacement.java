@@ -132,11 +132,16 @@ final class LegacyFeaturePlacement {
         return provider;
     }
 
-    static JsonObject recipe(String source, int step, int order, JsonArray placement, JsonObject feature, int reach) {
+    static long salt(String source, int step) {
         long salt = 0xcbf29ce484222325L;
         for (byte value : ("step/" + step + "/" + source).getBytes(StandardCharsets.UTF_8)) {
             salt = (salt ^ Byte.toUnsignedInt(value)) * 0x100000001b3L;
         }
+        return salt;
+    }
+
+    static JsonObject recipe(String source, int step, int order, JsonArray placement, JsonObject feature, int reach) {
+        long salt = salt(source, step);
         var recipe = new JsonObject();
         recipe.add("kind", feature.get("kind"));
         recipe.addProperty("source", source);
