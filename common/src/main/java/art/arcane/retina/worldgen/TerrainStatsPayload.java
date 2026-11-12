@@ -38,9 +38,9 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         buffer.writeVarLong(stats.previewRegions());
         buffer.writeVarLong(stats.previewCacheHits());
         buffer.writeVarLong(stats.promotions());
-        stats.stages().write(buffer);
+        writeTimings(buffer, stats.stages());
         buffer.writeVarInt(stats.regionSamples());
-        stats.regionStages().write(buffer);
+        writeTimings(buffer, stats.regionStages());
         buffer.writeDouble(stats.columnCacheMs());
         buffer.writeDouble(stats.completedChunksPerSecond());
         buffer.writeDouble(stats.completionWindowSeconds());
@@ -54,7 +54,25 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         String mode = buffer.readUtf(16);
         return new TerrainStatsPayload(active, backend, mode, new GenerationMetrics.Snapshot(
                 buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(),
-                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), NativeTimings.read(buffer),buffer.readVarInt(),NativeTimings.read(buffer),buffer.readDouble(),buffer.readDouble(),buffer.readDouble()),NativeGpuDiagnostics.read(buffer),buffer.readUtf());
+                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), readTimings(buffer),buffer.readVarInt(),readTimings(buffer),buffer.readDouble(),buffer.readDouble(),buffer.readDouble()),NativeGpuDiagnostics.read(buffer),buffer.readUtf());
+    }
+
+    private static void writeTimings(RegistryFriendlyByteBuf buffer, NativeTimings timings) {
+        buffer.writeVarInt(timings.flags());
+        buffer.writeVarLong(timings.chunks());
+        buffer.writeVarLong(timings.gpuColumns());
+        buffer.writeVarLong(timings.gpuJobs());
+        for (int stage = 0; stage < NativeTimings.STAGES; stage++) buffer.writeVarLong(timings.nanos(stage));
+    }
+
+    private static NativeTimings readTimings(RegistryFriendlyByteBuf buffer) {
+        int flags = buffer.readVarInt();
+        long chunks = buffer.readVarLong();
+        long columns = buffer.readVarLong();
+        long jobs = buffer.readVarLong();
+        long[] stages = new long[NativeTimings.STAGES];
+        for (int stage = 0; stage < stages.length; stage++) stages[stage] = buffer.readVarLong();
+        return new NativeTimings(flags, chunks, columns, jobs, stages);
     }
 
     @Override

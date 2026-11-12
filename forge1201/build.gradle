@@ -59,6 +59,7 @@ dependencies {
 sourceSets.main {
     java.srcDirs file("${repo}/minecraft1201/src/main/java"),
             file("${repo}/minecraft1201/src/runtime/java"),
+            file("${repo}/minecraft1201/src/client/java"),
             file("${repo}/definition/src/main/java"),
             file("${repo}/common/src/main/java/art/arcane/retina/config")
     resources.srcDir file("${repo}/minecraft1201/src/main/resources")
