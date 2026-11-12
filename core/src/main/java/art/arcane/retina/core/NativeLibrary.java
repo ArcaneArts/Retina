@@ -13,6 +13,9 @@ import java.util.Locale;
 /** One library image shared by definition I/O and the GPU bridge. Loading is GPU-independent. */
 public final class NativeLibrary {
     private NativeLibrary() { }
+
+    static DefinitionTransport definitionTransport() { return FfmDefinitionTransport.INSTANCE; }
+
     private static int allowedBackends = 7;
     private static boolean backendFrozen;
     private static boolean debug;
