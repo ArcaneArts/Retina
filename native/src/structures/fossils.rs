@@ -1,4 +1,4 @@
-//! Nether fossil floor search and positional dried-ghast placement over native columns.
+//! Nether fossil floor search and optional positional dried-ghast placement over native columns.
 use super::*;
 use crate::decoration::placement_height::{HeightProvider, HeightRandom};
 
@@ -11,7 +11,11 @@ pub struct Profile {
     pub templates: Vec<usize>,
     pub floor: Vec<u16>,
     pub air: Vec<u16>,
-    pub dried_ghast: [u16; 4],
+    pub dried_ghast: Option<[u16; 4]>,
+    #[serde(default)]
+    pub structure_context_random: bool,
+    #[serde(default)]
+    pub vanilla_piece_nbt: bool,
 }
 impl Profile {
     pub(super) fn validate(&self, p: &super::Profile, materials: usize) -> Result<(), String> {
@@ -21,7 +25,7 @@ impl Profile {
                 .floor
                 .iter()
                 .chain(&self.air)
-                .chain(&self.dried_ghast)
+                .chain(self.dried_ghast.iter().flatten())
                 .any(|&id| id as usize >= materials)
         {
             return Err("invalid Nether fossil templates or materials".into());
@@ -76,6 +80,9 @@ fn begin(
     definition: usize,
     mut random: Random,
 ) -> Result<(Random, i32, i32, i32), String> {
+    if profile.structures.fossils.as_ref().is_some_and(|kit| kit.structure_context_random) {
+        random = super::cities::context_random(request.seed, [request.chunk_x, request.chunk_z]);
+    }
     let x = random.int(16) as i32;
     let z = random.int(16) as i32;
     let height: HeightProvider =
@@ -335,6 +342,7 @@ pub(super) fn dried_ghast(
     request: ChunkRequest,
     blocks: &mut [u16],
 ) -> Option<usize> {
+    let materials = kit.dried_ghast.as_ref()?;
     let b = piece.bounds;
     let center = std::array::from_fn(|i| b[i] + (b[i + 3] - b[i] + 1) / 2);
     let mut random = Random::new(Random::new(request.seed).long() ^ position_seed(center));
@@ -357,6 +365,6 @@ pub(super) fn dried_ghast(
     if !kit.air.contains(&blocks[index]) {
         return None;
     }
-    blocks[index] = kit.dried_ghast[random.int(4) as usize];
+    blocks[index] = materials[random.int(4) as usize];
     Some(index)
 }

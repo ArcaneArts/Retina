@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -19,6 +20,8 @@ import net.minecraft.world.level.levelgen.WorldGenerationContext;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
@@ -26,7 +29,8 @@ import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
 final class LegacyTerrainProfile {
     private LegacyTerrainProfile() { }
 
-    static JsonObject compile(RegistryAccess registries, LevelStem stem, NoiseBasedChunkGenerator generator, long seed) {
+    static JsonObject compile(RegistryAccess registries, LevelStem stem, NoiseBasedChunkGenerator generator, long seed,
+                              boolean structures, Function<ResourceLocation, Optional<CompoundTag>> templates) {
         var type = stem.type().value();
         var settings = generator.generatorSettings().value();
         var storage = LevelHeightAccessor.create(type.minY(), type.height());
@@ -170,9 +174,13 @@ final class LegacyTerrainProfile {
             overworld.export(registries, sourceOrder, biomeProfile.biomes(), biomeEntries, world);
             overworld.reserveWaterlogging();
         }
+        if (structures && type.hasCeiling()) {
+            world.add("structures", LegacyNetherFossils.export(registries, biomeProfile.biomes(), palette, context, templates));
+        }
         LegacyGeologyProfile.export(registries, biomeProfile, world, palette, context, storage,
                 type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
-        // Geology has added its output states. Both compilers bind against the
+        LegacyNetherFossils.finish(world.getAsJsonObject("structures"), palette);
+        // Geology and structures have added their output states. Both compilers bind against the
         // complete palette so ore replacement masks and predicates agree.
         if (predicates != null) predicates.finish(palette);
         if (overworld != null) overworld.finish(world);

@@ -911,3 +911,48 @@ ship frame. Single region runs took 162 ms with each library.
 The 1.20.1 structure exporter covers End cities in this cycle.
 Placement exclusions, entities embedded in custom city templates,
 and the native structure locator remain open.
+
+## Nether fossils
+
+The structure-enabled 1.20.1 catalogs now contain all 14 loaded
+Nether fossil templates and their registered random-spread placement.
+The End city and fossil exporters share the registry-to-placement
+translation and typed template NBT. Nether fossil height anchors
+resolve against the generator's 128-block volume. Native placement
+uses the structure context random stream and the generated Retina
+terrain for the cavern floor. Saved starts use Minecraft's
+`minecraft:nefos` piece codec. Dried ghasts remain available for
+profiles that supply their material states.
+
+Run `./gradlew :minecraft1201:exportNoiseTerrain -PretinaGenerateStructures -PretinaVerifyNoiseTerrain`
+with the Java 17 toolchain and host native library as above.
+Seed 12345 Nether region `1,0` contained four fossil starts and
+41 rotated bone blocks. The reader verified each start and the
+region reopened with all 1,024 records preserved.
+
+Copy `minecraft1201/src/datagen/fixtures/nether-fossil-pack` into a
+fresh world's `datapacks` directory and repeat. The loaded
+salt of 7310027 and fixed Soul Sand Valley biome produced 68 starts
+and 867 rotated bone blocks. Of those blocks, 197 crossed a chunk
+boundary and retained the reference to their start. The 47 starts
+accepted by both the reference planner and Retina agreed on
+horizontal origin, rotation, and template. One also matched the
+exact floor height. The stock Nether sample's four starts used
+Retina cavern and biome locations outside the reference placements
+in that region.
+
+CPU and Metal matched all 1,024 structure compounds in the
+fixed-biome region and 1,021 of its complete uncompressed records.
+The verified region runs took 1.26 s on Metal and 22.49 s on CPU
+under separate local loads. On the 26.3 Nether region `0,0`,
+both libraries produced all 1,024 decoded records identically,
+including 15 fossils. The Metal runs took 869 and 851 ms.
+
+The packaged Java 17 Fabric server generated and reopened the
+stock-catalog fossil in chunk `46,18`. Forge exported the loaded
+datapack and reopened the start at `-20,4` and its cross-chunk
+reference in `-20,3`. In both cases the live server verified the
+bone block and retained the saved definition through restart.
+All 15 catalog parity cases passed. The four local JARs share
+the same native library. The default Bukkit catalog remains
+structure-disabled.
