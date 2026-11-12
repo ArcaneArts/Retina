@@ -67,6 +67,8 @@ public final class RegistryExport {
         if (verifyCoral) CoralVerification.pack(packFolder);
         boolean verifyFormations = Arrays.asList(args).contains("--verify-surface-formations");
         if (verifyFormations) SurfaceFormationVerification.pack(packFolder);
+        boolean verifyDripstone = Arrays.asList(args).contains("--verify-dripstone");
+        if (verifyDripstone) DripstoneVerification.pack(packFolder);
         try (var loaded = load(packFolder, preset)) {
             export(world, seed, started, noise, preset, loaded, structures, verify);
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
@@ -79,6 +81,7 @@ public final class RegistryExport {
             if (verifySubmerged) SubmergedVerification.verify(world);
             if (verifyCoral) CoralVerification.verify(world);
             if (verifyFormations) SurfaceFormationVerification.verify(world);
+            if (verifyDripstone) DripstoneVerification.verify(world);
         }
     }
 

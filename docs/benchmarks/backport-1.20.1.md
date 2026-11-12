@@ -1589,3 +1589,44 @@ the bundled definition and generated the same blue ice and mossy
 cobblestone samples as headless generation of that file. The Spigot
 fixture skipped spawn preloading to isolate those requests. The
 first cold force-load reported 76.8 seconds of tick delay.
+
+### Dripstone caves
+
+The 1.20.1 exporter preserves the loaded pointed-dripstone
+selector, cluster providers and large-column configuration. The
+shared engine scans the live cave floor and ceiling. Pointed
+dripstone uses the loaded support tag, both tip directions and
+waterlogging. Clusters replace support layers, form floor pools
+and can join opposing tips. Large columns anchor into the roof
+and floor and use the configured radius, height and wind. The
+recipes use Retina's seeded decoration stream.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyDripstone \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Run again in a fresh directory with `-PretinaGpuBackend=cpu`. The
+fixture adds quartz to the support tag and reads the generated
+chunks using the 1.20.1 region and palette readers. It verifies
+two directions and waterlogging for tall pointed growth, all five
+thickness states, merged tips, floor pools, wind beyond the base
+radius and two rejected placements. It also exercises signed
+trapezoid and clamped-normal provider parameters. The six regions
+reopened with all 6,144 chunk payloads identical between CPU and Metal. All
+1,024 chunks in the 26.3 regression region matched revision 549.
+
+The stock Overworld now exports 110 non-ore roots with 11
+omissions. Seed `12345` in region `0,1` generated dripstone
+blocks in 651 chunks and pointed dripstone in 614. That included
+waterlogged tips or segments in 172 chunks and merged tips in 138.
+The revision 549 definition contained neither dripstone material in
+that region.
+
+Packaged Java 17 Fabric and Forge verified four cave samples
+and preserved the definition and a player edit after restart.
+Spigot created the bundled definition and delivered the expected
+upward tip and waterlogging state from that definition. With
+spawn preloading disabled for the test, its first cold force-load
+reported 81.9 seconds of tick delay.

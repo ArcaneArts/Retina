@@ -1,6 +1,7 @@
 //! Registered surface patches with ordered, shared-stream nested feature replay.
 //! The resident GPU substrate supplies spatial terrain; Rust handles local writes.
 use super::*;
+pub(super) mod dripstone;
 pub(super) mod nether;
 pub(super) mod formation;
 use blocks::{ColumnRecipe, Provider};
@@ -101,6 +102,7 @@ pub enum Feature {
     NetherFeature { nether: nether::Feature },
     Submerged { submerged: submerged::Recipe },
     SurfaceFormation { formation: formation::Recipe },
+    Dripstone { dripstone: dripstone::Recipe },
     Disk {
         #[serde(flatten)]
         disk: Disk,
@@ -162,6 +164,7 @@ impl Placed {
                 Feature::NetherFeature { nether } => nether.validate(palette),
                 Feature::Submerged { submerged } => submerged.validate(palette),
                 Feature::SurfaceFormation { formation } => formation.validate(palette),
+                Feature::Dripstone { dripstone } => dripstone.validate(palette),
                 Feature::Disk { disk } => disk.validate(palette),
                 Feature::Sequence { features } | Feature::Overlay { features } => {
                     !features.is_empty() && features.iter().all(|v| v.validate(palette))
@@ -330,6 +333,7 @@ impl World<'_> {
             Feature::NetherFeature { nether } => nether.place(self, at, rng),
             Feature::Submerged { submerged } => submerged.place(self, at, rng),
             Feature::SurfaceFormation { formation } => formation.place(self, at, rng),
+            Feature::Dripstone { dripstone } => dripstone.place(self, at, rng),
             Feature::Disk { disk } => self.disk(disk, at, rng),
             Feature::Sequence { features } => self.composite(features, true, at, rng),
             Feature::Overlay { features } => self.composite(features, false, at, rng),
@@ -812,6 +816,7 @@ pub(super) fn place_registered(
         Kind::NetherFeature { nether } => nether.place(&mut world, at, rng),
         Kind::Submerged { submerged } => submerged.place(&mut world, at, rng),
         Kind::SurfaceFormation { formation } => formation.place(&mut world, at, rng),
+        Kind::Dripstone { dripstone } => dripstone.place(&mut world, at, rng),
         Kind::Disk { disk } => world.disk(disk, at, rng),
         Kind::Sequence { features } => world.composite(features, true, at, rng),
         Kind::Overlay { features } => world.composite(features, false, at, rng),
