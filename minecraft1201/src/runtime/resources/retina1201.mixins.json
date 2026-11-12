@@ -3,7 +3,7 @@
   "minVersion": "0.8",
   "package": "art.arcane.retina.minecraft1201.mixin",
   "compatibilityLevel": "JAVA_17",
-  "mixins": ["MinecraftServerMixin", "ServerLevelMixin", "LegacyChunkMapMixin", "LegacyIOWorkerMixin", "LegacyRegionFileStorageMixin", "LegacyServerPayloadMixin"],
+  "mixins": ["MinecraftServerMixin", "ServerLevelMixin", "LegacyChunkMapMixin", "LegacyIOWorkerMixin", "LegacyRegionFileStorageMixin", "LegacyServerPayloadMixin", "LegacyChunkyTaskMixin"],
   "client": ["LegacyClientPayloadMixin", "LegacyDebugOverlayMixin"],
   "injectors": { "defaultRequire": 1 }
 }

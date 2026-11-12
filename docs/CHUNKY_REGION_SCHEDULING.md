@@ -104,3 +104,17 @@ that lane. Run `:fabric:test --tests art.arcane.retina.compat.ChunkyStartupTest`
 without the property to exercise it separately. Both lanes passed in the
 [combined validation](OPTIMIZATION_INTEGRATION_2026_10.md); production startup and
 error handling are unchanged.
+
+## Minecraft 1.20.1
+
+Retina uses the same selection iterator and region pump on Fabric and Forge.
+Use the respective [Fabric 1.3.146](https://modrinth.com/plugin/chunky/version/NHWYq9at)
+or [Forge 1.3.146](https://modrinth.com/plugin/chunky/version/4FTDk9wv) build of
+Chunky. Chunky on Fabric also requires Fabric API. Retina works without Chunky
+installed.
+
+The 1.20.1 pump fills empty slots through the same serialized region I/O as
+regular generation. It checks the live Anvil header for complete regions,
+preserves existing records when filling partial regions, and lets ordinary
+Minecraft loads finish individual chunks. Pausing or cancelling the Chunky task
+stops ahead admission. Chunky's own queued chunk requests may still finish.

@@ -29,7 +29,7 @@ def regionPreparationClasses = tasks.register('regionPreparationClasses', JavaCo
             rootProject.file('core/src/shared/java/art/arcane/retina/core/RegionLoadScheduler.java'),
             rootProject.file('core/src/shared/java/art/arcane/retina/core/NativeRegionBudget.java'),
             file('src/main/java/art/arcane/retina/worldgen/RegionGenerationBudget.java'),
-            file('src/main/java/art/arcane/retina/worldgen/RegionAheadPump.java'),
+            rootProject.file('core/src/shared/java/art/arcane/retina/worldgen/RegionAheadPump.java'),
             file('src/gpuTest/java/art/arcane/retina/worldgen/RegionAheadPumpTest.java'),
             file('src/gpuTest/java/art/arcane/retina/worldgen/RegionGenerationBudgetTest.java'),
             file('src/gpuTest/java/art/arcane/retina/worldgen/ConfiguredRegionBudgetTest.java'),
