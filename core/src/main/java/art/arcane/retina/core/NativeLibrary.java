@@ -4,123 +4,66 @@ import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
-import java.lang.foreign.ValueLayout;
 import java.lang.foreign.SymbolLookup;
-import java.nio.file.Files;
+import java.lang.invoke.MethodHandle;
 import java.nio.file.Path;
-import java.util.Locale;
 
-/** One library image shared by definition I/O and the GPU bridge. Loading is GPU-independent. */
+import static java.lang.foreign.ValueLayout.JAVA_INT;
+
+/** FFM entry point. Definition I/O and terrain calls use one image. */
 public final class NativeLibrary {
     private NativeLibrary() { }
 
     static DefinitionTransport definitionTransport() { return FfmDefinitionTransport.INSTANCE; }
 
-    private static int allowedBackends = 7;
-    private static boolean backendFrozen;
-    private static boolean debug;
-
-    /** Configure diagnostics before native initialization, without loading the library. */
-    public static synchronized void configureDebug(boolean enabled) {
-        if (backendFrozen && enabled != debug)
-            throw new IllegalStateException("Restart Retina to change debug logging");
-        debug = enabled;
+    public static void configureDebug(boolean enabled) {
+        NativeLibraryState.configureDebug(enabled);
     }
 
-    /** Set before native loading; does not load the library or probe hardware. */
-    public static synchronized void allowGpuBackends(boolean directx, boolean metal, boolean vulkan) {
-        int mask = (vulkan ? 1 : 0) | (directx ? 2 : 0) | (metal ? 4 : 0);
-        if (backendFrozen && mask != allowedBackends)
-            throw new IllegalStateException("Retina GPU backends already configured; restart to change them");
-        allowedBackends = mask;
+    public static void allowGpuBackends(boolean directx, boolean metal, boolean vulkan) {
+        NativeLibraryState.allowGpuBackends(directx, metal, vulkan);
     }
 
     static int backendSelection(int allowed, String override) {
-        int selected = override == null ? 0 : backendCode(override);
-        int mask = selected == 0 ? 7 : selected == 4 ? 0 : 1 << (selected - 1);
-        // Empty is intentional: never enable a backend excluded by configuration.
-        return 0x100 | (allowed & mask);
-    }
-    private static final class Holder {
-        static final Path IMAGE = extract();
-        static final SymbolLookup SYMBOLS = configuredSymbols(IMAGE);
-    }
-    public static SymbolLookup symbols() { return Holder.SYMBOLS; }
-
-    private static synchronized SymbolLookup configuredSymbols(Path image) {
-        SymbolLookup symbols = SymbolLookup.libraryLookup(image, Arena.global());
-        String backend = System.getProperty("retina.gpuBackend", System.getenv("RETINA_GPU_BACKEND"));
-        int code = backendSelection(allowedBackends, backend);
-        backendFrozen = true;
-        var configure = Linker.nativeLinker().downcallHandle(
-                symbols.findOrThrow("retina_configure_gpu_backend"),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
-        try {
-            int result = (int) configure.invokeExact(code);
-            if (result != 0) throw new IllegalStateException("Retina GPU backend could not be configured; restart to change it");
-        } catch (RuntimeException | Error error) { throw error; }
-        catch (Throwable error) { throw new IllegalStateException("Could not configure Retina GPU backend", error); }
-        var diagnostics = Linker.nativeLinker().downcallHandle(
-                symbols.findOrThrow("retina_configure_debug"),
-                FunctionDescriptor.ofVoid(ValueLayout.JAVA_INT));
-        try { diagnostics.invokeExact(debug ? 1 : 0); }
-        catch (Throwable error) { throw new IllegalStateException("Could not configure Retina diagnostics", error); }
-        var flush = Linker.nativeLinker().downcallHandle(
-                symbols.findOrThrow("retina_flush_pipeline_caches"), FunctionDescriptor.ofVoid());
-        try {
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                try { flush.invokeExact(); }
-                catch (Throwable error) { System.err.println("Retina cache shutdown flush failed: " + error); }
-            }, "retina-cache-shutdown"));
-        } catch (IllegalStateException shuttingDown) {
-            // Loading during JVM shutdown must still permit the requested native call.
-        }
-        return symbols;
+        return NativeLibraryState.backendSelection(allowed, override);
     }
 
     static int backendCode(String value) {
-        return switch (value.trim().toLowerCase(Locale.ROOT)) {
-            case "auto" -> 0;
-            case "vulkan" -> 1;
-            case "dx12" -> 2;
-            case "metal" -> 3;
-            case "cpu" -> 4;
-            default -> throw new IllegalArgumentException("Unknown retina.gpuBackend: " + value
-                    + "; use auto, cpu, vulkan, dx12 or metal");
-        };
+        return NativeLibraryState.backendCode(value);
     }
 
-    /** Digest of the selected native image, including an explicit development override. */
+    private static final class Holder {
+        static final Path IMAGE = NativeLibraryState.extract();
+        static final SymbolLookup SYMBOLS = configuredSymbols(IMAGE);
+    }
+
+    public static SymbolLookup symbols() { return Holder.SYMBOLS; }
+
     public static byte[] imageDigest() throws IOException {
-        try {
-            var digest = java.security.MessageDigest.getInstance("SHA-256");
-            try (var input = new java.security.DigestInputStream(Files.newInputStream(Holder.IMAGE), digest)) {
-                input.transferTo(java.io.OutputStream.nullOutputStream());
-            }
-            return digest.digest();
-        } catch (java.security.NoSuchAlgorithmException impossible) { throw new AssertionError(impossible); }
+        return NativeLibraryState.imageDigest(Holder.IMAGE);
     }
 
-    private static Path extract() {
-        String override = System.getProperty("retina.native.path");
-        if (override != null) return Path.of(override).toAbsolutePath();
-        String osName = System.getProperty("os.name").toLowerCase(Locale.ROOT);
-        String os = osName.contains("mac") ? "macos" : osName.contains("win") ? "windows" : "linux";
-        String archName = System.getProperty("os.arch").toLowerCase(Locale.ROOT);
-        String arch = switch (archName) {
-            case "aarch64", "arm64" -> "aarch64";
-            case "amd64", "x86_64" -> "x86_64";
-            default -> archName;
-        };
-        String name = System.mapLibraryName("retina_worldgen");
-        String resource = "/natives/" + os + "-" + arch + "/" + name;
-        try (var stream = NativeLibrary.class.getResourceAsStream(resource)) {
-            if (stream == null) throw new IllegalStateException("Native library is not packaged for " + os + "-" + arch + ": " + resource);
-            Path directory = Files.createTempDirectory("retina-native-");
-            Path library = directory.resolve(name);
-            Files.copy(stream, library);
-            directory.toFile().deleteOnExit(); library.toFile().deleteOnExit();
-            return library;
-        } catch (IOException error) { throw new IllegalStateException("Could not load Retina's native library", error); }
+    private static SymbolLookup configuredSymbols(Path image) {
+        SymbolLookup symbols = SymbolLookup.libraryLookup(image, Arena.global());
+        Linker linker = Linker.nativeLinker();
+        MethodHandle backend = linker.downcallHandle(symbols.findOrThrow("retina_configure_gpu_backend"),
+                FunctionDescriptor.of(JAVA_INT, JAVA_INT));
+        MethodHandle diagnostics = linker.downcallHandle(symbols.findOrThrow("retina_configure_debug"),
+                FunctionDescriptor.ofVoid(JAVA_INT));
+        MethodHandle flush = linker.downcallHandle(symbols.findOrThrow("retina_flush_pipeline_caches"),
+                FunctionDescriptor.ofVoid());
+        NativeLibraryState.configure(code -> {
+            try { return (int) backend.invokeExact(code); }
+            catch (RuntimeException | Error error) { throw error; }
+            catch (Throwable error) { throw new IllegalStateException("Could not configure Retina GPU backend", error); }
+        }, enabled -> {
+            try { diagnostics.invokeExact(enabled); }
+            catch (Throwable error) { throw new IllegalStateException("Could not configure Retina diagnostics", error); }
+        }, () -> {
+            try { flush.invokeExact(); }
+            catch (RuntimeException | Error error) { throw error; }
+            catch (Throwable error) { throw new IllegalStateException("Could not flush Retina pipeline caches", error); }
+        });
+        return symbols;
     }
 }
