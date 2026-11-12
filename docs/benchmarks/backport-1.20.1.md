@@ -147,3 +147,70 @@ including vanilla, flat and datapack exports and typed NBT values. Local
 
 Java 17 compiled the shared source against the Gson 2.10 library from the
 1.20.1 server distribution. Its only dependencies are Gson and `java.base`.
+
+## Minecraft 1.20.1 Flat export and region round trip
+
+`:minecraft1201:exportFlat` runs the 1.20.1 server's world loader on Java 17.
+It selects the effective Flat preset after loading the new world's datapacks
+and writes the result through the shared definition schema. The native engine
+uses the actual saved DataVersion 3465 to encode `Name` and `Properties` in
+chunk block palettes and to require zlib. The saved definition keeps the same
+format and canonical identities as the 26.3 definitions.
+
+The current exporter covers Flat terrain with biome decoration, lakes and
+structure generation disabled. The native Flat model handles ordinary layers
+and deferred fill layers. Other generator types and unsupported options have
+explicit unsupported reasons in the saved file. Noise profiles and loader
+installation are subsequent implementation work.
+
+For a disposable world, point Gradle at a Java 17 installation and a native
+library from this checkout. Leave out `-PretinaVerifyFlat` to export just the
+definition. The verification option generates a region and writes a test edit.
+
+```sh
+world=$(mktemp -d)
+mkdir -p "$world/datapacks"
+cp -R minecraft1201/src/datagen/fixtures/flat-pack "$world/datapacks/retina-flat"
+RETINA_REGION_THREADS=4 RAYON_NUM_THREADS=2 ./gradlew :minecraft1201:exportFlat \
+  "-Porg.gradle.java.installations.paths=$jdk17" "-PretinaNativePath=$library" \
+  "-PretinaWorld=$world" -PretinaSeed=-9223372036854775791 \
+  -PretinaGpuBackend=cpu -PretinaVerifyFlat
+```
+
+Use a fresh directory without the fixture for vanilla. Use
+`-PretinaGpuBackend=metal` for the local macOS Metal run. The ordinary
+26.3 build does not configure the 1.20.1 Loom project.
+
+The local verifier reopened each exported definition with Java 17 JNI, then
+generated region `-1,0`. The 1.20.1 region reader and palette codecs decoded
+all storage sections and checked the block layers, biome identities, six
+heightmaps, light data and chunk status. The test saved a diamond block
+through the same 1.20.1 region writer and verified that native generation
+preserved the edit and all 1,024 records on reopen. Unsupported LZ4 was
+rejected, and the same handle then bound zlib successfully. A second export
+into the same world failed with `FileAlreadyExistsException` and preserved
+the saved bytes.
+
+| Runtime input | Backend | Export including pack load | Generated | Preserved |
+| --- | --- | ---: | ---: | ---: |
+| Vanilla Plains Flat | CPU | 695 ms | 1,024 | 1,024 |
+| Datapack Desert Flat with a deferred torch layer | CPU | 678 ms | 1,024 | 1,024 |
+| Same datapack | Metal | 686 ms | 1,024 | 1,024 |
+
+The standalone Rust binary also generated the datapack region from the same
+saved definition. Its CPU run reported 1,024 generated chunks in 0.981 s.
+Reopening the destination reported 1,024 preserved chunks. The recorded seed
+was `-9223372036854775791` and the version was 3465.
+
+```sh
+RETINA_GPU_BACKEND=cpu RETINA_REGION_THREADS=4 RAYON_NUM_THREADS=2 \
+  "$retina" generate --definition "$world/retina.dat" --dimension minecraft:overworld \
+  --region-min=-1,0 --region-max=-1,0 --output "$output"
+```
+
+The 26.3 world-definition suite passed all eight cases and regenerated both
+catalogs byte for byte after sharing the Flat and lighting table compilers.
+
+The modern universal JAR also passed its packaged CPU smoke test using the
+rebuilt native image. All twelve chunk hashes and both reopened definition
+hashes matched the published 26.3 baseline.

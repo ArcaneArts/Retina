@@ -37,6 +37,8 @@ impl OpenWorld {
         compression: Compression,
         execution: Option<ProgramExecution>,
     ) -> Result<&Arc<WorldSession>, String> {
+        // A rejected codec must not cache a failed session for this handle.
+        self.definition.check_compression(compression)?;
         let session = self
             .session
             .get_or_init(|| {

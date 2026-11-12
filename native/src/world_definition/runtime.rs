@@ -43,6 +43,7 @@ impl WorldSession {
         compression: Compression,
         execution: Option<ProgramExecution>,
     ) -> Result<Arc<Self>, String> {
+        definition.check_compression(compression)?;
         // Construct the owner first so partial registration failure also retires IDs.
         let mut session = Self { engine, definition, _runtime_profiles: Vec::new(),
             dimensions: BTreeMap::new(), compression, execution };

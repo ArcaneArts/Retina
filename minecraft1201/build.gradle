@@ -1,0 +1,37 @@
+plugins { id 'net.fabricmc.fabric-loom-remap' }
+apply from: rootProject.file('gradle/java-toolchain.gradle')
+
+loom { serverOnlyMinecraftJar() }
+tasks.withType(JavaCompile).configureEach { options.release = 17 }
+sourceSets {
+    main.java.srcDir rootProject.file('definition/src/main/java')
+    datagen {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+    }
+}
+dependencies {
+    minecraft 'com.mojang:minecraft:1.20.1'
+    mappings loom.officialMojangMappings()
+    implementation project(':core17')
+}
+
+tasks.register('exportFlat', JavaExec) {
+    group = 'verification'
+    description = 'Export a 1.20.1 Flat world definition from the selected server datapacks.'
+    dependsOn 'datagenClasses'
+    classpath = sourceSets.datagen.runtimeClasspath
+    mainClass = 'art.arcane.retina.minecraft1201.FlatExport'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+    jvmArgs '-Djava.awt.headless=true', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '768m'
+    args providers.gradleProperty('retinaWorld').getOrElse(layout.buildDirectory.dir('flat-export').get().asFile.absolutePath),
+         providers.gradleProperty('retinaSeed').getOrElse('12345')
+    if (providers.gradleProperty('retinaVerifyFlat').isPresent()) args '--verify'
+    if (providers.gradleProperty('retinaNativePath').isPresent()) {
+        systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
+    }
+    if (providers.gradleProperty('retinaGpuBackend').isPresent()) {
+        systemProperty 'retina.gpuBackend', providers.gradleProperty('retinaGpuBackend').get()
+    }
+}

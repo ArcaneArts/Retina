@@ -1,4 +1,4 @@
-use crate::decoration::Recipe;
+use crate::{decoration::Recipe, region::ChunkStorageFormat};
 use bytemuck::{Pod, Zeroable};
 use serde::Deserialize;
 use serde_json::Value;
@@ -155,21 +155,29 @@ impl WorldProfile {
         if profile.terrain_kind == TerrainKind::Procedural {
             return Err("procedural terrain requires the world-definition loader".into());
         }
-        Self::initialize(profile, json.to_vec())
+        Self::initialize(profile, json.to_vec(), ChunkStorageFormat::Modern)
     }
 
     /// The NBT loader supplies decoded values directly. There is no JSON text
     /// serialization or second set of generation validation/initialization rules.
-    pub(crate) fn from_definition(value: Value, identity: Vec<u8>) -> Result<Self, String> {
+    pub(crate) fn from_definition(
+        value: Value,
+        identity: Vec<u8>,
+        data_version: i32,
+    ) -> Result<Self, String> {
         let profile = if value.get("terrain_kind").and_then(Value::as_str) == Some("procedural") {
             procedural::decode(value)?
         } else {
             serde_json::from_value(value).map_err(|e| format!("world profile: {e}"))?
         };
-        Self::initialize(profile, identity)
+        Self::initialize(profile, identity, ChunkStorageFormat::for_data_version(data_version))
     }
 
-    fn initialize(mut profile: Self, identity: Vec<u8>) -> Result<Self, String> {
+    fn initialize(
+        mut profile: Self,
+        identity: Vec<u8>,
+        format: ChunkStorageFormat,
+    ) -> Result<Self, String> {
         if let Some(end) = &profile.end {
             end.validate(profile.materials.len(), profile.biomes.len())?;
             if profile.flat.is_some() || profile.registry_program.is_some() { return Err("End profiles cannot mix flat or registry density terrain".into()); }
@@ -391,7 +399,7 @@ impl WorldProfile {
         profile.material_nbt = profile
             .materials
             .iter()
-            .map(crate::region::material_nbt)
+            .map(|material| crate::region::material_nbt(material, format))
             .collect();
         profile.ore_membership = profile
             .biomes
