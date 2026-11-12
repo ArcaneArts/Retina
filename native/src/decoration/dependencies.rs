@@ -1532,7 +1532,7 @@ impl Planner<'_> {
         blocks: &mut Option<Vec<u16>>,
         #[cfg(test)] probe: &mut column_edit_probe::Prefix,
     ) -> Result<(), String> {
-        if b.role == POST_PROCESS {
+        if matches!(b.role, POST_PROCESS | TICK_ONLY) {
             return Ok(());
         }
         let height = self.request.height as usize;

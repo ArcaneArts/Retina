@@ -167,6 +167,10 @@ final class CatalogExport {
                     omissions.add(StringTag.valueOf("bukkit-api:lake-update-queues:" + recipe.getString("source")));
                 }
             }
+            if (profile.contains("decoration_fluid_ticks")) {
+                profile.remove("decoration_fluid_ticks");
+                omissions.add(StringTag.valueOf("bukkit-api:geode-fluid-queues"));
+            }
             if (!omissions.isEmpty()) profile.put("decoration_omissions", omissions);
             if (removed.isEmpty()) continue;
             for (var row : profile.getList("biomes", Tag.TAG_COMPOUND)) {

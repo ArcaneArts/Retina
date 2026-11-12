@@ -104,6 +104,9 @@ pub struct WorldProfile {
     pub decorations: Vec<Recipe>,
     #[serde(default)]
     pub decoration_ticks: Vec<crate::decoration::ticks::Definition>,
+    /// Optional palette-indexed fluid updates for features that open fluid paths.
+    #[serde(default)]
+    pub decoration_fluid_ticks: Vec<u16>,
     /// Shared loaded survival rules for context-derived SimpleBlock outputs.
     #[serde(default)]
     pub simple_current_states: Vec<Option<crate::decoration::SimpleState>>,
@@ -402,6 +405,14 @@ impl WorldProfile {
         }
         if let Some(program) = &profile.registry_program {
             program.validate(profile.biomes.len())?;
+        }
+        if !profile.decoration_fluid_ticks.is_empty()
+            && (profile.decoration_fluid_ticks.len() != profile.materials.len()
+                || profile.decoration_fluid_ticks.iter().any(|&id| id != 0
+                    && !profile.decoration_ticks.get(id as usize - 1)
+                        .is_some_and(|tick| tick.kind == crate::decoration::ticks::Kind::Fluid)))
+        {
+            return Err("invalid decoration fluid tick palette".into());
         }
         profile.geology.validate(&profile)?;
         profile.terrain_features.validate(&profile)?;

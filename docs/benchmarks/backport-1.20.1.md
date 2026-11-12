@@ -1796,3 +1796,49 @@ matched 3,072 measured payloads in every comparison. The two
 baseline processes recorded 2,577 and 3,192 chunks/s. The two
 candidate processes recorded 3,209 and 3,231 chunks/s. These
 samples are a local regression check.
+
+### Amethyst geodes
+
+The 1.20.1 adapter compiles the loaded geode point providers, layer
+providers, crack rules and protection tags. The shared replay
+generates the cavity and shells with the world-seeded geode noise,
+then places the registered buds with their facing and waterlogging
+properties. Cracks schedule adjacent fluid updates in the owning
+chunk. The bundled Bukkit catalog keeps the geometry and records
+its omission of the fluid update queue.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyGeodes \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Repeat with CPU in a fresh directory. The datapack exercises dry
+and flooded cavities, a weighted inner layer, both tag controls,
+and shape writes across chunk seams. The verifier reads the
+saved blocks and fluid queues through the 1.20.1 region reader
+and compares sampled direct chunks with the region.
+
+CPU and Metal matched all 4,096 fixture chunk payloads. The dry
+fixture produced 5,249 buds. The flooded fixture produced 3,796
+buds, including 3,397 waterlogged states, and 2,325 fluid ticks.
+The two tag controls produced no geode blocks. Stock coverage is
+116 of 121 non-ore Overworld roots. The stock verifier and all 15
+catalog parity cases passed. In seed `12345`, region `-1,0`, the
+normal and Bukkit catalogs generated the same 60,193 geode block
+positions and states. The normal region had 200 fluid ticks from
+all features and the Bukkit region had zero.
+
+Packaged Java 17 Fabric and Forge generated the flooded fixture.
+Spigot imported the dry definition and generated it through the
+public API. Each verified nine saved layer and bud states and
+preserved a player edit across restart. The four revision 555
+JARs carry the same macOS ARM64 native bytes with version-specific
+catalogs. Geode configurations with generation offsets outside
+`-32..32` are reported as unsupported.
+
+All 4,096 payloads from the retained monster-room definition
+matched revision 554. The 26.3 Metal A/B/B/A run matched all
+3,072 measured payloads per comparison. Median process
+throughput was 3,872 chunks/s on revision 554 and 4,107 on
+revision 555. This small sample records the local regression check.
