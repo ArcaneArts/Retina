@@ -956,3 +956,30 @@ bone block and retained the saved definition through restart.
 All 15 catalog parity cases passed. The four local JARs share
 the same native library. The default Bukkit catalog remains
 structure-disabled.
+
+## Structure lookup
+
+The 1.20.1 mod looks up supported structure sets from the world
+definition. For each candidate, loaded or saved starts take
+precedence over the native plan. A read-only locate leaves an
+unexplored region absent on disk. Explorer maps claim a selected
+start through Minecraft and persist its reference count.
+
+Run `scripts/minecraft1201-end-city-test.py` with the packaged mod
+and the seed 12345 headless End region `-7,-2`. On local Java 17
+Fabric and Forge servers, `/locate` found the city at block
+`-3168,-608` before its region existed, then found it again after
+restart. Its 59 saved pieces, cross-chunk reference, ship frame,
+and chest loot matched the headless output. With
+`--explorer-map-pack minecraft1201/src/datagen/fixtures/structure-locate-pack`,
+Forge returned a filled map on the first call and an empty map
+on both the repeat call and restart. The city's saved reference
+count was one. A separate Fabric run with an `INVALID` start
+already saved in that chunk found another city 336 blocks away.
+The single-record test region retained its original membership.
+
+Java 17 datagen verified a 64-candidate JNI batch and the native
+invalid-index error. A Java 25 FFM probe returned the same End city
+and Nether fossil starts for the exported 1.20.1 definition.
+All 15 catalog parity cases passed. On 26.3, a before/after Metal
+run in End region `-7,-2` matched all 1,024 decoded chunks.

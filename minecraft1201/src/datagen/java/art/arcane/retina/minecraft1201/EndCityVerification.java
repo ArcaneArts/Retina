@@ -73,6 +73,7 @@ final class EndCityVerification {
             var config = profile.getAsJsonArray("definitions").get(0).getAsJsonObject().getAsJsonObject("config");
             require(config.get("retina_decoration_index").getAsInt() == index, "loaded city decoration order");
             nativeWorld.bindDimension(DIMENSION, 2);
+            verifyQuery(nativeWorld, origin);
             Path directory = world.resolve("DIM1/region");
             Files.createDirectories(directory);
             Path region = directory.resolve("r." + rx + "." + rz + ".mca");
@@ -88,6 +89,26 @@ final class EndCityVerification {
             result.addProperty("milliseconds", elapsed);
             result.addProperty("placement_salt", salt);
             System.out.println("QA_EVT " + result);
+        }
+    }
+
+    private static void verifyQuery(NativeWorldDefinition world, ChunkPos origin) {
+        int[] candidates = new int[64 * 3];
+        for (int index = 0; index < 64; index++) {
+            candidates[index * 3] = origin.x + index % 2;
+            candidates[index * 3 + 1] = origin.z;
+        }
+        int[] result = world.structureStarts(DIMENSION, candidates);
+        require(result.length == 64, "structure query count");
+        for (int index = 0; index < result.length; index++) {
+            require(result[index] == (index % 2 == 0 ? 0 : -1), "saved city planner candidate " + index);
+        }
+        require(world.structureStarts(DIMENSION, new int[0]).length == 0, "empty structure query");
+        try {
+            world.structureStarts(DIMENSION, new int[]{origin.x, origin.z, -1});
+            throw new AssertionError("invalid structure set accepted");
+        } catch (IllegalStateException expected) {
+            require(expected.getMessage().contains("invalid structure set index"), "structure query error " + expected);
         }
     }
 

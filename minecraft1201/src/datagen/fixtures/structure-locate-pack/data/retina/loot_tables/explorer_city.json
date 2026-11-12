@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:chest",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:map",
+          "functions": [
+            {
+              "function": "minecraft:exploration_map",
+              "destination": "retina:explorer_city",
+              "decoration": "mansion",
+              "zoom": 0,
+              "search_radius": 0,
+              "skip_existing_chunks": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import shutil
 import time
 from argparse import Namespace
 from importlib.util import module_from_spec, spec_from_file_location
@@ -37,6 +38,22 @@ def reference(path):
     raise AssertionError('No End city with a ship and loot chest in the supplied headless region')
 
 
+def locate(server, start):
+    x, z = start['ChunkX'] * 16, start['ChunkZ'] * 16
+    return server.command(f'{END} positioned {x} 100 {z} run locate structure minecraft:end_city',
+                          f'[{x}, ~, {z}]', timeout=45)
+
+
+def explorer_map(server, start, claimed):
+    x, z = start['ChunkX'] * 16 + 1, start['ChunkZ'] * 16 + 1
+    execute = f'{END} positioned {x} 220 {z}'
+    marker = 'minecraft:map' if claimed else 'minecraft:filled_map'
+    selector = '@e[type=minecraft:item,distance=..3,limit=1,sort=nearest]'
+    server.command(f'{execute} run loot spawn ~ ~ ~ loot retina:explorer_city', 'Dropped 1 [', timeout=45)
+    server.command(f'{execute} run data get entity {selector} Item', marker, timeout=15)
+    server.command(f'{execute} run kill {selector}', 'Killed', timeout=15)
+
+
 def sample(server, wait_chunk, start, frame, chest, restart):
     x, y, z = (frame['TileX'], frame['TileY'], frame['TileZ'])
     bx, by, bz = (chest['x'], chest['y'], chest['z'])
@@ -66,6 +83,7 @@ def main():
     loader = parser.add_mutually_exclusive_group(required=True)
     loader.add_argument('--server', type=Path, help='Fabric server launcher JAR')
     loader.add_argument('--forge-install', type=Path, help='Directory produced by the Forge installer')
+    parser.add_argument('--explorer-map-pack', type=Path, help='Also validate the unreferenced explorer map path')
     parser.add_argument('--backend', default='cpu', choices=('cpu', 'metal', 'vulkan'))
     args = parser.parse_args()
     spec = spec_from_file_location('legacy_server', Path(__file__).with_name('minecraft1201-server-test.py'))
@@ -84,26 +102,45 @@ def main():
     directory = args.output.resolve()
     legacy.prepare(args, directory)
     properties = directory / 'server.properties'
-    properties.write_text(properties.read_text().replace('generate-structures=false', 'generate-structures=true'))
+    config = properties.read_text().replace('generate-structures=false', 'generate-structures=true')
     world = directory / 'world'
+    if args.explorer_map_pack:
+        shutil.copytree(args.explorer_map_pack, world / 'datapacks/retina-explorer')
+        config += 'initial-enabled-packs=vanilla,file/retina-explorer\n'
+    properties.write_text(config)
+    expected = start.copy()
+    if args.explorer_map_pack:
+        expected['references'] = 1
     result = {'start': [start['ChunkX'], start['ChunkZ']], 'piece_count': len(start['Children'])}
     for restart in (False, True):
         stage = 'restart' if restart else 'first'
         server = support.Server(Namespace(java=args.java.resolve(), launch_args=command), directory, restart)
         try:
             server.wait('Done (')
-            assert ('from saved-file' if restart else 'from bundled-vanilla') in server.output
+            source = 'saved-file' if restart else 'registry-export' if args.explorer_map_pack else 'bundled-vanilla'
+            assert f'from {source}' in server.output
             if restart:
                 assert support.digest(world / 'retina.dat') == original
             else:
                 original = support.digest(world / 'retina.dat')
             result[stage + '_startup_seconds'] = round(time.monotonic() - server.started, 3)
+            target = world / 'DIM1' / 'region' / f"r.{start['ChunkX'] // 32}.{start['ChunkZ'] // 32}.mca"
+            if not restart:
+                assert not target.exists(), 'City region existed before the read-only query'
+            result[stage + '_locate_seconds'] = round(locate(server, start), 3)
+            if not restart:
+                assert not target.exists(), 'Read-only locate published the city region'
             sample(server, legacy.wait_chunk, start, frame, chest, restart)
+            if args.explorer_map_pack:
+                if not restart:
+                    explorer_map(server, start, claimed=False)
+                explorer_map(server, start, claimed=True)
+                server.command('save-all flush', 'Saved the game')
         finally:
             server.stop()
         end = world / 'DIM1'
         chunk = read_chunk(end / 'region', (start['ChunkX'], start['ChunkZ']))
-        assert chunk['structures']['starts'][CITY] == start, 'Saved city start differed'
+        assert chunk['structures']['starts'][CITY] == expected, 'Saved city start differed'
         chunk = read_chunk(end / 'region', frame_chunk)
         key = (start['ChunkX'] & 0xffffffff) | ((start['ChunkZ'] & 0xffffffff) << 32)
         assert any((value & 0xffffffffffffffff) == key for value in chunk['structures']['References'][CITY])
