@@ -12,6 +12,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -30,9 +31,14 @@ final class LegacyFeaturePredicates {
     private record Binding(JsonArray allowed, Predicate<BlockState> matches) { }
 
     private final List<Binding> bindings = new ArrayList<>();
+    private final LevelHeightAccessor bounds;
     private BiFunction<BlockState, JsonArray, JsonObject> survival = (state, offset) -> {
         throw new IllegalArgumentException("predicate:would_survive:" + state);
     };
+
+    LegacyFeaturePredicates() { this(null); }
+
+    LegacyFeaturePredicates(LevelHeightAccessor bounds) { this.bounds = bounds; }
 
     void bindSurvival(BiFunction<BlockState, JsonArray, JsonObject> survival) {
         this.survival = survival;
@@ -68,6 +74,10 @@ final class LegacyFeaturePredicates {
                 yield material(offset, state -> state.isFaceSturdy(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, direction));
             }
             case "would_survive" -> survival.apply(decode(BlockState.CODEC.parse(JsonOps.INSTANCE, input.get("state"))), offset);
+            case "inside_world_bounds" -> {
+                if (bounds == null) throw new IllegalArgumentException("predicate:" + kind);
+                yield insideY(offset, bounds.getMinBuildHeight(), bounds.getMaxBuildHeight());
+            }
             case "replaceable" -> material(offset, BlockState::canBeReplaced);
             case "solid" -> material(offset, BlockState::isSolid);
             case "true" -> operation(kind);
@@ -100,8 +110,12 @@ final class LegacyFeaturePredicates {
     }
 
     static JsonObject insideY(int min, int max) {
+        return insideY(array(0, 0, 0), min, max);
+    }
+
+    private static JsonObject insideY(JsonArray offset, int min, int max) {
         var result = operation("inside_world_bounds");
-        result.add("offset", array(0, 0, 0));
+        result.add("offset", offset);
         result.addProperty("min_y", min);
         result.addProperty("max_y", max);
         return result;

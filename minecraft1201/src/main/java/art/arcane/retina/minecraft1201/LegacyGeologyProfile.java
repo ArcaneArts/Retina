@@ -5,11 +5,14 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
+import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.valueproviders.FloatProvider;
 import net.minecraft.world.level.LevelHeightAccessor;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.GenerationStep;
@@ -33,6 +36,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.TreeSet;
+import java.util.function.Function;
 
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.type;
@@ -58,12 +62,17 @@ final class LegacyGeologyProfile {
 
     static LegacyGeologyProfile collect(RegistryAccess registries, LegacyBiomeProfile biomes, JsonObject world,
                                         LinkedHashMap<BlockState, Integer> palette, WorldGenerationContext bounds) {
+        return collect(registries, biomes.biomes(), world, palette, bounds, biome -> biome.value().getGenerationSettings());
+    }
+
+    static LegacyGeologyProfile collect(RegistryAccess registries, List<Holder<Biome>> biomes, JsonObject world,
+                                        LinkedHashMap<BlockState, Integer> palette, WorldGenerationContext bounds,
+                                        Function<Holder<Biome>, BiomeGenerationSettings> settingsFor) {
         var export = new LegacyGeologyProfile(registries, bounds, world.get("sea_level").getAsInt(), palette);
         var profiles = world.getAsJsonArray("biomes");
         var oreIndices = new IdentityHashMap<PlacedFeature, Integer>();
-        for (int i = 0; i < biomes.biomes().size(); i++) {
-            var biome = biomes.biomes().get(i);
-            var settings = biome.value().getGenerationSettings();
+        for (int i = 0; i < biomes.size(); i++) {
+            var settings = settingsFor.apply(biomes.get(i));
             var ids = new JsonArray();
             for (var step : settings.features()) for (var holder : step) {
                 var placed = holder.value();
@@ -129,7 +138,7 @@ final class LegacyGeologyProfile {
         world.addProperty("geology_min_y", bounds.getMinGenY());
         world.addProperty("geology_height", bounds.getGenDepth());
         var noises = new JsonArray();
-        if (!ceiling) {
+        if (!ceiling && densityCompiler != null) {
             for (String noise : List.of("cave_cheese", "spaghetti_3d_1", "spaghetti_3d_2", "cave_layer", "spaghetti_roughness", "pillar")) {
                 noises.add(LegacyTerrainProfile.fallbackNoise(densityCompiler, noise));
             }

@@ -14,7 +14,9 @@ import net.minecraft.resources.RegistryOps;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.block.BambooStalkBlock;
 import net.minecraft.world.level.block.Block;
@@ -28,6 +30,7 @@ import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
+import net.minecraft.world.level.levelgen.feature.LakeFeature;
 import net.minecraft.world.level.levelgen.feature.configurations.BlockColumnConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.DiskConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.HugeMushroomFeatureConfiguration;
@@ -50,6 +53,8 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.TreeSet;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
@@ -70,7 +75,8 @@ final class LegacyOverworldFeatures {
     private final RegistryOps<JsonElement> ops;
     private final WorldGenerationContext context;
     private final LinkedHashMap<BlockState, Integer> palette;
-    private final LegacyFeaturePredicates predicates = new LegacyFeaturePredicates();
+    private final LegacyFeaturePredicates predicates;
+    private final boolean flat;
     private final LegacyDecorationNoise noise = new LegacyDecorationNoise();
     private final LegacyBlockProviders providers;
     private final LegacyOverworldPlants plants;
@@ -80,7 +86,10 @@ final class LegacyOverworldFeatures {
     private final List<JsonArray> poolWaterlogging = new ArrayList<>();
 
     LegacyOverworldFeatures(RegistryAccess registries, WorldGenerationContext context,
-                            LinkedHashMap<BlockState, Integer> palette, boolean skylight) {
+                            LevelHeightAccessor storage, LinkedHashMap<BlockState, Integer> palette,
+                            boolean skylight, boolean flat) {
+        this.flat = flat;
+        this.predicates = new LegacyFeaturePredicates(storage);
         this.ops = RegistryOps.create(JsonOps.INSTANCE, registries);
         this.context = context;
         this.palette = palette;
@@ -92,19 +101,26 @@ final class LegacyOverworldFeatures {
 
     void export(RegistryAccess registries, List<Holder<Biome>> sourceOrder, List<Holder<Biome>> biomes,
                 JsonArray biomeEntries, JsonObject world) {
+        export(registries, sourceOrder, biomes, biomeEntries, world, biome -> biome.value().getGenerationSettings(), ignored -> false);
+    }
+
+    void export(RegistryAccess registries, List<Holder<Biome>> sourceOrder, List<Holder<Biome>> biomes,
+                JsonArray biomeEntries, JsonObject world, Function<Holder<Biome>, BiomeGenerationSettings> settings,
+                Predicate<PlacedFeature> deferredLayer) {
         var features = registries.registryOrThrow(Registries.PLACED_FEATURE);
-        var steps = FeatureSorter.buildFeaturesPerStep(sourceOrder, biome -> biome.value().getGenerationSettings().features(), true);
+        var steps = FeatureSorter.buildFeaturesPerStep(sourceOrder, biome -> settings.apply(biome).features(), true);
         var recipes = new JsonArray();
         var omissions = new TreeSet<String>();
         for (var entry : biomeEntries) entry.getAsJsonObject().add("decorations", new JsonArray());
         int order = 0;
         for (int step = 0; step < steps.size(); step++) {
-            var members = membership(biomes, step);
+            var members = membership(biomes, step, settings);
             var roots = steps.get(step);
             for (var root : roots.features()) {
                 int rootOrder = order++;
                 var configured = root.feature().value();
-                if (configured.feature() == Feature.ORE || configured.feature() == Feature.SCATTERED_ORE) continue;
+                if (configured.feature() == Feature.ORE || configured.feature() == Feature.SCATTERED_ORE
+                        || deferredLayer.test(root)) continue;
                 int index = roots.indexMapping().applyAsInt(root);
                 String source = features.getResourceKey(root).map(key -> key.location().toString())
                         .orElse("inline/overworld/" + step + "/" + index);
@@ -139,13 +155,20 @@ final class LegacyOverworldFeatures {
         world.addProperty("decoration_biome_3d", true);
         world.addProperty("decoration_patch_halo", true);
         noise.export(world);
-        approximations.forEach(world.getAsJsonObject("registry_program").getAsJsonArray("approximations")::add);
+        if (flat) {
+            var approximationReport = new JsonArray();
+            approximations.forEach(approximationReport::add);
+            world.add("decoration_approximations", approximationReport);
+        } else {
+            approximations.forEach(world.getAsJsonObject("registry_program").getAsJsonArray("approximations")::add);
+        }
     }
 
-    private static IdentityHashMap<PlacedFeature, BitSet> membership(List<Holder<Biome>> biomes, int step) {
+    private static IdentityHashMap<PlacedFeature, BitSet> membership(List<Holder<Biome>> biomes, int step,
+                                                                    Function<Holder<Biome>, BiomeGenerationSettings> settings) {
         var result = new IdentityHashMap<PlacedFeature, BitSet>();
         for (int index = 0; index < biomes.size(); index++) {
-            var features = biomes.get(index).value().getGenerationSettings().features();
+            var features = settings.apply(biomes.get(index)).features();
             if (step >= features.size()) continue;
             for (var holder : features.get(step)) {
                 result.computeIfAbsent(holder.value(), ignored -> new BitSet()).set(index);
@@ -261,6 +284,12 @@ final class LegacyOverworldFeatures {
             return new Recipe(LegacyAttachmentFeatures.multiface((MultifaceGrowthConfiguration) config, predicates, this::material),
                     LegacyAttachmentFeatures.REACH);
         }
+        if (flat && depth == 0 && feature == Feature.LAKE) return lake((LakeFeature.Configuration) config);
+        if (flat && depth == 0 && feature == Feature.VOID_START_PLATFORM) {
+            var data = kind("void_platform");
+            data.add("platform", array(material(Blocks.STONE.defaultBlockState()), material(Blocks.COBBLESTONE.defaultBlockState())));
+            return new Recipe(data, 0);
+        }
         if (feature == Feature.BLOCK_COLUMN) return column((BlockColumnConfiguration) config);
         if (feature == Feature.DISK) return disk((DiskConfiguration) config);
         if (feature == Feature.BAMBOO) return bamboo((ProbabilityFeatureConfiguration) config);
@@ -275,6 +304,21 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.SIMPLE_RANDOM_SELECTOR) return choices((SimpleRandomFeatureConfiguration) config, depth);
         if (feature == Feature.RANDOM_BOOLEAN_SELECTOR) return either((RandomBooleanFeatureConfiguration) config, depth);
         throw new IllegalArgumentException(BuiltInRegistries.FEATURE.getKey(feature).toString());
+    }
+
+    private Recipe lake(LakeFeature.Configuration config) {
+        var data = kind("flat_lake");
+        data.add("fluid", providers.encode(config.fluid()).data());
+        data.add("barrier", providers.encode(config.barrier()).data());
+        data.add("can_place_feature", LegacyFeaturePredicates.always());
+        data.add("can_replace_with_air_or_fluid", predicates.material(state -> !state.is(BlockTags.FEATURES_CANNOT_REPLACE)));
+        data.add("can_replace_with_barrier", predicates.material(state -> !state.is(BlockTags.LAVA_POOL_STONE_CANNOT_REPLACE)));
+        data.add("solid", predicates.material(BlockState::isSolid));
+        data.add("liquid", predicates.material(BlockState::liquid));
+        data.addProperty("air", material(Blocks.CAVE_AIR.defaultBlockState()));
+        // The 1.20.1 blob begins at the placement origin in X and Z.
+        data.addProperty("horizontal_offset", 0);
+        return new Recipe(data, 15);
     }
 
     private JsonArray placement(PlacedFeature feature, boolean nested) {

@@ -1,0 +1,18 @@
+{
+  "feature": "minecraft:lake_lava",
+  "placement": [
+    {
+      "type": "minecraft:rarity_filter",
+      "chance": 16
+    },
+    {
+      "type": "minecraft:height_range",
+      "height": {
+        "absolute": -30
+      }
+    },
+    {
+      "type": "minecraft:biome"
+    }
+  ]
+}

@@ -31,6 +31,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
 import static art.arcane.retina.minecraft1201.LegacyTemplateNbt.tag;
@@ -46,7 +48,12 @@ final class LegacyLandmarks {
     private LegacyLandmarks() { }
 
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials) {
-        var result = LegacyStructureSets.export(registry, biomes, FAMILIES, config -> { });
+        return export(registry, biomes, materials, Optional.empty());
+    }
+
+    static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials,
+                             Optional<Set<ResourceLocation>> allowedSets) {
+        var result = LegacyStructureSets.export(registry, biomes, FAMILIES, config -> { }, (kind, config) -> true, allowedSets);
         var templates = result.getAsJsonArray("templates");
         var indices = new HashMap<String, Integer>();
         var structures = registry.registryOrThrow(Registries.STRUCTURE);
