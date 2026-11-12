@@ -112,10 +112,11 @@ final class LegacyFlatProfile {
         var geology = LegacyGeologyProfile.collect(registries, biomes, world, palette, context, ignored -> effective);
         LegacyStructureProcessors.prepare(structures, palette);
         LegacyPortalProfile.prepare(structures, palette);
+        features.reserveSurfaceFreeze();
         geology.finish(world, storage, type.hasCeiling(), false, null);
         LegacyNetherStructures.finish(structures, palette);
         LegacyStructureProcessors.finish(structures, palette);
-        features.finish(world);
+        features.finish(world, biomes);
         var air = WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight(), true);
         world.getAsJsonObject("flat").add("air_materials", air);
         return world;

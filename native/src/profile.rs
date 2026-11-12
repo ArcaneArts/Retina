@@ -253,6 +253,14 @@ impl WorldProfile {
                 return Err("registered block features require ordered decoration replay".into());
             }
             recipe.validate(profile.materials.len())?;
+            let uses_freeze = match &recipe.feature {
+                crate::decoration::Kind::FreezeTopLayer => true,
+                crate::decoration::Kind::FlatLake { lake } => lake.freeze_water,
+                _ => false,
+            };
+            if uses_freeze && (!profile.decoration_source_order || profile.terrain_features.surface_freeze.is_none()) {
+                return Err("surface freezing requires an ordered profile with climate data".into());
+            }
             if profile.decoration_noise.is_none()
                 && recipe
                     .placement

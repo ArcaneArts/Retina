@@ -15,6 +15,8 @@ pub struct Lake {
     air: u16,
     #[serde(default = "centered_offset")]
     horizontal_offset: i32,
+    #[serde(default)]
+    pub(crate) freeze_water: bool,
 }
 
 fn centered_offset() -> i32 {
@@ -148,35 +150,41 @@ pub(super) fn lake(
             }
         }
     }
-    let read = |p| placed.get(&p).copied().or_else(|| read(p));
-    let barrier = recipe.barrier.sample(rng, origin, &read, noise);
-    if barrier == 0 {
-        return;
-    }
-    for x in 0..16 {
-        for z in 0..16 {
-            for y in 0..8 {
-                if !boundary(&grid, x, y, z) || (y >= 4 && rng.below(2) == 0) {
-                    continue;
+    let barrier = recipe.barrier.sample(rng, origin, &|p| placed.get(&p).copied().or_else(|| read(p)), noise);
+    let barrier_start = output.len();
+    if barrier != 0 {
+        let live = |p| placed.get(&p).copied().or_else(|| read(p));
+        for x in 0..16 {
+            for z in 0..16 {
+                for y in 0..8 {
+                    if !boundary(&grid, x, y, z) || (y >= 4 && rng.below(2) == 0) {
+                        continue;
+                    }
+                    let pos = [origin[0] + x as i32, origin[1] + y as i32, origin[2] + z as i32];
+                    if recipe.solid.test_with(pos, &live) == Some(true)
+                        && recipe.can_replace_with_barrier.test_with(pos, &live) == Some(true)
+                    {
+                        blocks::write(output, pos, barrier);
+                    }
                 }
-                let pos = [
-                    origin[0] + x as i32,
-                    origin[1] + y as i32,
-                    origin[2] + z as i32,
-                ];
-                if recipe.solid.test_with(pos, &read) == Some(true)
-                    && recipe.can_replace_with_barrier.test_with(pos, &read) == Some(true)
+            }
+        }
+    }
+    if let Some(climate) = profile.terrain_features.surface_freeze.as_ref()
+        .filter(|climate| recipe.freeze_water && climate.water_fluid(fluid))
+    {
+        let y = origin[1] + 4;
+        for block in output[barrier_start..].iter().filter(|block| block.y == y) {
+            placed.insert([block.x, block.y, block.z], block.material);
+        }
+        let live = |p| placed.get(&p).copied().or_else(|| read(p));
+        for x in 0..16 {
+            for z in 0..16 {
+                let pos = [origin[0] + x, y, origin[2] + z];
+                if let Some(ice) = live(pos).and_then(|state| climate.lake_ice(profile, field, pos, state))
+                    && recipe.can_replace_with_air_or_fluid.test_with(pos, &live) == Some(true)
                 {
-                    output.push(WorldBlock {
-                        root_order: 0,
-                        tick: 0,
-                        x: pos[0],
-                        y: pos[1],
-                        z: pos[2],
-                        material: barrier,
-                        upper: 0,
-                        role: FEATURE,
-                    });
+                    blocks::write(output, pos, ice);
                 }
             }
         }

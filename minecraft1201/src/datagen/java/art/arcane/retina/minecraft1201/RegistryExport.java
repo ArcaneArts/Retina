@@ -55,12 +55,15 @@ public final class RegistryExport {
         var preset = ResourceKey.create(Registries.WORLD_PRESET, new ResourceLocation(args[3]));
         boolean structures = Arrays.asList(args).contains("--structures");
         boolean verify = Arrays.asList(args).contains("--verify");
+        boolean verifySurfaceFreeze = Arrays.asList(args).contains("--verify-surface-freeze");
+        if (verifySurfaceFreeze) SurfaceFreezeVerification.pack(packFolder);
         try (var loaded = load(packFolder, preset)) {
             export(world, seed, started, noise, preset, loaded, structures, verify);
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
             if (Arrays.asList(args).contains("--verify-portals")) NetherPortalVerification.verify(world, loaded, seed);
             if (Arrays.asList(args).contains("--verify-attachments")) AttachmentVerification.verify(world);
             if (Arrays.asList(args).contains("--verify-flat-worldgen")) FlatWorldgenVerification.verify(world, loaded, seed);
+            if (verifySurfaceFreeze) SurfaceFreezeVerification.verify(world, loaded);
         }
     }
 

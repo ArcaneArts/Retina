@@ -485,7 +485,7 @@ pub(super) fn aquatic_valid(states: &[AquaticState], palette: usize) -> bool {
                 && s.upper_allowed.validate(palette)
         })
 }
-fn write(blocks: &mut Vec<WorldBlock>, at: [i32; 3], material: u16) {
+pub(super) fn write(blocks: &mut Vec<WorldBlock>, at: [i32; 3], material: u16) {
     blocks.push(WorldBlock {
         root_order: 0,
         tick: 0,
@@ -572,6 +572,7 @@ pub(super) fn place(
     let test = |p: &Predicate, at| p.test(at, field, profile, request, overlay) == Some(true);
     match kind {
         Kind::FlatLake { lake } => super::flat_features::lake(lake, at, rng, field, profile, request, overlay, blocks, noise),
+        Kind::FreezeTopLayer => super::surface_freeze::place(at, field, profile, request, overlay, blocks),
         Kind::VoidPlatform { platform } => super::flat_features::platform(*platform, at, request, blocks),
         Kind::EndPlatform { platform } => super::end_features::platform(*platform, at, field, profile, request, overlay, blocks),
         Kind::EndIsland { end_island } => end_island.place(at,field,profile,request,overlay,blocks),

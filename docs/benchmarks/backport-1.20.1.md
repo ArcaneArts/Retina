@@ -1317,8 +1317,8 @@ when structures are enabled. Strongholds remain a reported omission
 because the shared planner does not implement concentric-ring placement.
 The lake recipe records the 1.20.1 horizontal origin. Older definitions
 keep the existing centered origin. The shared lake model covers
-excavation, fluid and barriers. Cold-biome water-lake freezing remains
-outside its current coverage.
+excavation, fluid and barriers. The 1.20.1 variant also applies its
+registered water-lake freezing step.
 
 Run the stock preset in a fresh directory:
 
@@ -1353,3 +1353,35 @@ passed. All four JARs contain the same rebuilt macOS arm64 library.
 The 26.3 catalogs match the preceding build, and the old and new
 native libraries produced identical NBT for all 1,024 chunks in a
 26.3 Overworld region.
+
+### Surface snow and ice
+
+New 1.20.1 definitions carry the loaded `freeze_top_layer` placement,
+the biome temperature modifiers, the temperature noise tables and
+the snow support and snowy block states. The shared engine applies
+the feature in registry order against the live motion-blocking
+heightmap. It freezes exposed source water and places single-layer
+snow with the corresponding snowy ground state. This runs during
+decoration, ahead of native region lighting. Existing saved
+definitions retain the feature data they were created with.
+
+Run the headless verifier in a fresh directory:
+
+```sh
+./gradlew :minecraft1201:exportFlat -PretinaVerifySurfaceFreeze \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+The verifier loads a real datapack with five Flat dimensions. It
+compares every column's generated block states with the vanilla
+1.20.1 biome temperature checks. The cases cover cold and warm grass,
+the altitude threshold, the frozen biome temperature modifier over
+water, and the same cold biome with Flat features disabled.
+
+Seed 12345 matched vanilla's temperature decisions for all 1,310,720
+columns on both CPU and Metal. The two backends produced identical
+NBT for all 5,120 chunks. The frozen-water case produced 122,367 ice
+columns, and the altitude case produced 132,355 snowy grass columns.
+The stock Overworld verifier now accounts for 89 supported and 32
+omitted non-ore roots and observed snow in its generated region.

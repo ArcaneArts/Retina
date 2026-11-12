@@ -34,12 +34,15 @@ final class LegacyDecorationNoise {
     }
 
     void export(JsonObject world) {
-        var countNoise = new JsonObject();
-        var random = new WorldgenRandom(new LegacyRandomSource(2345L));
-        offsets(random); // Biome.BIOME_INFO_NOISE uses SimplexNoise's octave zero.
-        countNoise.add("permutation", permutation(random));
-        world.add("decoration_noise", countNoise);
+        world.add("decoration_noise", simplex(new WorldgenRandom(new LegacyRandomSource(2345L))));
         world.add("decoration_provider_noises", programs);
+    }
+
+    static JsonObject simplex(RandomSource random) {
+        var countNoise = new JsonObject();
+        offsets(random);
+        countNoise.add("permutation", permutation(random));
+        return countNoise;
     }
 
     private static JsonObject compile(NoiseKey key) {

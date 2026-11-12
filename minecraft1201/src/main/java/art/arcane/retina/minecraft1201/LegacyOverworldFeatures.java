@@ -84,6 +84,7 @@ final class LegacyOverworldFeatures {
     private final TreeSet<String> approximations = new TreeSet<>();
     private final LinkedHashMap<String, Integer> fluidTicks = new LinkedHashMap<>();
     private final List<JsonArray> poolWaterlogging = new ArrayList<>();
+    private boolean surfaceFreeze;
 
     LegacyOverworldFeatures(RegistryAccess registries, WorldGenerationContext context,
                             LevelHeightAccessor storage, LinkedHashMap<BlockState, Integer> palette,
@@ -188,7 +189,12 @@ final class LegacyOverworldFeatures {
         }
     }
 
-    void finish(JsonObject world) {
+    void reserveSurfaceFreeze() {
+        if (surfaceFreeze) LegacyFreezeFeatures.reserve(palette);
+    }
+
+    void finish(JsonObject world, List<Holder<Biome>> biomes) {
+        if (surfaceFreeze) LegacyFreezeFeatures.export(world, biomes, palette);
         predicates.finish(palette);
         var halves = new JsonArray();
         var plants = new LinkedHashMap<Block, Integer>();
@@ -284,6 +290,10 @@ final class LegacyOverworldFeatures {
             return new Recipe(LegacyAttachmentFeatures.multiface((MultifaceGrowthConfiguration) config, predicates, this::material),
                     LegacyAttachmentFeatures.REACH);
         }
+        if (depth == 0 && feature == Feature.FREEZE_TOP_LAYER) {
+            surfaceFreeze = true;
+            return new Recipe(kind("freeze_top_layer"), 15);
+        }
         if (flat && depth == 0 && feature == Feature.LAKE) return lake((LakeFeature.Configuration) config);
         if (flat && depth == 0 && feature == Feature.VOID_START_PLATFORM) {
             var data = kind("void_platform");
@@ -316,6 +326,8 @@ final class LegacyOverworldFeatures {
         data.add("solid", predicates.material(BlockState::isSolid));
         data.add("liquid", predicates.material(BlockState::liquid));
         data.addProperty("air", material(Blocks.CAVE_AIR.defaultBlockState()));
+        surfaceFreeze = true;
+        data.addProperty("freeze_water", true);
         // The 1.20.1 blob begins at the placement origin in X and Z.
         data.addProperty("horizontal_offset", 0);
         return new Recipe(data, 15);

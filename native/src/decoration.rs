@@ -35,6 +35,7 @@ pub mod provider_noise;
 #[cfg(test)]
 mod replay_tests;
 mod spatial;
+pub(crate) mod surface_freeze;
 mod tree_geometry;
 #[cfg(test)]
 mod tree_scratch_tests;
@@ -101,6 +102,8 @@ pub enum Kind {
         #[serde(flatten)]
         lake: flat_features::Lake,
     },
+    #[serde(rename = "freeze_top_layer")]
+    FreezeTopLayer,
     #[serde(rename = "void_platform")]
     VoidPlatform { platform: [u16; 2] },
     #[serde(rename = "end_platform")]
@@ -214,6 +217,7 @@ impl Recipe {
                 self.placement.is_some() && nether.validate(material_count)
             }
             Kind::FlatLake { lake } => self.placement.is_some() && lake.validate(material_count),
+            Kind::FreezeTopLayer => self.placement.is_some() && self.reach.is_some_and(|reach| reach >= 15),
             Kind::VoidPlatform { platform } | Kind::EndPlatform { platform } => {
                 self.placement.is_some() && platform.iter().all(|&id| valid(id))
             }
@@ -1739,6 +1743,7 @@ pub(crate) fn feature_sample(
     if !matches!(
         recipe.feature,
         Kind::FlatLake { .. }
+            | Kind::FreezeTopLayer
             | Kind::NetherFeature { .. }
             | Kind::VoidPlatform { .. }
             | Kind::EndPlatform { .. }
