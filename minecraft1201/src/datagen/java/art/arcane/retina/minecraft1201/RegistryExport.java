@@ -58,6 +58,7 @@ public final class RegistryExport {
         try (var loaded = load(packFolder, preset)) {
             export(world, seed, started, noise, preset, loaded, structures, verify);
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
+            if (Arrays.asList(args).contains("--verify-portals")) NetherPortalVerification.verify(world, loaded, seed);
         }
     }
 

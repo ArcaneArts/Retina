@@ -56,9 +56,8 @@ final class LegacyGeologyProfile {
         this.palette = palette;
     }
 
-    static void export(RegistryAccess registries, LegacyBiomeProfile biomes, JsonObject world,
-                       LinkedHashMap<BlockState, Integer> palette, WorldGenerationContext bounds, LevelHeightAccessor storage,
-                       boolean ceiling, boolean oreVeins, LegacyDensityCompiler densityCompiler) {
+    static LegacyGeologyProfile collect(RegistryAccess registries, LegacyBiomeProfile biomes, JsonObject world,
+                                        LinkedHashMap<BlockState, Integer> palette, WorldGenerationContext bounds) {
         var export = new LegacyGeologyProfile(registries, bounds, world.get("sea_level").getAsInt(), palette);
         var profiles = world.getAsJsonArray("biomes");
         var oreIndices = new IdentityHashMap<PlacedFeature, Integer>();
@@ -94,9 +93,14 @@ final class LegacyGeologyProfile {
             profile.add("carvers", carvers);
         }
 
+        return export;
+    }
+
+    void finish(JsonObject world, LevelHeightAccessor storage, boolean ceiling, boolean oreVeins,
+                LegacyDensityCompiler densityCompiler) {
         var recipes = new JsonArray();
         var random = RandomSource.create(0);
-        for (var ore : export.ores) {
+        for (var ore : ores) {
             var replacements = new JsonArray();
             for (var state : palette.keySet()) {
                 int output = 0;
@@ -119,7 +123,7 @@ final class LegacyGeologyProfile {
         }
         world.add("ores", recipes);
         var carveable = new JsonArray();
-        palette.keySet().forEach(state -> carveable.add(export.carverTargets.contains(state.getBlock())
+        palette.keySet().forEach(state -> carveable.add(carverTargets.contains(state.getBlock())
                 && state.getFluidState().isEmpty()));
         world.add("carveable", carveable);
         world.addProperty("geology_min_y", bounds.getMinGenY());
@@ -131,9 +135,9 @@ final class LegacyGeologyProfile {
             }
         }
         world.add("cave_noises", noises);
-        if (oreVeins) export.omissions.add("noise_router:large_ore_veins");
+        if (oreVeins) omissions.add("noise_router:large_ore_veins");
         var reports = new JsonArray();
-        export.omissions.forEach(reports::add);
+        omissions.forEach(reports::add);
         world.add("geology_omissions", reports);
     }
 
