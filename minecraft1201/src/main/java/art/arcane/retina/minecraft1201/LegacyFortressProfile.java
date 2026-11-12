@@ -180,7 +180,7 @@ final class LegacyFortressProfile {
         return piece;
     }
 
-    private static CompoundTag rawTemplate(Map<BlockPos, BlockState> geometry, LegacyStructureCapture capture,
+    static CompoundTag rawTemplate(Map<BlockPos, BlockState> geometry, LegacyStructureCapture capture,
                                            BoundingBox bounds) {
         var raw = new CompoundTag();
         var palette = new LinkedHashMap<BlockState, Integer>();
@@ -206,7 +206,7 @@ final class LegacyFortressProfile {
         return raw;
     }
 
-    private static int addTemplate(JsonArray templates, String id, CompoundTag raw, LinkedHashMap<BlockState, Integer> materials) {
+    static int addTemplate(JsonArray templates, String id, CompoundTag raw, LinkedHashMap<BlockState, Integer> materials) {
         int index = templates.size();
         templates.add(LegacyTemplateNbt.template(id, raw, 0, materials, new JsonArray()));
         return index;

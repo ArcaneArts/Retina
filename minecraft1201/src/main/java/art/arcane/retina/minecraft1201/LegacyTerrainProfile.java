@@ -179,7 +179,8 @@ final class LegacyTerrainProfile {
         } else if (structures && type.hasSkyLight()) {
             var ringSource = generator.getBiomeSource() instanceof net.minecraft.world.level.biome.FixedBiomeSource
                     ? LegacyStructureSets.RingBiomeSource.FIXED : LegacyStructureSets.RingBiomeSource.MULTI_NOISE;
-            world.add("structures", LegacyLandmarks.export(registries, biomeProfile.biomes(), palette, Optional.empty(), ringSource));
+            world.add("structures", LegacyLandmarks.export(registries, biomeProfile.biomes(), palette, Optional.empty(), ringSource,
+                    generator.getMinY()));
         }
         var structuresProfile = world.getAsJsonObject("structures");
         if (structures && structuresProfile != null) {

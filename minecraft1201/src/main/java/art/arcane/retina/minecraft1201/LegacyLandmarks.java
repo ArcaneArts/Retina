@@ -26,6 +26,7 @@ import net.minecraft.world.level.levelgen.structure.structures.JungleTemplePiece
 import net.minecraft.world.level.levelgen.structure.structures.JungleTempleStructure;
 import net.minecraft.world.level.levelgen.structure.structures.SwampHutPiece;
 import net.minecraft.world.level.levelgen.structure.structures.SwampHutStructure;
+import net.minecraft.world.level.levelgen.structure.structures.StrongholdStructure;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -43,12 +44,14 @@ final class LegacyLandmarks {
             DesertPyramidStructure.class, "desert_pyramid",
             JungleTempleStructure.class, "jungle_temple",
             SwampHutStructure.class, "swamp_hut",
+            StrongholdStructure.class, "stronghold",
             JigsawStructure.class, "jigsaw");
 
     private LegacyLandmarks() { }
 
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials,
-                             Optional<Set<ResourceLocation>> allowedSets, LegacyStructureSets.RingBiomeSource ringBiomeSource) {
+                             Optional<Set<ResourceLocation>> allowedSets, LegacyStructureSets.RingBiomeSource ringBiomeSource,
+                             int generatorMinY) {
         var result = LegacyStructureSets.export(registry, biomes, FAMILIES, config -> { }, (kind, config) -> true,
                 allowedSets, ringBiomeSource);
         var templates = result.getAsJsonArray("templates");
@@ -59,6 +62,12 @@ final class LegacyLandmarks {
             if (definition.has("unimplemented")) continue;
             String kind = definition.get("kind").getAsString();
             if (kind.equals("jigsaw")) continue;
+            if (kind.equals("stronghold")) {
+                if (!result.has("strongholds")) {
+                    result.add("strongholds", LegacyStrongholdProfile.export(registry, materials, templates, generatorMinY));
+                }
+                continue;
+            }
             int index = indices.computeIfAbsent(kind, name -> {
                 var structure = structures.get(new ResourceLocation(definition.get("id").getAsString()));
                 int next = templates.size();

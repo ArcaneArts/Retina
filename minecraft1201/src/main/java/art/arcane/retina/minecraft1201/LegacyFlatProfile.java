@@ -102,7 +102,8 @@ final class LegacyFlatProfile {
             });
             structures = type.hasCeiling()
                     ? LegacyNetherStructures.export(registries, biomes, palette, context, templates, overrides)
-                    : LegacyLandmarks.export(registries, biomes, palette, overrides, LegacyStructureSets.RingBiomeSource.FLAT);
+                    : LegacyLandmarks.export(registries, biomes, palette, overrides, LegacyStructureSets.RingBiomeSource.FLAT,
+                            generator.getMinY());
             var omissions = structures.getAsJsonArray("omissions");
             omitted.forEach(omissions::add);
             LegacyJigsawProfile.add(registries, palette, templates, context, structures);

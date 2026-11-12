@@ -1313,8 +1313,8 @@ and entity probes passed, and all three player edits survived.
 The 1.20.1 adapter now exports the game's adjusted Flat biome settings
 and selected structure sets. The base and deferred layers still come
 from the selected preset. Default Flat uses Retina for its villages
-when structures are enabled. Strongholds remain a reported omission
-because the shared planner does not implement concentric-ring placement.
+when structures are enabled. See the concentric-ring and stronghold
+sections below for presets that select those structures.
 The lake recipe records the 1.20.1 horizontal origin. Older definitions
 keep the existing centered origin. The shared lake model covers
 excavation, fluid and barriers. The 1.20.1 variant also applies its
@@ -1416,5 +1416,46 @@ Ring placement always uses the CPU biome source.
 
 The verifier also reads the saved pyramid start and its reference with
 the 1.20.1 region reader and confirms that reopening preserves all
-1,024 chunks. Native stronghold piece generation remains a separate
-omission.
+1,024 chunks.
+
+### Stronghold generation
+
+New 1.20.1 definitions with strongholds store geometry captured from
+all 13 vanilla piece types, including doors, crossing exits, libraries,
+loot containers and the portal room. Rust builds a seed-specific layout,
+uses the saved generator floor for vertical placement, and writes
+vanilla piece tags and structure references. The catalog stores
+seed-independent piece geometry. Materializing it leaves the native
+planner to derive starts from the world seed.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyStrongholds \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal -PretinaSeed=12345
+```
+
+Run again in a fresh directory with `-PretinaGpuBackend=cpu` or a different
+seed. The fixture uses a fixed biome so the vanilla and Retina ring
+positions can be compared directly. It sets the generator floor to
+Y=-32 and keeps the dimension floor at Y=-64. Seeds 12345 and
+-129834789 matched 601 vanilla piece tags across four strongholds,
+apart from the placed chest and spawner flags which reflect native
+decoration. The 1.20.1 readers reopened each start. Each portal had
+12 inward-facing frames and a silverfish spawner.
+
+For seed 12345, CPU and Metal agreed on every stronghold start and
+reference in the two generated regions. Across their full terrain
+payloads, 2,037 of 2,048 chunks matched byte for byte. Generating,
+reading and reopening a fixture region took 1.5–1.9 seconds on Metal
+and 12.7 seconds on CPU in those local runs. The stock Overworld
+computed its 128 ring positions and queried its first eight candidates
+in 1.2–1.4 seconds.
+
+Packaged Fabric and Forge found the stronghold, read a portal frame
+and silverfish spawner, and preserved the start, saved definition and
+a player edit across restart. The 1.20.1 catalog passed all 15 parity
+cases. The 26.3 regression region matched all 1,024 prior chunk payloads.
+
+Stronghold layout and metadata use vanilla piece rules. Brick patterns,
+portal eyes and cave exposure use the captured geometry. Multi-noise
+relocation still uses Retina's biome sampling as described above.
