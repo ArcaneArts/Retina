@@ -14,6 +14,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.structure.placement.ConcentricRingsStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
 
@@ -31,8 +32,15 @@ import java.util.function.Consumer;
 
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
 
-/** Registry-backed random-spread sets and the original weights of all their members. */
+/** Registry-backed sets and the original weights of all their members. */
 final class LegacyStructureSets {
+    enum RingBiomeSource {
+        FLAT("flat"), FIXED("fixed"), MULTI_NOISE("multi_noise");
+
+        private final String id;
+        RingBiomeSource(String id) { this.id = id; }
+    }
+
     private LegacyStructureSets() { }
 
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes,
@@ -54,6 +62,13 @@ final class LegacyStructureSets {
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes,
                              Map<Class<? extends Structure>, String> families, Consumer<JsonObject> normalize,
                              BiPredicate<String, JsonObject> supports, Optional<Set<ResourceLocation>> allowedSets) {
+        return export(registry, biomes, families, normalize, supports, allowedSets, null);
+    }
+
+    static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes,
+                             Map<Class<? extends Structure>, String> families, Consumer<JsonObject> normalize,
+                             BiPredicate<String, JsonObject> supports, Optional<Set<ResourceLocation>> allowedSets,
+                             RingBiomeSource ringBiomeSource) {
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, registry);
         var definitions = new JsonArray();
         var sets = new JsonArray();
@@ -113,13 +128,14 @@ final class LegacyStructureSets {
             var set = entry.getValue();
             if (set.structures().stream().noneMatch(member -> executable.containsKey(member.structure().value()))) continue;
             String id = entry.getKey().location().toString();
-            if (set.placement().getClass() != RandomSpreadStructurePlacement.class) {
-                omissions.add("placement:" + id + ":non-random-spread");
+            var setRow = encodePlacement(set.placement(), biomes, ringBiomeSource, ops);
+            if (setRow == null) {
+                omissions.add("placement:" + id + ":unsupported-placement");
                 continue;
             }
-            var placement = decode(StructurePlacement.CODEC.encodeStart(ops, set.placement())).getAsJsonObject();
             var dependencies = new LinkedHashMap<String, JsonObject>();
-            if (!resolveDependencies(id, placement, sourceSets, ops, dependencies, new LinkedHashSet<>())) {
+            if (!resolveDependencies(id, setRow, sourceSets, biomes, allowedSets, ringBiomeSource, ops,
+                    dependencies, new LinkedHashSet<>())) {
                 omissions.add("placement:" + id + ":unsupported-exclusion-zone");
                 continue;
             }
@@ -144,29 +160,52 @@ final class LegacyStructureSets {
                 encoded.addProperty("weight", member.weight());
                 members.add(encoded);
             }
-            var row = new JsonObject();
-            row.addProperty("id", id);
-            row.add("placement", placement);
-            row.add("entries", members);
-            sets.add(row);
+            setRow.addProperty("id", id);
+            setRow.add("entries", members);
+            sets.add(setRow);
         }
         for (var entry : requiredPlacements.entrySet()) {
             if (sets.asList().stream().anyMatch(row -> row.getAsJsonObject().get("id").getAsString().equals(entry.getKey()))) continue;
-            var row = new JsonObject();
+            var row = entry.getValue();
             row.addProperty("id", entry.getKey());
             row.addProperty("placement_only", true);
-            row.add("placement", entry.getValue());
             row.add("entries", new JsonArray());
             sets.add(row);
         }
         return result;
     }
 
-    private static boolean resolveDependencies(String id, JsonObject placement, Registry<StructureSet> source,
+    private static JsonObject encodePlacement(StructurePlacement placement, List<Holder<Biome>> biomes,
+                                              RingBiomeSource biomeSource, RegistryOps<JsonElement> ops) {
+        if (placement.getClass() != RandomSpreadStructurePlacement.class
+                && (placement.getClass() != ConcentricRingsStructurePlacement.class || biomeSource == null)) return null;
+        var rules = decode(StructurePlacement.CODEC.encodeStart(ops, placement)).getAsJsonObject();
+        var result = new JsonObject();
+        if (placement instanceof ConcentricRingsStructurePlacement rings) {
+            var settings = new JsonObject();
+            settings.add("distance", rules.remove("distance"));
+            settings.add("spread", rules.remove("spread"));
+            settings.add("count", rules.remove("count"));
+            rules.remove("preferred_biomes");
+            settings.addProperty("biome_source", biomeSource.id);
+            var preferred = new JsonArray();
+            for (int index = 0; index < biomes.size(); index++) {
+                if (rings.preferredBiomes().contains(biomes.get(index))) preferred.add(index);
+            }
+            settings.add("preferred", preferred);
+            result.add("rings", settings);
+        }
+        result.add("placement", rules);
+        return result;
+    }
+
+    private static boolean resolveDependencies(String id, JsonObject row, Registry<StructureSet> source,
+                                               List<Holder<Biome>> biomes, Optional<Set<ResourceLocation>> allowedSets,
+                                               RingBiomeSource ringBiomeSource,
                                                RegistryOps<JsonElement> ops, Map<String, JsonObject> dependencies,
                                                LinkedHashSet<String> path) {
         if (!path.add(id)) return false;
-        var exclusion = placement.getAsJsonObject("exclusion_zone");
+        var exclusion = row.getAsJsonObject("placement").getAsJsonObject("exclusion_zone");
         if (exclusion == null) {
             path.remove(id);
             return true;
@@ -174,10 +213,17 @@ final class LegacyStructureSets {
         var targetId = exclusion.get("other_set");
         if (!targetId.isJsonPrimitive()) return false;
         String other = targetId.getAsString();
-        var target = source.get(new ResourceLocation(other));
-        if (target == null || target.placement().getClass() != RandomSpreadStructurePlacement.class) return false;
-        var encoded = decode(StructurePlacement.CODEC.encodeStart(ops, target.placement())).getAsJsonObject();
-        if (!resolveDependencies(other, encoded, source, ops, dependencies, path)) return false;
+        var targetIdKey = new ResourceLocation(other);
+        var target = source.get(targetIdKey);
+        if (target == null) return false;
+        var encoded = encodePlacement(target.placement(), biomes, ringBiomeSource, ops);
+        if (encoded == null) return false;
+        if (encoded.has("rings") && (allowedSets.isPresent() && !allowedSets.get().contains(targetIdKey)
+                || target.structures().stream().noneMatch(member -> biomes.stream().anyMatch(member.structure().value().biomes()::contains)))) {
+            // Vanilla has no computed ring positions for a set excluded from the generator's state.
+            encoded.getAsJsonObject("rings").addProperty("count", 0);
+        }
+        if (!resolveDependencies(other, encoded, source, biomes, allowedSets, ringBiomeSource, ops, dependencies, path)) return false;
         dependencies.put(other, encoded);
         path.remove(id);
         return true;

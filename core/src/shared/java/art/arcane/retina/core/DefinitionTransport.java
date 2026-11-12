@@ -16,6 +16,7 @@ interface DefinitionTransport {
     short[] biomes(TerrainRequest request);
     int[] biomePoints(TerrainRequest request, int[] xyz);
     int[] structureStarts(TerrainRequest request, int[] candidates);
+    int[] structureRingPositions(TerrainRequest request, int set, int count);
     String diagnosticProfile(long handle, String key);
     void close(long handle);
 }

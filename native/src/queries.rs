@@ -269,3 +269,23 @@ pub unsafe extern "C" fn retina_query_structure_starts(
         Ok(())
     })
 }
+
+/// Output contains `count` chunk X/Z pairs in ring order.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_query_structure_rings(
+    request: *const ChunkRequest, set: u32, count: u32, output: *mut [i32; 2],
+) -> i32 {
+    boundary(|| {
+        if request.is_null() || (count > 0 && output.is_null()) {
+            return Err("null structure ring query buffer".into());
+        }
+        let positions = crate::structures::query_ring_positions(shared_engine()?, unsafe { *request }, set as usize)?;
+        if positions.len() != count as usize {
+            return Err("structure ring output size does not match the saved placement".into());
+        }
+        if count != 0 {
+            unsafe { std::slice::from_raw_parts_mut(output, count as usize) }.copy_from_slice(&positions);
+        }
+        Ok(())
+    })
+}

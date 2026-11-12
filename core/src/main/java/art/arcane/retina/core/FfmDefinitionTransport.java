@@ -37,6 +37,11 @@ final class FfmDefinitionTransport implements DefinitionTransport {
         static final MethodHandle ERROR = call("retina_last_error", FunctionDescriptor.of(JAVA_LONG, ADDRESS, JAVA_LONG));
     }
 
+    private static final class StructureRingCall {
+        static final MethodHandle QUERY = Calls.call("retina_query_structure_rings",
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, ADDRESS));
+    }
+
     private static final class CatalogCall {
         static final MethodHandle CREATE = Linker.nativeLinker().downcallHandle(
                 NativeLibrary.symbols().findOrThrow("retina_create_world_definition"),
@@ -195,6 +200,15 @@ final class FfmDefinitionTransport implements DefinitionTransport {
             check((int) Calls.STRUCTURE_STARTS.invokeExact(encode(arena, request),
                     arena.allocateFrom(JAVA_INT, candidates), count, output));
             return output.toArray(JAVA_INT);
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    @Override
+    public int[] structureRingPositions(TerrainRequest request, int set, int count) {
+        try (var arena = Arena.ofConfined()) {
+            var output = count == 0 ? MemorySegment.NULL : arena.allocate(JAVA_INT, 2L * count);
+            check((int) StructureRingCall.QUERY.invokeExact(encode(arena, request), set, count, output));
+            return count == 0 ? new int[0] : output.toArray(JAVA_INT);
         } catch (Throwable error) { throw failure(error); }
     }
 

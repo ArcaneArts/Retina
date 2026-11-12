@@ -103,6 +103,12 @@ public final class NativeWorldDefinition implements AutoCloseable {
         return TRANSPORT.structureStarts(request(key, 0, 0), candidates);
     }
 
+    /** Saved concentric-ring chunk X/Z pairs in placement order. */
+    public int[] structureRingPositions(String key, int set, int count) {
+        if (set < 0 || count < 0 || count > 4095) throw new IllegalArgumentException("Invalid structure ring query");
+        return TRANSPORT.structureRingPositions(request(key, 0, 0), set, count);
+    }
+
     /** Explicit QA/diagnostic output, decoded from the same loaded file without rereading it. */
     public synchronized String diagnosticProfile(String key) {
         return TRANSPORT.diagnosticProfile(openHandle(), key);

@@ -17,10 +17,16 @@ impl WorldDefinition {
                     "id":d.id,"kind":d.kind,"biomes":d.biomes,"config":d.config,
                     "unimplemented":d.unimplemented,"pool":d.pool,"template":d.template,
                 })).collect();
-                let sets:Vec<_> = profile.structures.sets.iter().map(|s| json!({
-                    "id":s.id,"placement_only":s.placement_only,"placement":s.placement,
-                    "entries":s.entries.iter().map(|e|json!({"definition":e.definition,"weight":e.weight})).collect::<Vec<_>>()
-                })).collect();
+                let sets:Vec<_> = profile.structures.sets.iter().map(|s| {
+                    let mut row = json!({
+                        "id":s.id,"placement_only":s.placement_only,"placement":s.placement,
+                        "entries":s.entries.iter().map(|e|json!({"definition":e.definition,"weight":e.weight})).collect::<Vec<_>>()
+                    });
+                    if let Some(rings) = &s.rings {
+                        row["ring_count"] = json!(rings.count());
+                    }
+                    row
+                }).collect();
                 let biomes:Vec<_> = profile.biomes.iter().map(|b|json!({"id":b.id,"top":b.top,
                     "filler":b.filler,"underwater":b.underwater,"flags":b.flags,"lake_barrier":b.lake_barrier})).collect();
                 let mut summary = json!({"sea_level":profile.sea_level,"stone":profile.stone,

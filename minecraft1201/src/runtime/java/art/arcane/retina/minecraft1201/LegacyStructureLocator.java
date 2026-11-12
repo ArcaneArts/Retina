@@ -8,6 +8,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
@@ -26,6 +27,7 @@ import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,7 +38,13 @@ import java.util.concurrent.CompletionException;
 final class LegacyStructureLocator {
     private static final int BATCH = 64;
 
-    private record Placement(int index, RandomSpreadStructurePlacement rules, List<String> names) { }
+    private record Placement(int index, RandomSpreadStructurePlacement rules, int ringCount,
+                             Vec3i offset, List<String> names) {
+        BlockPos locate(ChunkPos chunk) {
+            return rules == null ? new BlockPos(chunk.getMinBlockX(), 0, chunk.getMinBlockZ()).offset(offset)
+                    : rules.getLocatePos(chunk);
+        }
+    }
     private record Search(Placement placement, Map<String, Holder<Structure>> wanted) { }
     private record Starts(boolean known, Map<String, Integer> references) {
         private static final Starts UNKNOWN = new Starts(false, Map.of());
@@ -62,10 +70,17 @@ final class LegacyStructureLocator {
             var rules = set.getAsJsonObject("placement").deepCopy();
             // Minecraft computes the random-spread candidate. Rust applies the complete saved rules.
             rules.remove("exclusion_zone");
-            var placement = LegacyDensityCompiler.decode(RandomSpreadStructurePlacement.CODEC.parse(JsonOps.INSTANCE, rules));
             var members = set.getAsJsonArray("entries").asList().stream()
                     .map(value -> names.get(value.getAsJsonObject().get("definition").getAsInt())).toList();
-            compiled.add(new Placement(index, placement, members));
+            if (set.has("ring_count")) {
+                var offset = rules.has("locate_offset")
+                        ? LegacyDensityCompiler.decode(Vec3i.CODEC.parse(JsonOps.INSTANCE, rules.get("locate_offset")))
+                        : Vec3i.ZERO;
+                compiled.add(new Placement(index, null, set.get("ring_count").getAsInt(), offset, members));
+            } else {
+                var placement = LegacyDensityCompiler.decode(RandomSpreadStructurePlacement.CODEC.parse(JsonOps.INSTANCE, rules));
+                compiled.add(new Placement(index, placement, 0, Vec3i.ZERO, members));
+            }
         }
         placements = List.copyOf(compiled);
         seed = definition.request(dimension, 0, 0).seed();
@@ -95,20 +110,49 @@ final class LegacyStructureLocator {
                 return size() > 8192;
             }
         };
+        Pair<BlockPos, Holder<Structure>> nearest = null;
+        var spread = new ArrayList<Search>();
+        for (var search : searches) {
+            if (search.placement().rules() != null) {
+                spread.add(search);
+                continue;
+            }
+            var match = concentric(level, generator, search, origin, unreferenced, stored);
+            if (closer(origin, nearest, match)) nearest = match;
+        }
+        if (spread.isEmpty()) return nearest;
         var center = new ChunkPos(origin);
         for (int ring = 0; ring <= radius; ring++) {
-            Pair<BlockPos, Holder<Structure>> nearest = null;
-            double distance = Double.POSITIVE_INFINITY;
-            for (var search : searches) {
+            boolean found = false;
+            for (var search : spread) {
                 var match = ring(level, generator, search, center, ring, unreferenced, stored);
                 if (match == null) continue;
-                double candidateDistance = origin.distSqr(match.getFirst());
-                if (candidateDistance < distance) {
-                    nearest = match;
-                    distance = candidateDistance;
-                }
+                found = true;
+                if (closer(origin, nearest, match)) nearest = match;
             }
-            if (nearest != null) return nearest;
+            if (found) return nearest;
+        }
+        return nearest;
+    }
+
+    private static boolean closer(BlockPos origin, Pair<BlockPos, Holder<Structure>> current,
+                                  Pair<BlockPos, Holder<Structure>> candidate) {
+        return candidate != null && (current == null || origin.distSqr(candidate.getFirst()) < origin.distSqr(current.getFirst()));
+    }
+
+    private Pair<BlockPos, Holder<Structure>> concentric(ServerLevel level, LegacyChunkGenerator generator, Search search,
+                                                          BlockPos origin, boolean unreferenced, Map<ChunkPos, Starts> stored) {
+        var placement = search.placement();
+        int[] positions = definition.structureRingPositions(dimension, placement.index(), placement.ringCount());
+        var candidates = new ArrayList<ChunkPos>(positions.length / 2);
+        for (int index = 0; index < positions.length; index += 2) {
+            candidates.add(new ChunkPos(positions[index], positions[index + 1]));
+        }
+        candidates.sort(Comparator.comparingDouble(chunk -> origin.distSqr(placement.locate(chunk))));
+        for (int start = 0; start < candidates.size(); start += BATCH) {
+            var found = batch(level, generator, search, candidates.subList(start, Math.min(start + BATCH, candidates.size())),
+                    unreferenced, stored);
+            if (found != null) return found;
         }
         return null;
     }
@@ -173,7 +217,7 @@ final class LegacyStructureLocator {
             if (structure == null) continue;
             var pos = candidates.get(index);
             if (unreferenced && !addReference(level, pos, structure.value())) continue;
-            return Pair.of(search.placement().rules().getLocatePos(pos), structure);
+            return Pair.of(search.placement().locate(pos), structure);
         }
         return null;
     }
