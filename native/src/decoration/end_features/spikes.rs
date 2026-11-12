@@ -20,7 +20,7 @@ pub struct Recipe {
     pub obsidian: u16,
     pub air: u16,
     pub bedrock: u16,
-    pub fire: u16,
+    pub fire: Option<u16>,
     pub invulnerable: bool,
     pub beam_target: Option<[i32; 3]>,
     pub step: u32,
@@ -40,8 +40,8 @@ impl Recipe {
     }
     pub(in crate::decoration) fn validate(&self, palette: usize) -> bool {
         self.centers.len()==10 && self.bars.len()==16
-            && [self.obsidian,self.air,self.bedrock,self.fire].iter().chain(&self.bars).all(|&id|(id as usize)<palette)
-            && self.obsidian!=0 && self.bedrock!=0 && self.fire!=0 && self.bars.iter().all(|&id|id!=0)
+            && [self.obsidian,self.air,self.bedrock].iter().chain(&self.bars).copied().chain(self.fire).all(|id|(id as usize)<palette)
+            && self.obsidian!=0 && self.bedrock!=0 && self.fire!=Some(0) && self.bars.iter().all(|&id|id!=0)
             && self.spikes.iter().all(|s|(0..=46340).contains(&s.radius) && (0..=254).contains(&s.height)
                 && s.x.checked_sub(s.radius).is_some() && s.x.checked_add(s.radius).is_some()
                 && s.z.checked_sub(s.radius).is_some() && s.z.checked_add(s.radius).is_some())
@@ -109,14 +109,10 @@ impl Recipe {
                         request,
                         output,
                     );
-                    // The source always places bedrock immediately below the
-                    // crystal before querying FireBlock.getState: plain fire.
-                    emit(
-                        [spike.x, spike.height + 1, spike.z],
-                        self.fire,
-                        request,
-                        output,
-                    );
+                    // Later versions place plain fire immediately above the cap.
+                    if let Some(fire) = self.fire {
+                        emit([spike.x, spike.height + 1, spike.z], fire, request, output);
+                    }
                     live.commit(output, start, field, profile, request);
                 }
             },

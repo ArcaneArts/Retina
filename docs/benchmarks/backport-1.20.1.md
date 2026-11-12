@@ -535,3 +535,60 @@ cache replay then staged a byte-identical Forge JAR, and that JAR
 passed the dedicated-server save, restart and biome-modifier tests.
 Workflow lint, the local release suites and the staged 26.3 native
 smoke test passed. Windows GPU execution remains unmeasured.
+
+## End features and metadata
+
+The 1.20.1 registry export now includes the four vanilla End placed
+features. Retina reads pillar layouts, chorus placement, small islands,
+and return gateways from the effective registries. The shared engine
+replays the features and writes 1.20.1 block positions and entity fields
+when encoding DataVersion 3465 chunks. Minecraft places fire above the
+legacy pillars during crystal ticks. The older saved definitions remain
+authoritative for their worlds. End cities require structure export.
+
+Use the Java 17 catalog and the native CLI to generate the seed 12345
+acceptance corpus in a fresh directory.
+
+```sh
+./gradlew :minecraft1201:exportTerrainCatalog -PretinaVerifyCatalog \
+  "-PretinaNativePath=$native" "-Porg.gradle.java.installations.paths=$jdk17"
+retina init --catalog minecraft1201/build/terrain-catalog/retina-catalog.dat \
+  --world "$world" --seed 12345
+RETINA_GPU_BACKEND=metal retina generate --definition "$world/retina.dat" \
+  --dimension minecraft:the_end --region-min=-1,-1 --region-max=0,0 --output "$world"
+RETINA_GPU_BACKEND=metal retina generate --definition "$world/retina.dat" \
+  --dimension minecraft:the_end --region-min=3,0 --region-max=3,0 --output "$world"
+```
+
+Add `--end-reference "$world/DIM1/region"` to the Fabric and Forge
+server acceptance commands. This reads the native headless corpus,
+loads the same chunks through the packaged mods, and verifies the ten
+crystal UUIDs and the outer gateway exit after a save and restart.
+The corpus also checks chorus flowers, pillar cap and body blocks, and
+an island block at `1548,54,0`. The 1.20.1 `probeEndTerrain` Java
+reference reports air at that point before decoration.
+
+For a datapack export, copy
+`minecraft1201/src/datagen/fixtures/end-pack` into a fresh world's
+`datapacks` directory and run `exportNoiseTerrain` with
+`-PretinaWorld="$world"`. Headless CPU generation of the same five
+regions produced ten invulnerable crystals with beam target
+`-8,95,12` and a gateway with exact exit `16,88,-32`. The four
+central regions took 0.76 s on Metal for the vanilla catalog and
+1.21 s on CPU for the datapack definition, including definition load.
+Those timings come from different definitions.
+
+The catalog passed all 15 live-versus-bundled cases. The Java 17 Fabric
+0.16.14 and Forge 47.4.28 server runs retained all ten crystals and the
+gateway on both boots, and the Forge biome-modifier datapack produced
+its 226 gold markers in the sampled chunks. Spigot retained all ten
+generated crystals with their server-assigned UUIDs, and its metadata
+fixture saved the legacy gateway exit and crystal beam target across
+restart. Each Spigot snapshot compared 917,504 blocks and 14,336 biome
+samples. One crystal tick added fire in each snapshot. The check
+allows that update only at the native crystal position.
+
+Both regenerated 26.3 catalog variants were byte-identical to the
+checked-in assets. The 2,048 decoded chunk records from the modern End
+Metal corpus had identical hashes before and after the change. The
+26.3 universal JAR also generated a complete End region on CPU.

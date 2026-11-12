@@ -22,6 +22,7 @@ static ASSEMBLERS: OnceLock<Result<rayon::ThreadPool, String>> = OnceLock::new()
 mod material_cache;
 pub mod codec;
 mod geometry;
+mod legacy_metadata;
 mod storage;
 #[cfg(test)]
 mod transfer_probe;
@@ -913,6 +914,13 @@ impl ChunkStorageFormat {
             _ => Self::Modern,
         }
     }
+
+    fn write_metadata(self, out: &mut Vec<u8>, data: &serde_json::Value) {
+        match self {
+            Self::Modern => crate::nbt::fields(out, data),
+            Self::Minecraft1201 => legacy_metadata::fields(out, data),
+        }
+    }
 }
 
 pub(crate) fn material_nbt(material: &serde_json::Value, format: ChunkStorageFormat) -> Vec<u8> {
@@ -1179,7 +1187,7 @@ fn encode_chunk<B: MaterialRead + ?Sized>(
     }
     nbt.end();
     if let Some(data) = structure_data {
-        crate::nbt::fields(&mut nbt.0, data);
+        ChunkStorageFormat::for_data_version(data_version).write_metadata(&mut nbt.0, data);
     } else {
         crate::nbt::fields(&mut nbt.0, &crate::structures::empty_data());
     }

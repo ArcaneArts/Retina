@@ -201,7 +201,7 @@ final class LegacyTerrainProfile {
         return noise;
     }
 
-    private static int material(LinkedHashMap<BlockState, Integer> palette, BlockState state) {
+    static int material(LinkedHashMap<BlockState, Integer> palette, BlockState state) {
         return palette.computeIfAbsent(state, ignored -> palette.size());
     }
 }

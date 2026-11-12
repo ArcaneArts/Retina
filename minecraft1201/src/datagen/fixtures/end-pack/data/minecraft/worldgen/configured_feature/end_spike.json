@@ -1,0 +1,8 @@
+{
+  "type": "minecraft:end_spike",
+  "config": {
+    "crystal_invulnerable": true,
+    "crystal_beam_target": [-8, 95, 12],
+    "spikes": []
+  }
+}

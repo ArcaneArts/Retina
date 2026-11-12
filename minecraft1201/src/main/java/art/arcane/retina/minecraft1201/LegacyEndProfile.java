@@ -72,7 +72,8 @@ final class LegacyEndProfile {
         end.add("biomes", mapping);
         world.add("end", end);
         var biomesProfile = new LegacyBiomeProfile(biomes, new JsonArray());
-        world.add("biomes", biomesProfile.encode(material, true));
+        var biomeEntries = biomesProfile.encode(material, true);
+        world.add("biomes", biomeEntries);
         world.add("climate_targets", biomesProfile.targets());
         var noises = new JsonArray();
         // The profile buffer has four climate noise slots. End terrain does not sample them.
@@ -85,6 +86,7 @@ final class LegacyEndProfile {
         }
         world.add("noises", noises);
         LegacyTerrainProfile.terrainPreviewOmissions(world);
+        LegacyEndFeatures.export(registries, List.copyOf(source.possibleBiomes()), biomes, biomeEntries, palette, world);
         WorldDefinitionCompiler.writePalette(world, palette, stem.type().value().hasSkyLight());
         return world;
     }

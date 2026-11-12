@@ -48,7 +48,10 @@ final class MetadataDelivery {
             String id = tag.getString("id");
             if (SpawnerDelivery.accepts(id)) SpawnerDelivery.validate(tag, this);
             else if (InventoryDelivery.TYPES.contains(id)) InventoryDelivery.validate(tag, this);
-            else if (id.equals("minecraft:end_gateway")) fields(tag, Set.of("id", "x", "y", "z", "keepPacked", "Age", "ExactTeleport", "exit_portal"), "end gateway");
+            else if (id.equals("minecraft:end_gateway")) {
+                fields(tag, Set.of("id", "x", "y", "z", "keepPacked", "Age", "ExactTeleport", "exit_portal", "ExitPortal"), "end gateway");
+                position(tag, "exit_portal", "ExitPortal");
+            }
             else unavailable("block entity " + id);
         }
         for (var raw : root.getList("entities", BinaryTagTypes.COMPOUND)) {
@@ -57,14 +60,31 @@ final class MetadataDelivery {
                 EntityDelivery.validate(tag, this);
                 continue;
             }
-            fields(tag, Set.of("id", "Pos", "Motion", "Rotation", "fall_distance", "Fire", "Air", "OnGround",
-                    "Invulnerable", "PortalCooldown", "ShowBottom", "beam_target", "UUID"), "end crystal");
+            fields(tag, Set.of("id", "Pos", "Motion", "Rotation", "fall_distance", "FallDistance", "Fire", "Air", "OnGround",
+                    "Invulnerable", "PortalCooldown", "ShowBottom", "beam_target", "BeamTarget", "UUID"), "end crystal");
+            position(tag, "beam_target", "BeamTarget");
             for (var component : tag.getList("Motion", BinaryTagTypes.DOUBLE))
                 if (((DoubleBinaryTag) component).value() != 0) unavailable("nonzero initial end crystal motion");
-            if (tag.getDouble("fall_distance") != 0 || tag.getShort("Fire") != 0 || tag.getShort("Air", (short) 300) != 300
+            if (tag.getDouble("fall_distance") != 0 || tag.getFloat("FallDistance") != 0
+                    || tag.getShort("Fire") != 0 || tag.getShort("Air", (short) 300) != 300
                     || tag.getByte("OnGround") != 0 || tag.getInt("PortalCooldown") != 0)
                 unavailable("nondefault end crystal physics data");
         }
+    }
+
+    private static int[] position(CompoundBinaryTag tag, String modern, String legacy) {
+        var encoded = tag.get(modern);
+        if (encoded instanceof IntArrayBinaryTag array) {
+            int[] values = array.value();
+            if (values.length == 3 || values.length == 0) return values;
+        }
+        if (encoded != null) throw new IllegalStateException("Invalid saved position " + modern);
+        encoded = tag.get(legacy);
+        if (encoded == null) return new int[0];
+        if (encoded instanceof CompoundBinaryTag pos && pos.get("X") instanceof IntBinaryTag x
+                && pos.get("Y") instanceof IntBinaryTag y && pos.get("Z") instanceof IntBinaryTag z)
+            return new int[]{x.value(), y.value(), z.value()};
+        throw new IllegalStateException("Invalid saved position " + legacy);
     }
 
     void fields(CompoundBinaryTag tag, Set<String> supported, String kind) {
@@ -94,10 +114,9 @@ final class MetadataDelivery {
                 throw new IllegalStateException("Native gateway metadata has no gateway block at " + x + "," + y + "," + z);
             gateway.setAge(tag.getLong("Age"));
             gateway.setExactTeleport(tag.getByte("ExactTeleport") != 0);
-            int[] exit = tag.getIntArray("exit_portal", new int[0]);
+            int[] exit = position(tag, "exit_portal", "ExitPortal");
             if (exit.length == 3) gateway.setExitLocation(new Location(gateway.isPlaced() ? gateway.getWorld() : null, exit[0], exit[1], exit[2]));
-            else if (exit.length == 0) gateway.setExitLocation(null);
-            else throw new IllegalStateException("Invalid saved gateway exit position");
+            else gateway.setExitLocation(null);
             if (!gateway.update(true, false)) throw new IllegalStateException("Could not install native gateway metadata");
         }
         for (var raw : root.getList("entities", BinaryTagTypes.COMPOUND)) {
@@ -114,9 +133,8 @@ final class MetadataDelivery {
                 crystal.setRotation(at.getYaw(), at.getPitch());
                 crystal.setShowingBottom(tag.getByte("ShowBottom", (byte) 1) != 0);
                 crystal.setInvulnerable(tag.getByte("Invulnerable") != 0);
-                int[] target = tag.getIntArray("beam_target", new int[0]);
+                int[] target = position(tag, "beam_target", "BeamTarget");
                 if (target.length == 3) crystal.setBeamTarget(new Location(crystal.getWorld(), target[0], target[1], target[2]));
-                else if (target.length != 0) throw new IllegalStateException("Invalid saved crystal beam target");
                 // Bukkit owns runtime entity UUIDs. No raw NBT/UUID injection is attempted.
             });
         }

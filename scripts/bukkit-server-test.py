@@ -114,18 +114,24 @@ def check_snapshot_pair(args, directory, output):
             'persisted_end_crystals': check_persisted_crystals(directory, output, library)}
 
 
-def check_persisted_crystals(directory, output, library):
+def read_saved_end_crystals(storage):
     from benchmark_support import decode_nbt, mca_records
-    from saved_definition import SavedDefinition, check
     actual = []
-    for region in world_storage(directory, 'world_the_end').glob('entities/r.*.mca'):
+    for region in storage.glob('entities/r.*.mca'):
         for payload in mca_records(region).values():
             actual.extend(tag for tag in next(iter(decode_nbt(payload).values())).get('Entities', []) if tag['id'] == 'minecraft:end_crystal')
     assert len(actual) == 10, f'Expected all ten generated End pillar crystals, got {len(actual)}'
+    assert len({tuple(tag['UUID']) for tag in actual}) == 10
+    return actual
+
+
+def compare_saved_crystals(actual, definition, library, beam_field):
+    from benchmark_support import decode_nbt
+    from saved_definition import SavedDefinition, check
     native = c.CDLL(str(library))
     native.retina_world_dimension_chunk.argtypes = [c.c_uint64, c.c_char_p, c.c_uint64, c.c_int32, c.c_int32,
                                                     c.POINTER(c.c_void_p), c.POINTER(c.c_uint64)]
-    with SavedDefinition(native, directory / 'world/retina.dat', 'minecraft:the_end') as world:
+    with SavedDefinition(native, definition, 'minecraft:the_end') as world:
         for entity in actual:
             x, _, z = entity['Pos']; pointer, length = c.c_void_p(), c.c_uint64()
             check(native, native.retina_world_dimension_chunk(world.handle, world.key, len(world.key), math.floor(x / 16), math.floor(z / 16), c.byref(pointer), c.byref(length)))
@@ -133,9 +139,13 @@ def check_persisted_crystals(directory, output, library):
             finally: native.retina_free_bytes(pointer, length)
             expected = next(tag for tag in root['entities'] if tag['id'] == entity['id'] and tag['Pos'] == entity['Pos'])
             assert all(abs(math.remainder(a - b, 360)) < .0001 for a, b in zip(expected['Rotation'], entity['Rotation']))
-            for key, default in [('ShowBottom', 1), ('Invulnerable', 0), ('beam_target', None)]:
+            for key, default in [('ShowBottom', 1), ('Invulnerable', 0), (beam_field, None)]:
                 assert entity.get(key, default) == expected.get(key, default), key
-    assert len({tuple(tag['UUID']) for tag in actual}) == 10
+
+
+def check_persisted_crystals(directory, output, library):
+    actual = read_saved_end_crystals(world_storage(directory, 'world_the_end'))
+    compare_saved_crystals(actual, directory / 'world/retina.dat', library, 'beam_target')
     result = {'status': 'pass', 'crystals': 10, 'fields': ['id', 'Pos', 'Rotation', 'ShowBottom', 'Invulnerable', 'beam_target'],
               'equivalent_yaw_normalization': True, 'runtime_uuids_owned_by_server': True}
     (output / 'crystal-parity.json').write_text(json.dumps(result, indent=2) + '\n')
