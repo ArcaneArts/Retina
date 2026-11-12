@@ -187,13 +187,26 @@ def check_spring_flow(server, fixture, restart):
     server.command('save-all flush', 'Saved the game')
 
 
+def verify_spring_updates(ticks, updates):
+    for fluid, remaining in updates.items():
+        pending = [tuple(tick[axis] for axis in 'xyz') for tick in ticks if tick['i'] == fluid]
+        remaining = set(remaining)
+        while pending and remaining:
+            x, y, z = pending.pop()
+            for pos in ((x - 1, y, z), (x + 1, y, z), (x, y, z - 1), (x, y, z + 1), (x, y - 1, z)):
+                if pos in remaining:
+                    remaining.remove(pos)
+                    pending.append(pos)
+        assert not remaining, (fluid, 'flow is disconnected from a native spring', sorted(remaining)[:5])
+
+
 def compare(world, library, dimensions, edits):
     unpack = sibling('bukkit-probe').unpack
     lib = c.CDLL(str(library.resolve()))
     lib.retina_world_dimension_chunk.argtypes = [c.c_uint64, c.c_char_p, c.c_uint64, c.c_int32, c.c_int32,
                                                  c.POINTER(c.c_void_p), c.POINTER(c.c_uint64)]
     receipt = {'chunks': 0, 'blocks': 0, 'biomes': 0, 'heightmaps': 0, 'player_edits': 0, 'flowing_lava': 0,
-               'emerald_ore': 0, 'gold_ore': 0, 'desert_biomes': 0}
+               'flowing_water': 0, 'emerald_ore': 0, 'gold_ore': 0, 'desert_biomes': 0}
     for dimension in dimensions:
         region = world / DIMENSIONS[dimension] / 'region'
         with SavedDefinition(lib, world / 'retina.dat', 'minecraft:' + dimension) as saved:
@@ -211,21 +224,27 @@ def compare(world, library, dimensions, edits):
                 sections = {s['Y']: s for s in native['sections'] if 'block_states' in s}
                 saved_sections = {s['Y']: s for s in actual['sections'] if 'block_states' in s}
                 assert sections.keys() == saved_sections.keys()
-                spring_updates = dimension == 'the_nether' and any(
-                    tick['i'] == 'minecraft:lava' for tick in native.get('fluid_ticks', []))
+                spring_ticks = native.get('fluid_ticks', [])
+                spring_updates = {tick['i']: [] for tick in spring_ticks if tick['i'] in ('minecraft:water', 'minecraft:lava')}
                 edit = EDITS[dimension] if edits else None
                 edited_chunk = edit and (edit[0] >> 4, edit[2] >> 4) == (x, z)
                 for section_y, expected in sections.items():
                     observed = saved_sections[section_y]
                     for i in range(4096):
                         block = unpack(expected['block_states'], i, 4)
-                        if edited_chunk and (x * 16 + (i & 15), section_y * 16 + (i >> 8), z * 16 + ((i >> 4) & 15)) == edit[:3]:
+                        pos = (x * 16 + (i & 15), section_y * 16 + (i >> 8), z * 16 + ((i >> 4) & 15))
+                        if edited_chunk and pos == edit[:3]:
                             block = {'Name': edit[3]}
                             receipt['player_edits'] += 1
                         saved_block = unpack(observed['block_states'], i, 4)
-                        if spring_updates and block['Name'] == 'minecraft:air' and saved_block['Name'] == 'minecraft:lava':
+                        fluid = saved_block['Name']
+                        if block['Name'] == 'minecraft:air' and fluid in spring_updates:
                             assert int(saved_block['Properties']['level']) > 0, (dimension, x, z, section_y, i, saved_block)
-                            receipt['flowing_lava'] += 1
+                            if dimension == 'the_nether' and fluid == 'minecraft:lava':
+                                # Preserve the existing check for lava that can enter from adjacent chunks.
+                                receipt['flowing_lava'] += 1
+                            else:
+                                spring_updates[fluid].append(pos)
                         else:
                             assert saved_block == block, (dimension, x, z, section_y, i, block, saved_block)
                         receipt['emerald_ore'] += not edits and block['Name'] == 'minecraft:emerald_block'
@@ -236,6 +255,9 @@ def compare(world, library, dimensions, edits):
                         receipt['desert_biomes'] += biome == 'minecraft:desert'
                     receipt['blocks'] += 4096
                     receipt['biomes'] += 64
+                verify_spring_updates(spring_ticks, spring_updates)
+                receipt['flowing_water'] += len(spring_updates.get('minecraft:water', ()))
+                receipt['flowing_lava'] += len(spring_updates.get('minecraft:lava', ()))
                 if not edited_chunk:
                     for name, heightmap in actual['Heightmaps'].items():
                         assert heightmap == native['Heightmaps'][name], (dimension, x, z, name)

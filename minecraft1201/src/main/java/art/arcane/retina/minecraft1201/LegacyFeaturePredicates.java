@@ -4,19 +4,25 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.mojang.serialization.JsonOps;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
+import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.type;
 
 /** Resolve worldgen predicates against the final local material palette. */
@@ -24,6 +30,13 @@ final class LegacyFeaturePredicates {
     private record Binding(JsonArray allowed, Predicate<BlockState> matches) { }
 
     private final List<Binding> bindings = new ArrayList<>();
+    private BiFunction<BlockState, JsonArray, JsonObject> survival = (state, offset) -> {
+        throw new IllegalArgumentException("predicate:would_survive:" + state);
+    };
+
+    void bindSurvival(BiFunction<BlockState, JsonArray, JsonObject> survival) {
+        this.survival = survival;
+    }
 
     JsonObject material(JsonArray offset, Predicate<BlockState> matches) {
         var result = operation("material");
@@ -49,14 +62,16 @@ final class LegacyFeaturePredicates {
         return switch (kind) {
             case "matching_blocks" -> material(offset, selection(input.get("blocks")));
             case "matching_block_tag" -> material(offset, selection(new JsonPrimitive("#" + input.get("tag").getAsString())));
+            case "matching_fluids" -> material(offset, fluids(input.get("fluids")));
+            case "has_sturdy_face" -> {
+                var direction = decode(Direction.CODEC.parse(JsonOps.INSTANCE, input.get("direction")));
+                yield material(offset, state -> state.isFaceSturdy(EmptyBlockGetter.INSTANCE, BlockPos.ZERO, direction));
+            }
+            case "would_survive" -> survival.apply(decode(BlockState.CODEC.parse(JsonOps.INSTANCE, input.get("state"))), offset);
             case "replaceable" -> material(offset, BlockState::canBeReplaced);
             case "solid" -> material(offset, BlockState::isSolid);
             case "true" -> operation(kind);
-            case "not" -> {
-                var result = operation(kind);
-                result.add("predicate", compile(input.getAsJsonObject("predicate")));
-                yield result;
-            }
+            case "not" -> not(compile(input.getAsJsonObject("predicate")));
             case "all_of", "any_of" -> {
                 var children = new JsonArray();
                 for (var child : input.getAsJsonArray("predicates")) children.add(compile(child.getAsJsonObject()));
@@ -67,9 +82,17 @@ final class LegacyFeaturePredicates {
     }
 
     static JsonObject all(JsonObject... predicates) {
-        var children = new JsonArray();
-        for (var predicate : predicates) children.add(predicate);
-        return group("all_of", children);
+        return group("all_of", predicates);
+    }
+
+    static JsonObject any(JsonObject... predicates) {
+        return group("any_of", predicates);
+    }
+
+    static JsonObject not(JsonObject predicate) {
+        var result = operation("not");
+        result.add("predicate", predicate);
+        return result;
     }
 
     static JsonObject always() {
@@ -105,6 +128,27 @@ final class LegacyFeaturePredicates {
         var block = BuiltInRegistries.BLOCK.getOptional(new ResourceLocation(name))
                 .orElseThrow(() -> new IllegalArgumentException("Unknown predicate block " + name));
         return state -> state.is(block);
+    }
+
+    private static Predicate<BlockState> fluids(JsonElement value) {
+        if (value instanceof JsonArray array) {
+            var children = array.asList().stream().map(LegacyFeaturePredicates::fluids).toList();
+            return state -> children.stream().anyMatch(child -> child.test(state));
+        }
+        String name = value.getAsString();
+        if (name.startsWith("#")) {
+            var tag = TagKey.create(Registries.FLUID, new ResourceLocation(name.substring(1)));
+            return state -> state.getFluidState().is(tag);
+        }
+        var fluid = BuiltInRegistries.FLUID.getOptional(new ResourceLocation(name))
+                .orElseThrow(() -> new IllegalArgumentException("Unknown predicate fluid " + name));
+        return state -> state.getFluidState().is(fluid);
+    }
+
+    private static JsonObject group(String kind, JsonObject... predicates) {
+        var children = new JsonArray();
+        for (var predicate : predicates) children.add(predicate);
+        return group(kind, children);
     }
 
     private static JsonObject group(String kind, JsonArray children) {

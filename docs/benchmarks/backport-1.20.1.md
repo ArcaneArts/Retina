@@ -702,3 +702,50 @@ so the isolated retry used `--startup-timeout 480`. Each boot matched
 tick update at the generated End crystal's position. The restart
 preserved three player edits and all ten generated End crystals. The
 comparator was corrected for fire age and rerun on the saved snapshots.
+
+## Overworld plants, disks, and springs
+
+The normal 1.20.1 Overworld now exports 59 of the 121 non-ore roots in
+its loaded biome source. It preserves feature order and biome membership.
+The recipes cover flower and grass patches, cactus and sugar cane columns,
+disks, bamboo, springs, moss and clay patches, cave vines, and spore
+blossoms. The definition lists the other 62 roots by name, including trees,
+most aquatic features, and specialized terrain features. For skylit
+dimensions, mushroom patches require the loaded mushroom-growing block tag.
+
+Run `exportNoiseTerrain -PretinaVerifyNoiseTerrain` as above. At seed
+12345 the 1.20.1 reader verifies all 1,024 records in region `-1,0`,
+1,437 paired plants, and 192 scheduled water and lava ticks. The existing
+Nether and End profiles were identical to the prior revision. All 15
+bundled-versus-live catalog cases passed.
+
+Copy `minecraft1201/src/datagen/fixtures/overworld-flower-pack` to the
+disposable world's `datapacks` directory and repeat the verified export.
+The Flower Forest dimension checks every one of 82,524 placed markers
+against the live 1.20.1 provider at its actual position. The Lush Caves
+dimension checks moss, cave vines, spore blossoms, and dripleaf in 16
+headless chunks.
+
+The single local M4 Max CLI runs for 1,024 fresh Overworld chunks took
+4.89 s on Metal and 42.53 s on CPU. The prior terrain-and-geology profile
+took 2.00 s and 6.05 s, respectively. These runs include the extra
+material reads, feature placement, and MCA output for the new catalog.
+The CPU and Metal outputs differed at 75 block positions in this region.
+The same comparison with the prior definition differed at 72 positions.
+
+The packaged Spigot probe matched 917,504 blocks and 14,336 biome
+samples per boot, accounted for the live End crystal fire update, and
+preserved all three edits. It also loaded the imported datapack
+definition. Its `bukkit-api` catalog variant reports and omits the
+scheduled spring roots because the public API cannot install their ticks.
+
+The packaged Java 17 Fabric and Forge probes compared 688,128 blocks,
+10,752 biome samples, and 24 heightmaps per boot. Both retained all
+three player edits, verified the Nether spring after restart, and
+matched two flowing water blocks connected to the saved Overworld
+spring. The initial comparison was rerun against the captured saves
+after adding the flow check. The live datapack checks matched 229
+emerald markers on both loaders and 226 Forge biome modifier markers.
+Concurrent cold tests took about 178 s
+for each mod server and 297 s for the Spigot process, which exercised
+all three spawn areas. These are acceptance timings under shared load.

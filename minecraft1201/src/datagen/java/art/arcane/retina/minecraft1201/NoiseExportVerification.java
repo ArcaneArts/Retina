@@ -16,6 +16,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
@@ -44,8 +45,15 @@ final class NoiseExportVerification {
         verify(world, registries, dimensions, LevelStem.OVERWORLD, "region", -1, 0, seed);
         verify(world, registries, dimensions, LevelStem.NETHER, "DIM-1/region", -1, 0, seed);
         if (vanillaFixture) {
+            OverworldFeatureVerification.vanilla(world, registries, dimensions.getHolderOrThrow(LevelStem.OVERWORLD).value());
             verify(world, registries, dimensions, LevelStem.NETHER, "DIM-1/region", 0, -1, seed);
             NetherFeatureVerification.verify(world, registries);
+        }
+        if (dimensions.containsKey(new ResourceLocation("retina:flower_probe"))) {
+            OverworldFeatureVerification.flowerDatapack(world, registries);
+        }
+        if (dimensions.containsKey(new ResourceLocation("retina:lush_probe"))) {
+            OverworldFeatureVerification.lushCavesDatapack(world);
         }
         verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -1, 0, seed);
         verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -3, -1, seed);

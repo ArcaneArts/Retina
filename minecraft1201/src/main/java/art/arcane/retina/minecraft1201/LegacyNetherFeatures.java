@@ -31,9 +31,9 @@ import net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConf
 import net.minecraft.world.level.levelgen.feature.configurations.SpringConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.TwistingVinesConfig;
 
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.function.ToIntFunction;
 import java.util.TreeSet;
 
 import static art.arcane.retina.definition.FlatProfileModel.array;
@@ -96,7 +96,8 @@ final class LegacyNetherFeatures {
                             biomeEntries.get(biome).getAsJsonObject().getAsJsonArray("decorations").add(recipes.size());
                         }
                     }
-                    recipes.add(recipe(source, step, rootOrder, placement, primitive));
+                    recipes.add(LegacyFeaturePlacement.recipe(source, step, rootOrder, placement,
+                            nativeFeature(primitive.data()), primitive.reach()));
                 } catch (IllegalArgumentException unsupported) {
                     omissions.add(source + ":" + unsupported.getMessage());
                 }
@@ -104,16 +105,9 @@ final class LegacyNetherFeatures {
         }
         var report = new JsonArray();
         omissions.forEach(report::add);
-        var ticks = new JsonArray();
-        fluidTicks.forEach((id, index) -> {
-            var tick = new JsonObject();
-            tick.addProperty("id", id);
-            tick.addProperty("kind", "fluid");
-            ticks.add(tick);
-        });
         world.add("decorations", recipes);
         world.add("decoration_omissions", report);
-        world.add("decoration_ticks", ticks);
+        world.add("decoration_ticks", fluidTickTable(fluidTicks));
         world.addProperty("ordered_decorations", true);
         world.addProperty("decoration_source_order", true);
         world.addProperty("decoration_biome_3d", true);
@@ -121,7 +115,9 @@ final class LegacyNetherFeatures {
 
     private Primitive primitive(ConfiguredFeature<?, ?> configured) {
         var feature = configured.feature();
-        if (feature == Feature.SPRING) return spring((SpringConfiguration) configured.config());
+        if (feature == Feature.SPRING) {
+            return new Primitive(spring((SpringConfiguration) configured.config(), predicates, this::material, fluidTicks), 0);
+        }
         if (feature == Feature.DELTA_FEATURE) return delta((DeltaFeatureConfiguration) configured.config());
         if (feature == Feature.REPLACE_BLOBS) return blobs((ReplaceSphereConfiguration) configured.config());
         if (feature == Feature.HUGE_FUNGUS) return fungus((HugeFungusConfiguration) configured.config());
@@ -135,9 +131,10 @@ final class LegacyNetherFeatures {
         throw new IllegalArgumentException(BuiltInRegistries.FEATURE.getKey(feature).toString());
     }
 
-    private Primitive spring(SpringConfiguration config) {
+    static JsonObject spring(SpringConfiguration config, LegacyFeaturePredicates predicates,
+                             ToIntFunction<BlockState> material, LinkedHashMap<String, Integer> fluidTicks) {
         var data = kind("spring");
-        data.addProperty("state", material(config.state.createLegacyBlock()));
+        data.addProperty("state", material.applyAsInt(config.state.createLegacyBlock()));
         data.addProperty("requires_block_below", config.requiresBlockBelow);
         data.addProperty("rock_count", config.rockCount);
         data.addProperty("hole_count", config.holeCount);
@@ -145,7 +142,18 @@ final class LegacyNetherFeatures {
         data.add("air", predicates.material(BlockState::isAir));
         String fluid = BuiltInRegistries.FLUID.getKey(config.state.getType()).toString();
         data.addProperty("tick", fluidTicks.computeIfAbsent(fluid, key -> fluidTicks.size() + 1));
-        return new Primitive(data, 0);
+        return data;
+    }
+
+    static JsonArray fluidTickTable(LinkedHashMap<String, Integer> fluidTicks) {
+        var ticks = new JsonArray();
+        fluidTicks.forEach((id, index) -> {
+            var tick = new JsonObject();
+            tick.addProperty("id", id);
+            tick.addProperty("kind", "fluid");
+            ticks.add(tick);
+        });
+        return ticks;
     }
 
     private Primitive delta(DeltaFeatureConfiguration config) {
@@ -254,19 +262,20 @@ final class LegacyNetherFeatures {
     }
 
     private static Primitive spread(int tries, int xz, int y, JsonArray placement, JsonObject feature, JsonObject origin) {
+        return new Primitive(spreadPatch(tries, xz, y, LegacyFeaturePlacement.placed(placement, feature), origin), xz);
+    }
+
+    static JsonObject spreadPatch(int tries, int xz, int y, JsonObject child, JsonObject origin) {
         if (tries < 1 || tries > 4096 || xz < 0 || xz > 15 || y < 0 || y > 256) {
             throw new IllegalArgumentException("spread-patch:bounds");
         }
-        var child = new JsonObject();
-        child.add("placement", placement);
-        child.add("feature", feature);
         var data = kind("spread_patch");
         data.addProperty("tries", tries);
         data.addProperty("xz_spread", xz);
         data.addProperty("y_spread", y);
         data.add("child", child);
         if (origin != null) data.add("origin", origin);
-        return new Primitive(data, xz);
+        return data;
     }
 
     private Primitive weeping() {
@@ -347,26 +356,9 @@ final class LegacyNetherFeatures {
         return data;
     }
 
-    private static JsonObject recipe(String source, int step, int order, JsonArray placement, Primitive primitive) {
-        long salt = 0xcbf29ce484222325L;
-        for (byte value : ("step/" + step + "/" + source).getBytes(StandardCharsets.UTF_8)) {
-            salt = (salt ^ Byte.toUnsignedInt(value)) * 0x100000001b3L;
-        }
+    static JsonObject nativeFeature(JsonObject feature) {
         var recipe = kind("nether_feature");
-        recipe.addProperty("source", source);
-        recipe.addProperty("root_order", order);
-        recipe.addProperty("generation_step", step);
-        recipe.addProperty("reach", primitive.reach());
-        recipe.addProperty("salt", salt);
-        recipe.addProperty("placement_salt", salt);
-        recipe.addProperty("density", 1);
-        recipe.addProperty("low_density", 1);
-        recipe.addProperty("noise_count", false);
-        recipe.addProperty("rarity", 1);
-        recipe.addProperty("tries", 1);
-        recipe.add("spread", array(0, 0, 0));
-        recipe.add("placement", placement);
-        recipe.add("nether", primitive.data());
+        recipe.add("nether", feature);
         return recipe;
     }
 }
