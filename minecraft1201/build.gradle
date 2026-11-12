@@ -35,6 +35,9 @@ dependencies {
         if (mode == 'noise' && providers.gradleProperty('retinaVerifyJigsaws').isPresent()) {
             args '--structures', '--verify-jigsaws'
         }
+        if (mode == 'noise' && providers.gradleProperty('retinaVerifyPortals').isPresent()) {
+            args '--structures', '--verify-portals'
+        }
         if (providers.gradleProperty('retinaNativePath').isPresent()) {
             systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
         }

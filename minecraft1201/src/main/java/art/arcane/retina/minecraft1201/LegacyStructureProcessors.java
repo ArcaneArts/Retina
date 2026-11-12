@@ -10,10 +10,12 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
@@ -25,7 +27,8 @@ import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
 /** Resolves the 1.20.1 processor codec into palette indices before native generation. */
 final class LegacyStructureProcessors {
     private static final Set<String> SUPPORTED = Set.of("minecraft:rule", "minecraft:block_rot", "minecraft:protected_blocks",
-            "minecraft:capped", "minecraft:nop");
+            "minecraft:capped", "minecraft:nop", LegacyStructureMaterialProcessors.AGE,
+            LegacyStructureMaterialProcessors.BLACKSTONE, LegacyStructureMaterialProcessors.LAVA);
 
     private LegacyStructureProcessors() { }
 
@@ -60,14 +63,36 @@ final class LegacyStructureProcessors {
         return source;
     }
 
+    static void prepare(JsonObject profile, LinkedHashMap<BlockState, Integer> materials) {
+        if (profile == null) return;
+        var kinds = new HashSet<String>();
+        walk(profile.getAsJsonObject("pools"), row -> {
+            if (row.has("processor_type")) kinds.add(row.get("processor_type").getAsString());
+        }, Collections.newSetFromMap(new IdentityHashMap<>()));
+        LegacyStructureMaterialProcessors.prepare(kinds, materials);
+    }
+
     static void finish(JsonObject profile, LinkedHashMap<BlockState, Integer> materials) {
         if (profile == null) return;
+        var tables = new HashMap<String, JsonElement>();
         walk(profile.getAsJsonObject("pools"), row -> {
             if (row.has("predicate_type") && row.get("predicate_type").getAsString().equals("minecraft:tag_match")) {
                 bindTag(row, "tag", "retina_matching", materials);
             }
-            if (row.has("processor_type") && row.get("processor_type").getAsString().equals("minecraft:protected_blocks")) {
-                bindTag(row, "value", "retina_protected", materials);
+            if (row.has("processor_type")) {
+                switch (row.get("processor_type").getAsString()) {
+                    case "minecraft:protected_blocks" -> bindTag(row, "value", "retina_protected", materials);
+                    case LegacyStructureMaterialProcessors.AGE -> row.add("retina_age",
+                            tables.computeIfAbsent("retina_age", ignored -> LegacyStructureMaterialProcessors.age(materials)));
+                    case LegacyStructureMaterialProcessors.BLACKSTONE -> row.add("retina_blackstone",
+                            tables.computeIfAbsent("retina_blackstone", ignored -> LegacyStructureMaterialProcessors.blackstone(materials)));
+                    case LegacyStructureMaterialProcessors.LAVA -> {
+                        row.add("retina_full_shape", tables.computeIfAbsent("retina_full_shape",
+                                ignored -> LegacyStructureMaterialProcessors.lavaShape(materials)));
+                        row.addProperty("retina_lava", materials.get(Blocks.LAVA.defaultBlockState()));
+                    }
+                    default -> { }
+                }
             }
             if (row.has("rottable_blocks")) bindRotatable(row, materials);
         }, Collections.newSetFromMap(new IdentityHashMap<>()));

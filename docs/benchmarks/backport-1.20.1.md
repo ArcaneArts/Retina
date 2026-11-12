@@ -1226,3 +1226,42 @@ and the mob stayed absent after save and reopen.
 All 15 catalog parity cases, the four local JAR builds and Bukkit
 unit tests passed. The native library and 26.3 catalogs were
 byte-identical to the previous build.
+
+### Nether ruined portals
+
+The 1.20.1 adapter exports the loaded Nether setup weights, all 13
+portal templates with their mirror and rotation data, and the
+processor, shape and fluid tables consumed by the shared replay.
+The exported set retains all seven weighted slots. Overworld
+portal setups remain explicit omissions, matching the current
+native planner's Nether support.
+
+Use a fresh directory for each run:
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyPortals \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+For the custom case, copy
+`minecraft1201/src/datagen/fixtures/nether-portal-pack` to
+`$RETINA_WORLD/datapacks/retina-nether-portals` first. Seed 12345
+generated one stock start and chest in region `-2,0`, and four
+starts and four chests in custom region `-1,0`. The custom setup
+also produced jungle leaves and vines. Both backends preserved
+all 1,024 records on reopen. The custom region matched across CPU
+and Metal on all structure and portal loot compounds and 1,021
+complete decoded chunks. Local region generation took 1.48 s on
+Metal and 13.55 s on CPU.
+
+Run `scripts/minecraft1201-portals-test.py` with the headless region
+as `--reference`. Use `--pack` for the fixture. Packaged Fabric
+used live registry export and Forge used the stock bundled
+catalog. The servers found starts before publishing the region,
+read the exact loot table and seed from Minecraft, and kept the
+same starts and loot after restart.
+
+All 15 catalog parity cases, Bukkit unit tests and the four
+local JAR builds passed. The native library and 26.3 catalogs
+match the preceding build byte for byte.

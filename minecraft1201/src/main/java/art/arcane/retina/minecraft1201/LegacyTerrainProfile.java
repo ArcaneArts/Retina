@@ -183,12 +183,13 @@ final class LegacyTerrainProfile {
         if (structures && structuresProfile != null) {
             LegacyJigsawProfile.add(registries, palette, templates, context, structuresProfile);
         }
-        LegacyGeologyProfile.export(registries, biomeProfile, world, palette, context, storage,
-                type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
+        var geology = LegacyGeologyProfile.collect(registries, biomeProfile, world, palette, context);
+        LegacyStructureProcessors.prepare(structuresProfile, palette);
+        LegacyPortalProfile.prepare(structuresProfile, palette);
+        // Build all material masks only after geology and structures have reserved their output states.
+        geology.finish(world, storage, type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
         LegacyNetherStructures.finish(structuresProfile, palette);
         LegacyStructureProcessors.finish(structuresProfile, palette);
-        // Geology and structures have added their output states. Both compilers bind against the
-        // complete palette so ore replacement masks and predicates agree.
         if (predicates != null) predicates.finish(palette);
         if (overworld != null) overworld.finish(world);
         WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight(), overworld != null);

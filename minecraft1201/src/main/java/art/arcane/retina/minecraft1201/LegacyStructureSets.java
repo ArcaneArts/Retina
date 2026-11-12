@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
@@ -38,6 +39,12 @@ final class LegacyStructureSets {
 
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes,
                              Map<Class<? extends Structure>, String> families, Consumer<JsonObject> normalize) {
+        return export(registry, biomes, families, normalize, (kind, config) -> true);
+    }
+
+    static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes,
+                             Map<Class<? extends Structure>, String> families, Consumer<JsonObject> normalize,
+                             BiPredicate<String, JsonObject> supports) {
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, registry);
         var definitions = new JsonArray();
         var sets = new JsonArray();
@@ -69,6 +76,10 @@ final class LegacyStructureSets {
             }
             var definition = new JsonObject();
             var config = decode(Structure.DIRECT_CODEC.encodeStart(ops, structure)).getAsJsonObject();
+            if (!supports.test(kind, config)) {
+                omissions.add("structure:" + id + ":unsupported_setup");
+                continue;
+            }
             config.addProperty("retina_decoration_index", index);
             config.addProperty("retina_decoration_step", step);
             normalize.accept(config);
