@@ -9,7 +9,9 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.util.valueproviders.IntProvider;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.block.Blocks;
@@ -21,8 +23,13 @@ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.HugeFungusConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.DeltaFeatureConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.ColumnFeatureConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.NetherForestVegetationConfig;
+import net.minecraft.world.level.levelgen.feature.configurations.RandomPatchConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.ReplaceSphereConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.SimpleBlockConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.SpringConfiguration;
+import net.minecraft.world.level.levelgen.feature.configurations.TwistingVinesConfig;
 
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -39,20 +46,24 @@ final class LegacyNetherFeatures {
     private final RegistryOps<JsonElement> ops;
     private final LinkedHashMap<BlockState, Integer> palette;
     private final WorldGenerationContext context;
+    private final LevelHeightAccessor storage;
     private final LegacyFeaturePredicates predicates = new LegacyFeaturePredicates();
+    private final LegacyNetherPlants plants;
     private final LinkedHashMap<String, Integer> fluidTicks = new LinkedHashMap<>();
 
     private LegacyNetherFeatures(RegistryAccess registries, LinkedHashMap<BlockState, Integer> palette,
-                                 WorldGenerationContext context) {
+                                 WorldGenerationContext context, LevelHeightAccessor storage) {
         this.ops = RegistryOps.create(JsonOps.INSTANCE, registries);
         this.palette = palette;
         this.context = context;
+        this.storage = storage;
+        this.plants = new LegacyNetherPlants(ops, predicates, this::material);
     }
 
     static LegacyFeaturePredicates export(RegistryAccess registries, List<Holder<Biome>> sourceOrder, List<Holder<Biome>> biomes,
                                           JsonArray biomeEntries, LinkedHashMap<BlockState, Integer> palette,
-                                          WorldGenerationContext context, JsonObject world) {
-        var exporter = new LegacyNetherFeatures(registries, palette, context);
+                                          WorldGenerationContext context, LevelHeightAccessor storage, JsonObject world) {
+        var exporter = new LegacyNetherFeatures(registries, palette, context, storage);
         exporter.exportRoots(registries, sourceOrder, biomes, biomeEntries, world);
         return exporter.predicates;
     }
@@ -115,6 +126,12 @@ final class LegacyNetherFeatures {
         if (feature == Feature.REPLACE_BLOBS) return blobs((ReplaceSphereConfiguration) configured.config());
         if (feature == Feature.HUGE_FUNGUS) return fungus((HugeFungusConfiguration) configured.config());
         if (feature == Feature.GLOWSTONE_BLOB) return glowstone();
+        if (feature == Feature.RANDOM_PATCH) return randomPatch((RandomPatchConfiguration) configured.config());
+        if (feature == Feature.NETHER_FOREST_VEGETATION) return vegetation((NetherForestVegetationConfig) configured.config());
+        if (feature == Feature.WEEPING_VINES) return weeping();
+        if (feature == Feature.TWISTING_VINES) return twisting((TwistingVinesConfig) configured.config());
+        if (feature == Feature.BASALT_PILLAR) return pillar();
+        if (feature == Feature.BASALT_COLUMNS) return columns((ColumnFeatureConfiguration) configured.config());
         throw new IllegalArgumentException(BuiltInRegistries.FEATURE.getKey(feature).toString());
     }
 
@@ -203,6 +220,117 @@ final class LegacyNetherFeatures {
         data.add("y_offset", y);
         data.addProperty("invert_y", true);
         return new Primitive(data, 7);
+    }
+
+    private Primitive randomPatch(RandomPatchConfiguration config) {
+        var placed = config.feature().value();
+        var leaf = placed.feature().value();
+        if (leaf.feature() != Feature.SIMPLE_BLOCK) throw new IllegalArgumentException("random-patch:child-feature");
+        var program = LegacyFeaturePlacement.encode(placed, ops);
+        for (var value : program) {
+            var op = value.getAsJsonObject();
+            if (!op.get("type").getAsString().equals("block_predicate_filter")) {
+                throw new IllegalArgumentException("random-patch:child-placement");
+            }
+            op.add("predicate", predicates.compile(op.getAsJsonObject("predicate")));
+        }
+        var simple = plants.simple(((SimpleBlockConfiguration) leaf.config()).toPlace(), null);
+        return spread(config.tries(), config.xzSpread(), config.ySpread(), program, simple, null);
+    }
+
+    private Primitive vegetation(NetherForestVegetationConfig config) {
+        if (config.spreadWidth <= 0 || config.spreadWidth > 16 || config.spreadHeight <= 0 || config.spreadHeight > 257) {
+            throw new IllegalArgumentException("forest-vegetation:spread");
+        }
+        int min = storage.getMinBuildHeight() + 1;
+        int max = storage.getMaxBuildHeight();
+        var bounds = LegacyFeaturePredicates.insideY(min, max - 1);
+        var nylium = predicates.material(array(0, -1, 0), state -> state.is(BlockTags.NYLIUM));
+        var target = LegacyFeaturePredicates.all(predicates.material(BlockState::isAir),
+                LegacyFeaturePredicates.insideY(min, max));
+        var simple = plants.simple(config.stateProvider, target);
+        return spread(config.spreadWidth * config.spreadWidth, config.spreadWidth - 1, config.spreadHeight - 1,
+                new JsonArray(), simple, LegacyFeaturePredicates.all(bounds, nylium));
+    }
+
+    private static Primitive spread(int tries, int xz, int y, JsonArray placement, JsonObject feature, JsonObject origin) {
+        if (tries < 1 || tries > 4096 || xz < 0 || xz > 15 || y < 0 || y > 256) {
+            throw new IllegalArgumentException("spread-patch:bounds");
+        }
+        var child = new JsonObject();
+        child.add("placement", placement);
+        child.add("feature", feature);
+        var data = kind("spread_patch");
+        data.addProperty("tries", tries);
+        data.addProperty("xz_spread", xz);
+        data.addProperty("y_spread", y);
+        data.add("child", child);
+        if (origin != null) data.add("origin", origin);
+        return new Primitive(data, xz);
+    }
+
+    private Primitive weeping() {
+        var data = vines("weeping_vines", Blocks.WEEPING_VINES, Blocks.WEEPING_VINES_PLANT);
+        data.add("support", predicates.blocks(array(0, 0, 0), Blocks.NETHERRACK, Blocks.NETHER_WART_BLOCK));
+        data.addProperty("wart", material(Blocks.NETHER_WART_BLOCK.defaultBlockState()));
+        return new Primitive(data, 7);
+    }
+
+    private Primitive twisting(TwistingVinesConfig config) {
+        if (config.spreadWidth() > 15 || config.spreadHeight() > 256 || config.maxHeight() > 256) {
+            throw new IllegalArgumentException("twisting-vines:bounds");
+        }
+        var data = vines("twisting_vines", Blocks.TWISTING_VINES, Blocks.TWISTING_VINES_PLANT);
+        data.add("support", predicates.blocks(array(0, 0, 0), Blocks.NETHERRACK, Blocks.WARPED_NYLIUM, Blocks.WARPED_WART_BLOCK));
+        data.addProperty("spread_width", config.spreadWidth());
+        data.addProperty("spread_height", config.spreadHeight());
+        data.addProperty("max_height", config.maxHeight());
+        return new Primitive(data, config.spreadWidth());
+    }
+
+    private JsonObject vines(String kind, net.minecraft.world.level.block.Block tip, net.minecraft.world.level.block.Block plant) {
+        var data = kind(kind);
+        data.add("air", predicates.material(BlockState::isAir));
+        data.addProperty("plant", material(plant.defaultBlockState()));
+        var tips = new JsonArray();
+        for (int age = 17; age <= 25; age++) {
+            tips.add(material(tip.defaultBlockState().setValue(GrowingPlantHeadBlock.AGE, age)));
+        }
+        data.add("tips", tips);
+        return data;
+    }
+
+    private Primitive pillar() {
+        var data = kind("basalt_pillar");
+        data.add("air", predicates.material(BlockState::isAir));
+        data.addProperty("state", material(Blocks.BASALT.defaultBlockState()));
+        return new Primitive(data, 3);
+    }
+
+    private Primitive columns(ColumnFeatureConfiguration config) {
+        var data = kind("column_cluster");
+        var provider = new JsonObject();
+        provider.addProperty("type", "state");
+        provider.addProperty("material", material(Blocks.BASALT.defaultBlockState()));
+        data.add("provider", provider);
+        data.add("continue_through", predicates.blocks(array(0, 0, 0), Blocks.BASALT));
+        var air = predicates.material(BlockState::isAir);
+        data.add("can_replace", air);
+        data.add("air", air);
+        data.add("ocean_fluid", predicates.blocks(array(0, 0, 0), Blocks.LAVA));
+        data.add("cannot_place_on", predicates.blocks(array(0, 0, 0), Blocks.LAVA, Blocks.BEDROCK,
+                Blocks.MAGMA_BLOCK, Blocks.SOUL_SAND, Blocks.NETHER_BRICKS, Blocks.NETHER_BRICK_FENCE,
+                Blocks.NETHER_BRICK_STAIRS, Blocks.NETHER_WART, Blocks.CHEST, Blocks.SPAWNER));
+        data.add("height", integer(config.height()));
+        data.add("column_reach", integer(config.reach()));
+        data.addProperty("cluster_reach", 5);
+        data.addProperty("column_count", 50);
+        var secondary = new JsonObject();
+        secondary.addProperty("chance", 0.9F);
+        secondary.addProperty("reach", 8);
+        secondary.addProperty("count", 15);
+        data.add("secondary_cluster", secondary);
+        return new Primitive(data, Math.min(8, config.height().getMaxValue()) + config.reach().getMaxValue());
     }
 
     private int material(BlockState state) {

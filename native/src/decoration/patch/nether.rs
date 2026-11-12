@@ -3,6 +3,14 @@ use super::*;
 use placement::IntProvider;
 mod fungus;
 mod ore;
+mod vegetation;
+
+#[derive(Clone, Deserialize)]
+pub struct SecondaryCluster {
+    chance: f32,
+    reach: IntProvider,
+    count: IntProvider,
+}
 
 #[derive(Clone, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -23,6 +31,22 @@ pub enum Feature {
     HugeFungus {
         #[serde(flatten)]
         fungus: fungus::Fungus,
+    },
+    SpreadPatch {
+        #[serde(flatten)]
+        patch: vegetation::SpreadPatch,
+    },
+    WeepingVines {
+        #[serde(flatten)]
+        vines: vegetation::WeepingVines,
+    },
+    TwistingVines {
+        #[serde(flatten)]
+        vines: vegetation::TwistingVines,
+    },
+    BasaltPillar {
+        #[serde(flatten)]
+        pillar: vegetation::BasaltPillar,
     },
     NeighborSpread {
         provider: Provider,
@@ -58,6 +82,8 @@ pub enum Feature {
         column_count: IntProvider,
         column_reach: IntProvider,
         height: IntProvider,
+        secondary_cluster: Option<SecondaryCluster>,
+        ocean_fluid: Option<Predicate>,
     },
     ReplaceBlobs {
         target: Predicate,
@@ -86,11 +112,16 @@ impl Feature {
             Self::Ore { .. }
             | Self::Spring { .. }
             | Self::HugeFungus { .. }
+            | Self::WeepingVines { .. }
+            | Self::TwistingVines { .. }
+            | Self::BasaltPillar { .. }
             | Self::NeighborSpread { .. }
             | Self::ProjectedSquare { .. }
             | Self::ColumnCluster { .. }
             | Self::ReplaceBlobs { .. }
             | Self::Delta { .. } => true,
+            // Nested recipes can emit role-ordered commands.
+            Self::SpreadPatch { .. } => false,
         }
     }
 
@@ -125,6 +156,10 @@ impl Feature {
                     && air.validate(palette)
             }
             Self::HugeFungus { fungus } => fungus.validate(palette),
+            Self::SpreadPatch { patch } => patch.validate(palette),
+            Self::WeepingVines { vines } => vines.validate(palette),
+            Self::TwistingVines { vines } => vines.validate(palette),
+            Self::BasaltPillar { pillar } => pillar.validate(palette),
             Self::NeighborSpread {
                 provider,
                 neighbors,
@@ -177,6 +212,8 @@ impl Feature {
                 column_count,
                 column_reach,
                 height,
+                secondary_cluster,
+                ocean_fluid,
             } => {
                 provider.validate(palette)
                     && [continue_through, can_replace, cannot_place_on, air]
@@ -186,6 +223,12 @@ impl Feature {
                     && bounded(column_count, 1, 150)
                     && bounded(column_reach, 0, 3)
                     && bounded(height, 1, 10)
+                    && ocean_fluid.as_ref().is_none_or(|p| p.validate(palette))
+                    && secondary_cluster.as_ref().is_none_or(|cluster| {
+                        (0.0..=1.0).contains(&cluster.chance)
+                            && bounded(&cluster.reach, 0, 13)
+                            && bounded(&cluster.count, 1, 150)
+                    })
             }
             Self::ReplaceBlobs {
                 target,
@@ -244,6 +287,10 @@ impl Feature {
                 true
             }
             Self::HugeFungus { fungus } => fungus.place(w, at, rng),
+            Self::SpreadPatch { patch } => patch.place(w, at, rng),
+            Self::WeepingVines { vines } => vines.place(w, at, rng),
+            Self::TwistingVines { vines } => vines.place(w, at, rng),
+            Self::BasaltPillar { pillar } => pillar.place(w, at, rng),
             Self::NeighborSpread {
                 provider,
                 neighbors,
@@ -343,9 +390,16 @@ impl Feature {
                 column_count,
                 column_reach,
                 height,
+                secondary_cluster,
+                ocean_fluid,
             } => {
-                let can_place = |w: &World, p| {
+                let replaceable = |w: &World, p: [i32; 3]| {
                     w.test(can_replace, p)
+                        || p[1] <= w.profile.sea_level
+                            && ocean_fluid.as_ref().is_some_and(|fluid| w.test(fluid, p))
+                };
+                let can_place = |w: &World, p| {
+                    replaceable(w, p)
                         && !w.test(air, add(p, [0, -1, 0]))
                         && !w.test(cannot_place_on, add(p, [0, -1, 0]))
                 };
@@ -353,6 +407,10 @@ impl Feature {
                     return false;
                 }
                 let height = height.sample(rng);
+                let (cluster_reach, column_count) = match secondary_cluster {
+                    Some(other) if rng.unit() as f32 >= other.chance => (&other.reach, &other.count),
+                    _ => (cluster_reach, column_count),
+                };
                 let reach = height.min(cluster_reach.sample(rng));
                 let count = column_count.sample(rng);
                 let mut any = false;
@@ -377,7 +435,7 @@ impl Feature {
                             let distance = x.abs() + z.abs();
                             let mut limit = distance;
                             let mut found = false;
-                            if w.test(can_replace, cursor) {
+                            if replaceable(w, cursor) {
                                 while cursor[1] > w.request.min_y + 1 && limit > 0 {
                                     limit -= 1;
                                     if can_place(w, cursor) {
@@ -405,7 +463,7 @@ impl Feature {
                                 continue;
                             }
                             for _ in 0..=blocks_y - distance / 2 {
-                                if w.test(can_replace, cursor) {
+                                if replaceable(w, cursor) {
                                     put(w, provider, cursor, rng);
                                     any = true;
                                 } else if !w.test(continue_through, cursor) {

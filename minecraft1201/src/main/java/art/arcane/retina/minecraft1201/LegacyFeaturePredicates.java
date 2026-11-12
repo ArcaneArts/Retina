@@ -72,6 +72,18 @@ final class LegacyFeaturePredicates {
         return group("all_of", children);
     }
 
+    static JsonObject always() {
+        return operation("true");
+    }
+
+    static JsonObject insideY(int min, int max) {
+        var result = operation("inside_world_bounds");
+        result.add("offset", array(0, 0, 0));
+        result.addProperty("min_y", min);
+        result.addProperty("max_y", max);
+        return result;
+    }
+
     void finish(LinkedHashMap<BlockState, Integer> palette) {
         for (var binding : bindings) {
             palette.forEach((state, id) -> {
