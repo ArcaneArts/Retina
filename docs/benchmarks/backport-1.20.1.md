@@ -1486,9 +1486,8 @@ pickle placements and 18,432 magma blocks. The two-block water
 column capped its nested kelp at the floor. The one-block water
 column stayed clear of kelp and tall seagrass.
 
-The stock Overworld inventory records 101 supported and 20 omitted
-non-ore roots. Coral and the carver-mask seagrass placement are
-among the remaining omissions. The 26.3 regression matched all
+This cycle brought the stock Overworld inventory to 101 supported
+and 20 omitted non-ore roots. The 26.3 regression matched all
 1,024 previous chunk payloads.
 
 With the stock seed-12345 definition, the standalone CLI generated
@@ -1499,3 +1498,49 @@ pickles in 138 chunks and tall seagrass in 939. Both contained magma.
 Packaged Fabric and Forge read all four fixture samples through
 the game and preserved a player edit and the original `retina.dat`
 across restart.
+
+### Coral reefs
+
+The 1.20.1 exporter follows the registered warm-ocean vegetation
+selector into coral trees, claws and mushrooms. It reads coral
+blocks, top coral and wall coral from the loaded block tags. The
+shared decoration engine tests live water before placing each body
+or attachment and writes waterlogged wall fans with their support
+direction. The shapes use Retina's seeded decoration stream.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyCoral \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Run again in a fresh directory with `-PretinaGpuBackend=cpu`. The
+fixture overrides all three coral tags, generates one region each
+for the three shapes, their selector and a shallow-water control,
+and reopens them through the 1.20.1 chunk reader. CPU and Metal
+produced identical payloads for all 5,120 chunks. The tests cover
+cross-chunk growth, four wall-fan facings, supported waterlogged
+attachments and empty output in one-block-deep water.
+
+Stock seed `12345` produced coral blocks in 427 chunks, top fans
+in 400, and wall fans in 428 in region `2,-2`. All five coral
+colors appeared. The stock Overworld now exports 102 non-ore
+roots with 19 omissions, including the carver-mask seagrass
+placement. All 1,024 chunks in the 26.3 regression region matched
+their previous payloads.
+
+The packaged Java 17 Fabric and Forge servers read the expected
+waterlogged wall fan in all four reef dimensions. Both preserved
+the original `retina.dat` and a player edit after restart. The
+packaged Spigot server also reopened its saved definition and
+generated from an imported definition. Its 12 probe snapshots
+matched 917,504 expected blocks. Catalog validation passed all
+15 parity cases, and the three 1.20.1 JARs embed identical 1.20.1
+catalogs and macOS ARM64 native library bytes.
+
+A fresh Spigot world materialized the bundled `bukkit-api` variant
+for seed `12345`. Headless generation from that file produced warm
+ocean region `2,-2` in 3.85 seconds on Metal. The running server
+found the predicted horn coral block and east-facing waterlogged
+tube coral wall fan in chunk `64,-64`. Cold spawn preparation for
+that server took 166 seconds.

@@ -3,6 +3,8 @@ use super::{Predicate, Rng, World};
 use crate::decoration::placement::IntProvider;
 use serde::Deserialize;
 
+mod coral;
+
 const OCEAN_FLOOR: u8 = 3;
 
 #[derive(Clone, Deserialize)]
@@ -15,6 +17,9 @@ pub struct Recipe {
 #[derive(Clone, Deserialize)]
 #[serde(tag = "growth", rename_all = "snake_case")]
 enum Growth {
+    Coral {
+        coral: coral::Recipe,
+    },
     Kelp {
         body: u16,
         tips: [u16; 4],
@@ -48,6 +53,7 @@ impl Recipe {
         let chance = |p| (0.0..=1.0).contains(&p);
         self.water.validate(palette)
             && match &self.growth {
+                Growth::Coral { coral } => coral.validate(palette),
                 Growth::Kelp {
                     body,
                     tips,
@@ -111,6 +117,7 @@ impl Recipe {
 
     pub(super) fn place(&self, world: &mut World, at: [i32; 3], rng: &mut Rng) -> bool {
         match &self.growth {
+            Growth::Coral { coral } => coral.place(world, at, rng, &self.water),
             Growth::Kelp {
                 body,
                 tips,
