@@ -1,5 +1,5 @@
-//! Feature-scheduled updates survive command distribution and chunk publication.
-use super::Placement;
+//! Feature-scheduled ticks and post-processing survive command distribution.
+use super::{POST_PROCESS, Placement};
 use crate::{ChunkRequest, nbt};
 use serde::Deserialize;
 use serde_json::Value;
@@ -22,6 +22,7 @@ pub struct Definition {
 pub struct Chunk {
     blocks: Vec<Value>,
     fluids: Vec<Value>,
+    processing: Vec<Vec<Value>>,
 }
 impl Chunk {
     pub fn collect(
@@ -31,13 +32,33 @@ impl Chunk {
     ) -> Result<Self, String> {
         let mut result = Self::default();
         let mut seen = HashSet::new();
-        for p in placements.iter().filter(|p| p.tick != 0) {
+        let mut post_seen = HashSet::new();
+        for p in placements
+            .iter()
+            .filter(|p| p.tick != 0 || p.role == POST_PROCESS)
+        {
+            if p.index as usize >= request.block_count() {
+                return Err("feature update outside chunk storage".into());
+            }
+            if p.role == POST_PROCESS {
+                if post_seen.insert(p.index) {
+                    let y = request.min_y + (p.index / 256) as i32;
+                    let section = (y.div_euclid(16) - request.min_y.div_euclid(16)) as usize;
+                    if result.processing.is_empty() {
+                        let top = request.min_y + request.height as i32 - 1;
+                        let sections = top.div_euclid(16) - request.min_y.div_euclid(16) + 1;
+                        result.processing.resize_with(sections as usize, Vec::new);
+                    }
+                    let packed = (p.index % 16) as i32
+                        | ((y & 15) << 4)
+                        | ((((p.index / 16) % 16) as i32) << 8);
+                    result.processing[section].push(serde_json::json!([2, packed]));
+                }
+                continue;
+            }
             let d = definitions
                 .get(p.tick as usize - 1)
                 .ok_or("missing scheduled feature tick definition")?;
-            if p.index as usize >= request.block_count() {
-                return Err("scheduled feature tick outside chunk storage".into());
-            }
             // Minecraft ProtoChunkTicks keeps the first (type,position) pair,
             // independently of the eventual state or later overwrites.
             if !seen.insert((d.kind, d.id.as_str(), p.index)) {
@@ -88,7 +109,45 @@ impl Chunk {
             }
             nbt::put(root, key, nbt::list(10, ticks));
         }
+        if !self.processing.is_empty() {
+            let sections = self
+                .processing
+                .into_iter()
+                .map(|p| nbt::list(2, p))
+                .collect::<Vec<_>>();
+            append_processing(root, &sections);
+        }
     }
+}
+
+pub(super) fn append_processing(root: &mut Value, incoming: &[Value]) {
+    if incoming.is_empty() {
+        return;
+    }
+    let Some(existing) = nbt::field(root, "PostProcessing") else {
+        nbt::put(root, "PostProcessing", nbt::list(9, incoming.to_vec()));
+        return;
+    };
+    let mut sections = nbt::list_values(existing).to_vec();
+    if sections.len() < incoming.len() {
+        sections.resize_with(incoming.len(), || nbt::list(2, Vec::new()));
+    }
+    for (target, source) in sections.iter_mut().zip(incoming) {
+        let added = nbt::list_values(source);
+        if added.is_empty() {
+            continue;
+        }
+        let mut values = nbt::list_values(target).to_vec();
+        let mut seen: HashSet<_> = values.iter().map(|v| nbt::number(v) as u16).collect();
+        values.extend(
+            added
+                .iter()
+                .filter(|v| seen.insert(nbt::number(v) as u16))
+                .cloned(),
+        );
+        *target = nbt::list(2, values);
+    }
+    nbt::put(root, "PostProcessing", nbt::list(9, sections));
 }
 
 #[cfg(test)]
@@ -122,6 +181,7 @@ mod tests {
         Chunk {
             blocks: vec![feature.clone()],
             fluids: vec![feature.clone()],
+            ..Chunk::default()
         }
         .write(&mut root);
         assert_eq!(

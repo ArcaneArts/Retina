@@ -464,6 +464,8 @@ const COCOA: u8 = 5;
 const FEATURE: u8 = 6;
 /// Compare the live material with `upper` when replaying this ordered command.
 const DEFERRED_ORE: u8 = 7;
+/// Marks a position for chunk post-processing without changing its block.
+const POST_PROCESS: u8 = 8;
 const SIDES: [(i32, i32); 4] = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
 /// A crown occupies a small local box. Direct byte lookup avoids hashing a world
@@ -2410,7 +2412,7 @@ pub(crate) fn decorate_observed<B: crate::material_blocks::Write + ?Sized>(
     for &pass in roles {
         for placement in placements
             .iter()
-            .filter(|p| pass == u8::MAX || p.role == pass)
+            .filter(|p| p.role != POST_PROCESS && (pass == u8::MAX || p.role == pass))
         {
             let role = placement.role;
             let index = placement.index as usize;

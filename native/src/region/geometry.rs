@@ -1,5 +1,5 @@
 //! Keep terrain evaluation in its saved range and encode full dimension storage.
-use crate::{ChunkRequest, profile::WorldProfile};
+use crate::{ChunkRequest, nbt, profile::WorldProfile};
 
 pub(super) fn validate_storage(request: ChunkRequest) -> Result<(), String> {
     request.validate()?;
@@ -68,6 +68,27 @@ pub(super) fn storage_air(profile: Option<&WorldProfile>) -> Result<u16, String>
     } else {
         0
     })
+}
+
+pub(super) fn fit_post_processing(
+    generation: ChunkRequest,
+    storage: ChunkRequest,
+    data: &mut serde_json::Value,
+) {
+    if generation.min_y == storage.min_y && generation.height == storage.height {
+        return;
+    }
+    let Some(processing) = nbt::field(data, "PostProcessing") else {
+        return;
+    };
+    let section_offset = generation.min_y.div_euclid(16) - storage.min_y.div_euclid(16);
+    let mut sections = vec![nbt::list(2, Vec::new()); storage.height as usize / 16];
+    for (i, section) in nbt::list_values(processing).iter().enumerate() {
+        if let Some(target) = sections.get_mut((i as i32 + section_offset) as usize) {
+            *target = section.clone();
+        }
+    }
+    nbt::put(data, "PostProcessing", nbt::list(9, sections));
 }
 
 #[cfg(test)]

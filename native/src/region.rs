@@ -128,11 +128,12 @@ pub(crate) fn generate_chunk(
     let mut blocks=vec![0;request.block_count()];
     let columns=engine.generate_columns_into(request,&mut blocks)?;
     let (_,mask)=engine.terrain_field(request,1)?;
-    let data=engine.structures.lock().map_err(|_|"structure cache poisoned")?
+    let mut data=engine.structures.lock().map_err(|_|"structure cache poisoned")?
         .metadata(request).unwrap_or_else(crate::structures::empty_data);
     let storage=geometry::storage_request(request,engine.profile_storage_bounds(request.reserved)?);
     geometry::validate_storage(storage)?;
     geometry::fit_blocks(request,storage,profile.as_deref(),&mut blocks)?;
+    geometry::fit_post_processing(request, storage, &mut data);
     Ok(chunk_nbt_blocks(storage,&columns,&blocks,data_version,biome,profile.as_deref(),mask.as_deref(),Some(&data)))
 }
 
@@ -450,11 +451,12 @@ fn generate_region_inner(
                         let mut blocks = timings.time(timings::ASSEMBLY, || MaterialChunk::from_runs(request, mask))?;
                         let mut updates = decoration::pairs::Updates::default();
                         updates.placements(p, &overlays[slots[index]]);
-                        let data = timings.time(timings::VEGETATION, || generation.as_ref().unwrap().apply(
+                        let mut data = timings.time(timings::VEGETATION, || generation.as_ref().unwrap().apply(
                             slots[index], request, p, &overlays[slots[index]], &mut blocks))?;
                         timings.time(timings::SNOW, || crate::features::snow(request, p, columns, &mut blocks));
                         timings.time(timings::VEGETATION, || updates.finish_materials(p, &mut blocks));
                         let storage_request = geometry::storage_request(request, storage);
+                        geometry::fit_post_processing(request, storage_request, &mut data.tag);
                         if request.min_y != storage_request.min_y || request.height != storage_request.height {
                             blocks.fit(request, storage_request, geometry::storage_air(Some(p))?);
                         }
@@ -562,6 +564,9 @@ fn generate_region_inner(
                     }
                     let storage_request = geometry::storage_request(request, storage);
                     geometry::fit_blocks(request, storage_request, profile.as_deref(), &mut blocks)?;
+                    if let Some(data) = structure_data.as_mut() {
+                        geometry::fit_post_processing(request, storage_request, &mut data.tag);
+                    }
                     if lighting.is_some() {
                         return Ok(PreparedRecord::Blocks(
                             MaterialChunk::Dense(blocks),

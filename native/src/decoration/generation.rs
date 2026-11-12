@@ -125,6 +125,9 @@ impl Generation {
             ticks::Chunk::collect(request, &profile.decoration_ticks, commands)?
                 .write(&mut updates);
             append_ticks(&mut root, &updates, &mut ticks);
+            if let Some(processing) = nbt::field(&updates, "PostProcessing") {
+                ticks::append_processing(&mut root, nbt::list_values(processing));
+            }
             begin = end;
             if let Some(event) = event {
                 pieces += event.pieces;
@@ -149,22 +152,7 @@ impl Generation {
                 );
                 append_ticks(&mut root, &event.tag, &mut ticks);
                 if let Some(processing) = nbt::field(&event.tag, "PostProcessing") {
-                    let incoming = nbt::list_values(processing);
-                    let mut sections = nbt::field(&root, "PostProcessing")
-                        .map(nbt::list_values)
-                        .unwrap_or(&[])
-                        .to_vec();
-                    sections.resize_with(request.height as usize / 16, || nbt::list(2, Vec::new()));
-                    for (target, source) in sections.iter_mut().zip(incoming) {
-                        let mut values = nbt::list_values(target).to_vec();
-                        for value in nbt::list_values(source) {
-                            if !values.contains(value) {
-                                values.push(value.clone());
-                            }
-                        }
-                        *target = nbt::list(2, values);
-                    }
-                    nbt::put(&mut root, "PostProcessing", nbt::list(9, sections));
+                    ticks::append_processing(&mut root, nbt::list_values(processing));
                 }
             }
         }

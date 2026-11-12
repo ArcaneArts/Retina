@@ -1630,3 +1630,48 @@ Spigot created the bundled definition and delivered the expected
 upward tip and waterlogging state from that definition. With
 spawn preloading disabled for the test, its first cold force-load
 reported 81.9 seconds of tick delay.
+
+### Overworld lava lakes
+
+The 1.20.1 adapter exports the registered surface and underground
+lake placements for noise worlds. It uses the shared lake geometry
+with the loaded fluid and barrier providers, scan and height rules,
+and protected block tags. The same recipe works inside a placed
+feature selector. New 1.20.1 definitions also record cave-air block
+ticks and positions above excavations and barriers for post-processing.
+The bundled Bukkit API catalog retains lake geometry and lists the
+update queues it cannot deliver through the public API.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyLavaLakes \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Repeat in a fresh directory with `-PretinaGpuBackend=cpu`. The
+fixture tests a surface bowl, an underground bowl chosen by a
+selector, a flooded cavity, and protected quartz. The noise range
+starts at Y=0 and chunk storage starts at Y=-64. The fixture checks
+the packed update coordinates in the stored sections and compares
+direct chunk metadata with the 1.20.1 region reader. The custom
+density cavity filled with stone when the fixture biome declared no
+carveable substrate. A zero-probability carver declares the substrates
+for this deterministic fixture.
+
+CPU and Metal matched all 4,096 fixture chunk payloads. The stock
+Overworld now exports 112 non-ore roots with nine omissions. In stock
+seed `12345`, region `-1,0` gained 1,427 lava blocks in 44 chunks
+relative to revision 550. The normal catalog produced 3,276
+cave-air ticks and 8,632 packed post-processing positions there.
+The bundled Bukkit catalog produced the same new lava and cave-air
+coordinates and recorded its update-queue omission. The custom Flat fixture
+produced 7,419 lava blocks and preserved its existing structure and
+deferred-layer checks.
+
+Packaged Fabric and Forge read both fixtures in-game and preserved
+the original definition and a player edit across restart. Spigot
+generated the stock lava sample from the bundled catalog and read
+it again after restart. Its first cold force-load reported 55.5 seconds
+of tick delay with spawn preloading disabled for the test. All 15
+catalog parity cases passed. All 1,024 payloads in the 26.3 regression
+region matched revision 550.

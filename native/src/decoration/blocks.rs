@@ -571,7 +571,9 @@ pub(super) fn place(
 ) {
     let test = |p: &Predicate, at| p.test(at, field, profile, request, overlay) == Some(true);
     match kind {
-        Kind::FlatLake { lake } => super::flat_features::lake(lake, at, rng, field, profile, request, overlay, blocks, noise),
+        Kind::FlatLake { lake } => {
+            super::flat_features::lake(lake, at, rng, field, profile, request, overlay, blocks, noise);
+        }
         Kind::FreezeTopLayer => super::surface_freeze::place(at, field, profile, request, overlay, blocks),
         Kind::VoidPlatform { platform } => super::flat_features::platform(*platform, at, request, blocks),
         Kind::EndPlatform { platform } => super::end_features::platform(*platform, at, field, profile, request, overlay, blocks),
