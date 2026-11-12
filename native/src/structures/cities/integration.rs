@@ -1,10 +1,6 @@
 use super::{Piece as CityPiece, plan};
 use crate::structures::{self, Element, Part, Piece, Random, Start};
-use crate::{
-    ChunkRequest,
-    end::{IslandNoise, VanillaDensity},
-    profile::WorldProfile,
-};
+use crate::{ChunkRequest, profile::WorldProfile};
 use std::sync::Arc;
 
 pub(in crate::structures) fn build(
@@ -23,13 +19,13 @@ pub(in crate::structures) fn build(
         .as_ref()
         .ok_or("missing resident End city templates")?;
     let d = &p.definitions[definition];
-    let islands = IslandNoise::new(request.seed);
+    let islands = end.islands(request.seed);
     let x = request.chunk_x * 16 + 7;
     let z = request.chunk_z * 16 + 7;
     if !d.biomes.contains(&end.biome(&islands, x, z)) {
         return Ok(start);
     }
-    let density = VanillaDensity::new(request.seed);
+    let density = end.density(request.seed);
     let tile = density.tile(x - 5, z - 5, 11, 11)?;
     let planned = plan(
         request.seed,

@@ -224,11 +224,11 @@ uses the configured random source and its world-seeded clay-band stream.
 
 The preview runs the Overworld and Nether terrain, surface material and
 aquifer programs. The saved profile reports the approximations and omissions
-through `retina inspect`. Configured carvers, placed features, ore generation,
-structures and the End remain implementation work. Preview definitions are
-development inputs for headless generation.
+through `retina inspect`. Configured carvers, placed features, ore generation
+and structures are outside this cycle. The next section covers the End.
+Preview definitions are development inputs for headless generation.
 
-Run on a disposable world using Java 17 and the shared native library:
+Run the following command in a disposable world using Java 17 and the shared native library.
 
 ```sh
 world=$(mktemp -d)
@@ -261,3 +261,55 @@ saved definition in 1.89 s and preserved all 1,024 records on a second
 invocation. The vanilla Flat round-trip also passed after moving it onto the
 same registry bootstrap. The 26.3 definition suite passed all eight cases
 and both catalog outputs matched the committed bytes.
+
+## Minecraft 1.20.1 End terrain preview
+
+The saved End descriptor selects the 1.20.1 arithmetic in the shared
+native End generator. It uses the game's double-precision blended noise,
+Y/X/Z interpolation order and signed island-distance arithmetic. Existing
+End definitions default to the 26.3 arithmetic. The 1.20.1 adapter compares
+the effective density and biome graphs with the supported vanilla graphs
+before selecting this descriptor.
+
+Generate the native comparison fixture from the actual 1.20.1 server on Java 17.
+
+```sh
+./gradlew :minecraft1201:probeEndTerrain \
+  "-Porg.gradle.java.installations.paths=$jdk17" \
+  "-PretinaEndReference=$reference"
+cargo test --manifest-path native/Cargo.toml --locked --release --lib 'end::'
+```
+
+The reference covers 57 columns across seeds `0`, `12345` and
+`-9223372036854775791`. Both native point and tile terrain matched all
+1.20.1 occupied blocks, biome IDs and erosion samples, including negative
+coordinates and far coordinates with the original distance overflow.
+All 26 filtered Rust tests passed, including the 26.3 End fixtures.
+
+The noise export verification now generates two End regions alongside
+the Overworld and Nether. The 1.20.1 reader compares sampled End blocks
+and biomes to the same runtime's base-column and biome queries. All four
+regions passed on CPU and in the Metal-selected process. Every region
+generated and preserved 1,024 records. A datapack replacing the End's
+referenced density function produced an explicit unsupported-dimension
+reason.
+
+| End region | CPU | Metal-selected process |
+| --- | ---: | ---: |
+| Central `-1,0` | 216 ms | 184 ms |
+| Outer `-3,-1` | 479 ms | 217 ms |
+
+These are single local region observations. The End terrain lattice uses
+native CPU code in both runs. Placed features, structures and server
+lifecycle integration are still outside the preview.
+
+The standalone Rust CLI generated the outer region from the saved definition
+in 0.54 s and preserved all records on a second invocation.
+
+A 26.3 comparison used seed `12345`, the binary vanilla catalog, End region
+`0,0`, zlib and alternating process order. One warmup pair and nine timed
+pairs ran per backend. Every run reproduced the same digest of all 1,024
+uncompressed chunk records. The median paired process time changed by
+−1.06% on CPU and −0.46% on Metal. The median paired generation time changed
+by −1.73% and +0.87%, respectively. The repeat did not reproduce the larger
+Metal process-time variation seen in the initial three-pair sample.

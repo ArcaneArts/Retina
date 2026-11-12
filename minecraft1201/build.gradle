@@ -39,3 +39,15 @@ dependencies {
         }
     }
 }
+
+tasks.register('probeEndTerrain', JavaExec) {
+    group = 'verification'
+    description = 'Sample unmodified 1.20.1 End density, columns and biomes for native comparison.'
+    dependsOn 'datagenClasses'
+    classpath = sourceSets.datagen.runtimeClasspath
+    mainClass = 'art.arcane.retina.minecraft1201.EndTerrainReference'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+    jvmArgs '-Djava.awt.headless=true', '-XX:ActiveProcessorCount=2'
+    maxHeapSize = '768m'
+    args providers.gradleProperty('retinaEndReference').getOrElse(layout.buildDirectory.file('end-reference.json').get().asFile.absolutePath)
+}

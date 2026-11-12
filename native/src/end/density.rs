@@ -1,12 +1,13 @@
 //! Dense reference for the loaded vanilla End graph, before feature/structure writes.
 //! The scalar interpolator and bulk column use their respective Minecraft operation
 //! orders. This reference is not an adapter for arbitrary custom density graphs.
-use super::{BlendedNoise, BlendedParameters, IslandNoise};
+use super::{Algorithm, BlendedNoise, BlendedParameters, IslandNoise};
 #[path="sparse.rs"]
 mod sparse;
 pub(crate) use sparse::SparseTile;
 
 pub struct VanillaDensity {
+    algorithm: Algorithm,
     islands: IslandNoise,
     noise: BlendedNoise,
 }
@@ -20,6 +21,7 @@ pub struct DenseTile {
     corner_origin: [i32; 2],
     corners_x: usize,
     corners: Vec<[f32; 33]>,
+    legacy_corners: Vec<[f64; 33]>,
     occupancy: Vec<CellColumn>,
     mask_nanos: u64,
     islands: super::CandidateField,
@@ -88,6 +90,10 @@ impl DenseTile {
         let cx = ((i64::from(x) - i64::from(dx) - i64::from(self.corner_origin[0])) / 8) as usize;
         let cz = ((i64::from(z) - i64::from(dz) - i64::from(self.corner_origin[1])) / 8) as usize;
         let index = cz * self.corners_x + cx;
+        if !self.legacy_corners.is_empty() {
+            let corners = self.legacy_column_corners(index);
+            return Some(std::array::from_fn(|y| legacy_density(corners, dx, y, dz) as f32));
+        }
         let a = &self.corners[index];
         let b = &self.corners[index + 1];
         let c = &self.corners[index + self.corners_x];
@@ -124,6 +130,19 @@ impl DenseTile {
         let cz = ((i64::from(z) - i64::from(dz) - i64::from(self.corner_origin[1])) / 8) as usize;
         let index = cz * self.corners_x + cx;
         let mask = &self.occupancy[cz * (self.corners_x - 1) + cx];
+        if !self.legacy_corners.is_empty() {
+            let corners = self.legacy_column_corners(index);
+            let mut bits = mask.solid_bits();
+            let mut uncertain = mask.uncertain;
+            while uncertain != 0 {
+                let cell = uncertain.trailing_zeros() as usize;
+                uncertain &= uncertain - 1;
+                for y in cell * 4..cell * 4 + 4 {
+                    if legacy_density(corners, dx, y, dz) > 0.0 { bits |= 1u128 << y; }
+                }
+            }
+            return Some(bits);
+        }
         let [a,b,c,d] = [&self.corners[index], &self.corners[index+1],
             &self.corners[index+self.corners_x], &self.corners[index+self.corners_x+1]];
         let ax = dx as f32 * 0.125; let az = dz as f32 * 0.125;
@@ -143,6 +162,12 @@ impl DenseTile {
         Some(bits)
     }
 
+    fn legacy_column_corners(&self, index: usize) -> [&[f64; 33]; 4] {
+        let corners = &self.legacy_corners;
+        [&corners[index], &corners[index + 1], &corners[index + self.corners_x],
+            &corners[index + self.corners_x + 1]]
+    }
+
     pub(crate) fn occupancy_counts(&self) -> [u64; 3] {
         let mut counts = [0;3];
         for cells in &self.occupancy {
@@ -156,8 +181,11 @@ impl DenseTile {
     pub(crate) fn mask_nanos(&self) -> u64 { self.mask_nanos }
     pub(crate) fn mask_bytes(&self) -> usize { self.occupancy.len()*std::mem::size_of::<CellColumn>() }
 
-    pub fn lattice_points(&self) -> usize { self.corners.len() * 33 }
-    pub fn lattice_bytes(&self) -> usize { self.corners.len() * std::mem::size_of::<[f32; 33]>() }
+    pub fn lattice_points(&self) -> usize { (self.corners.len() + self.legacy_corners.len()) * 33 }
+    pub fn lattice_bytes(&self) -> usize {
+        self.corners.len() * std::mem::size_of::<[f32; 33]>()
+            + self.legacy_corners.len() * std::mem::size_of::<[f64; 33]>()
+    }
 }
 
 fn lerp(t: f32, a: f32, b: f32) -> f32 { a + t * (b - a) }
@@ -179,9 +207,31 @@ fn vertical(y:i32,island:f32,noise:impl FnOnce()->f32)->f32 {
     select_lerp(bottom,-0.234375,shape)*0.64
 }
 
+fn lerp_double(t: f64, a: f64, b: f64) -> f64 { a + t * (b - a) }
+
+// The 1.20.1 NoiseInterpolator updates Y, X and Z in this order.
+fn legacy_density(corners: [&[f64; 33]; 4], dx: i32, y: usize, dz: i32) -> f64 {
+    let cell = y / 4;
+    let by = (y % 4) as f64 * 0.25;
+    let bx = f64::from(dx) * 0.125;
+    let bz = f64::from(dz) * 0.125;
+    let [a, b, c, d] = corners.map(|v| lerp_double(by, v[cell], v[cell + 1]));
+    let value = lerp_double(bz, lerp_double(bx, a, b), lerp_double(bx, c, d)).clamp(-1.0, 1.0);
+    value / 2.0 - value * value * value / 24.0
+}
+
 impl VanillaDensity {
     pub fn new(seed: u64) -> Self {
-        Self { islands: IslandNoise::new(seed), noise: BlendedNoise::new(seed, BlendedParameters::default()).unwrap() }
+        Self::with_algorithm(seed, Algorithm::Modern)
+    }
+
+    pub(crate) fn with_algorithm(seed: u64, algorithm: Algorithm) -> Self {
+        Self {
+            algorithm,
+            islands: IslandNoise::with_algorithm(seed, algorithm),
+            noise: BlendedNoise::with_precision(seed, BlendedParameters::default(), algorithm == Algorithm::Legacy1_20)
+                .expect("valid vanilla End blended-noise parameters"),
+        }
     }
 
     /// Construct each required island value once and each 3D noise corner once.
@@ -189,6 +239,10 @@ impl VanillaDensity {
     /// evaluation. The rectangle may be unaligned or cross chunk/region edges.
     pub fn tile(&self, x: i32, z: i32, width: u32, depth: u32) -> Result<DenseTile, String> {
         let (mut tile,corners_z)=self.tile_layout(x,z,width,depth)?;
+        if self.algorithm == Algorithm::Legacy1_20 {
+            self.fill_legacy_tile(&mut tile, corners_z)?;
+            return Ok(tile);
+        }
         let corners_x=tile.corners_x;
         for cz in 0..corners_z {
             let block_z = (i64::from(tile.corner_origin[1]) + cz as i64 * 8) as i32;
@@ -209,7 +263,35 @@ impl VanillaDensity {
         Ok(tile)
     }
 
+    fn fill_legacy_tile(&self, tile: &mut DenseTile, rows: usize) -> Result<(), String> {
+        let columns = tile.corners_x;
+        tile.legacy_corners.try_reserve_exact(columns * rows)
+            .map_err(|error| format!("cannot allocate legacy End lattice: {error}"))?;
+        for cz in 0..rows {
+            let z = (i64::from(tile.corner_origin[1]) + cz as i64 * 8) as i32;
+            for cx in 0..columns {
+                let x = (i64::from(tile.corner_origin[0]) + cx as i64 * 8) as i32;
+                let island = tile.islands.sample(x, z).unwrap();
+                tile.legacy_corners.push(self.legacy_corner(x, z, island));
+            }
+        }
+        let started = crate::performance::enabled().then(std::time::Instant::now);
+        tile.occupancy = (0..(rows - 1) * (columns - 1)).map(|i| {
+            let at = i / (columns - 1) * columns + i % (columns - 1);
+            let corners = tile.legacy_column_corners(at);
+            CellColumn::from_cells(std::array::from_fn(|y| {
+                // The f32 occupancy margin is conservative for the f64 lerps.
+                classify(std::array::from_fn(|i| corners[i % 4][y + i / 4] as f32))
+            }))
+        }).collect();
+        tile.mask_nanos = started.map_or(0, |time| time.elapsed().as_nanos() as u64);
+        Ok(())
+    }
+
     pub(crate) fn sparse_tile(&self,x:i32,z:i32,width:u32,depth:u32)->Result<SparseTile,String> {
+        if self.algorithm == Algorithm::Legacy1_20 {
+            return self.tile(x, z, width, depth).map(SparseTile::from_dense);
+        }
         SparseTile::new(self,x,z,width,depth)
     }
 
@@ -225,16 +307,42 @@ impl VanillaDensity {
         let (corner_z, corners_z) = axis(z, depth)?;
         let count = corners_x.checked_mul(corners_z).ok_or("End tile lattice size overflow")?;
         let mut corners = Vec::new();
-        corners.try_reserve_exact(count).map_err(|e| format!("cannot allocate End tile lattice: {e}"))?;
+        if self.algorithm == Algorithm::Modern {
+            corners.try_reserve_exact(count).map_err(|e| format!("cannot allocate End tile lattice: {e}"))?;
+        }
         let islands = self.islands.candidate_field(corner_x, corner_z,
             (i64::from(corner_x) + (corners_x as i64 - 1) * 8) as i32,
             (i64::from(corner_z) + (corners_z as i64 - 1) * 8) as i32)?;
         Ok((DenseTile { origin:[x,z],size:[width,depth],corner_origin:[corner_x,corner_z],corners_x,
-            corners,occupancy:Vec::new(),mask_nanos:0,islands },corners_z))
+            corners,legacy_corners:Vec::new(),occupancy:Vec::new(),mask_nanos:0,islands },corners_z))
     }
 
     fn raw(&self, x: i32, y: i32, z: i32, island: f32, volume: bool) -> f32 {
         vertical(y,island,||if volume {self.noise.volume_point(x,y,z)}else{self.noise.sample(x,y,z)})
+    }
+
+    fn legacy_corner(&self, x: i32, z: i32, island: f32) -> [f64; 33] {
+        std::array::from_fn(|cy| {
+            let y = cy as i32 * 4;
+            let bottom = f64::from(y.clamp(4, 32) - 4) / 28.0;
+            let top = 1.0 - f64::from(y.clamp(56, 312) - 56) / 256.0;
+            let sloped = f64::from(island) + self.noise.legacy_sample(x, y, z);
+            let shape = -23.4375 + top * (23.4375 + sloped);
+            (-0.234375 + bottom * (0.234375 + shape)) * 0.64
+        })
+    }
+
+    fn legacy_column(&self, x: i32, z: i32) -> [f32; 128] {
+        let dx = x.rem_euclid(8);
+        let dz = z.rem_euclid(8);
+        let bx = x - dx;
+        let bz = z - dz;
+        let islands = self.island_corners(bx, bz);
+        let corners: [_; 4] = std::array::from_fn(|i| {
+            self.legacy_corner(bx.wrapping_add((i as i32 & 1) * 8),
+                bz.wrapping_add(((i as i32 >> 1) & 1) * 8), islands[i])
+        });
+        std::array::from_fn(|y| legacy_density(corners.each_ref(), dx, y, dz) as f32)
     }
 
     fn island_corners(&self, x: i32, z: i32) -> [f32; 4] {
@@ -248,6 +356,9 @@ impl VanillaDensity {
     }
 
     pub fn sample(&self, x: i32, y: i32, z: i32) -> f32 {
+        if self.algorithm == Algorithm::Legacy1_20 {
+            return self.legacy_column(x, z).get(y as usize).copied().unwrap_or(0.0);
+        }
         let dx = x.rem_euclid(8);
         let dy = y.rem_euclid(4);
         let dz = z.rem_euclid(8);
@@ -272,6 +383,9 @@ impl VanillaDensity {
     /// Actual bulk interpolator: Z, then X, then an accumulated Y step per cell.
     /// Returns the 128-block noise range; dimension storage above it remains air.
     pub fn column_densities(&self, x: i32, z: i32) -> [f32; 128] {
+        if self.algorithm == Algorithm::Legacy1_20 {
+            return self.legacy_column(x, z);
+        }
         let dx = x.rem_euclid(8);
         let dz = z.rem_euclid(8);
         let bx = x - dx;
@@ -305,6 +419,35 @@ impl VanillaDensity {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_columns_and_biomes_match_minecraft_1_20_1() {
+        let reference: serde_json::Value =
+            serde_json::from_str(include_str!("../../tests/fixtures/end-density-1.20.1.json")).unwrap();
+        for group in reference["groups"].as_array().unwrap() {
+            let seed = group["seed"].as_i64().unwrap() as u64;
+            let terrain = VanillaDensity::with_algorithm(seed, Algorithm::Legacy1_20);
+            for point in group["columns"].as_array().unwrap() {
+                let x = point["x"].as_i64().unwrap() as i32;
+                let z = point["z"].as_i64().unwrap() as i32;
+                let hex = point["occupied_le"].as_str().unwrap();
+                let bytes: [u8; 16] = std::array::from_fn(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).unwrap());
+                let expected = u128::from_le_bytes(bytes);
+                let tile = terrain.sparse_tile(x, z, 1, 1).unwrap();
+                let got = terrain.column(x, z).iter().enumerate().take(128).fold(0u128, |bits, (i, solid)| {
+                    bits | (u128::from(*solid) << i)
+                });
+                assert_eq!(got, expected, "legacy scalar column at {x},{z} for seed {seed}");
+                assert_eq!(tile.column_bits(x, z), Some(expected), "legacy tile column at {x},{z} for seed {seed}");
+                assert_eq!(terrain.islands.biome(x, z).id(), point["biome"].as_str().unwrap());
+                assert_eq!(tile.biome(x, z).unwrap().id(), point["biome"].as_str().unwrap());
+                let expected_erosion = f64::from_bits(u64::from_str_radix(point["erosion_bits"].as_str().unwrap(), 16).unwrap());
+                let erosion = f64::from(terrain.islands.sample(x, z));
+                assert!(if expected_erosion.is_nan() { erosion.is_nan() } else { erosion == expected_erosion },
+                    "legacy erosion at {x},{z}: expected {expected_erosion}, got {erosion}");
+            }
+        }
+    }
 
     #[test]
     fn vanilla_graph_bits_and_bulk_columns() {

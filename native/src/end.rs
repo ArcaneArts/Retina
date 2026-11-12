@@ -1,7 +1,8 @@
-//! Vanilla 26.3 End island field. Seed setup is shared with the existing Java LCG.
+//! Vanilla End island fields. Seed setup is shared with the existing Java LCG.
 //! Keep f64 simplex arithmetic, f32 island arithmetic and truncating integer
 //! division distinct: changing any of them changes islands at negative/far coordinates.
 use crate::structures::Random;
+use serde::Deserialize;
 mod blended;
 pub use blended::{BlendedNoise, Parameters as BlendedParameters};
 mod biome;
@@ -24,8 +25,38 @@ fn permutation(random: &mut Random) -> [u8; 256] {
     permutation
 }
 
+/// Selects the End arithmetic from the saved dimension profile.
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum Algorithm {
+    #[default]
+    Modern,
+    #[serde(rename = "legacy_1_20")]
+    Legacy1_20,
+}
+
+impl Algorithm {
+    fn island_value(self, x: i32, z: i32, outer: f32) -> f32 {
+        let distance = match self {
+            Self::Modern => {
+                let x = x as f32;
+                let z = z as f32;
+                (x * x + z * z).sqrt()
+            }
+            Self::Legacy1_20 => {
+                let x = x / 8;
+                let z = z / 8;
+                (x.wrapping_mul(x).wrapping_add(z.wrapping_mul(z)) as f32).sqrt() * 8.0
+            }
+        };
+        let main = ((100.0 - distance).clamp(-100.0, 80.0) - 8.0) * 0.0078125;
+        if main.is_nan() { main } else { main.max(outer) }
+    }
+}
+
 pub struct IslandNoise {
     permutation: [u8; 256],
+    algorithm: Algorithm,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,6 +81,10 @@ impl Biome {
 
 impl IslandNoise {
     pub fn new(seed: u64) -> Self {
+        Self::with_algorithm(seed, Algorithm::Modern)
+    }
+
+    pub(crate) fn with_algorithm(seed: u64, algorithm: Algorithm) -> Self {
         let mut random = Random::new(seed);
         random.consume(17292);
         // SimplexNoise(random, true) still draws its three offsets even though
@@ -57,7 +92,7 @@ impl IslandNoise {
         for _ in 0..3 {
             random.double();
         }
-        Self { permutation: permutation(&mut random) }
+        Self { permutation: permutation(&mut random), algorithm }
     }
 
     fn permute(&self, i: i32) -> usize {
@@ -66,6 +101,10 @@ impl IslandNoise {
 
     /// Seed-center noise uses Minecraft's f64 2D simplex, then narrows to f32.
     pub fn center_noise(&self, x: i32, z: i32) -> f32 {
+        self.center_noise_double(x, z) as f32
+    }
+
+    fn center_noise_double(&self, x: i32, z: i32) -> f64 {
         let x = x as f64;
         let z = z as f64;
         let root_three = 3.0f64.sqrt();
@@ -87,9 +126,8 @@ impl IslandNoise {
         let g0 = self.permute(ii + self.permute(jj) as i32) % 12;
         let g1 = self.permute(ii + i1 + self.permute(jj + j1) as i32) % 12;
         let g2 = self.permute(ii + 1 + self.permute(jj + 1) as i32) % 12;
-        ((Self::corner(g0, x0, z0) + Self::corner(g1, x1, z1)
-            + Self::corner(g2, x2, z2))
-            * 70.0) as f32
+        (Self::corner(g0, x0, z0) + Self::corner(g1, x1, z1)
+            + Self::corner(g2, x2, z2)) * 70.0
     }
 
     fn corner(index: usize, x: f64, z: f64) -> f64 {
@@ -108,6 +146,15 @@ impl IslandNoise {
         }
     }
 
+    fn is_candidate(&self, x: i32, z: i32) -> bool {
+        let xx = i64::from(x);
+        let zz = i64::from(z);
+        xx * xx + zz * zz > 4096 && match self.algorithm {
+            Algorithm::Modern => self.center_noise(x, z) < -0.9,
+            Algorithm::Legacy1_20 => self.center_noise_double(x, z) < f64::from(-0.9f32),
+        }
+    }
+
     pub fn outer(&self, block_x: i32, block_z: i32) -> f32 {
         // These / and % operations deliberately truncate toward zero, as Java
         // EndIslandFunction does. Biome chunk coordinates separately use floor.
@@ -120,9 +167,9 @@ impl IslandNoise {
         let mut height = -100.0f32;
         for dx in -12..=12 {
             for dz in -12..=12 {
-                let cx = i64::from(chunk_x + dx);
-                let cz = i64::from(chunk_z + dz);
-                if cx * cx + cz * cz > 4096 && self.center_noise(cx as i32, cz as i32) < -0.9 {
+                let cx = chunk_x + dx;
+                let cz = chunk_z + dz;
+                if self.is_candidate(cx, cz) {
                     let size = ((cx as f32).abs() * 3439.0 + (cz as f32).abs() * 147.0) % 13.0 + 9.0;
                     let x = (sub_x - dx * 2) as f32;
                     let z = (sub_z - dz * 2) as f32;
@@ -135,11 +182,7 @@ impl IslandNoise {
     }
 
     pub fn sample(&self, block_x: i32, block_z: i32) -> f32 {
-        let x = block_x as f32;
-        let z = block_z as f32;
-        let distance = (x * x + z * z).sqrt();
-        let main = ((100.0 - distance).clamp(-100.0, 80.0) - 8.0) * 0.0078125;
-        main.max(self.outer(block_x, block_z))
+        self.algorithm.island_value(block_x, block_z, self.outer(block_x, block_z))
     }
 
     pub fn biome(&self, block_x: i32, block_z: i32) -> Biome {

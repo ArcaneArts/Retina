@@ -1,6 +1,6 @@
 //! Native End columns and the existing material-run substrate. Dimension
 //! attributes remain in the world profile; this descriptor selects terrain only.
-use super::{Biome, IslandNoise, VanillaDensity};
+use super::{Algorithm, Biome, IslandNoise, VanillaDensity};
 use crate::{ChunkRequest, COLUMNS, CacheKey, TerrainEngine, decoration::Field,
     geology::{CaveMask, ColumnHalo}, profile::Column};
 use serde::Deserialize;
@@ -31,6 +31,8 @@ fn append_runs(mut bits: u128, request: ChunkRequest, material: u16, runs: &mut 
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Profile {
+    #[serde(default)]
+    pub algorithm: Algorithm,
     pub material: u16,
     /// Center, highlands, midlands, small islands, barrens. A fixed source maps
     /// every entry to the same loaded biome rather than borrowing climate rules.
@@ -43,6 +45,12 @@ impl Profile {
             return Err("invalid native End material or biome mapping".into());
         }
         Ok(())
+    }
+    pub(crate) fn islands(&self, seed: u64) -> IslandNoise {
+        IslandNoise::with_algorithm(seed, self.algorithm)
+    }
+    pub(crate) fn density(&self, seed: u64) -> VanillaDensity {
+        VanillaDensity::with_algorithm(seed, self.algorithm)
     }
     pub fn biome(&self, islands: &IslandNoise, x: i32, z: i32) -> u16 {
         self.biome_id(islands.biome(x, z))
@@ -70,7 +78,7 @@ impl Profile {
     pub(crate) fn columns(&self, requests: &[ChunkRequest], side: u32, biome_only: bool) -> Result<Vec<Column>, String> {
         let mut result = Vec::new();
         for &r in requests {
-            let islands = IslandNoise::new(r.seed);
+            let islands = self.islands(r.seed);
             if biome_only {
                 let x = r.chunk_x.checked_mul(16).and_then(|v| v.checked_add(8)).ok_or("End probe X overflows")?;
                 let z = r.chunk_z.checked_mul(16).and_then(|v| v.checked_add(8)).ok_or("End probe Z overflows")?;
@@ -79,7 +87,7 @@ impl Profile {
             }
             let side = side.max(1);
             let x = r.chunk_x * 16; let z = r.chunk_z * 16;
-            let density = VanillaDensity::new(r.seed);
+            let density = self.density(r.seed);
             let tile = density.tile(x, z, side * 16, side * 16)?;
             for cz in 0..side { for cx in 0..side {
                 let bx = x + cx as i32 * 16; let bz = z + cz as i32 * 16;
@@ -107,7 +115,7 @@ impl Profile {
         }}
         let ox = origin.chunk_x * 16; let oz = origin.chunk_z * 16;
         let lattice_started=metrics.and_then(|m|m.start());
-        let density = VanillaDensity::new(request.seed);
+        let density = self.density(request.seed);
         let tile = density.sparse_tile(ox, oz, tile_side as u32 * 16, tile_side as u32 * 16)?;
         if let Some(metrics) = metrics.filter(|_|crate::performance::enabled()) {
             use crate::performance::Counter::*;
@@ -244,7 +252,7 @@ mod tests {
     #[test]
     fn native_end_runs_columns_biomes_and_air_guards_match_vanilla_fixture() {
         let fixture: serde_json::Value = serde_json::from_str(include_str!("../../tests/fixtures/end-density-26.3.json")).unwrap();
-        let profile = Profile { material: 1, biomes: [4, 1, 2, 3, 0] };
+        let profile = Profile { algorithm: Algorithm::Modern, material: 1, biomes: [4, 1, 2, 3, 0] };
         profile.validate(2, 5).unwrap();
         let world = crate::profile::WorldProfile::parse(&serde_json::to_vec(&serde_json::json!({
             "biome_scale":128, "blend":0.55, "sea_level":0,
@@ -291,7 +299,7 @@ mod tests {
     }
     #[test]
     fn end_columns_clip_to_storage_bounds_and_reject_invalid_references() {
-        let profile = Profile { material: 1, biomes: [0; 5] };
+        let profile = Profile { algorithm: Algorithm::Modern, material: 1, biomes: [0; 5] };
         let mut r = request(0, 0);
         let density = VanillaDensity::new(r.seed);
         let islands = IslandNoise::new(r.seed);
@@ -301,8 +309,8 @@ mod tests {
         r.min_y = 128; r.height = 128;
         assert_eq!(profile.query(r, 0, 0, true, &islands, Some(&density)).height, 128);
         assert!(profile.validate(1, 1).is_err());
-        assert!(Profile { material: 0, biomes: [0; 5] }.validate(2, 1).is_err());
-        assert!(Profile { material: 1, biomes: [1; 5] }.validate(2, 1).is_err());
+        assert!(Profile { algorithm: Algorithm::Modern, material: 0, biomes: [0; 5] }.validate(2, 1).is_err());
+        assert!(Profile { algorithm: Algorithm::Modern, material: 1, biomes: [1; 5] }.validate(2, 1).is_err());
     }
 
     #[test]
@@ -324,7 +332,7 @@ mod tests {
 
     #[test]
     fn region_material_field_covers_anchor_neighbors_and_exact_boundary_columns() {
-        let profile=Profile{material:1,biomes:[4,1,2,3,0]};let r=request(-32,0);
+        let profile=Profile{algorithm:Algorithm::Modern,material:1,biomes:[4,1,2,3,0]};let r=request(-32,0);
         let (_,mask)=profile.build(r,32,None).unwrap();
         let field=crate::terrain_job::initial_material_field(&mask).unwrap();
         assert_eq!((field.origin_x,field.origin_z,field.side),(r.chunk_x-4,r.chunk_z-4,40));

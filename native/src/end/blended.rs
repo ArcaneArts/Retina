@@ -55,6 +55,10 @@ fn serialize_permutation<S: serde::Serializer>(value: &[u8; 256], serializer: S)
 
 impl BlendedNoise {
     pub fn new(seed: u64, parameters: Parameters) -> Result<Self, String> {
+        Self::with_precision(seed, parameters, false)
+    }
+
+    pub(super) fn with_precision(seed: u64, parameters: Parameters, double_offsets: bool) -> Result<Self, String> {
         if [parameters.xz_scale, parameters.y_scale, parameters.xz_factor, parameters.y_factor]
             .iter().any(|v| !v.is_finite() || !(0.001..=1000.0).contains(v))
             || !parameters.smear_scale_multiplier.is_finite()
@@ -63,13 +67,13 @@ impl BlendedNoise {
         }
         let mut random = Random::new(seed);
         let smear_y = (684.412 * parameters.y_scale) * parameters.smear_scale_multiplier;
-        let lower = Self::stack(&mut random, 16, smear_y, 0.99998474f32 as f64);
-        let upper = Self::stack(&mut random, 16, smear_y, 0.99998474f32 as f64);
-        let main = Self::stack(&mut random, 8, smear_y / parameters.y_factor, 12.75);
+        let lower = Self::stack(&mut random, 16, smear_y, 0.99998474f32 as f64, double_offsets);
+        let upper = Self::stack(&mut random, 16, smear_y, 0.99998474f32 as f64, double_offsets);
+        let main = Self::stack(&mut random, 8, smear_y / parameters.y_factor, 12.75, double_offsets);
         Ok(Self { parameters, lower, upper, main })
     }
 
-    fn stack(random: &mut Random, count: usize, smear_y: f64, mut amplitude: f64) -> Vec<Layer> {
+    fn stack(random: &mut Random, count: usize, smear_y: f64, mut amplitude: f64, double_offsets: bool) -> Vec<Layer> {
         amplitude /= ((1u32 << count) - 1) as f64;
         let mut frequency = 1.0;
         let mut layers = Vec::with_capacity(count);
@@ -77,7 +81,10 @@ impl BlendedNoise {
             // 26.3 BitRandomSource.nextDouble widens a float result (l2f,
             // fmul, f2d). Retain that rounding for End noise without changing
             // the existing structure RNG's higher-precision double method.
-            let offsets = std::array::from_fn(|_| (random.double() as f32) as f64 * 256.0);
+            let offsets = std::array::from_fn(|_| {
+                let value = random.double();
+                (if double_offsets { value } else { f64::from(value as f32) }) * 256.0
+            });
             let permutation = super::permutation(random);
             layers.push(Layer { permutation, offsets, frequency, amplitude: amplitude as f32,
                 fudge_y: smear_y * frequency });
@@ -85,6 +92,26 @@ impl BlendedNoise {
             amplitude *= 2.0;
         }
         layers
+    }
+
+    pub(super) fn legacy_sample(&self, x: i32, y: i32, z: i32) -> f64 {
+        let p = self.parameters;
+        let xz = 684.412 * p.xz_scale;
+        let y_scale = 684.412 * p.y_scale;
+        let point = [f64::from(x) * xz, f64::from(y) * y_scale, f64::from(z) * xz];
+        let main_point = [point[0] / p.xz_factor, point[1] / p.y_factor, point[2] / p.xz_factor];
+        let stack = |layers: &[Layer], point: [f64; 3]| -> f64 {
+            layers.iter().map(|layer| {
+                layer.sample_double(point.map(|v| v * layer.frequency)) / layer.frequency
+            }).sum()
+        };
+        let alpha = (stack(&self.main, main_point) / 10.0 + 1.0) / 2.0;
+        let lower = || stack(&self.lower, point) / 512.0;
+        let upper = || stack(&self.upper, point) / 512.0;
+        let value = if alpha <= 0.0 { lower() }
+            else if alpha >= 1.0 { upper() }
+            else { legacy_lerp(alpha, lower(), upper()) };
+        value / 128.0
     }
 
     pub fn sample(&self, x: i32, y: i32, z: i32) -> f32 {
@@ -167,8 +194,35 @@ fn wrap(x: f64) -> f64 {
     else { x - (x / 33554432.0 + 0.5).floor() * 33554432.0 }
 }
 
+fn legacy_lerp(t: f64, a: f64, b: f64) -> f64 { a + t * (b - a) }
+fn smoothstep_double(t: f64) -> f64 { t * t * t * (t * (t * 6.0 - 15.0) + 10.0) }
+
 impl Layer {
     fn permute(&self, i: i32) -> i32 { self.permutation[(i & 255) as usize] as i32 }
+
+    fn sample_double(&self, point: [f64; 3]) -> f64 {
+        let phase: [f64; 3] = std::array::from_fn(|axis| wrap(point[axis]) + self.offsets[axis]);
+        let cell: [i32; 3] = phase.map(|v| v.floor() as i32);
+        let relative: [f64; 3] = std::array::from_fn(|axis| phase[axis] - f64::from(cell[axis]));
+        let limit = if point[1] >= 0.0 && point[1] < relative[1] { point[1] } else { relative[1] };
+        let fudge = (limit / self.fudge_y + f64::from(1.0e-7f32)).floor() * self.fudge_y;
+        let local = [relative[0], relative[1] - fudge, relative[2]];
+        let alpha = relative.map(smoothstep_double);
+        let dots: [f64; 8] = std::array::from_fn(|corner| {
+            let dx = (corner & 1) as i32;
+            let dy = ((corner >> 1) & 1) as i32;
+            let dz = ((corner >> 2) & 1) as i32;
+            let x = self.permute(cell[0] + dx);
+            let xy = self.permute(x + cell[1] + dy);
+            let gradient = GRADIENTS[(self.permute(xy + cell[2] + dz) & 15) as usize].map(f64::from);
+            (gradient[0] * (local[0] - f64::from(dx)) + gradient[1] * (local[1] - f64::from(dy)))
+                + gradient[2] * (local[2] - f64::from(dz))
+        });
+        let [x, y, z] = alpha;
+        legacy_lerp(z,
+            legacy_lerp(y, legacy_lerp(x, dots[0], dots[1]), legacy_lerp(x, dots[2], dots[3])),
+            legacy_lerp(y, legacy_lerp(x, dots[4], dots[5]), legacy_lerp(x, dots[6], dots[7])))
+    }
 
     fn sample(&self, point: [f64; 3], volume: bool) -> f32 {
         let phase: [f64; 3] = std::array::from_fn(|axis| wrap(point[axis]) + self.offsets[axis]);

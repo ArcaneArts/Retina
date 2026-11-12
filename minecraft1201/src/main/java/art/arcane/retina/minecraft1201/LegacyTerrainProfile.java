@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.SurfaceRules;
 import net.minecraft.world.level.levelgen.WorldGenerationContext;
 
@@ -35,21 +36,8 @@ final class LegacyTerrainProfile {
         var biomeProfile = LegacyBiomeProfile.resolve(registries, generator.getBiomeSource());
         var palette = new LinkedHashMap<BlockState, Integer>();
 
-        var world = new JsonObject();
-        world.addProperty("biome_scale", 128);
-        world.addProperty("blend", 0.55);
-        world.addProperty("sea_level", settings.seaLevel());
-        world.addProperty("generator_depth", settings.noiseSettings().height());
-        material(palette, Blocks.AIR.defaultBlockState());
-        int rock = material(palette, settings.defaultBlock());
-        world.addProperty("stone", rock);
-        world.addProperty("water", material(palette, settings.defaultFluid()));
-        world.addProperty("bedrock", material(palette, Blocks.BEDROCK.defaultBlockState()));
-        world.addProperty("deepslate", material(palette, Blocks.DEEPSLATE.defaultBlockState()));
-        world.addProperty("snow", material(palette, Blocks.SNOW_BLOCK.defaultBlockState()));
-        world.addProperty("ice", material(palette, Blocks.ICE.defaultBlockState()));
-        world.addProperty("lava", material(palette, Blocks.LAVA.defaultBlockState()));
-        world.addProperty("lava_level", Math.min(-54, settings.seaLevel()));
+        var world = baseProfile(settings, palette);
+        int rock = world.get("stone").getAsInt();
         world.add("biomes", biomeProfile.encode(rock, type.hasCeiling()));
         world.add("climate_targets", biomeProfile.targets());
 
@@ -158,6 +146,35 @@ final class LegacyTerrainProfile {
         program.add("approximations", approximations);
         world.add("registry_program", program);
 
+        terrainPreviewOmissions(world);
+        world.addProperty("geology_min_y", volume.minY());
+        world.addProperty("geology_height", Math.max(0, volume.height()));
+        var carveable = new JsonArray();
+        palette.forEach((state, id) -> carveable.add(false));
+        world.add("carveable", carveable);
+        WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight());
+        return world;
+    }
+
+    static JsonObject baseProfile(NoiseGeneratorSettings settings, LinkedHashMap<BlockState, Integer> palette) {
+        var world = new JsonObject();
+        world.addProperty("biome_scale", 128);
+        world.addProperty("blend", 0.55);
+        world.addProperty("sea_level", settings.seaLevel());
+        world.addProperty("generator_depth", settings.noiseSettings().height());
+        material(palette, Blocks.AIR.defaultBlockState());
+        world.addProperty("stone", material(palette, settings.defaultBlock()));
+        world.addProperty("water", material(palette, settings.defaultFluid()));
+        world.addProperty("bedrock", material(palette, Blocks.BEDROCK.defaultBlockState()));
+        world.addProperty("deepslate", material(palette, Blocks.DEEPSLATE.defaultBlockState()));
+        world.addProperty("snow", material(palette, Blocks.SNOW_BLOCK.defaultBlockState()));
+        world.addProperty("ice", material(palette, Blocks.ICE.defaultBlockState()));
+        world.addProperty("lava", material(palette, Blocks.LAVA.defaultBlockState()));
+        world.addProperty("lava_level", Math.min(-54, settings.seaLevel()));
+        return world;
+    }
+
+    static void terrainPreviewOmissions(JsonObject world) {
         world.add("decoration_omissions", omissions("1.20.1 terrain preview omits placed features"));
         world.add("geology_omissions", omissions("1.20.1 terrain preview omits configured carvers, ores and ore veins"));
         var structures = new JsonObject();
@@ -167,13 +184,6 @@ final class LegacyTerrainProfile {
         structures.add("sets", new JsonArray());
         structures.add("omissions", omissions("1.20.1 terrain preview omits structures"));
         world.add("structures", structures);
-        world.addProperty("geology_min_y", volume.minY());
-        world.addProperty("geology_height", Math.max(0, volume.height()));
-        var carveable = new JsonArray();
-        palette.forEach((state, id) -> carveable.add(false));
-        world.add("carveable", carveable);
-        WorldDefinitionCompiler.writePalette(world, palette, type.hasSkyLight());
-        return world;
     }
 
     private static JsonArray omissions(String reason) {
