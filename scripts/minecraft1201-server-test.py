@@ -33,12 +33,18 @@ def prepare(args, directory, pack=None):
     mods = directory / 'mods'
     mods.mkdir(parents=True)
     shutil.copy2(args.mod, mods / 'retina.jar')
+    if args.forge_install:
+        (directory / 'libraries').symlink_to(args.forge_install.resolve() / 'libraries', target_is_directory=True)
     (directory / 'eula.txt').write_text('eula=true\n')
     properties = 'level-name=world\nlevel-seed=12345\ngenerate-structures=false\nserver-ip=127.0.0.1\nserver-port=0\n'
     properties += 'online-mode=false\nview-distance=2\nsimulation-distance=2\nmax-tick-time=0\n'
     if pack:
         properties += 'level-type=retina\\:noise_probe\ninitial-enabled-packs=vanilla,file/retina-noise\n'
-        shutil.copytree(pack, directory / 'world/datapacks/retina-noise')
+        target = directory / 'world/datapacks/retina-noise'
+        shutil.copytree(pack, target)
+        if args.forge_install:
+            fixture = Path(__file__).resolve().parent.parent / 'minecraft1201/src/datagen/fixtures/forge-biome-modifier'
+            shutil.copytree(fixture, target, dirs_exist_ok=True)
     (directory / 'server.properties').write_text(properties)
 
 
@@ -68,7 +74,8 @@ def compare(world, library, dimensions, edits):
     lib = c.CDLL(str(library.resolve()))
     lib.retina_world_dimension_chunk.argtypes = [c.c_uint64, c.c_char_p, c.c_uint64, c.c_int32, c.c_int32,
                                                  c.POINTER(c.c_void_p), c.POINTER(c.c_uint64)]
-    receipt = {'chunks': 0, 'blocks': 0, 'biomes': 0, 'heightmaps': 0, 'player_edits': 0, 'emerald_ore': 0, 'desert_biomes': 0}
+    receipt = {'chunks': 0, 'blocks': 0, 'biomes': 0, 'heightmaps': 0, 'player_edits': 0,
+               'emerald_ore': 0, 'gold_ore': 0, 'desert_biomes': 0}
     for dimension in dimensions:
         region = world / DIMENSIONS[dimension] / 'region'
         with SavedDefinition(lib, world / 'retina.dat', 'minecraft:' + dimension) as saved:
@@ -97,6 +104,7 @@ def compare(world, library, dimensions, edits):
                             receipt['player_edits'] += 1
                         assert unpack(observed['block_states'], i, 4) == block, (dimension, x, z, section_y, i, block)
                         receipt['emerald_ore'] += not edits and block['Name'] == 'minecraft:emerald_block'
+                        receipt['gold_ore'] += not edits and block['Name'] == 'minecraft:gold_block'
                     for i in range(64):
                         biome = unpack(expected['biomes'], i, 1)
                         assert unpack(observed['biomes'], i, 1) == biome, (dimension, x, z, section_y, i, biome)
@@ -113,13 +121,22 @@ def compare(world, library, dimensions, edits):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for option in ('java', 'server', 'mod', 'library', 'pack', 'output'):
+    for option in ('java', 'mod', 'library', 'pack', 'output'):
         parser.add_argument('--' + option, required=True, type=Path)
+    loader = parser.add_mutually_exclusive_group(required=True)
+    loader.add_argument('--server', type=Path, help='Fabric server launcher JAR')
+    loader.add_argument('--forge-install', type=Path, help='Directory produced by the Forge server installer')
     parser.add_argument('--backend', default='cpu', choices=('cpu', 'metal', 'vulkan'))
     args = parser.parse_args()
     support = sibling('bukkit-server-test')
     os.environ['RETINA_GPU_BACKEND'] = args.backend
-    launch = Namespace(java=args.java.resolve(), server=args.server.resolve(), jvm_args=[])
+    if args.forge_install:
+        name = 'win_args.txt' if os.name == 'nt' else 'unix_args.txt'
+        launch_file, = args.forge_install.glob('libraries/net/minecraftforge/forge/1.20.1-*/' + name)
+        command = ['@' + str(launch_file.resolve())]
+    else:
+        command = ['-jar', str(args.server.resolve())]
+    launch = Namespace(java=args.java.resolve(), launch_args=command, jvm_args=[])
     vanilla = args.output.resolve() / 'vanilla'
     prepare(args, vanilla)
     definition = vanilla / 'world/retina.dat'
@@ -156,6 +173,8 @@ def main():
         server.stop()
     report['datapack'] = compare(datapack / 'world', args.library, ['overworld'], edits=False)
     assert report['datapack']['emerald_ore'] > 0 and report['datapack']['desert_biomes'] == report['datapack']['biomes']
+    if args.forge_install:
+        assert report['datapack']['gold_ore'] > 0, 'Forge biome modifier ore was not generated'
     (args.output / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report), flush=True)
 

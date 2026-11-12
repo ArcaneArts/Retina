@@ -31,7 +31,8 @@ class Server:
                    '-Dterminal.jline=false', '-Dterminal.ansi=false', '-XX:ActiveProcessorCount=4', '-Xmx2G']
         if materializer_disabled: command += ['-Dretina.qa.catalog.failMaterializer=true']
         command += getattr(args, 'jvm_args', [])
-        command += ['-jar', str(args.server.resolve()), '--nogui']
+        command += args.launch_args if hasattr(args, 'launch_args') else ['-jar', str(args.server.resolve())]
+        command += ['--nogui']
         self.writer = self.log.open('w')
         self.process = subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE, stdout=self.writer,
                                         stderr=subprocess.STDOUT, text=True)

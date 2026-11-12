@@ -1,0 +1,81 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+    }
+    dependencies { classpath 'org.spongepowered:mixingradle:0.7.38' }
+}
+plugins {
+    id 'java'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+}
+apply plugin: 'org.spongepowered.mixin'
+
+def game = '1.20.1'
+def forge = '47.4.28'
+def minimumForge = '47.2.0'
+def repo = rootDir.parentFile
+def core = file(providers.gradleProperty('retinaCore').get())
+version = providers.gradleProperty('retinaVersion').get()
+group = 'art.arcane.retina'
+base { archivesName = 'retina-forge' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+jarJar.enable()
+minecraft { mappings channel: 'official', version: game }
+mixin {
+    add sourceSets.main, 'retina1201.refmap.json'
+    config 'retina1201-forge.mixins.json'
+}
+repositories {
+    mavenCentral()
+    maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
+}
+dependencies {
+    minecraft "net.minecraftforge:forge:${game}-${forge}"
+    implementation files(core)
+    implementation 'com.electronwill.night-config:toml:3.6.4'
+    implementation 'org.snakeyaml:snakeyaml-engine:2.10'
+    jarJar('org.snakeyaml:snakeyaml-engine:2.10') { jarJar.ranged(it, '[2.10,3)') }
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    compileOnly(annotationProcessor('io.github.llamalad7:mixinextras-common:0.5.5'))
+    implementation(jarJar('io.github.llamalad7:mixinextras-forge:0.5.5')) {
+        jarJar.ranged(it, '[0.5.5,)')
+    }
+}
+sourceSets.main {
+    java.srcDirs file("${repo}/minecraft1201/src/main/java"),
+            file("${repo}/minecraft1201/src/runtime/java"),
+            file("${repo}/definition/src/main/java"),
+            file("${repo}/common/src/main/java/art/arcane/retina/config")
+    resources.srcDir file("${repo}/minecraft1201/src/main/resources")
+}
+tasks.named('processResources') {
+    inputs.property('retinaVersion', project.version)
+    inputs.property('minimumForge', minimumForge)
+    filesMatching('META-INF/mods.toml') { expand(version: project.version, game: game, minimumForge: minimumForge) }
+    from(providers.gradleProperty('retinaCatalog')) {
+        into "catalogs/${game}"
+        rename { 'retina-catalog.dat' }
+    }
+    from(providers.gradleProperty('retinaHostNatives'))
+    from(providers.gradleProperty('retinaCrossNatives'))
+}
+tasks.withType(Jar).configureEach {
+    from(zipTree(core)) { exclude 'META-INF/MANIFEST.MF' }
+    from(file("${repo}/LICENSE")) { rename { "${it}_retina" } }
+    manifest {
+        attributes('Implementation-Version': project.version, 'Retina-Minecraft-Version': game)
+    }
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+tasks.named('jar') { archiveClassifier = 'dev' }
+tasks.named('jarJar') {
+    archiveClassifier = ''
+    finalizedBy 'reobfJarJar'
+}

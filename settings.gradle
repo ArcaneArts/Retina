@@ -23,7 +23,7 @@ if (!gradle.startParameter.taskNames.empty && gradle.startParameter.taskNames.ev
                 it.replaceFirst('^:', '').startsWith('minecraft1201:') ||
                 it.replaceFirst('^:', '').startsWith('bukkit1201:') ||
                 it.replaceFirst('^:', '').startsWith('fabric1201:') ||
-                it.replaceFirst('^:', '') in ['buildBukkit1201', 'buildFabric1201']
+                it.replaceFirst('^:', '') in ['buildBukkit1201', 'buildFabric1201', 'buildForge1201', 'build1201', 'buildSupported']
             }) {
         include 'minecraft1201', 'bukkit1201', 'fabric1201'
     }
