@@ -53,6 +53,12 @@ final class JniDefinitionTransport implements DefinitionTransport {
     }
 
     @Override
+    public NativeWorldDefinition.RegionResult publishRegion(long handle, String key, int x, int z, Path preview, Path destination) {
+        long[] report = publishRegionNative(handle, bytes(key), x, z, pathBytes(preview), pathBytes(destination));
+        return new NativeWorldDefinition.RegionResult(report[0], report[1], report[2]);
+    }
+
+    @Override
     public byte[] chunk(long handle, String key, int x, int z) {
         return chunkNative(handle, bytes(key), x, z);
     }
@@ -93,6 +99,7 @@ final class JniDefinitionTransport implements DefinitionTransport {
     private static native int bindNative(long handle, byte[] key, int compression, int execution);
     private static native long[] requestNative(long handle, byte[] key, int x, int z);
     private static native long[] regionNative(long handle, byte[] key, int x, int z, byte[] destination);
+    private static native long[] publishRegionNative(long handle, byte[] key, int x, int z, byte[] preview, byte[] destination);
     private static native byte[] chunkNative(long handle, byte[] key, int x, int z);
     private static native short[] biomesNative(long seed, int x, int z, int minY, int height, float baseHeight,
                                                float amplitude, float frequency, int profile);

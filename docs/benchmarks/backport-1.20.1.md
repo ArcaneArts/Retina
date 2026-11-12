@@ -749,3 +749,50 @@ emerald markers on both loaders and 226 Forge biome modifier markers.
 Concurrent cold tests took about 178 s
 for each mod server and 297 s for the Spigot process, which exercised
 all three spawn areas. These are acceptance timings under shared load.
+
+## Asynchronous 1.20.1 region preparation
+
+Fabric and Forge read Minecraft's current chunk first, including pending
+stores. A missing chunk joins preparation for its region. The shared
+Java scheduler bounds the work, coalesces requests, and releases each
+temporary MCA file after the queued reads finish. Minecraft's I/O worker
+closes its cached handle and publishes missing slots through the shared
+native merge operation. Existing compressed records stay intact.
+The storage queue reads the requested record after publication and
+reports it if Minecraft still cannot decode it.
+
+The publication bridge works through JNI on Java 17 and FFM on Java 25.
+`exportNoiseTerrain -PretinaVerifyNoiseTerrain` writes a partial region
+with the game codec, fills 1,023 missing slots, reopens all 1,024 slots,
+and checks the saved record and negative chunk coordinates. The Java 25
+smoke test also confirmed that a malformed MCA header remains unchanged
+when native publication rejects it.
+
+To exercise a partial region on the dedicated servers, use the native CLI
+to generate seed 12345 Overworld region `0,0` from the verified export.
+Pass that MCA file as `--partial-overworld-region` to
+`scripts/minecraft1201-server-test.py`. The probe seeds one existing
+record and checks the live I/O publication of 1,023 missing slots, the
+saved marker, and the three player edits after restart.
+
+The packaged Java 17 Fabric and Forge tests passed this check, the live
+Nether and Overworld spring checks, and the live datapack checks. In the
+final concurrent run, the Fabric and Forge processes reached startup
+in 32.8 s and 25.8 s, respectively, including their loaders.
+Loading a new region writes the entire MCA region, including chunks
+beyond the immediate spawn or travel request.
+
+In a separate sequential Fabric A/B run on the same M4 Max, fresh
+process startup dropped from 57.9 s to 27.8 s. The game's timing
+dropped from 44.9 s to 13.1 s. These are single runs.
+
+The local lifecycle probe sent SIGTERM while four unpublished
+previews were active. The process saved `level.dat`, removed the
+preview directories, and reopened the unchanged `retina.dat`.
+A corrupt-compression fixture on the packaged Fabric server surfaced
+an unreadable-region error and retained the original record bytes.
+`./gradlew :common:regionPreparationTest` passed the shared admission,
+foreground promotion, cancellation, and lease release checks.
+Three alternating 26.3 Nether Metal runs per library generated the same
+1,024 decoded records. Region times ranged from 1.25 to 1.61 s before
+and from 1.09 to 1.55 s after, excluding definition loading and binding.

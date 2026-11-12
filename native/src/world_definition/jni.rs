@@ -284,6 +284,32 @@ extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_regionNati
 }
 
 #[unsafe(no_mangle)]
+extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_publishRegionNative(
+    env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    key: JByteArray,
+    x: jint,
+    z: jint,
+    preview: JByteArray,
+    destination: JByteArray,
+) -> jlongArray {
+    call(env, ptr::null_mut(), |env| {
+        let key = env.convert_byte_array(&key)?;
+        let preview = env.convert_byte_array(&preview)?;
+        let destination = env.convert_byte_array(&destination)?;
+        let report: RegionReport = output(|out| unsafe {
+            retina_world_dimension_publish_region(
+                handle as u64, key.as_ptr(), key.len() as u64, x, z,
+                preview.as_ptr(), preview.len() as u64,
+                destination.as_ptr(), destination.len() as u64, out,
+            )
+        })?;
+        longs(env, &[report.generated.into(), report.preserved.into(), report.bytes as jlong])
+    })
+}
+
+#[unsafe(no_mangle)]
 extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_chunkNative(
     env: JNIEnv,
     _class: JClass,

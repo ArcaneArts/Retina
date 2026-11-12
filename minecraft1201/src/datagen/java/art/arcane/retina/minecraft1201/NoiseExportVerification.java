@@ -46,6 +46,7 @@ final class NoiseExportVerification {
         verify(world, registries, dimensions, LevelStem.NETHER, "DIM-1/region", -1, 0, seed);
         if (vanillaFixture) {
             OverworldFeatureVerification.vanilla(world, registries, dimensions.getHolderOrThrow(LevelStem.OVERWORLD).value());
+            verifyPublication(world);
             verify(world, registries, dimensions, LevelStem.NETHER, "DIM-1/region", 0, -1, seed);
             NetherFeatureVerification.verify(world, registries);
         }
@@ -57,6 +58,38 @@ final class NoiseExportVerification {
         }
         verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -1, 0, seed);
         verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -3, -1, seed);
+    }
+
+    private static void verifyPublication(Path world) throws Exception {
+        String key = "minecraft:overworld";
+        var source = world.resolve("region/r.-1.0.mca");
+        var destination = world.resolve("publication-probe/r.-1.0.mca");
+        Files.createDirectories(destination.getParent());
+        var existing = new ChunkPos(-32, 0);
+        CompoundTag edited;
+        try (var preview = new RegionFile(source, source.getParent(), true);
+             var partial = new RegionFile(destination, destination.getParent(), true);
+             var input = preview.getChunkDataInputStream(existing);
+             var output = partial.getChunkDataOutputStream(existing)) {
+            edited = NbtIo.read(input);
+            edited.putLong("InhabitedTime", 123456789L);
+            NbtIo.write(edited, output);
+        }
+        try (var saved = NativeWorldDefinition.open(world.resolve("retina.dat"))) {
+            saved.bindDimension(key, 2);
+            var result = saved.publishRegion(key, -1, 0, source, destination);
+            require(result.generated() == 1023 && result.preserved() == 1, "published missing slots");
+            var reopened = saved.publishRegion(key, -1, 0, source, destination);
+            require(reopened.generated() == 0 && reopened.preserved() == 1024, "publication reopen");
+        }
+        try (var region = new RegionFile(destination, destination.getParent(), true);
+             var input = region.getChunkDataInputStream(existing);
+             var added = region.getChunkDataInputStream(new ChunkPos(-1, 31))) {
+            require(edited.equals(NbtIo.read(input)), "existing 1.20.1 chunk unchanged");
+            var chunk = NbtIo.read(added);
+            require(chunk.getInt("xPos") == -1 && chunk.getInt("zPos") == 31, "published negative-region chunk");
+        }
+        System.out.println("QA_EVT {\"event\":\"retina_1201_native_publication\",\"status\":\"pass\",\"inserted\":1023,\"preserved\":1}");
     }
 
     private static void verify(Path world, RegistryAccess registries, Registry<LevelStem> dimensions,

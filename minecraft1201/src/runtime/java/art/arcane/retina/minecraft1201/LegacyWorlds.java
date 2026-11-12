@@ -4,6 +4,7 @@ import art.arcane.retina.config.RetinaConfig;
 import art.arcane.retina.config.RetinaConfiguration;
 import art.arcane.retina.core.NativeCatalog;
 import art.arcane.retina.core.NativeLibrary;
+import art.arcane.retina.core.NativeRegionBudget;
 import art.arcane.retina.core.NativeWorldDefinition;
 import art.arcane.retina.definition.BinaryDefinitionTags;
 import com.google.gson.JsonObject;
@@ -19,6 +20,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.chunk.storage.ChunkScanAccess;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
@@ -48,6 +50,7 @@ public final class LegacyWorlds {
     private final NativeWorldDefinition definition;
     private final JsonObject metadata;
     private final Map<String, LegacyDimension> dimensions = new HashMap<>();
+    private final NativeRegionBudget regionBudget = new NativeRegionBudget(RetinaConfiguration.get().regionParallelism());
 
     private LegacyWorlds(NativeWorldDefinition definition, long seed) {
         this.definition = definition;
@@ -122,10 +125,20 @@ public final class LegacyWorlds {
             return generator;
         }
         var bound = new LegacyDimension(key, stem.type().value(), server.registryAccess(), world.definition, saved,
-                world.metadata.getAsJsonObject("shared_types"));
+                world.metadata.getAsJsonObject("shared_types"), world.regionBudget);
         world.dimensions.put(key, bound);
         LOG.info("Retina activated for {} with a saved 1.20.1 definition", key);
         return new LegacyChunkGenerator(generator, bound);
+    }
+
+    public static void attachRegionIo(ChunkGenerator generator, ChunkScanAccess worker) {
+        if (generator instanceof LegacyChunkGenerator retina) {
+            ((LegacyRegionIo) worker).retina$configure(retina.regions());
+        }
+    }
+
+    public static boolean usesRegionIo(ChunkGenerator generator) {
+        return generator instanceof LegacyChunkGenerator;
     }
 
     public static synchronized void close(MinecraftServer server) {
