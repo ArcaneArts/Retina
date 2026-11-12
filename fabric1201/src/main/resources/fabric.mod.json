@@ -8,7 +8,7 @@
   "license": "MIT",
   "environment": "*",
   "entrypoints": { "main": ["art.arcane.retina.fabric1201.RetinaFabric1201"] },
-  "mixins": ["retina1201.mixins.json"],
+  "mixins": ["retina1201.mixins.json", "retina1201-fabric.mixins.json"],
   "depends": {
     "minecraft": "${minecraft_version}",
     "fabricloader": ">=${loader_version}",

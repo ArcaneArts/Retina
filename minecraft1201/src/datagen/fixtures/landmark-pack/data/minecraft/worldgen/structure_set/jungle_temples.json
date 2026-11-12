@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "spacing": 32,
+    "separation": 16,
+    "salt": 251391
+  },
+  "structures": [
+    {
+      "structure": "minecraft:jungle_pyramid",
+      "weight": 1
+    }
+  ]
+}

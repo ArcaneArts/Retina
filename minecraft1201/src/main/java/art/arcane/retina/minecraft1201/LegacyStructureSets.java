@@ -17,6 +17,7 @@ import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static art.arcane.retina.minecraft1201.LegacyDensityCompiler.decode;
@@ -27,6 +28,11 @@ final class LegacyStructureSets {
 
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes,
                              Class<? extends Structure> family, String kind, Consumer<JsonObject> normalize) {
+        return export(registry, biomes, Map.of(family, kind), normalize);
+    }
+
+    static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes,
+                             Map<Class<? extends Structure>, String> families, Consumer<JsonObject> normalize) {
         RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, registry);
         var definitions = new JsonArray();
         var sets = new JsonArray();
@@ -51,7 +57,8 @@ final class LegacyStructureSets {
             if (allowed.isEmpty()) continue;
             eligibility.put(structure, allowed);
             String id = source.getKey(structure).toString();
-            if (structure.getClass() != family) {
+            String kind = families.get(structure.getClass());
+            if (kind == null) {
                 omissions.add("structure:" + id);
                 continue;
             }

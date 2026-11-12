@@ -176,6 +176,8 @@ final class LegacyTerrainProfile {
         }
         if (structures && type.hasCeiling()) {
             world.add("structures", LegacyNetherFossils.export(registries, biomeProfile.biomes(), palette, context, templates));
+        } else if (structures && type.hasSkyLight()) {
+            world.add("structures", LegacyLandmarks.export(registries, biomeProfile.biomes(), palette));
         }
         LegacyGeologyProfile.export(registries, biomeProfile, world, palette, context, storage,
                 type.hasCeiling(), settings.oreVeinsEnabled(), compiler);
