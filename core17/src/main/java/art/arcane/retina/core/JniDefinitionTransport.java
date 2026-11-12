@@ -82,6 +82,12 @@ final class JniDefinitionTransport implements DefinitionTransport {
     }
 
     @Override
+    public int[] structureRingPositions(TerrainRequest request, int set, int count) {
+        return structureRingPositionsNative(request.seed(), request.minY(), request.height(),
+                request.baseHeight(), request.amplitude(), request.frequency(), request.profile(), set, count);
+    }
+
+    @Override
     public String diagnosticProfile(long handle, String key) {
         return new String(profileNative(handle, bytes(key)), StandardCharsets.UTF_8);
     }
@@ -113,6 +119,8 @@ final class JniDefinitionTransport implements DefinitionTransport {
                                              float amplitude, float frequency, int profile, int[] xyz);
     private static native int[] structureStartsNative(long seed, int x, int z, int minY, int height, float baseHeight,
                                                        float amplitude, float frequency, int profile, int[] candidates);
+    private static native int[] structureRingPositionsNative(long seed, int minY, int height, float baseHeight,
+                                                              float amplitude, float frequency, int profile, int set, int count);
     private static native byte[] profileNative(long handle, byte[] key);
     private static native void closeNative(long handle);
 }

@@ -1,7 +1,8 @@
 //! Java 17 transport. The C ABI owns validation, world handles and engine work.
 use super::ffi::*;
 use crate::{
-    ChunkRequest, gpu_backend::retina_configure_gpu_backend, queries::{retina_query_points, retina_query_structure_starts},
+    ChunkRequest, gpu_backend::retina_configure_gpu_backend,
+    queries::{retina_query_points, retina_query_structure_rings, retina_query_structure_starts},
     region::RegionReport, retina_flush_pipeline_caches, retina_free_bytes, retina_last_error,
     retina_sample_biomes_u16, startup::retina_configure_debug,
 };
@@ -469,6 +470,27 @@ extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_structureS
         })?;
         let result = env.new_int_array(count)?;
         env.set_int_array_region(&result, 0, &starts)?;
+        Ok(result.into_raw())
+    })
+}
+
+#[unsafe(no_mangle)]
+extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_structureRingPositionsNative(
+    env: JNIEnv, _class: JClass, seed: jlong, min_y: jint, height: jint, base_height: jfloat,
+    amplitude: jfloat, frequency: jfloat, profile: jint, set: jint, count: jint,
+) -> jintArray {
+    call(env, ptr::null_mut(), |env| {
+        if set < 0 || !(0..=4095).contains(&count) {
+            return Err("Invalid structure ring query".into());
+        }
+        let request = ChunkRequest {
+            seed: seed as u64, chunk_x: 0, chunk_z: 0, min_y, height: height as u32,
+            base_height, amplitude, frequency, reserved: profile as u32,
+        };
+        let mut positions = vec![0; count as usize * 2];
+        check(unsafe { retina_query_structure_rings(&request, set as u32, count as u32, positions.as_mut_ptr().cast()) })?;
+        let result = env.new_int_array(count * 2)?;
+        env.set_int_array_region(&result, 0, &positions)?;
         Ok(result.into_raw())
     })
 }

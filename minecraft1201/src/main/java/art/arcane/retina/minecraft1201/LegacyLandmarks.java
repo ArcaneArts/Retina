@@ -47,13 +47,10 @@ final class LegacyLandmarks {
 
     private LegacyLandmarks() { }
 
-    static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials) {
-        return export(registry, biomes, materials, Optional.empty());
-    }
-
     static JsonObject export(RegistryAccess registry, List<Holder<Biome>> biomes, LinkedHashMap<BlockState, Integer> materials,
-                             Optional<Set<ResourceLocation>> allowedSets) {
-        var result = LegacyStructureSets.export(registry, biomes, FAMILIES, config -> { }, (kind, config) -> true, allowedSets);
+                             Optional<Set<ResourceLocation>> allowedSets, LegacyStructureSets.RingBiomeSource ringBiomeSource) {
+        var result = LegacyStructureSets.export(registry, biomes, FAMILIES, config -> { }, (kind, config) -> true,
+                allowedSets, ringBiomeSource);
         var templates = result.getAsJsonArray("templates");
         var indices = new HashMap<String, Integer>();
         var structures = registry.registryOrThrow(Registries.STRUCTURE);

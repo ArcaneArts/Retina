@@ -39,6 +39,7 @@ dependencies {
             args '--structures', '--verify-portals'
         }
         if (mode == 'noise' && providers.gradleProperty('retinaVerifyAttachments').isPresent()) args '--verify-attachments'
+        if (mode == 'noise' && providers.gradleProperty('retinaVerifyRings').isPresent()) args '--structures', '--verify-rings'
         if (mode == 'flat' && providers.gradleProperty('retinaVerifyFlatWorldgen').isPresent()) {
             args '--structures', '--verify-flat-worldgen'
         }

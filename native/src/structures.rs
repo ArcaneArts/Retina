@@ -6,6 +6,7 @@ mod fortress;
 pub mod cities;
 mod fossils;
 mod portals;
+mod rings;
 mod template_transform;
 use crate::structure_processors::Program;
 use crate::{
@@ -109,6 +110,8 @@ pub struct Set {
     #[serde(default)]
     pub placement_only: bool,
     pub placement: Value,
+    #[serde(default)]
+    pub rings: Option<rings::Placement>,
     pub entries: Vec<Entry>,
 }
 #[derive(Clone, Deserialize)]
@@ -483,14 +486,13 @@ impl Profile {
         for s in &self.sets {
             let space = value(&s.placement, "spacing", 0);
             let sep = value(&s.placement, "separation", 0);
-            if space <= sep
-                || space > 4096
-                || sep < 0
+            let placement_valid = match s.placement["type"].as_str().unwrap_or("minecraft:random_spread") {
+                "minecraft:random_spread" => space > sep && space <= 4096 && sep >= 0 && s.rings.is_none(),
+                "minecraft:concentric_rings" => s.rings.as_ref().is_some_and(|rings| rings.validate(biomes)),
+                _ => false,
+            };
+            if !placement_valid
                 || (s.entries.is_empty() != s.placement_only)
-                || s.placement["type"]
-                    .as_str()
-                    .unwrap_or("minecraft:random_spread")
-                    != "minecraft:random_spread"
                 || s.entries
                     .iter()
                     .any(|e| e.weight == 0 || e.definition >= self.definitions.len())
@@ -652,9 +654,55 @@ fn frequency(seed: u64, x: i32, z: i32, p: &Value) -> bool {
         _ => Random::new(salted(salt, x as i64, z as i64)).float() < probability,
     }
 }
-fn permitted(p: &Profile, set: usize, seed: u64, x: i32, z: i32, visited: &mut Vec<usize>) -> bool {
+type RingLayouts = Vec<Option<Arc<Vec<[i32; 2]>>>>;
+
+fn ring_layouts(profile: &WorldProfile, request: ChunkRequest) -> Result<RingLayouts, String> {
+    let sets = &profile.structures.sets;
+    if sets.iter().all(|set| set.rings.is_none()) {
+        return Ok(Vec::new());
+    }
+    sets.iter().map(|set| set.rings.as_ref().map(|rings| rings.positions(profile, request)).transpose()).collect()
+}
+
+fn ring_layout(rings: &RingLayouts, set: usize) -> Option<&[[i32; 2]]> {
+    rings.get(set).and_then(|layout| layout.as_ref()).map(|layout| layout.as_slice())
+}
+
+pub(crate) fn query_ring_positions(
+    engine: &TerrainEngine, request: ChunkRequest, set: usize,
+) -> Result<Arc<Vec<[i32; 2]>>, String> {
+    engine.validate_request(&request)?;
+    let profile = engine.profile(request.reserved)?.ok_or("structure query requires a loaded profile")?;
+    let rings = profile.structures.sets.get(set).and_then(|set| set.rings.as_ref())
+        .ok_or("selected structure set does not use concentric rings")?;
+    rings.positions(&profile, request)
+}
+
+fn any_candidate(
+    set: &Set, rings: Option<&[[i32; 2]]>, seed: u64, [x0, z0, x1, z1]: [i32; 4],
+    mut visit: impl FnMut([i32; 2]) -> bool,
+) -> bool {
+    let inside = |[x, z]: [i32; 2]| x >= x0 && x <= x1 && z >= z0 && z <= z1;
+    if let Some(positions) = rings {
+        return positions.iter().copied().filter(|&at| inside(at)).any(visit);
+    }
+    let spacing = value(&set.placement, "spacing", 32) as i32;
+    for gz in z0.div_euclid(spacing)..=z1.div_euclid(spacing) {
+        for gx in x0.div_euclid(spacing)..=x1.div_euclid(spacing) {
+            let at = candidate(seed, gx * spacing, gz * spacing, &set.placement);
+            if inside(at) && visit(at) { return true; }
+        }
+    }
+    false
+}
+
+fn permitted(p: &Profile, rings: &RingLayouts, set: usize, seed: u64, x: i32, z: i32, visited: &mut Vec<usize>) -> bool {
     let s = &p.sets[set];
-    if candidate(seed, x, z, &s.placement) != [x, z] || !frequency(seed, x, z, &s.placement) {
+    let is_candidate = ring_layout(rings, set).map_or_else(
+        || candidate(seed, x, z, &s.placement) == [x, z],
+        |layout| layout.contains(&[x, z]),
+    );
+    if !is_candidate || !frequency(seed, x, z, &s.placement) {
         return false;
     }
     if visited.contains(&set) {
@@ -671,20 +719,11 @@ fn permitted(p: &Profile, set: usize, seed: u64, x: i32, z: i32, visited: &mut V
         })
     {
         let count = value(&s.placement["exclusion_zone"], "chunk_count", 0) as i32;
-        let spacing = value(&p.sets[other].placement, "spacing", 32) as i32;
-        for gz in (z - count).div_euclid(spacing)..=(z + count).div_euclid(spacing) {
-            for gx in (x - count).div_euclid(spacing)..=(x + count).div_euclid(spacing) {
-                let at = candidate(seed, gx * spacing, gz * spacing, &p.sets[other].placement);
-                if at[0] >= x - count
-                    && at[0] <= x + count
-                    && at[1] >= z - count
-                    && at[1] <= z + count
-                    && permitted(p, other, seed, at[0], at[1], visited)
-                {
-                    visited.pop();
-                    return false;
-                }
-            }
+        if any_candidate(&p.sets[other], ring_layout(rings, other), seed, [x - count, z - count, x + count, z + count],
+            |at| permitted(p, rings, other, seed, at[0], at[1], visited))
+        {
+            visited.pop();
+            return false;
         }
     }
     visited.pop();
@@ -733,12 +772,12 @@ fn plans_inner(
         return Ok(Vec::new());
     };
     let p = &profile.structures;
+    let rings = ring_layouts(&profile, request)?;
     let mut candidates = Vec::new();
     for (set, s) in p.sets.iter().enumerate() {
         if s.placement_only || only_set.is_some_and(|selected| selected != set) {
             continue;
         }
-        let spacing = value(&s.placement, "spacing", 32) as i32;
         // Job tiles own candidate coordinates, rather than overlapping consumer
         // areas. Every candidate belongs to exactly one tile/set batch.
         let halo = if discovery.is_some() {
@@ -747,24 +786,19 @@ fn plans_inner(
             candidate_halo(p, s)
         };
         let last = side - i32::from(discovery.is_some());
-        for gz in (request.chunk_z - halo).div_euclid(spacing)
-            ..=(request.chunk_z + last + halo).div_euclid(spacing)
-        {
-            for gx in (request.chunk_x - halo).div_euclid(spacing)
-                ..=(request.chunk_x + last + halo).div_euclid(spacing)
+        let mut seen = std::collections::HashSet::new();
+        let layout = ring_layout(&rings, set);
+        any_candidate(s, layout, request.seed, [
+            request.chunk_x - halo, request.chunk_z - halo,
+            request.chunk_x + last + halo, request.chunk_z + last + halo,
+        ], |at| {
+            if (layout.is_none() || seen.insert(at))
+                && permitted(p, &rings, set, request.seed, at[0], at[1], &mut Vec::new())
             {
-                let at = candidate(request.seed, gx * spacing, gz * spacing, &s.placement);
-                if at[0] >= request.chunk_x - halo
-                    && at[0] <= request.chunk_x + last + halo
-                    && at[1] >= request.chunk_z - halo
-                    && at[1] <= request.chunk_z + last + halo
-                {
-                    if permitted(p, set, request.seed, at[0], at[1], &mut Vec::new()) {
-                        candidates.push((set, at));
-                    }
-                }
+                candidates.push((set, at));
             }
-        }
+            false
+        });
     }
     let mut jobs = Vec::with_capacity(candidates.len());
     let mut probes = Vec::new();
@@ -918,6 +952,7 @@ pub fn query_starts(
     let Some(profile) = engine.profile(request.reserved)? else {
         return Ok(vec![-1; candidates.len()]);
     };
+    let rings = ring_layouts(&profile, request)?;
     let mut jobs = Vec::new();
     let mut probes = Vec::new();
     {
@@ -932,7 +967,6 @@ pub fn query_starts(
                 .sets
                 .get(set)
                 .ok_or("unknown structure set")?;
-            let placement = &definition.placement;
             let r = ChunkRequest {
                 chunk_x: x,
                 chunk_z: z,
@@ -940,8 +974,7 @@ pub fn query_starts(
             };
             r.validate()?;
             if definition.placement_only
-                || candidate(r.seed, x, z, placement) != [x, z]
-                || !permitted(&profile.structures, set, r.seed, x, z, &mut Vec::new())
+                || !permitted(&profile.structures, &rings, set, r.seed, x, z, &mut Vec::new())
             {
                 jobs.push(None);
                 continue;

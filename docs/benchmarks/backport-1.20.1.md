@@ -1385,3 +1385,36 @@ NBT for all 5,120 chunks. The frozen-water case produced 122,367 ice
 columns, and the altitude case produced 132,355 snowy grass columns.
 The stock Overworld verifier now accounts for 89 supported and 32
 omitted non-ore roots and observed snow in its generated region.
+
+### Concentric-ring structure placement
+
+The 1.20.1 Overworld and Flat adapters can export a concentric-ring set
+when the native engine supports its structure family. The saved data
+includes the distance, spread, count, preferred biome membership,
+frequency, locate offset and exclusion dependencies. Rust computes and
+caches the seeded positions. The Java locator reads the same positions
+through the native interface. Flat follows the 1.20.1 zero ring seed,
+and the noise generator uses the world seed.
+
+Run the headless verifier in separate fresh directories for CPU and Metal:
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyRings \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=cpu -PretinaSeed=12345
+```
+
+The fixture uses a supported pyramid family with registered rings and
+checks five sets in Flat, fixed-biome and multi-noise dimensions.
+It covers an active exclusion, an inapplicable exclusion set and
+preferred biome relocation. Seeds 12345 and -129834789 produced the
+same native ring coordinates on CPU and Metal. The preferred-biome
+subset matched all 18 relocations when the 1.20.1 reference algorithm
+used Retina's CPU biome samples. Vanilla's own climate matched 8 of
+those 18 positions. The Metal biome samples agreed on 17 of 18.
+Ring placement always uses the CPU biome source.
+
+The verifier also reads the saved pyramid start and its reference with
+the 1.20.1 region reader and confirms that reopening preserves all
+1,024 chunks. Native stronghold piece generation remains a separate
+omission.
