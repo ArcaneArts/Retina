@@ -40,7 +40,7 @@ final class EndTerrainReference {
             var columns = new JsonArray();
             for (var position : new int[][]{
                     {0, 0}, {8, -8}, {-9, -24}, {70, 19}, {99, -9}, {-111, 63}, {119, 119}, {-161, -13},
-                    {1008, 0}, {-1025, 42}, {1088, 36}, {1274, 418}, {-1426, -136},
+                    {1008, 0}, {-1025, 42}, {1088, 36}, {1274, 418}, {-1426, -136}, {1548, 0},
                     {2998, -475}, {-2795, 2880}, {17321, -20305}, {370720, 0}, {390008, 16}, {-400016, -400008}
             }) {
                 int x = position[0], z = position[1];
@@ -66,6 +66,6 @@ final class EndTerrainReference {
         result.addProperty("minecraft_version", SharedConstants.getCurrentVersion().getName());
         result.add("groups", groups);
         Files.writeString(output, new GsonBuilder().setPrettyPrinting().create().toJson(result) + "\n");
-        System.out.println("QA_EVT {\"event\":\"end_1201_reference\",\"status\":\"pass\",\"columns\":57}");
+        System.out.println("QA_EVT {\"event\":\"end_1201_reference\",\"status\":\"pass\",\"columns\":60}");
     }
 }

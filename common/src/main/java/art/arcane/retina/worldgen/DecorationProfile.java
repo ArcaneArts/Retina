@@ -1,6 +1,7 @@
 package art.arcane.retina.worldgen;
 
 import art.arcane.retina.Retina;
+import art.arcane.retina.definition.EndPlacementProfile;
 import com.google.gson.*;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.Holder;

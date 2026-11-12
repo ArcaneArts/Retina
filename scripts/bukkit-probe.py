@@ -4,6 +4,7 @@ import ctypes as c
 import gzip
 import io
 import json
+import math
 import struct
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from benchmark_support import decode_nbt
 from saved_definition import SavedDefinition, check
 
 
-def compare(probe: Path, definition: Path, library_path: Path, expect_test_edits=False):
+def compare(probe: Path, definition: Path, library_path: Path, expect_test_edits=False, legacy_crystal_fire=False):
     source = io.BytesIO(gzip.decompress(probe.read_bytes()))
 
     def read(count):
@@ -48,10 +49,15 @@ def compare(probe: Path, definition: Path, library_path: Path, expect_test_edits
                 check(library, library.retina_world_dimension_chunk(world.handle, world.key, len(world.key), x, z, c.byref(pointer), c.byref(length)))
                 try: native = next(iter(decode_nbt(c.string_at(pointer, length.value)).values()))
                 finally: library.retina_free_bytes(pointer, length)
+                crystal_positions = set()
+                if legacy_crystal_fire and native['DataVersion'] == 3465 and name == 'world_the_end':
+                    crystal_positions = {tuple(map(math.floor, tag['Pos'])) for tag in native.get('entities', [])
+                                         if tag['id'] == 'minecraft:end_crystal'}
                 sections = {s["Y"] * 16: s for s in native["sections"] if "block_states" in s}
                 assert len(block_ids) == (maximum - minimum) * 256
                 assert len(biome_ids) == (maximum - minimum) * 4
                 differences, examples, edited = 0, [], 0
+                crystal_tick_updates = 0
                 for i, actual_id in enumerate(block_ids):
                     y, local = divmod(i, 256); y += minimum
                     block_x, block_z = local & 15, local >> 4
@@ -66,6 +72,11 @@ def compare(probe: Path, definition: Path, library_path: Path, expect_test_edits
                     if edit is not None:
                         expected = edit; edited += 1
                     if palette[actual_id] != expected:
+                        at = (x * 16 + block_x, y, z * 16 + block_z)
+                        if at in crystal_positions and expected == 'minecraft:air' and palette[actual_id] == state_text(
+                                'minecraft:fire', defaults.get('minecraft:fire', {})):
+                            crystal_tick_updates += 1
+                            continue
                         differences += 1
                         if len(examples) < 5: examples.append([block_x, y, block_z, expected, palette[actual_id]])
                 biome_differences = 0
@@ -77,6 +88,8 @@ def compare(probe: Path, definition: Path, library_path: Path, expect_test_edits
                 result = {"world": name, "chunk": [x, z], "blocks": len(block_ids), "quart_biomes": len(biome_ids),
                           "player_edits": edited, "block_differences": differences, "biome_differences": biome_differences,
                           "examples": examples}
+                if legacy_crystal_fire:
+                    result["crystal_tick_updates"] = crystal_tick_updates
                 results.append(result)
     if source.read(1): raise ValueError("Trailing Bukkit probe bytes")
     return results

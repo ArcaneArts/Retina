@@ -1,13 +1,13 @@
-package art.arcane.retina.worldgen;
+package art.arcane.retina.definition;
 import com.google.gson.*;
 import java.util.Set;
 /** Supported exact End placement operations; unknown providers are reported. */
-final class EndPlacementProfile {
+public final class EndPlacementProfile {
     private EndPlacementProfile() { }
-    static int reach(JsonArray program) {
+    public static int reach(JsonArray program) {
         return reach(program,6); // EndIslandFeature radius only shrinks from 4..6.
     }
-    static int reach(JsonArray program,int geometryReach) {
+    public static int reach(JsonArray program,int geometryReach) {
         int reach=geometryReach;
         for (var value : program) {
             var op=value.getAsJsonObject();
@@ -19,7 +19,7 @@ final class EndPlacementProfile {
         }
         return reach;
     }
-    static boolean supported(JsonArray program) {
+    public static boolean supported(JsonArray program) {
         for (var value : program) {
             var op = value.getAsJsonObject(); String type = type(op);
             switch(type) {
@@ -37,7 +37,7 @@ final class EndPlacementProfile {
     }
     // Prove that block-entity metadata belongs to this anchor's chunk. Unknown
     // cross-chunk programs remain unsupported until their ownership is adapted.
-    static boolean owned(JsonArray program) {
+    public static boolean owned(JsonArray program) {
         long[] low={0,0},high={0,0};
         for(var value:program) {
             var op=value.getAsJsonObject();

@@ -48,25 +48,111 @@ def prepare(args, directory, pack=None):
     (directory / 'server.properties').write_text(properties)
 
 
+def wait_chunk(server, execute, x, z):
+    deadline = time.monotonic() + 60
+    while True:
+        try:
+            server.command(f'{execute} if loaded {x * 16} 100 {z * 16} run say RETINA_CHUNK_LOADED',
+                           'RETINA_CHUNK_LOADED', timeout=1)
+            return
+        except TimeoutError:
+            if time.monotonic() >= deadline:
+                raise
+
+
 def sample(server, edits):
     server.command('gamerule randomTickSpeed 0', 'Gamerule randomTickSpeed is now set to: 0')
     for dimension in DIMENSIONS:
         execute = 'execute in minecraft:' + dimension
         server.command(f'{execute} run forceload add -1 -1 16 16', 'force loaded')
         for x, z in SAMPLES:
-            deadline = time.monotonic() + 60
-            while True:
-                try:
-                    server.command(f'{execute} if loaded {x * 16} 100 {z * 16} run say RETINA_CHUNK_LOADED',
-                                   'RETINA_CHUNK_LOADED', timeout=1)
-                    break
-                except TimeoutError:
-                    if time.monotonic() >= deadline:
-                        raise
+            wait_chunk(server, execute, x, z)
         if edits:
             x, y, z, material = EDITS[dimension]
             server.command(f'{execute} run setblock {x} {y} {z} {material}', 'Changed the block at', timeout=10)
     server.command('save-all flush', 'Saved the game')
+
+
+def read_end_reference(directory, gateway_exit=(100, 50, 0), crystal_beam=None):
+    """Check the seed-12345 corpus produced by the End datagen acceptance commands."""
+    import math
+    unpack = sibling('bukkit-probe').unpack
+    records = {}
+    chorus = 0
+    island = False
+    for region in sorted(directory.glob('*.mca')):
+        for payload in mca_records(region).values():
+            chunk = next(iter(decode_nbt(payload).values()))
+            assert chunk['DataVersion'] == 3465
+            crystals = [tag for tag in chunk.get('entities', []) if tag['id'] == 'minecraft:end_crystal']
+            gateways = [tag for tag in chunk.get('block_entities', []) if tag['id'] == 'minecraft:end_gateway']
+            for crystal in crystals:
+                assert crystal['FallDistance'] == 0 and 'fall_distance' not in crystal
+                assert crystal.get('BeamTarget') == (dict(zip('XYZ', crystal_beam)) if crystal_beam else None)
+                assert crystal['Invulnerable'] == bool(crystal_beam)
+                x, y, z = map(math.floor, crystal['Pos'])
+                assert block_at(chunk, x, y - 2, z, unpack) == 'minecraft:obsidian'
+                assert block_at(chunk, x, y - 1, z, unpack) == 'minecraft:bedrock'
+                assert block_at(chunk, x, y, z, unpack) == 'minecraft:air'
+            for gateway in gateways:
+                assert gateway['ExitPortal'] == dict(zip('XYZ', gateway_exit)) and gateway['ExactTeleport'] == 1
+                assert block_at(chunk, gateway['x'], gateway['y'], gateway['z'], unpack) == 'minecraft:end_gateway'
+            if crystals or gateways:
+                records[chunk['xPos'], chunk['zPos']] = crystals, gateways
+            if (chunk['xPos'], chunk['zPos']) == (96, 0):
+                # The vanilla getBaseColumn reference is air at this height.
+                island = block_at(chunk, 1548, 54, 0, unpack) == 'minecraft:end_stone'
+            chorus += any(block['Name'] == 'minecraft:chorus_flower' for section in chunk['sections']
+                          for block in section.get('block_states', {}).get('palette', []))
+    uuids = {tuple(crystal['UUID']) for crystals, _ in records.values() for crystal in crystals}
+    assert len(uuids) == sum(len(crystals) for crystals, _ in records.values()) == 10
+    assert sum(len(gateways) for _, gateways in records.values()) > 0
+    assert chorus > 0 and island
+    return records
+
+
+def block_at(chunk, x, y, z, unpack):
+    section = next(section for section in chunk['sections'] if section['Y'] == y >> 4)
+    index = ((y & 15) << 8) | ((z & 15) << 4) | (x & 15)
+    return unpack(section['block_states'], index, 4)['Name']
+
+
+def load_end(server, records, restart):
+    execute = 'execute in minecraft:the_end'
+    for x, z in records:
+        if not restart:
+            server.command(f'{execute} run forceload add {x * 16} {z * 16}', 'force loaded')
+        wait_chunk(server, execute, x, z)
+    server.command('save-all flush', 'Saved the game')
+
+
+def compare_end(world, records):
+    from functools import cache
+
+    @cache
+    def region(kind, rx, rz):
+        return mca_records(world / 'DIM1' / kind / f'r.{rx}.{rz}.mca')
+
+    checked = {'crystals': 0, 'gateways': 0}
+    for (x, z), (crystals, gateways) in records.items():
+        slot = (z & 31) * 32 + (x & 31)
+        if crystals:
+            actual = next(iter(decode_nbt(region('entities', x >> 5, z >> 5)[slot]).values()))
+            saved = {tuple(tag['UUID']): tag for tag in actual['Entities'] if tag['id'] == 'minecraft:end_crystal'}
+            for crystal in crystals:
+                observed = saved[tuple(crystal['UUID'])]
+                for key in ('Pos', 'BeamTarget', 'ShowBottom', 'Invulnerable'):
+                    assert observed.get(key) == crystal.get(key), (x, z, key, observed)
+                checked['crystals'] += 1
+        if gateways:
+            actual = next(iter(decode_nbt(region('region', x >> 5, z >> 5)[slot]).values()))
+            saved = {(tag['x'], tag['y'], tag['z']): tag for tag in actual['block_entities']
+                     if tag['id'] == 'minecraft:end_gateway'}
+            for gateway in gateways:
+                observed = saved[gateway['x'], gateway['y'], gateway['z']]
+                assert observed['ExitPortal'] == gateway['ExitPortal'] and observed['ExactTeleport'] == 1
+                checked['gateways'] += 1
+    return checked
 
 
 def compare(world, library, dimensions, edits):
@@ -127,6 +213,7 @@ def main():
     loader.add_argument('--server', type=Path, help='Fabric server launcher JAR')
     loader.add_argument('--forge-install', type=Path, help='Directory produced by the Forge server installer')
     parser.add_argument('--backend', default='cpu', choices=('cpu', 'metal', 'vulkan'))
+    parser.add_argument('--end-reference', type=Path, help='Headless End region directory for vanilla seed 12345')
     args = parser.parse_args()
     support = sibling('bukkit-server-test')
     os.environ['RETINA_GPU_BACKEND'] = args.backend
@@ -140,6 +227,7 @@ def main():
     vanilla = args.output.resolve() / 'vanilla'
     prepare(args, vanilla)
     definition = vanilla / 'world/retina.dat'
+    end_records = read_end_reference(args.end_reference) if args.end_reference else None
     report = {'backend': args.backend}
     for restart in (False, True):
         server = support.Server(launch, vanilla, restart)
@@ -156,10 +244,14 @@ def main():
             else:
                 original = support.digest(definition)
                 sample(server, edits=True)
+            if end_records:
+                load_end(server, end_records, restart)
         finally:
             server.stop()
         report[stage] = compare(vanilla / 'world', args.library, DIMENSIONS, edits=True)
         assert report[stage]['player_edits'] == len(EDITS)
+        if end_records:
+            report[stage]['end_features'] = compare_end(vanilla / 'world', end_records)
 
     datapack = args.output.resolve() / 'datapack'
     prepare(args, datapack, args.pack)

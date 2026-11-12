@@ -6,6 +6,7 @@ import org.bukkit.block.Chest;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.block.EndGateway;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.EnderCrystal;
 import org.bukkit.entity.EntityType;
 import org.bukkit.loot.Lootable;
 import org.bukkit.plugin.Plugin;
@@ -16,12 +17,15 @@ import java.util.Objects;
 final class MetadataScene1201 extends MetadataFixtureScene {
     private static final String DATA = """
         {block_entities:[
-          {id:"minecraft:end_gateway",x:2,y:65,z:2,Age:2401L,ExactTeleport:1b,exit_portal:[I;8,80,8]},
+          {id:"minecraft:end_gateway",x:2,y:65,z:2,Age:2401L,ExactTeleport:1b,ExitPortal:{X:8,Y:80,Z:8}},
           {id:"minecraft:chest",x:4,y:65,z:2,Items:[{Slot:0b,id:"minecraft:diamond",Count:7b,tag:{display:{Name:"{\\"text\\":\\"Retina fixture\\"}"},retina_fixture:{exact_seed:9223372036854775791L}}}]},
           {id:"minecraft:chest",x:6,y:65,z:2,LootTable:"minecraft:chests/simple_dungeon",LootTableSeed:-9223372036854775767L},
           {id:"minecraft:mob_spawner",x:10,y:65,z:2,Delay:77s,MinSpawnDelay:60s,MaxSpawnDelay:600s,SpawnCount:2s,MaxNearbyEntities:5s,RequiredPlayerRange:12s,SpawnRange:3s,
            SpawnData:{entity:{id:"minecraft:pig"}}}
-        ],entities:[{id:"minecraft:armor_stand",Pos:[8.5d,66d,8.5d],Rotation:[33f,0f],NoGravity:1b,Invulnerable:1b}]}
+        ],entities:[
+          {id:"minecraft:armor_stand",Pos:[8.5d,66d,8.5d],Rotation:[33f,0f],NoGravity:1b,Invulnerable:1b},
+          {id:"minecraft:end_crystal",Pos:[9.5d,66d,8.5d],FallDistance:0f,Invulnerable:1b,ShowBottom:0b,BeamTarget:{X:-8,Y:95,Z:12}}
+        ]}
         """;
 
     MetadataScene1201(Plugin retina) throws ReflectiveOperationException {
@@ -50,6 +54,11 @@ final class MetadataScene1201 extends MetadataFixtureScene {
         require(Arrays.stream(world.getChunkAt(0, 0).getEntities()).anyMatch(entity -> entity instanceof ArmorStand stand
                 && stand.isInvulnerable() && !stand.hasGravity() && Math.abs(stand.getLocation().getYaw() - 33) < 0.01),
                 "entity type, rotation and flags");
+        require(Arrays.stream(world.getChunkAt(0, 0).getEntities()).anyMatch(entity -> {
+            if (!(entity instanceof EnderCrystal crystal) || !crystal.isInvulnerable() || crystal.isShowingBottom()) return false;
+            var target = crystal.getBeamTarget();
+            return target != null && target.getBlockX() == -8 && target.getBlockY() == 95 && target.getBlockZ() == 12;
+        }), "end crystal beam target and flags");
     }
 
     private static void require(boolean condition, String field) {

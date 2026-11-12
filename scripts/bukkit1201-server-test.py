@@ -45,8 +45,13 @@ def saved_metadata_entity(directory, seed):
     assert blocks[6]['LootTableSeed'] == seed
     assert blocks[10]['SpawnData']['entity']['id'] == 'minecraft:pig'
     stands = [tag for tag in entities['Entities'] if tag['id'] == 'minecraft:armor_stand']
+    crystals = [tag for tag in entities['Entities'] if tag['id'] == 'minecraft:end_crystal']
     assert len(stands) == 1
-    return stands[0]['UUID']
+    assert len(crystals) == 1
+    crystal = crystals[0]
+    assert crystal['BeamTarget'] == {'X': -8, 'Y': 95, 'Z': 12}
+    assert crystal['Invulnerable'] == 1 and crystal['ShowBottom'] == 0
+    return stands[0]['UUID'], crystal['UUID']
 
 
 def main():
@@ -64,6 +69,7 @@ def main():
     directory = output / 'server'
     support.prepare(args, directory)
     definition = directory / 'world/retina.dat'
+    end_storage = directory / 'world_the_end/DIM1'
     imported = directory / 'retina_probe_imported/retina.dat'
     imported.parent.mkdir()
     shutil.copy2(args.imported, imported)
@@ -91,6 +97,7 @@ def main():
     finally:
         server.stop()
     metadata_entity = saved_metadata_entity(directory, support.SEED)
+    first_crystals = support.read_saved_end_crystals(end_storage)
 
     server = support.Server(args, directory, True)
     try:
@@ -107,8 +114,11 @@ def main():
     assert saved_metadata_entity(directory, support.SEED) == metadata_entity
 
     library = native_library(args, output)
+    crystals = support.read_saved_end_crystals(end_storage)
+    assert {tuple(tag['UUID']) for tag in crystals} == {tuple(tag['UUID']) for tag in first_crystals}
+    support.compare_saved_crystals(crystals, definition, library, 'BeamTarget')
     for stage, snapshot in [('first', output / 'first.bin.gz'), ('restart', snapshots)]:
-        results = probe.compare(snapshot, definition, library, expect_test_edits=stage == 'restart')
+        results = probe.compare(snapshot, definition, library, expect_test_edits=stage == 'restart', legacy_crystal_fire=True)
         (output / f'parity-{stage}.json').write_text(json.dumps(results, indent=2) + '\n')
         assert not any(r['block_differences'] or r['biome_differences'] for r in results), results
         report[stage] = {
@@ -116,10 +126,11 @@ def main():
             'blocks': sum(r['blocks'] for r in results),
             'quart_biomes': sum(r['quart_biomes'] for r in results),
             'player_edits': sum(r['player_edits'] for r in results),
+            'crystal_tick_updates': sum(r['crystal_tick_updates'] for r in results),
         }
     assert report['restart']['player_edits'] == 3
     report.update(status='pass', definition_sha256=original, native_sha256=support.digest(library),
-                  imported_datapack=True, metadata_restart=True)
+                  imported_datapack=True, metadata_restart=True, persisted_end_crystals=len(crystals))
     (output / 'summary.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report), flush=True)
 
