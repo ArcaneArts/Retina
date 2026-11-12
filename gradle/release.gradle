@@ -12,6 +12,7 @@ def commitCount = providers.exec {
     workingDir rootDir
     commandLine 'git', 'rev-list', '--count', 'HEAD'
 }.standardOutput.asText.get().trim()
+ext.retinaRevision = commitCount
 allprojects { targetProject ->
     targetProject.version = "${minecraftTarget}-${commitCount}"
     targetProperties.each { key, value ->

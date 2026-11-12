@@ -4,11 +4,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** One queued task per owner, with snapshots created only by the two active writers. */
 final class CoalescedSave {
-    private static final Executor WRITERS = Executors.newFixedThreadPool(2,
-            Thread.ofPlatform().daemon().name("retina-cache-save-", 0).factory());
+    private static final AtomicInteger WRITER_IDS = new AtomicInteger();
+    private static final Executor WRITERS = Executors.newFixedThreadPool(2, task -> {
+        var thread = new Thread(task, "retina-cache-save-" + WRITER_IDS.getAndIncrement());
+        thread.setDaemon(true);
+        return thread;
+    });
     private final Executor executor;
     private final Runnable checkpoint;
     private CompletableFuture<Void> pending;

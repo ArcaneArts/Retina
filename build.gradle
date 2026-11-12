@@ -57,3 +57,11 @@ tasks.register('universalJar') {
     description = 'Assemble the single installable Fabric, NeoForge and Bukkit JAR.'
     dependsOn ':universal:shadowJar'
 }
+
+if (findProject(':bukkit1201') != null) {
+    tasks.register('buildBukkit1201') {
+        group = 'build'
+        description = 'Build the Minecraft 1.20.1 Bukkit plugin.'
+        dependsOn ':bukkit1201:shadowJar'
+    }
+}

@@ -19,7 +19,11 @@ if (!gradle.startParameter.taskNames.empty && gradle.startParameter.taskNames.ev
     include 'core', 'core17', 'common', 'fabric', 'neoforge', 'bukkit', 'data', 'universal'
     // Legacy Loom performs Minecraft setup during configuration. Load it only for an explicit legacy build.
     if (providers.gradleProperty('retina1201').isPresent() ||
-            gradle.startParameter.taskNames.any { it.startsWith(':minecraft1201:') || it.startsWith('minecraft1201:') }) {
-        include 'minecraft1201'
+            gradle.startParameter.taskNames.any {
+                it.replaceFirst('^:', '').startsWith('minecraft1201:') ||
+                it.replaceFirst('^:', '').startsWith('bukkit1201:') ||
+                it.replaceFirst('^:', '') == 'buildBukkit1201'
+            }) {
+        include 'minecraft1201', 'bukkit1201'
     }
 }

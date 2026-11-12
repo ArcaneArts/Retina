@@ -31,7 +31,7 @@ final class ChunkSnapshot {
         var decoded = new HashMap<Integer, Section>();
         for (var raw : root.getList("sections", BinaryTagTypes.COMPOUND)) {
             var section = (CompoundBinaryTag) raw;
-            if (!section.contains("block_states")) continue; // Boundary lighting sections have no blocks.
+            if (section.get("block_states") == null) continue; // Boundary lighting sections have no blocks.
             var blocks = section.getCompound("block_states");
             var palette = blocks.getList("palette");
             var names = new String[palette.size()];
@@ -53,9 +53,10 @@ final class ChunkSnapshot {
     }
 
     static String state(CompoundBinaryTag state) {
-        String id = state.getString("id");
+        boolean legacy = state.get("Name") != null;
+        String id = state.getString(legacy ? "Name" : "id");
         if (id.isEmpty()) throw new IllegalStateException("Native block palette entry has no canonical id");
-        var savedProperties = state.getCompound("properties");
+        var savedProperties = state.getCompound(legacy ? "Properties" : "properties");
         if (savedProperties.size() == 0) return id;
         var properties = new TreeMap<String, String>();
         for (var property : savedProperties) properties.put(property.getKey(), ((StringBinaryTag) property.getValue()).value());
@@ -99,7 +100,7 @@ final class ChunkSnapshot {
 
     int height(HeightMap type, int x, int z) {
         var maps = root.getCompound("Heightmaps");
-        if (!maps.contains(type.name())) throw new IllegalStateException("Saved chunk lacks heightmap " + type);
+        if (maps.get(type.name()) == null) throw new IllegalStateException("Saved chunk lacks heightmap " + type);
         return minimum + packed(packedData(maps, type.name()), (z & 15) * 16 + (x & 15), 32 - Integer.numberOfLeadingZeros(height));
     }
 

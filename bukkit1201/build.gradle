@@ -1,0 +1,82 @@
+plugins {
+    id 'java-library'
+    id 'com.gradleup.shadow' version '9.6.1'
+}
+apply from: rootProject.file('gradle/java-toolchain.gradle')
+
+def game = '1.20.1'
+version = "${game}-${rootProject.ext.retinaRevision}"
+base { archivesName = 'retina-bukkit' }
+
+tasks.withType(JavaCompile).configureEach { options.release = 17 }
+sourceSets.main.java.srcDir rootProject.file('bukkit/src/main/java')
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+}
+dependencies {
+    compileOnly "org.spigotmc:spigot-api:${game}-R0.1-SNAPSHOT"
+    implementation project(':core17')
+    implementation 'com.google.code.gson:gson:2.15.0'
+    implementation 'net.kyori:adventure-nbt:4.26.1'
+}
+
+evaluationDependsOn(':minecraft1201')
+def catalog = project(':minecraft1201').tasks.named('exportTerrainCatalog')
+processResources {
+    def metadata = [version: project.version, minecraft_version: game, bukkit_api_level: '1.20']
+    inputs.properties(metadata)
+    from rootProject.file('bukkit/src/main/resources')
+    filesMatching(['plugin.yml', 'retina-bukkit.properties']) { expand(metadata) }
+    from(rootProject.tasks.named('packageNative'))
+    from(catalog) {
+        into "catalogs/${game}"
+        rename { 'retina-catalog.dat' }
+    }
+}
+
+tasks.named('jar') { enabled = false }
+tasks.named('shadowJar') {
+    archiveClassifier = ''
+    relocate 'com.google.gson', 'art.arcane.retina.internal.gson'
+    relocate 'net.kyori', 'art.arcane.retina.internal.kyori'
+    from rootProject.tasks.named('packageCrossNatives')
+    from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
+    manifest { attributes('Implementation-Version': project.version, 'Retina-Minecraft-Version': game) }
+    exclude 'module-info.class', 'META-INF/versions/**/module-info.class'
+    mergeServiceFiles()
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+tasks.named('assemble') { dependsOn 'shadowJar' }
+
+sourceSets {
+    serverTest {
+        java.srcDir rootProject.file('bukkit/src/serverTest/java')
+        java.include '**/Probe1201.java', '**/ProbeSnapshots.java', '**/MetadataFixtureScene.java', '**/MetadataScene1201.java'
+        compileClasspath += configurations.compileClasspath
+    }
+}
+tasks.register('serverProbeJar', Jar) {
+    group = 'verification'
+    archiveBaseName = 'retina-bukkit-probe'
+    archiveClassifier = 'server-test'
+    from sourceSets.serverTest.output
+}
+
+tasks.register('serverTest', Exec) {
+    group = 'verification'
+    description = 'Verify the installable plugin on a Minecraft 1.20.1 server with an imported definition fixture.'
+    dependsOn 'shadowJar', 'serverProbeJar'
+    def java17 = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
+    commandLine 'python3', rootProject.file('scripts/bukkit1201-server-test.py'),
+            '--java', java17.get().executablePath.asFile,
+            '--server', providers.gradleProperty('bukkit1201ServerJar').getOrElse(''),
+            '--plugin', tasks.named('shadowJar').get().archiveFile.get().asFile,
+            '--probe', tasks.named('serverProbeJar').get().archiveFile.get().asFile,
+            '--imported', providers.gradleProperty('retinaImported1201').getOrElse(''),
+            '--output', providers.gradleProperty('retinaBukkit1201TestOutput')
+                    .getOrElse(layout.buildDirectory.dir('server-test').get().asFile.absolutePath),
+            '--backend', providers.gradleProperty('retinaGpuBackend').getOrElse('cpu')
+}

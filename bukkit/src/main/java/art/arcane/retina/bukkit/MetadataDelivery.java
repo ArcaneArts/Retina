@@ -2,16 +2,13 @@ package art.arcane.retina.bukkit;
 
 import net.kyori.adventure.nbt.*;
 import org.bukkit.Location;
-import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.block.Container;
 import org.bukkit.block.CreatureSpawner;
 import org.bukkit.block.EndGateway;
 import org.bukkit.entity.EnderCrystal;
-import org.bukkit.entity.LivingEntity;
 import org.bukkit.generator.LimitedRegion;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
@@ -57,8 +54,7 @@ final class MetadataDelivery {
         for (var raw : root.getList("entities", BinaryTagTypes.COMPOUND)) {
             var tag = (CompoundBinaryTag) raw;
             if (!tag.getString("id").equals("minecraft:end_crystal")) {
-                try { Bukkit.getEntityFactory().createEntitySnapshot(NbtMetadata.text(tag)); }
-                catch (IllegalArgumentException | UnsupportedOperationException error) { failed("entity " + tag.getString("id"), error); }
+                EntityDelivery.validate(tag, this);
                 continue;
             }
             fields(tag, Set.of("id", "Pos", "Motion", "Rotation", "fall_distance", "Fire", "Air", "OnGround",
@@ -107,7 +103,7 @@ final class MetadataDelivery {
         for (var raw : root.getList("entities", BinaryTagTypes.COMPOUND)) {
             var tag = (CompoundBinaryTag) raw;
             if (!tag.getString("id").equals("minecraft:end_crystal")) {
-                entity(tag, region, world); continue;
+                EntityDelivery.populate(tag, region, world, this); continue;
             }
             var position = tag.getList("Pos", BinaryTagTypes.DOUBLE);
             var rotation = tag.getList("Rotation", BinaryTagTypes.FLOAT);
@@ -126,40 +122,4 @@ final class MetadataDelivery {
         }
     }
 
-    private void entity(CompoundBinaryTag tag, LimitedRegion region, World world) {
-        try {
-            var snapshot = Bukkit.getEntityFactory().createEntitySnapshot(NbtMetadata.text(tag));
-            // The World overload constructs an unspawned object. Only LimitedRegion publishes it.
-            var entity = snapshot.createEntity(world);
-            if (!region.isInRegion(entity.getLocation())) { unavailable("entity outside its limited population region"); return; }
-            var observed = CompoundBinaryTag.builder().putString("id", entity.getType().getKey().toString());
-            var at = entity.getLocation(); var velocity = entity.getVelocity();
-            observed.put("Pos", ListBinaryTag.from(java.util.List.of(DoubleBinaryTag.doubleBinaryTag(at.getX()), DoubleBinaryTag.doubleBinaryTag(at.getY()), DoubleBinaryTag.doubleBinaryTag(at.getZ()))));
-            observed.put("Rotation", ListBinaryTag.from(java.util.List.of(FloatBinaryTag.floatBinaryTag(at.getYaw()), FloatBinaryTag.floatBinaryTag(at.getPitch()))));
-            observed.put("Motion", ListBinaryTag.from(java.util.List.of(DoubleBinaryTag.doubleBinaryTag(velocity.getX()), DoubleBinaryTag.doubleBinaryTag(velocity.getY()), DoubleBinaryTag.doubleBinaryTag(velocity.getZ()))));
-            UUID uuid = entity.getUniqueId();
-            observed.putIntArray("UUID", new int[]{(int) (uuid.getMostSignificantBits() >>> 32), (int) uuid.getMostSignificantBits(),
-                    (int) (uuid.getLeastSignificantBits() >>> 32), (int) uuid.getLeastSignificantBits()});
-            if (entity instanceof LivingEntity living) observed.putInt("Air", living.getRemainingAir());
-            observed.putInt("Fire", entity.getFireTicks())
-                    .putByte("OnGround", (byte) (entity.isOnGround() ? 1 : 0)).putByte("Invulnerable", (byte) (entity.isInvulnerable() ? 1 : 0))
-                    .putByte("NoGravity", (byte) (entity.hasGravity() ? 0 : 1)).putFloat("fall_distance", entity.getFallDistance())
-                    .putInt("PortalCooldown", entity.getPortalCooldown());
-            var physical = observed.build();
-            var remaining = CompoundBinaryTag.builder();
-            for (String key : tag.keySet()) {
-                if (physical.contains(key)) {
-                    String difference = NbtMetadata.difference(tag.get(key), physical.get(key), "entity." + key);
-                    if (difference != null) unavailable(difference);
-                } else remaining.put(key, tag.get(key));
-            }
-            var roundtrip = entity.createSnapshot();
-            if (roundtrip == null) unverified("entity snapshot " + tag.getString("id"));
-            else {
-                String difference = NbtMetadata.difference(remaining.build(), NbtMetadata.compound(roundtrip.getAsString()), "entity " + tag.getString("id"));
-                if (difference != null) unverified(difference);
-            }
-            region.addEntity(entity);
-        } catch (IllegalArgumentException | UnsupportedOperationException error) { failed("entity " + tag.getString("id"), error); }
-    }
 }

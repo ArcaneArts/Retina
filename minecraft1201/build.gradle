@@ -61,8 +61,14 @@ tasks.register('exportTerrainCatalog', JavaExec) {
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(17) }
     jvmArgs '-Djava.awt.headless=true', '-XX:ActiveProcessorCount=2'
     maxHeapSize = '768m'
-    args providers.gradleProperty('retinaCatalog').getOrElse(layout.buildDirectory.file('terrain-catalog/retina-catalog.dat').get().asFile.absolutePath)
-    if (providers.gradleProperty('retinaVerifyCatalog').isPresent()) args '--verify'
+    def catalog = providers.gradleProperty('retinaCatalog').orElse(
+            layout.buildDirectory.file('terrain-catalog/retina-catalog.dat').map { it.asFile.absolutePath })
+    args catalog.get()
+    outputs.file(catalog)
+    if (providers.gradleProperty('retinaVerifyCatalog').isPresent()) {
+        args '--verify'
+        outputs.upToDateWhen { false }
+    }
     if (providers.gradleProperty('retinaNativePath').isPresent()) {
         systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()
     }

@@ -1,0 +1,8 @@
+name: RetinaProbe
+version: '1'
+main: art.arcane.retina.bukkit.qa.Probe1201
+api-version: '1.20'
+depend: [Retina]
+commands:
+  retinaprobe:
+    description: Observe blocks and biomes from the public Bukkit API.
