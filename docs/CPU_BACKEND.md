@@ -30,8 +30,8 @@ allow_vulkan = false
 Headless interfaces share the same native selection:
 
 ```sh
-RETINA_GPU_BACKEND=cpu java -jar retina-26.3-1.1.N.jar generate --world /path/to/world
-java -Dretina.gpuBackend=cpu -jar retina-26.3-1.1.N.jar generate --world /path/to/world
+RETINA_GPU_BACKEND=cpu java -jar retina-26.3-511.jar generate --world /path/to/world
+java -Dretina.gpuBackend=cpu -jar retina-26.3-511.jar generate --world /path/to/world
 RETINA_GPU_BACKEND=cpu retina generate --definition /path/to/world/retina.dat \
   --dimension minecraft:overworld --region-min=0,0 --region-max=0,0 --output /path/to/output
 ```

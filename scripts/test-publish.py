@@ -68,11 +68,21 @@ with tempfile.TemporaryDirectory(prefix='retina-publish-test-') as temporary:
     (upstream / 'next.txt').write_text('next main\n')
     git(upstream, 'add', '.'); git(upstream, 'commit', '-m', 'Advance main'); git(upstream, 'push', 'origin', 'main')
     advanced = git(upstream, 'rev-parse', 'HEAD')
+    publish('release-1.20')
+    assert git(remote, 'rev-parse', 'release-1.20') == advanced
+    assert git(remote, 'rev-parse', 'release-26') == initial
+    print('PASS explicit 1.20 promotion leaves the 26 release ref unchanged')
     publish('releaseRetina')
     assert git(remote, 'rev-parse', 'release-26') == advanced
     print('PASS fast-forward fetches newer remote main through compatibility alias')
+    git(upstream, 'commit', '--allow-empty', '-m', 'Advance latest again'); git(upstream, 'push', 'origin', 'main')
+    latest = git(upstream, 'rev-parse', 'HEAD')
+    publish('publish')
+    assert git(remote, 'rev-parse', 'release-26') == latest
+    assert git(remote, 'rev-parse', 'release-1.20') == advanced
+    print('PASS default alias advances only the 26 release ref')
     log = publish('publish')
-    assert git(remote, 'rev-parse', 'release-26') == advanced
+    assert git(remote, 'rev-parse', 'release-26') == latest
     assert 'Everything up-to-date' in log
     print('PASS already-current publish is a no-op')
     git(upstream, 'switch', '-c', 'divergent-release')

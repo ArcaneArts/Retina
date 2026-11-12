@@ -1,0 +1,170 @@
+name: Build and publish a Retina release
+
+on:
+  workflow_call:
+    inputs:
+      line:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: retina-release-${{ inputs.line }}-${{ github.sha }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  native:
+    name: Native / ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: blacksmith-6vcpu-macos-15
+            fallback: macos-15
+          - target: x86_64-unknown-linux-gnu
+            runner: blacksmith-4vcpu-ubuntu-2404
+            fallback: ubuntu-24.04
+          - target: x86_64-pc-windows-msvc
+            runner: blacksmith-4vcpu-windows-2025
+            fallback: windows-2025
+    runs-on: ${{ vars.RETINA_GITHUB_RUNNERS == 'true' && matrix.fallback || matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+      - uses: dtolnay/rust-toolchain@1.93.0
+        with:
+          targets: ${{ matrix.target }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+        with:
+          arch: x64
+      - name: Install Linux ABI-compatible linker
+        if: runner.os == 'Linux'
+        run: python -m pip install cargo-zigbuild==0.23.4 ziglang==0.13.0
+      - name: Fingerprint complete native inputs
+        id: inputs
+        run: python scripts/native-release.py fingerprint '${{ matrix.target }}'
+      - name: Restore exact native output
+        id: native-cache
+        uses: actions/cache@v4
+        with:
+          path: build/release-native/${{ matrix.target }}
+          key: retina-native-v1-${{ matrix.target }}-${{ steps.inputs.outputs.key }}
+      - name: Restore Cargo compilation work
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            build/native-target
+          key: retina-cargo-v1-${{ matrix.target }}-1.93.0-${{ hashFiles('native/Cargo.lock') }}-${{ steps.inputs.outputs.key }}
+          restore-keys: |
+            retina-cargo-v1-${{ matrix.target }}-1.93.0-${{ hashFiles('native/Cargo.lock') }}-
+      - name: Build native library
+        if: steps.native-cache.outputs.cache-hit != 'true'
+        run: python scripts/native-release.py build '${{ matrix.target }}'
+      - name: Verify actual native bytes and inputs
+        run: python scripts/native-release.py verify '${{ matrix.target }}'
+      - uses: actions/upload-artifact@v7
+        with:
+          name: native-${{ matrix.target }}-${{ github.sha }}
+          path: build/release-native/${{ matrix.target }}/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  assemble:
+    name: Package Minecraft distributions
+    needs: native
+    runs-on: ${{ vars.RETINA_GITHUB_RUNNERS == 'true' && 'ubuntu-24.04' || 'blacksmith-4vcpu-ubuntu-2404' }}
+    env:
+      RETINA_RELEASE_LINE: ${{ inputs.line }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-java@v5
+        id: legacy_java
+        if: inputs.line == '1.20'
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+      - name: Version from the triggering commit
+        id: version
+        run: python3 scripts/release_version.py --line "$RETINA_RELEASE_LINE"
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: native-*-${{ github.sha }}
+          path: build/release-natives
+          merge-multiple: true
+      - name: Build the selected release line
+        env:
+          RETINA_BUILD_TASK: ${{ steps.version.outputs.build_task }}
+          RETINA_JAVA17: ${{ steps.legacy_java.outputs.path }}
+        run: |
+          args=("--build-cache" "--no-daemon" "--no-watch-fs" "-PretinaNativeDirectory=$PWD/build/release-natives")
+          if [[ "$RETINA_RELEASE_LINE" == '1.20' ]]; then
+            args+=("-Porg.gradle.java.installations.paths=$RETINA_JAVA17")
+          fi
+          ./gradlew "$RETINA_BUILD_TASK" "${args[@]}"
+      - name: Inspect and stage the actual JARs
+        env:
+          RETINA_GAME: ${{ steps.version.outputs.minecraft }}
+          RETINA_VERSION: ${{ steps.version.outputs.version }}
+        run: python3 scripts/stage-release.py "$RETINA_GAME" "$RETINA_VERSION" --line "$RETINA_RELEASE_LINE"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: distribution-${{ inputs.line }}-${{ github.sha }}
+          path: build/release/*.jar
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+  publish:
+    name: Publish release
+    needs: assemble
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RETINA_RELEASE_LINE: ${{ inputs.line }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v7
+        with:
+          name: distribution-${{ inputs.line }}-${{ github.sha }}
+          path: dist
+      - name: Publish immutable artifacts with linked release notes
+        run: python3 scripts/publish-release.py --line "$RETINA_RELEASE_LINE"

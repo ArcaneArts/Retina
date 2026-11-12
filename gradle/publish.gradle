@@ -1,6 +1,8 @@
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
@@ -9,6 +11,7 @@ import org.gradle.work.DisableCachingByDefault
 @DisableCachingByDefault(because = 'Publishing must fetch and push actual remote Git refs every time')
 abstract class PromoteRetinaRelease extends DefaultTask {
     @Internal abstract DirectoryProperty getRepository()
+    @Input abstract Property<String> getReleaseBranch()
     @Inject abstract ExecOperations getExecOperations()
 
     @TaskAction
@@ -26,19 +29,23 @@ abstract class PromoteRetinaRelease extends DefaultTask {
             standardOutput = revision
         }
         String commit = revision.toString('UTF-8').trim()
-        logger.lifecycle("Promoting fetched origin/main {} to origin/release-26", commit)
+        String branch = releaseBranch.get()
+        logger.lifecycle("Promoting fetched origin/main {} to origin/{}", commit, branch)
         execOperations.exec {
             workingDir directory
             // The server checks the actual remote ref. No force, checkout or reset.
-            commandLine 'git', 'push', 'origin', "${commit}:refs/heads/release-26"
+            commandLine 'git', 'push', 'origin', "${commit}:refs/heads/${branch}"
         }
     }
 }
 
-tasks.register('release-26', PromoteRetinaRelease) {
-    group = 'publishing'
-    description = 'Fetch origin/main and fast-forward origin/release-26, triggering the GitHub release build.'
-    repository = rootProject.layout.projectDirectory
+['release-26', 'release-1.20'].each { branch ->
+    tasks.register(branch, PromoteRetinaRelease) {
+        group = 'publishing'
+        description = "Fetch origin/main and advance origin/${branch}, triggering its GitHub release build."
+        repository = rootProject.layout.projectDirectory
+        releaseBranch = branch
+    }
 }
 ['publish', 'releaseRetina'].each { alias ->
     tasks.register(alias) {

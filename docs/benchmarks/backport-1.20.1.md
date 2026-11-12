@@ -503,3 +503,35 @@ with structures enabled for seed `0` and disabled for the other seeds.
 The comparison normalized the equivalent terracotta byte and integer
 arrays and omitted the datapack provenance list. An empty datapack
 forced the live path for two runs.
+
+## Release-line qualification
+
+`./gradlew release-1.20` promotes fetched `origin/main` to the legacy
+publication branch. `release-26`, `publish` and `releaseRetina` target
+the latest line. The real Gradle tasks passed against a disposable
+local Git remote, including initial branch creation, independent
+advancement, no-op repeat and divergent-ref rejection.
+
+Both release build commands ran locally with one staged directory of
+native binaries and their byte manifests. macOS ARM64 used the existing
+build of the same native source tree. Linux x64 and Windows x64 were
+cross-compiled locally with Cargo Zigbuild and Cargo Xwin. The stage
+checker accepted three Java 17 JARs for 1.20.1 and one universal JAR for
+26.3. The 1.20.1 catalog was identical in the three legacy artifacts
+and each artifact held the same bytes for each native target.
+
+```sh
+./gradlew build1201 "-PretinaNativeDirectory=$native_stage" \
+  "-Porg.gradle.java.installations.paths=$jdk17"
+python3 scripts/stage-release.py 1.20.1 "1.20.1-$(git rev-list --count HEAD)" --line 1.20
+./gradlew universalJar "-PretinaNativeDirectory=$native_stage"
+python3 scripts/stage-release.py 26.3 "26.3-$(git rev-list --count HEAD)" --line 26
+```
+
+Archive verification caught a missing Forge mixin refmap on the first
+clean cache restore. Declaring the annotation processor mappings as
+compiler outputs restored them alongside the Java classes. A clean
+cache replay then staged a byte-identical Forge JAR, and that JAR
+passed the dedicated-server save, restart and biome-modifier tests.
+Workflow lint, the local release suites and the staged 26.3 native
+smoke test passed. Windows GPU execution remains unmeasured.

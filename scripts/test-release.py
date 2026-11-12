@@ -1,12 +1,13 @@
 """Focused version, changelog and overlapping-release ordering checks."""
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
-from release_version import metadata
+from release_version import artifact_names, metadata
 
 spec = importlib.util.spec_from_file_location('publisher', Path(__file__).with_name('publish-release.py'))
 publisher = importlib.util.module_from_spec(spec)
@@ -107,6 +108,32 @@ class ReleaseTest(unittest.TestCase):
             git('commit', '--allow-empty', '-m', 'Advance revision')
             self.assertEqual(metadata(root)['version'], '26.3-2')
             self.assertEqual(metadata(root)['revision'], 2)
+            self.assertEqual(metadata(root)['build_task'], 'universalJar')
+            legacy = metadata(root, line='1.20')
+            self.assertEqual(legacy['version'], '1.20.1-2')
+            self.assertEqual(legacy['build_task'], 'build1201')
+            self.assertEqual(legacy['commit'], metadata(root)['commit'])
+
+    def test_legacy_publication_uploads_three_jars_without_changing_latest(self):
+        version = '1.20.1-524'
+        commit = 'a' * 40
+        info = {'version': version, 'commit': commit, 'line': '1.20'}
+        names = artifact_names('1.20', version)
+        draft = {'assets': [{'name': name} for name in names]}
+        with patch.dict(os.environ, {'GITHUB_SHA': commit}), \
+             patch.object(Path, 'read_bytes', return_value=b'jar'), \
+             patch.object(publisher, 'REPO', 'ArcaneArts/Retina'), \
+             patch.object(publisher, 'metadata', return_value=info), \
+             patch.object(publisher, 'release_for_tag', side_effect=[None, draft]), \
+             patch.object(publisher, 'tag_commit', side_effect=[None, commit]), \
+             patch.object(publisher, 'release_notes', return_value='notes'), \
+             patch.object(publisher, 'reconcile_latest') as latest, \
+             patch.object(publisher, 'run') as run, patch('builtins.print'):
+            publisher.publish('1.20')
+        latest.assert_not_called()
+        upload, = (call.args for call in run.call_args_list if call.args[:3] == ('gh', 'release', 'upload'))
+        self.assertEqual(upload[4:7], tuple(f'dist/{name}' for name in names))
+        self.assertIn('--latest=false', run.call_args.args)
 
     def test_pr_and_direct_commits_are_both_linked(self):
         with patch.object(publisher, 'REPO', 'ArcaneArts/Retina'):
@@ -131,6 +158,14 @@ class ReleaseTest(unittest.TestCase):
              patch.object(publisher, 'api', side_effect=[None, old, new]), patch.object(publisher, 'run') as run:
             publisher.reconcile_latest()
             self.assertEqual([call.args[3] for call in run.call_args_list], ['v1.1.449', '26.3-450'])
+
+    def test_legacy_revision_cannot_become_latest(self):
+        latest = {'tag_name': '26.3-511'}
+        legacy = {'tag_name': '1.20.1-524'}
+        with patch.object(publisher, 'published', return_value=[latest, legacy]), \
+             patch.object(publisher, 'api', return_value=latest), patch.object(publisher, 'run') as run:
+            publisher.reconcile_latest()
+            run.assert_not_called()
 
 
 if __name__ == '__main__':

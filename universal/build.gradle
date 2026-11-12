@@ -62,11 +62,7 @@ tasks.named('shadowJar') {
     from(rootProject.tasks.named('packageCrossNatives')) {
         include releasePlatforms.collect { "natives/${it}/**" }
     }
-    if (providers.gradleProperty('retinaNativeDirectory').isPresent()) {
-        from(new File(providers.gradleProperty('retinaNativeDirectory').get(), 'manifests')) {
-            into 'META-INF/retina/natives'
-        }
-    }
+    from(rootProject.tasks.named('packageNativeManifests'))
     from(rootProject.file('LICENSE')) { rename { "${it}_retina" } }
     exclude 'module-info.class', 'META-INF/versions/**/module-info.class'
     relocate 'com.electronwill.nightconfig', 'art.arcane.retina.internal.nightconfig'
