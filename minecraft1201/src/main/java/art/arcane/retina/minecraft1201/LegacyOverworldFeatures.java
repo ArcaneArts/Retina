@@ -13,6 +13,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.valueproviders.IntProvider;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.LevelHeightAccessor;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeGenerationSettings;
 import net.minecraft.world.level.biome.FeatureSorter;
 import net.minecraft.world.level.block.BambooStalkBlock;
+import net.minecraft.world.level.block.BaseCoralWallFanBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.DoublePlantBlock;
@@ -310,7 +312,8 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.DISK) return disk((DiskConfiguration) config);
         if (feature == Feature.BAMBOO) return bamboo((ProbabilityFeatureConfiguration) config);
         if (feature == Feature.KELP || feature == Feature.SEAGRASS || feature == Feature.SEA_PICKLE
-                || feature == Feature.UNDERWATER_MAGMA) return submerged(configured);
+                || feature == Feature.UNDERWATER_MAGMA || feature == Feature.CORAL_TREE
+                || feature == Feature.CORAL_CLAW || feature == Feature.CORAL_MUSHROOM) return submerged(configured);
         if (feature == Feature.VEGETATION_PATCH || feature == Feature.WATERLOGGED_VEGETATION_PATCH) {
             return vegetationPatch((VegetationPatchConfiguration) config, feature == Feature.WATERLOGGED_VEGETATION_PATCH, depth);
         }
@@ -356,16 +359,11 @@ final class LegacyOverworldFeatures {
         } else if (configured.feature() == Feature.SEA_PICKLE) {
             growth.addProperty("growth", "sea_pickle");
             growth.add("count", integer(((CountConfiguration) configured.config()).count()));
-            var pickles = new JsonArray();
-            for (int count = 1; count <= 4; count++) {
-                pickles.add(material(Blocks.SEA_PICKLE.defaultBlockState().setValue(SeaPickleBlock.PICKLES, count)
-                        .setValue(BlockStateProperties.WATERLOGGED, true)));
-            }
-            growth.add("pickles", pickles);
+            growth.add("pickles", waterPickles());
             growth.add("support", predicates.material(below, state -> LegacyOverworldPlants.sturdyUp(state)
                     || !state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).getFaceShape(Direction.UP).isEmpty()));
             reach = 7;
-        } else {
+        } else if (configured.feature() == Feature.UNDERWATER_MAGMA) {
             var config = (UnderwaterMagmaConfiguration) configured.config();
             growth.addProperty("growth", "underwater_magma");
             growth.addProperty("material", material(Blocks.MAGMA_BLOCK.defaultBlockState()));
@@ -374,8 +372,50 @@ final class LegacyOverworldFeatures {
             growth.addProperty("probability", config.placementProbabilityPerValidPosition);
             growth.add("solid", predicates.material(state -> !state.isAir() && !state.is(Blocks.WATER)));
             reach = config.placementRadiusAroundFloor + 1;
+        } else {
+            growth.addProperty("growth", "coral");
+            var coral = new JsonObject();
+            growth.add("coral", coral);
+            String shape = configured.feature() == Feature.CORAL_TREE ? "tree"
+                    : configured.feature() == Feature.CORAL_CLAW ? "claw" : "mushroom";
+            coral.addProperty("shape", shape);
+            coral.add("blocks", coralMaterials(BlockTags.CORAL_BLOCKS, null));
+            coral.add("tops", coralMaterials(BlockTags.CORALS, null));
+            var walls = new JsonArray();
+            for (var direction : Direction.Plane.HORIZONTAL) walls.add(coralMaterials(BlockTags.WALL_CORALS, direction));
+            coral.add("wall_fans", walls);
+            coral.add("pickles", waterPickles());
+            coral.add("replaceable", predicates.material(state -> state.is(Blocks.WATER) || state.is(BlockTags.CORALS)));
+            reach = switch (shape) {
+                case "tree" -> 5;
+                case "claw" -> 7;
+                default -> 6;
+            };
         }
         return new Recipe(data, reach);
+    }
+
+    private JsonArray waterPickles() {
+        var pickles = new JsonArray();
+        for (int count = 1; count <= 4; count++) {
+            pickles.add(material(Blocks.SEA_PICKLE.defaultBlockState().setValue(SeaPickleBlock.PICKLES, count)
+                    .setValue(BlockStateProperties.WATERLOGGED, true)));
+        }
+        return pickles;
+    }
+
+    private JsonArray coralMaterials(TagKey<Block> tag, Direction facing) {
+        var materials = new JsonArray();
+        BuiltInRegistries.BLOCK.getTag(tag).ifPresent(blocks -> {
+            for (var block : blocks) {
+                var state = block.value().defaultBlockState();
+                if (facing != null && state.hasProperty(BaseCoralWallFanBlock.FACING)) {
+                    state = state.setValue(BaseCoralWallFanBlock.FACING, facing);
+                }
+                materials.add(material(state));
+            }
+        });
+        return materials;
     }
 
     private Recipe lake(LakeFeature.Configuration config) {
