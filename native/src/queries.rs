@@ -68,8 +68,8 @@ impl TerrainEngine {
         if let Some(profile) = self.profile(request.reserved)? {
             if let Some(flat) = &profile.flat { return Ok(vec![flat.column(request); points.len()]); }
             if let Some(end) = &profile.end {
-                let islands = crate::end::IslandNoise::new(request.seed);
-                let density = matches!(kind, Kind::Height).then(|| crate::end::VanillaDensity::new(request.seed));
+                let islands = end.islands(request.seed);
+                let density = matches!(kind, Kind::Height).then(|| end.density(request.seed));
                 let metrics = self.timings(request.reserved);
                 let started = metrics.performance.start();
                 let result = points.iter().map(|p| end.query(request, p.x, p.z,

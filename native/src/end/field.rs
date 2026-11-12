@@ -1,10 +1,11 @@
 //! Shared exact candidate-center table. The simplex predicate and center sizes
 //! remain CPU f64/f32 operations; nearby terrain and biome samples reuse them.
-use super::{Biome, IslandNoise};
+use super::{Algorithm, Biome, IslandNoise};
 
 struct Center { x: i32, z: i32, size: f32 }
 
 pub struct CandidateField {
+    algorithm: Algorithm,
     bounds: [i32; 4],
     origin: [i32; 2],
     width: usize,
@@ -27,15 +28,14 @@ impl IslandNoise {
         let mut active = Vec::new();
         for z in 0..height { for x in 0..width {
             let cx = origin[0] + x as i32; let cz = origin[1] + z as i32;
-            let eligible = i64::from(cx) * i64::from(cx) + i64::from(cz) * i64::from(cz) > 4096
-                && self.center_noise(cx, cz) < -0.9;
+            let eligible = self.is_candidate(cx, cz);
             let size = if eligible {
                 ((cx as f32).abs() * 3439.0 + (cz as f32).abs() * 147.0) % 13.0 + 9.0
             } else { 0.0 };
             sizes.push(size);
             if eligible { active.push(Center { x: cx, z: cz, size }); }
         }}
-        Ok(CandidateField { bounds: [min_x, min_z, max_x, max_z], origin, width, height, sizes, active })
+        Ok(CandidateField { algorithm: self.algorithm, bounds: [min_x, min_z, max_x, max_z], origin, width, height, sizes, active })
     }
 }
 impl CandidateField {
@@ -67,10 +67,7 @@ impl CandidateField {
     }
     pub fn sample(&self, x: i32, z: i32) -> Option<f32> {
         let outer = self.outer(x, z)?;
-        let fx = x as f32; let fz = z as f32;
-        let distance = (fx * fx + fz * fz).sqrt();
-        let main = ((100.0 - distance).clamp(-100.0, 80.0) - 8.0) * 0.0078125;
-        Some(main.max(outer))
+        Some(self.algorithm.island_value(x, z, outer))
     }
     pub fn biome(&self, x: i32, z: i32) -> Option<Biome> {
         if !self.contains(x, z) { return None; }

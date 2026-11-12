@@ -4,6 +4,7 @@ import art.arcane.retina.core.NativeWorldDefinition;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.SharedConstants;
+import net.minecraft.core.QuartPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -13,7 +14,9 @@ import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -23,6 +26,8 @@ import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.storage.RegionFile;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
+import net.minecraft.world.level.levelgen.RandomState;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,22 +38,33 @@ import java.util.concurrent.TimeUnit;
 final class NoiseExportVerification {
     private NoiseExportVerification() { }
 
-    static void verify(Path world, RegistryAccess registries, Registry<LevelStem> dimensions) throws Exception {
-        verify(world, registries, dimensions.getHolderOrThrow(LevelStem.OVERWORLD).value(),
-                LevelStem.OVERWORLD.location().toString(), "region");
-        verify(world, registries, dimensions.getHolderOrThrow(LevelStem.NETHER).value(),
-                LevelStem.NETHER.location().toString(), "DIM-1/region");
+    static void verify(Path world, RegistryAccess registries, Registry<LevelStem> dimensions, long seed) throws Exception {
+        verify(world, registries, dimensions, LevelStem.OVERWORLD, "region", -1, 0, seed);
+        verify(world, registries, dimensions, LevelStem.NETHER, "DIM-1/region", -1, 0, seed);
+        verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -1, 0, seed);
+        verify(world, registries, dimensions, LevelStem.END, "DIM1/region", -3, -1, seed);
     }
 
-    private static void verify(Path world, RegistryAccess registries, LevelStem stem, String dimension, String directory)
-            throws Exception {
+    private static void verify(Path world, RegistryAccess registries, Registry<LevelStem> dimensions,
+                               ResourceKey<LevelStem> key, String directory, int rx, int rz,
+                               long seed) throws Exception {
+        var stem = dimensions.getHolderOrThrow(key).value();
+        String dimension = key.location().toString();
+        boolean end = key.equals(LevelStem.END);
+        var type = stem.type().value();
+        var heights = LevelHeightAccessor.create(type.minY(), type.height());
+        RandomState reference = null;
+        if (end) {
+            var settings = ((NoiseBasedChunkGenerator) stem.generator()).generatorSettings().value();
+            reference = RandomState.create(settings, registries.lookupOrThrow(Registries.NOISE), seed);
+        }
         var definition = world.resolve("retina.dat");
-        var region = world.resolve(directory).resolve("r.-1.0.mca");
+        var region = world.resolve(directory).resolve("r." + rx + "." + rz + ".mca");
         Files.createDirectories(region.getParent());
         long start = System.nanoTime();
         try (var nativeWorld = NativeWorldDefinition.open(definition)) {
             nativeWorld.bindDimension(dimension, 2);
-            var receipt = nativeWorld.generateRegion(dimension, -1, 0, region);
+            var receipt = nativeWorld.generateRegion(dimension, rx, rz, region);
             require(receipt.generated() == 1024 && receipt.preserved() == 0, "new region records");
         }
         long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
@@ -61,9 +77,15 @@ final class NoiseExportVerification {
                 PalettedContainer.Strategy.SECTION_STATES, Blocks.AIR.defaultBlockState());
         var blocks = new HashSet<BlockState>();
         var biomes = new TreeSet<String>();
-        var type = stem.type().value();
         try (var file = new RegionFile(region, region.getParent(), true)) {
-            for (var position : new ChunkPos[]{new ChunkPos(-31, 1), new ChunkPos(-16, 16), new ChunkPos(-1, 31)}) {
+            int startX = rx * 32, startZ = rz * 32;
+            for (var position : new ChunkPos[]{new ChunkPos(startX + 1, startZ + 1),
+                    new ChunkPos(startX + 6, startZ + 23), new ChunkPos(startX + 31, startZ + 1)}) {
+                int x = position.getMinBlockX() + 3;
+                int z = position.getMinBlockZ() + 5;
+                var expectedColumn = end ? stem.generator().getBaseColumn(x, z, heights, reference) : null;
+                var expectedBiome = end ? stem.generator().getBiomeSource().getNoiseBiome(
+                        QuartPos.fromBlock(x), 0, QuartPos.fromBlock(z), reference.sampler()) : null;
                 CompoundTag chunk;
                 try (var input = file.getChunkDataInputStream(position)) {
                     require(input != null, "chunk " + position);
@@ -81,22 +103,33 @@ final class NoiseExportVerification {
                     var section = (CompoundTag) tag;
                     int y = section.getByte("Y") * 16;
                     if (y < type.minY() || y >= type.minY() + type.height()) continue;
-                    decode(blockCodec.parse(NbtOps.INSTANCE, section.getCompound("block_states"))).getAll(blocks::add);
-                    decode(biomeCodec.parse(ops, section.getCompound("biomes"))).getAll(biome -> {
+                    var decodedBlocks = decode(blockCodec.parse(NbtOps.INSTANCE, section.getCompound("block_states")));
+                    var decodedBiomes = decode(biomeCodec.parse(ops, section.getCompound("biomes")));
+                    decodedBlocks.getAll(blocks::add);
+                    decodedBiomes.getAll(biome -> {
                         require(expectedBiomes.contains(biome), "biome from effective source");
                         biomes.add(biome.unwrapKey().orElseThrow().location().toString());
                     });
+                    if (end) {
+                        for (int dy = 0; dy < 16; dy++) {
+                            require(decodedBlocks.get(3, dy, 5) == expectedColumn.getBlock(y + dy),
+                                    "vanilla End column " + x + "," + (y + dy) + "," + z);
+                        }
+                        require(decodedBiomes.get(0, 0, 1).equals(expectedBiome), "vanilla End biome " + position);
+                    }
                     checked++;
                 }
                 require(checked == type.height() / 16, "storage section count");
             }
         }
-        require(blocks.contains(Blocks.BEDROCK.defaultBlockState()), "surface rules emitted bedrock");
         require(blocks.stream().anyMatch(BlockState::isAir), "air");
-        require(blocks.size() >= 3, "terrain block diversity");
+        if (!end) {
+            require(blocks.contains(Blocks.BEDROCK.defaultBlockState()), "surface rules emitted bedrock");
+            require(blocks.size() >= 3, "terrain block diversity");
+        }
         try (var nativeWorld = NativeWorldDefinition.open(definition)) {
             nativeWorld.bindDimension(dimension, 2);
-            var receipt = nativeWorld.generateRegion(dimension, -1, 0, region);
+            var receipt = nativeWorld.generateRegion(dimension, rx, rz, region);
             require(receipt.generated() == 0 && receipt.preserved() == 1024, "region reopen");
         }
 
@@ -104,7 +137,7 @@ final class NoiseExportVerification {
         event.addProperty("event", "noise_1201_region_roundtrip");
         event.addProperty("status", "pass");
         event.addProperty("dimension", dimension);
-        event.addProperty("region", "-1,0");
+        event.addProperty("region", rx + "," + rz);
         event.addProperty("generated", 1024);
         event.addProperty("preserved", 1024);
         event.addProperty("milliseconds", elapsed);

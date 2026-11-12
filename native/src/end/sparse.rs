@@ -18,6 +18,11 @@ pub(crate) struct SparseTile {
 }
 
 impl SparseTile {
+    pub(super) fn from_dense(inner: DenseTile) -> Self {
+        let exact_corners = inner.lattice_points() as u64;
+        Self { inner, stats: Statistics { exact_corners, ..Statistics::default() } }
+    }
+
     pub(super) fn new(
         density: &VanillaDensity,
         x: i32,

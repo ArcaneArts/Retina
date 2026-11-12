@@ -48,7 +48,9 @@ public final class WorldDefinitionCompiler {
             if (noiseTerrainPreview && stem.generator() instanceof NoiseBasedChunkGenerator noise) {
                 JsonObject profile;
                 try {
-                    profile = LegacyTerrainProfile.compile(registries, stem, noise, options.seed());
+                    profile = LegacyEndProfile.selected(stem, noise)
+                            ? LegacyEndProfile.compile(registries, stem, noise)
+                            : LegacyTerrainProfile.compile(registries, stem, noise, options.seed());
                 } catch (IllegalArgumentException unsupported) {
                     assembly.unsupported(id, parameters, unsupported.getMessage());
                     continue;

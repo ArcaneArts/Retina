@@ -253,7 +253,7 @@ impl Placement {
                 } else {
                     let density = self
                         .density
-                        .get_or_insert_with(|| crate::end::VanillaDensity::new(request.seed));
+                        .get_or_insert_with(|| profile.end.as_ref().unwrap().density(request.seed));
                     let column = self
                         .base_columns
                         .entry([support[0], support[2]])

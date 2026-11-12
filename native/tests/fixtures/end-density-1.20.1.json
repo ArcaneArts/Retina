@@ -1,0 +1,419 @@
+{
+  "minecraft_version": "1.20.1",
+  "groups": [
+    {
+      "seed": 0,
+      "columns": [
+        {
+          "x": 0,
+          "z": 0,
+          "occupied_le": "00f8ffffffffff7f0000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fe2000000000000"
+        },
+        {
+          "x": 8,
+          "z": -8,
+          "occupied_le": "00fcffffffffffff0000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fe2000000000000"
+        },
+        {
+          "x": -9,
+          "z": -24,
+          "occupied_le": "00f8ffffffffffff0100000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fe0acea00000000"
+        },
+        {
+          "x": 70,
+          "z": 19,
+          "occupied_le": "00c0ffffffffff0f0000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fca07c280000000"
+        },
+        {
+          "x": 99,
+          "z": -9,
+          "occupied_le": "0000e0ffffffff010000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfa154be00000000"
+        },
+        {
+          "x": -111,
+          "z": 63,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfca1e5b80000000"
+        },
+        {
+          "x": 119,
+          "z": 119,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfe0991540000000"
+        },
+        {
+          "x": -161,
+          "z": -13,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfe10ccac0000000"
+        },
+        {
+          "x": 1008,
+          "z": 0,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfeb000000000000"
+        },
+        {
+          "x": -1025,
+          "z": 42,
+          "occupied_le": "000000e0ffffff030000000000000000",
+          "biome": "minecraft:end_barrens",
+          "erosion_bits": "bfc4c50a00000000"
+        },
+        {
+          "x": 1088,
+          "z": 36,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfeb000000000000"
+        },
+        {
+          "x": 1274,
+          "z": 418,
+          "occupied_le": "0000fcffffffff070000000000000000",
+          "biome": "minecraft:end_midlands",
+          "erosion_bits": "3fd061b020000000"
+        },
+        {
+          "x": -1426,
+          "z": -136,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:end_midlands",
+          "erosion_bits": "bf8fbea000000000"
+        },
+        {
+          "x": 2998,
+          "z": -475,
+          "occupied_le": "0000f0ffffffff0f0000000000000000",
+          "biome": "minecraft:end_midlands",
+          "erosion_bits": "3faa3d6800000000"
+        },
+        {
+          "x": -2795,
+          "z": 2880,
+          "occupied_le": "00e0ffffffffff7f0000000000000000",
+          "biome": "minecraft:end_highlands",
+          "erosion_bits": "3fd2a0a840000000"
+        },
+        {
+          "x": 17321,
+          "z": -20305,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfdd000000000000"
+        },
+        {
+          "x": 370720,
+          "z": 0,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:end_barrens",
+          "erosion_bits": "bfc5231800000000"
+        },
+        {
+          "x": 390008,
+          "z": 16,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:end_barrens",
+          "erosion_bits": "7ff8000000000000"
+        },
+        {
+          "x": -400016,
+          "z": -400008,
+          "occupied_le": "00e0ffffffffffff0000000000000000",
+          "biome": "minecraft:end_highlands",
+          "erosion_bits": "3fe2000000000000"
+        }
+      ]
+    },
+    {
+      "seed": 12345,
+      "columns": [
+        {
+          "x": 0,
+          "z": 0,
+          "occupied_le": "00f8ffffffffffff0100000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fe2000000000000"
+        },
+        {
+          "x": 8,
+          "z": -8,
+          "occupied_le": "00f8ffffffffffff0100000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fe2000000000000"
+        },
+        {
+          "x": -9,
+          "z": -24,
+          "occupied_le": "00f0ffffffffffff0100000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fe0acea00000000"
+        },
+        {
+          "x": 70,
+          "z": 19,
+          "occupied_le": "000000feffffff030000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fca07c280000000"
+        },
+        {
+          "x": 99,
+          "z": -9,
+          "occupied_le": "000080ffff1f00000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfa154be00000000"
+        },
+        {
+          "x": -111,
+          "z": 63,
+          "occupied_le": "000000e01fc0ff010000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfca1e5b80000000"
+        },
+        {
+          "x": 119,
+          "z": 119,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfe0991540000000"
+        },
+        {
+          "x": -161,
+          "z": -13,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfe10ccac0000000"
+        },
+        {
+          "x": 1008,
+          "z": 0,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfeb000000000000"
+        },
+        {
+          "x": -1025,
+          "z": 42,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfe4a91e80000000"
+        },
+        {
+          "x": 1088,
+          "z": 36,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfeb000000000000"
+        },
+        {
+          "x": 1274,
+          "z": 418,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfe2ed2040000000"
+        },
+        {
+          "x": -1426,
+          "z": -136,
+          "occupied_le": "0000e0ffffffff0f0000000000000000",
+          "biome": "minecraft:end_midlands",
+          "erosion_bits": "3fcb60c600000000"
+        },
+        {
+          "x": 2998,
+          "z": -475,
+          "occupied_le": "0000f8ffffffff070000000000000000",
+          "biome": "minecraft:end_midlands",
+          "erosion_bits": "3fd2a0a840000000"
+        },
+        {
+          "x": -2795,
+          "z": 2880,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfeb000000000000"
+        },
+        {
+          "x": 17321,
+          "z": -20305,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfe02195c0000000"
+        },
+        {
+          "x": 370720,
+          "z": 0,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:end_barrens",
+          "erosion_bits": "bfeb000000000000"
+        },
+        {
+          "x": 390008,
+          "z": 16,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:end_barrens",
+          "erosion_bits": "7ff8000000000000"
+        },
+        {
+          "x": -400016,
+          "z": -400008,
+          "occupied_le": "0000e0ffffffff010000000000000000",
+          "biome": "minecraft:end_midlands",
+          "erosion_bits": "3fc5fe2c00000000"
+        }
+      ]
+    },
+    {
+      "seed": -9223372036854775791,
+      "columns": [
+        {
+          "x": 0,
+          "z": 0,
+          "occupied_le": "00fcffffffffff0f0000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fe2000000000000"
+        },
+        {
+          "x": 8,
+          "z": -8,
+          "occupied_le": "00fcffffffffff0f0000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fe2000000000000"
+        },
+        {
+          "x": -9,
+          "z": -24,
+          "occupied_le": "00f0ffffffffff070000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fe0acea00000000"
+        },
+        {
+          "x": 70,
+          "z": 19,
+          "occupied_le": "0000e0ffffffff070000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3fca07c280000000"
+        },
+        {
+          "x": 99,
+          "z": -9,
+          "occupied_le": "0000e0ffffffff010000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfa154be00000000"
+        },
+        {
+          "x": -111,
+          "z": 63,
+          "occupied_le": "000000f8ffffff010000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfca1e5b80000000"
+        },
+        {
+          "x": 119,
+          "z": 119,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfe0991540000000"
+        },
+        {
+          "x": -161,
+          "z": -13,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "bfe10ccac0000000"
+        },
+        {
+          "x": 1008,
+          "z": 0,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:the_end",
+          "erosion_bits": "3f9ba65800000000"
+        },
+        {
+          "x": -1025,
+          "z": 42,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfe3fc7700000000"
+        },
+        {
+          "x": 1088,
+          "z": 36,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfe5d26600000000"
+        },
+        {
+          "x": 1274,
+          "z": 418,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfdb800000000000"
+        },
+        {
+          "x": -1426,
+          "z": -136,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:end_barrens",
+          "erosion_bits": "bfd207ff80000000"
+        },
+        {
+          "x": 2998,
+          "z": -475,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfeb000000000000"
+        },
+        {
+          "x": -2795,
+          "z": 2880,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:small_end_islands",
+          "erosion_bits": "bfe1334580000000"
+        },
+        {
+          "x": 17321,
+          "z": -20305,
+          "occupied_le": "0000fcff030080030000000000000000",
+          "biome": "minecraft:end_midlands",
+          "erosion_bits": "3fc3e39400000000"
+        },
+        {
+          "x": 370720,
+          "z": 0,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:end_barrens",
+          "erosion_bits": "bfd223f600000000"
+        },
+        {
+          "x": 390008,
+          "z": 16,
+          "occupied_le": "00000000000000000000000000000000",
+          "biome": "minecraft:end_barrens",
+          "erosion_bits": "7ff8000000000000"
+        },
+        {
+          "x": -400016,
+          "z": -400008,
+          "occupied_le": "0080ffffffffff070000000000000000",
+          "biome": "minecraft:end_highlands",
+          "erosion_bits": "3fd3332700000000"
+        }
+      ]
+    }
+  ]
+}

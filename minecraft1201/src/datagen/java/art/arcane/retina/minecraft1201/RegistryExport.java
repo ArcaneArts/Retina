@@ -63,12 +63,12 @@ public final class RegistryExport {
         event.addProperty("elapsed_ms", TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started));
         System.out.println("QA_EVT " + event);
         if (args.length > 4 && args[4].equals("--verify")) {
-            if (noise) NoiseExportVerification.verify(world, loaded.registries(), loaded.dimensions());
+            if (noise) NoiseExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed);
             else FlatExportVerification.verify(world, loaded.registries(), loaded.dimensions(), seed);
         }
     }
 
-    private static Loaded load(Path packs, ResourceKey<WorldPreset> preset) throws Exception {
+    static Loaded load(Path packs, ResourceKey<WorldPreset> preset) throws Exception {
         var repository = ServerPacksSource.createPackRepository(packs);
         var config = new WorldLoader.InitConfig(
                 new WorldLoader.PackConfig(repository, WorldDataConfiguration.DEFAULT, false, true),
@@ -86,5 +86,5 @@ public final class RegistryExport {
         }, Util.backgroundExecutor(), Runnable::run).get(120, TimeUnit.SECONDS);
     }
 
-    private record Loaded(RegistryAccess.Frozen registries, Registry<LevelStem> dimensions, List<String> packs) { }
+    record Loaded(RegistryAccess.Frozen registries, Registry<LevelStem> dimensions, List<String> packs) { }
 }
