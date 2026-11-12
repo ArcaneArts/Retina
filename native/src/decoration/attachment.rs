@@ -2,7 +2,7 @@
 use super::*;
 use placement::{Overlay, Predicate};
 
-const DIRECTIONS: [[i32; 3]; 6] = [
+pub(super) const DIRECTIONS: [[i32; 3]; 6] = [
     [0, -1, 0],
     [0, 1, 0],
     [0, 0, -1],
@@ -58,6 +58,91 @@ impl Recipe {
             .ok()
             .map(|i| &self.states[i])
     }
+    pub(super) fn is_sculk(&self) -> bool {
+        self.sculk && !self.vines && self.face_mask == 63
+    }
+    pub(super) fn faces(&self, material: u16) -> Option<u8> {
+        self.state(material).map(|s| s.faces)
+    }
+    pub(super) fn with_faces(&self, faces: u8, wet: bool) -> u16 {
+        let initial = if wet { self.wet_initial } else { self.initial };
+        (0..6)
+            .filter(|&d| faces & (1 << d) != 0)
+            .fold(initial, |id, d| self.state(id).unwrap().added[d])
+    }
+    pub(super) fn supports(
+        &self,
+        at: [i32; 3],
+        face: usize,
+        read: &impl Fn([i32; 3]) -> Option<u16>,
+    ) -> bool {
+        self.support[face].test_with(at, read) == Some(true)
+    }
+    pub(super) fn sturdy(
+        &self,
+        at: [i32; 3],
+        face: usize,
+        read: &impl Fn([i32; 3]) -> Option<u16>,
+    ) -> bool {
+        self.sturdy[face].test_with(at, read) == Some(true)
+    }
+    fn placed_state(
+        &self,
+        at: [i32; 3],
+        face: usize,
+        read: &impl Fn([i32; 3]) -> Option<u16>,
+    ) -> Option<u16> {
+        if self.face_mask & (1 << face) == 0 || !self.supports(at, face, read) {
+            return None;
+        }
+        let existing = self.state(read(at)?);
+        if existing.is_some_and(|s| s.faces & (1 << face) != 0) {
+            return None;
+        }
+        let state = existing.or_else(|| {
+            self.state(if self.source_water.test_with(at, read) == Some(true) {
+                self.wet_initial
+            } else {
+                self.initial
+            })
+        })?;
+        Some(state.added[face])
+    }
+    pub(super) fn spread_state(
+        &self,
+        at: [i32; 3],
+        from: usize,
+        toward: usize,
+        order: &[u8],
+        read: &impl Fn([i32; 3]) -> Option<u16>,
+    ) -> Option<([i32; 3], u16)> {
+        let test = |p: &Predicate, pos| p.test_with(pos, read) == Some(true);
+        for &kind in order {
+            let (pos, face) = match kind {
+                0 => (at, toward),
+                1 => (relative(at, toward), from),
+                2 => (relative(relative(at, toward), from), toward ^ 1),
+                _ => unreachable!(),
+            };
+            let replace = test(&self.air, pos)
+                || read(pos).is_some_and(|s| self.state(s).is_some())
+                || test(&self.water, pos) && test(&self.source_water, pos);
+            if self.sculk {
+                if !test(&self.spread_support, relative(pos, face))
+                    || !replace && !test(&self.spread_replaceable, pos)
+                    || kind == 2 && self.sturdy(relative(at, face ^ 1), face, read)
+                {
+                    continue;
+                }
+            } else if !replace {
+                continue;
+            }
+            if let Some(state) = self.placed_state(pos, face, read) {
+                return Some((pos, state));
+            }
+        }
+        None
+    }
     pub(super) fn validate(&self, palette: usize) -> bool {
         self.face_mask < 64
             && self.directions.iter().all(|d| *d < 6)
@@ -96,10 +181,10 @@ impl Recipe {
             .all(|p| p.validate(palette))
     }
 }
-fn relative(at: [i32; 3], direction: usize) -> [i32; 3] {
+pub(super) fn relative(at: [i32; 3], direction: usize) -> [i32; 3] {
     std::array::from_fn(|axis| at[axis] + DIRECTIONS[direction][axis])
 }
-fn shuffle(values: &mut [usize], rng: &mut Rng) {
+pub(super) fn shuffle<T>(values: &mut [T], rng: &mut Rng) {
     for n in (2..=values.len()).rev() {
         values.swap(n - 1, rng.below(n as i32) as usize);
     }
@@ -141,23 +226,7 @@ impl<R: Fn([i32; 3]) -> Option<u16>> World<'_, R> {
         true
     }
     fn placed_state(&self, at: [i32; 3], face: usize) -> Option<u16> {
-        if self.recipe.face_mask & (1 << face) == 0 || !self.test(&self.recipe.support[face], at) {
-            return None;
-        }
-        let old = self.material(at)?;
-        let existing = self.recipe.state(old);
-        if existing.is_some_and(|s| s.faces & (1 << face) != 0) {
-            return None;
-        }
-        let state = existing.or_else(|| {
-            self.recipe
-                .state(if self.test(&self.recipe.source_water, at) {
-                    self.recipe.wet_initial
-                } else {
-                    self.recipe.initial
-                })
-        })?;
-        Some(state.added[face])
+        self.recipe.placed_state(at, face, &|p| self.material(p))
     }
     fn spread(&mut self, at: [i32; 3], starting_face: usize, source: u16, rng: &mut Rng) {
         let source_faces = self.recipe.state(source).unwrap().faces;
@@ -167,38 +236,14 @@ impl<R: Fn([i32; 3]) -> Option<u16>> World<'_, R> {
             if d / 2 == starting_face / 2 || source_faces & (1 << d) != 0 {
                 continue;
             }
-            for order in &self.recipe.spread_order {
-                let (pos, face) = match order {
-                    0 => (at, d),
-                    1 => (relative(at, d), starting_face),
-                    2 => (relative(relative(at, d), starting_face), d ^ 1),
-                    _ => unreachable!(),
-                };
-                let replace = self.test(&self.recipe.air, pos)
-                    || self
-                        .material(pos)
-                        .is_some_and(|s| self.recipe.state(s).is_some())
-                    || self.test(&self.recipe.water, pos)
-                        && self.test(&self.recipe.source_water, pos);
-                if self.recipe.sculk {
-                    if !self.test(&self.recipe.spread_support, relative(pos, face))
-                        || !replace && !self.test(&self.recipe.spread_replaceable, pos)
-                        || *order == 2
-                            && self.test(&self.recipe.sturdy[face], relative(at, face ^ 1))
-                    {
-                        continue;
-                    }
-                } else if !replace {
-                    continue;
-                }
-                if let Some(state) = self.placed_state(pos, face) {
-                    if self.put(pos, state) {
-                        return;
-                    }
-                    // The spreader selects the first valid type, then tries the
-                    // write. Rejection moves to the next shuffled direction,
-                    // not the next type and not a ghost out-of-range write.
-                    break;
+            if let Some((pos, state)) =
+                self.recipe
+                    .spread_state(at, starting_face, d, &self.recipe.spread_order, &|p| {
+                        self.material(p)
+                    })
+            {
+                if self.put(pos, state) {
+                    return;
                 }
             }
         }

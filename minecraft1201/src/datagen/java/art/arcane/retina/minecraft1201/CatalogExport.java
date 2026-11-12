@@ -169,7 +169,7 @@ final class CatalogExport {
             }
             if (profile.contains("decoration_fluid_ticks")) {
                 profile.remove("decoration_fluid_ticks");
-                omissions.add(StringTag.valueOf("bukkit-api:geode-fluid-queues"));
+                omissions.add(StringTag.valueOf("bukkit-api:decoration-fluid-queues"));
             }
             if (!omissions.isEmpty()) profile.put("decoration_omissions", omissions);
             if (removed.isEmpty()) continue;
