@@ -304,6 +304,7 @@ final class LegacyOverworldFeatures {
             surfaceFreeze = true;
             return new Recipe(kind("freeze_top_layer"), 15);
         }
+        if (feature == Feature.MONSTER_ROOM) return monsterRoom();
         if (feature == Feature.LAKE) return lake((LakeFeature.Configuration) config);
         if (flat && depth == 0 && feature == Feature.VOID_START_PLATFORM) {
             var data = kind("void_platform");
@@ -336,6 +337,29 @@ final class LegacyOverworldFeatures {
         if (feature == Feature.SIMPLE_RANDOM_SELECTOR) return choices((SimpleRandomFeatureConfiguration) config, depth);
         if (feature == Feature.RANDOM_BOOLEAN_SELECTOR) return either((RandomBooleanFeatureConfiguration) config, depth);
         throw new IllegalArgumentException(BuiltInRegistries.FEATURE.getKey(feature).toString());
+    }
+
+    private Recipe monsterRoom() {
+        var data = kind("monster_room");
+        var room = new JsonObject();
+        data.add("room", room);
+        room.addProperty("cobble", material(Blocks.COBBLESTONE.defaultBlockState()));
+        room.addProperty("mossy", material(Blocks.MOSSY_COBBLESTONE.defaultBlockState()));
+        room.addProperty("air", material(Blocks.CAVE_AIR.defaultBlockState()));
+        room.addProperty("spawner", material(Blocks.SPAWNER.defaultBlockState()));
+        var chest = Blocks.CHEST.defaultBlockState();
+        var chests = new JsonArray();
+        for (var direction : List.of(Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST)) {
+            chests.add(material(chest.setValue(BlockStateProperties.HORIZONTAL_FACING, direction)));
+        }
+        room.add("chests", chests);
+        room.add("empty", predicates.material(BlockState::isAir));
+        room.add("solid", predicates.material(BlockState::isSolid));
+        room.add("solid_render", predicates.material(state -> state.isSolidRender(EmptyBlockGetter.INSTANCE, BlockPos.ZERO)));
+        room.add("replaceable", predicates.material(state -> !state.is(BlockTags.FEATURES_CANNOT_REPLACE)));
+        room.add("chest_block", predicates.blocks(array(0, 0, 0), Blocks.CHEST));
+        room.add("spawner_block", predicates.blocks(array(0, 0, 0), Blocks.SPAWNER));
+        return new Recipe(data, 4);
     }
 
     private Recipe submerged(ConfiguredFeature<?, ?> configured) {

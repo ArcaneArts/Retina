@@ -1,6 +1,6 @@
 //! A desert well writes its foundation, pool, rim, roof and buried loot in source order.
 use super::{Pos, Predicate, Rng, World, offset};
-use crate::decoration::WELL_ARCHAEOLOGY;
+use crate::decoration::generation::FeatureEntity;
 use serde::Deserialize;
 
 const POOL: [Pos; 5] = [[0, 0, 0], [1, 0, 0], [0, 0, 1], [-1, 0, 0], [0, 0, -1]];
@@ -68,7 +68,7 @@ impl Recipe {
         }
         for y in [-1, -2] {
             let [x, _, z] = POOL[rng.below(POOL.len() as i32) as usize];
-            world.write_command(offset(at, [x, y, z]), self.suspicious_sand, WELL_ARCHAEOLOGY, 0);
+            world.write_block_entity(offset(at, [x, y, z]), self.suspicious_sand, FeatureEntity::WellArchaeology);
         }
         true
     }

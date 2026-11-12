@@ -73,6 +73,8 @@ public final class RegistryExport {
         if (verifyLavaLakes) LavaLakeVerification.pack(packFolder);
         boolean verifyDesertWells = Arrays.asList(args).contains("--verify-desert-wells");
         if (verifyDesertWells) DesertWellVerification.pack(packFolder);
+        boolean verifyMonsterRooms = Arrays.asList(args).contains("--verify-monster-rooms");
+        if (verifyMonsterRooms) MonsterRoomVerification.pack(packFolder);
         try (var loaded = load(packFolder, preset)) {
             export(world, seed, started, noise, preset, loaded, structures, verify);
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
@@ -88,6 +90,7 @@ public final class RegistryExport {
             if (verifyDripstone) DripstoneVerification.verify(world);
             if (verifyLavaLakes) LavaLakeVerification.verify(world);
             if (verifyDesertWells) DesertWellVerification.verify(world);
+            if (verifyMonsterRooms) MonsterRoomVerification.verify(world);
         }
     }
 
