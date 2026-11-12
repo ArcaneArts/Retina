@@ -59,6 +59,8 @@ public final class RegistryExport {
         if (verifySurfaceFreeze) SurfaceFreezeVerification.pack(packFolder);
         boolean verifyRings = Arrays.asList(args).contains("--verify-rings");
         if (verifyRings) RingPlacementVerification.pack(packFolder);
+        boolean verifyStrongholds = Arrays.asList(args).contains("--verify-strongholds");
+        if (verifyStrongholds) StrongholdVerification.pack(packFolder);
         try (var loaded = load(packFolder, preset)) {
             export(world, seed, started, noise, preset, loaded, structures, verify);
             if (Arrays.asList(args).contains("--verify-jigsaws")) JigsawVerification.verify(world, loaded, seed);
@@ -67,6 +69,7 @@ public final class RegistryExport {
             if (Arrays.asList(args).contains("--verify-flat-worldgen")) FlatWorldgenVerification.verify(world, loaded, seed);
             if (verifySurfaceFreeze) SurfaceFreezeVerification.verify(world, loaded);
             if (verifyRings) RingPlacementVerification.verify(world, loaded, seed);
+            if (verifyStrongholds) StrongholdVerification.verify(world, loaded, seed);
         }
     }
 

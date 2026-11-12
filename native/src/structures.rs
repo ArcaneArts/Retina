@@ -7,6 +7,7 @@ pub mod cities;
 mod fossils;
 mod portals;
 mod rings;
+mod strongholds;
 mod template_transform;
 use crate::structure_processors::Program;
 use crate::{
@@ -32,6 +33,8 @@ pub struct Profile {
     pub fossils: Option<fossils::Profile>,
     #[serde(default)]
     pub portals: Option<portals::Profile>,
+    #[serde(default)]
+    pub strongholds: Option<strongholds::Profile>,
     #[serde(default)]
     pub end_cities: Option<cities::Resident>,
     #[serde(skip)]
@@ -247,6 +250,7 @@ pub struct Start {
     pub pieces: Vec<Piece>,
     pub terrain: Option<Heights>,
     pub portal: Option<portals::Placement>,
+    stronghold_pieces: Option<Vec<Value>>,
     index: OnceLock<PlacementIndex>,
 }
 pub struct Heights {
@@ -452,6 +456,8 @@ impl Profile {
                         self.fossils.is_none()
                     } else if d.kind == "end_city" {
                         self.end_cities.is_none()
+                    } else if d.kind == "stronghold" {
+                        self.strongholds.is_none()
                     } else {
                         d.kind != "jigsaw" && d.template >= self.templates.len()
                     }
@@ -467,6 +473,9 @@ impl Profile {
         }
         if let Some(kit) = &self.portals {
             kit.validate(self, materials)?;
+        }
+        if let Some(kit) = &self.strongholds {
+            kit.validate(self.templates.len())?;
         }
         if let Some(kit) = &self.end_cities {
             kit.validate(self)?;
@@ -571,6 +580,9 @@ fn geometry_reach(p: &Profile, d: &Definition) -> i32 {
     }
     if d.kind == "fortress" {
         return 144;
+    }
+    if d.kind == "stronghold" {
+        return 130;
     }
     if d.kind == "end_city" {
         return p.end_cities.as_ref().unwrap().catalog(p).horizontal_reach()+7;
@@ -1216,12 +1228,12 @@ fn build(
             }
             continue;
         }
-        let candidate_biome = if d.kind == "fortress" {
+        let candidate_biome = if matches!(d.kind.as_str(), "fortress" | "stronghold") {
             engine.query_points(
                 request,
                 &[crate::queries::Point {
                     x: request.chunk_x * 16,
-                    y: 64,
+                    y: if d.kind == "fortress" { 64 } else { 0 },
                     z: request.chunk_z * 16,
                 }],
                 crate::queries::Kind::Biome,
@@ -1258,6 +1270,7 @@ fn empty_start(request: ChunkRequest, seed: u64, definition: usize) -> Start {
         pieces: Vec::new(),
         terrain: None,
         portal: None,
+        stronghold_pieces: None,
         index: OnceLock::new(),
     }
 }
@@ -1274,6 +1287,9 @@ fn build_definition(
     let d = &p.definitions[definition];
     if d.kind == "fortress" {
         return fortress::build(request, p, definition, seed, random);
+    }
+    if d.kind == "stronghold" {
+        return strongholds::build(request, profile, definition, seed);
     }
     let root = if d.kind == "jigsaw" {
         let pool = p.pools.get(&d.pool);
@@ -1687,7 +1703,11 @@ pub fn start_data(request: ChunkRequest, profile: &WorldProfile, plans: &[Arc<St
             let children = start
                 .pieces
                 .iter()
-                .map(|piece| {
+                .enumerate()
+                .map(|(index, piece)| {
+                    if let Some(pieces) = &start.stronghold_pieces {
+                        return pieces[index].clone();
+                    }
                     if definition.kind=="end_city" {
                         return cities::integration::saved_piece(piece,p);
                     }
@@ -2316,6 +2336,7 @@ mod tests {
         let pos = [-16, 70, -16];
         let start = Arc::new(Start {
             portal: None,
+            stronghold_pieces: None,
             definition: 0,
             chunk: [-1, -1],
             seed: 42,
@@ -2434,6 +2455,7 @@ mod tests {
                     }],
                     terrain: None,
                     portal: None,
+                    stronghold_pieces: None,
                     index: OnceLock::new(),
                 });
                 let targets: std::collections::HashSet<_> = (0..32)
@@ -2556,6 +2578,7 @@ mod tests {
                     }],
                     terrain: None,
                     portal: None,
+                    stronghold_pieces: None,
                     index: OnceLock::new(),
                 });
                 let offset = if style == 0 {
@@ -2701,6 +2724,7 @@ mod tests {
                 .collect(),
             terrain: None,
             portal: None,
+            stronghold_pieces: None,
             index: OnceLock::new(),
         });
         for adaptation in [Value::Null, json!("none"), json!("beard_thin")] {
