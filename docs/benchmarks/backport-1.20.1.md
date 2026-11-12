@@ -1842,3 +1842,51 @@ matched revision 554. The 26.3 Metal A/B/B/A run matched all
 3,072 measured payloads per comparison. Median process
 throughput was 3,872 chunks/s on revision 554 and 4,107 on
 revision 555. This small sample records the local regression check.
+
+### Overworld fossils
+
+The 1.20.1 adapter resolves the base and ore overlay templates
+and their processor lists from the loaded resources. Native
+decoration rotates and buries each pair using the ocean-floor
+heightmap and the configured empty-corner limit. Each template
+pass applies the loaded block rot, protection and replacement
+rules. Feature placement keeps fossils available with structure
+generation disabled, including the Bukkit catalog.
+
+```sh
+./gradlew :minecraft1201:exportNoiseTerrain -PretinaVerifyOverworldFossils \
+  "-PretinaWorld=$RETINA_WORLD" "-PretinaNativePath=$RETINA_NATIVE" \
+  -PretinaGpuBackend=metal
+```
+
+Repeat with CPU in a fresh directory. The fixture exercises the
+stock coal and deep diamond overlays and an asymmetric datapack
+template. The custom processor matches the actual bone axis in
+the world before replacing coal with emerald ore. The verifier
+checks burial, rotated block states, writes across chunk seams
+and the empty-corner and protected-quartz controls. Fossil
+templates and processors that carry block entities or entities
+remain explicit omissions.
+
+CPU and Metal matched all 5,120 fixture payloads. The upper
+region contained 8,337 bone blocks and 1,046 coal ore blocks.
+The lower region contained 9,072 bone blocks and 1,115 deepslate
+diamond ore blocks. The custom region contained 93 emerald
+overlays and 82 coal overlays that did not match its rule.
+Both controls produced zero fossil blocks.
+
+Stock coverage is 118 of 121 non-ore Overworld roots. The stock
+verifier and all 15 catalog cases passed. In stock seed `12345`,
+region `-1,-4`, the structure-disabled normal and Bukkit
+catalogs generated the same 1,467 bone block positions and
+rotations. Packaged Java 17 Fabric and Forge read all seven
+fixture samples. Spigot generated the three custom fossil states
+from an imported definition. Each preserved the definition and
+a player edit across restart. The four revision 556 JARs carry
+the same macOS ARM64 native bytes and version-specific catalogs.
+
+The 26.3 Nether Metal A/B/B/A run matched all 3,072 measured
+payloads per comparison, including structure data. Median process
+throughput was 1,395 chunks/s on revision 555 and 1,368 on
+revision 556. The ranges from the two processes per revision
+overlap.

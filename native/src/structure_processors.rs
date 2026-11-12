@@ -69,6 +69,9 @@ pub struct Context {
     pub position: [i32; 3],
     pub origin: [i32; 3],
     pub source_template: bool,
+    /// Template placement supplies a shared random stream to rot. Rules still
+    /// use position randomness and test the unrotated world location.
+    pub(crate) feature_placement: bool,
     counts: Vec<u32>,
 }
 /// Validate palette-dependent tables before compiling executable native programs.
@@ -129,6 +132,7 @@ impl Program {
             position: origin,
             counts: vec![0; self.counters],
             source_template: false,
+            feature_placement: false,
         }
     }
     pub fn apply<'a>(
@@ -399,14 +403,15 @@ impl Processor {
                 // RuleProcessor creates a fresh positional stream for each invocation,
                 // independently of neighboring processors and the placement stream.
                 let mut positional = Random::new(crate::structures::position_seed(ctx.position));
-                let r = if ctx.source_template {
+                let r = if ctx.source_template || ctx.feature_placement {
                     &mut positional
                 } else {
                     r
                 };
+                let location_rotation = if ctx.feature_placement { 0 } else { rotation };
                 for rule in rules {
                     if rule.input.matches(*material, rotation, r)
-                        && rule.location.matches(world, rotation, r)
+                        && rule.location.matches(world, location_rotation, r)
                         && rule.position.matches(ctx, r)
                     {
                         if let Some(id) = rule.output[rotation] {

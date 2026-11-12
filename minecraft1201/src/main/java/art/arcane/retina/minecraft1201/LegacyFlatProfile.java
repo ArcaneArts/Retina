@@ -82,7 +82,7 @@ final class LegacyFlatProfile {
         var biomeEntries = FlatProfileModel.writeLayers(world, encoded, base, deferred,
                 biome.unwrapKey().orElseThrow().location().toString(), biome.value().getBaseTemperature());
 
-        var features = new LegacyOverworldFeatures(registries, context, storage, palette, type.hasSkyLight(), true);
+        var features = new LegacyOverworldFeatures(registries, context, storage, palette, type.hasSkyLight(), true, templates);
         features.export(registries, biomes, biomes, biomeEntries, world, ignored -> effective,
                 root -> root.feature().value().feature() == Feature.FILL_LAYER && !inherited.contains(root));
         features.reserveWaterlogging();

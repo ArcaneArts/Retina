@@ -368,7 +368,7 @@ pub fn candidate(seed: u64, x: i32, z: i32, placement: &Value) -> [i32; 2] {
     };
     [gx * spacing + draw() as i32, gz * spacing + draw() as i32]
 }
-fn rotate(p: [i32; 3], rotation: usize) -> [i32; 3] {
+pub(crate) fn rotate(p: [i32; 3], rotation: usize) -> [i32; 3] {
     match rotation {
         1 => [-p[2], p[1], p[0]],
         2 => [-p[0], p[1], -p[2]],
@@ -406,34 +406,41 @@ fn bounds(e: &Element, pos: [i32; 3], rotation: usize, p: &Profile) -> [i32; 6] 
     }
     b
 }
+impl Template {
+    pub(crate) fn validate(&self, materials: usize) -> Result<(), String> {
+        if self.size.iter().any(|n| *n <= 0 || *n > 512)
+            || !self.blocks.len().is_multiple_of(4)
+            || self.palettes.is_empty()
+            || self.palettes.iter().any(|p| {
+                p.len() != self.palettes[0].len()
+                    || p.iter().flatten().any(|id| *id as usize >= materials)
+            })
+            || self.blocks.chunks_exact(4).any(|b| {
+                (0..3).any(|i| b[i] < 0 || b[i] >= self.size[i])
+                    || b[3] < 0
+                    || b[3] as usize >= self.palettes[0].len()
+            })
+            || self.tags
+                .iter()
+                .any(|(i, v)| *i >= self.blocks.len() / 4 || !nbt::validate(v, 0))
+            || self.entities.iter().any(|v| !nbt::validate(v, 0))
+            || self.transform.as_ref().is_some_and(|t| !t.valid(materials))
+            || self.joints.iter().any(|j| {
+                j.front >= 6
+                    || j.top >= 6
+                    || j.final_state.iter().any(|id| *id as usize >= materials)
+            })
+        {
+            return Err(format!("invalid structure template {}", self.id));
+        }
+        Ok(())
+    }
+}
+
 impl Profile {
     pub fn validate(&self, materials: usize, biomes: usize) -> Result<(), String> {
-        for t in &self.templates {
-            if t.size.iter().any(|n| *n <= 0 || *n > 512)
-                || !t.blocks.len().is_multiple_of(4)
-                || t.palettes.is_empty()
-                || t.palettes.iter().any(|p| {
-                    p.len() != t.palettes[0].len()
-                        || p.iter().flatten().any(|id| *id as usize >= materials)
-                })
-                || t.blocks.chunks_exact(4).any(|b| {
-                    (0..3).any(|i| b[i] < 0 || b[i] >= t.size[i])
-                        || b[3] < 0
-                        || b[3] as usize >= t.palettes[0].len()
-                })
-                || t.tags
-                    .iter()
-                    .any(|(i, v)| *i >= t.blocks.len() / 4 || !nbt::validate(v, 0))
-                || t.entities.iter().any(|v| !nbt::validate(v, 0))
-                || t.transform.as_ref().is_some_and(|t| !t.valid(materials))
-                || t.joints.iter().any(|j| {
-                    j.front >= 6
-                        || j.top >= 6
-                        || j.final_state.iter().any(|id| *id as usize >= materials)
-                })
-            {
-                return Err(format!("invalid structure template {}", t.id));
-            }
+        for template in &self.templates {
+            template.validate(materials)?;
         }
         for pool in self.pools.values() {
             for e in &pool.entries {

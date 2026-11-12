@@ -11,6 +11,8 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.RegistryOps;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.TagKey;
@@ -37,6 +39,7 @@ import net.minecraft.world.level.levelgen.WorldGenerationContext;
 import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.Feature;
+import net.minecraft.world.level.levelgen.feature.FossilFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.LakeFeature;
 import net.minecraft.world.level.levelgen.feature.configurations.BlockColumnConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.CountConfiguration;
@@ -62,6 +65,8 @@ import java.util.BitSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -92,6 +97,7 @@ final class LegacyOverworldFeatures {
     private final LegacyBlockProviders providers;
     private final LegacyOverworldPlants plants;
     private final LegacyTreeFeatures trees;
+    private final LegacyOverworldFossils fossils;
     private final TreeSet<String> approximations = new TreeSet<>();
     private final LegacyFeatureTicks ticks = new LegacyFeatureTicks();
     private final List<JsonArray> poolWaterlogging = new ArrayList<>();
@@ -100,7 +106,8 @@ final class LegacyOverworldFeatures {
 
     LegacyOverworldFeatures(RegistryAccess registries, WorldGenerationContext context,
                             LevelHeightAccessor storage, LinkedHashMap<BlockState, Integer> palette,
-                            boolean skylight, boolean flat) {
+                            boolean skylight, boolean flat,
+                            Function<ResourceLocation, Optional<CompoundTag>> templates) {
         this.flat = flat;
         this.height = storage.getHeight();
         this.predicates = new LegacyFeaturePredicates(storage);
@@ -111,6 +118,7 @@ final class LegacyOverworldFeatures {
         this.plants = new LegacyOverworldPlants(predicates, this::material, skylight);
         predicates.bindSurvival(plants::survival);
         this.trees = new LegacyTreeFeatures(ops, predicates, providers, this::material, approximations);
+        this.fossils = new LegacyOverworldFossils(ops, palette, predicates, templates, storage.getMinBuildHeight());
     }
 
     void export(RegistryAccess registries, List<Holder<Biome>> sourceOrder, List<Holder<Biome>> biomes,
@@ -208,6 +216,7 @@ final class LegacyOverworldFeatures {
     void finish(JsonObject world, List<Holder<Biome>> biomes) {
         if (surfaceFreeze) LegacyFreezeFeatures.export(world, biomes, palette);
         predicates.finish(palette);
+        fossils.finish();
         if (geodeTicks) {
             var fluidTicks = new JsonArray();
             for (var state : palette.keySet()) {
@@ -314,6 +323,10 @@ final class LegacyOverworldFeatures {
         if (depth == 0 && feature == Feature.FREEZE_TOP_LAYER) {
             surfaceFreeze = true;
             return new Recipe(kind("freeze_top_layer"), 15);
+        }
+        if (feature == Feature.FOSSIL) {
+            var fossil = fossils.compile((FossilFeatureConfiguration) config);
+            return new Recipe(fossil.data(), fossil.reach());
         }
         if (feature == Feature.GEODE) return geode((GeodeConfiguration) config);
         if (feature == Feature.MONSTER_ROOM) return monsterRoom();
