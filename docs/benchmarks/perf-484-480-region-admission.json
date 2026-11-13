@@ -1,0 +1,4694 @@
+{
+  "sample_interval_seconds": 0.25,
+  "runs": {
+    "admission-0-baseline-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-0-baseline-2"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          26.1181640625,
+          22.666015625,
+          22.244140625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          24.763671875,
+          22.494140625,
+          22.1884765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1440.4190830000516,
+        1494.2517919998863
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1951.5993749992049,
+          "dispatch_wait_ms": 2.4837499995555845,
+          "return_since_batch_start_ms": 1954.6753340000578
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1766.9976249999308,
+          "dispatch_wait_ms": 2.675083999747585,
+          "return_since_batch_start_ms": 1770.0373339994258
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 1921.8885830005092,
+          "dispatch_wait_ms": 1770.060625000042,
+          "return_since_batch_start_ms": 3692.1911249992263
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2147.093708999819,
+          "dispatch_wait_ms": 1954.699249999976,
+          "return_since_batch_start_ms": 4102.081499999258
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 1854.2621249998774,
+          "dispatch_wait_ms": 3692.209166999419,
+          "return_since_batch_start_ms": 5546.697458999915
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 1915.532916000302,
+          "dispatch_wait_ms": 4102.097374999175,
+          "return_since_batch_start_ms": 6017.817583999204
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1559.2511249997187,
+          "dispatch_wait_ms": 5546.715167000002,
+          "return_since_batch_start_ms": 7106.198666999262
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1151.2211670005854,
+          "dispatch_wait_ms": 6017.840791999333,
+          "return_since_batch_start_ms": 7169.333374999951
+        }
+      ],
+      "p95_region_ms": 2078.670692099604,
+      "p99_region_ms": 2133.409105619776,
+      "chunks_per_second": 1142.62,
+      "cpu_ms_per_region": 2670.75,
+      "peak_rss_through_generation_bytes": 3279896576,
+      "generation_sample_count": 29,
+      "generation_sample_peak_rss_bytes": 3260858368,
+      "generation_sample_median_rss_bytes": 2765176832,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": null,
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 21.78,
+        "wait_copy": 191.76,
+        "vegetation_plan": 1491.36,
+        "structure_plan": 66.37,
+        "ore_plan": 0.36,
+        "assembly": 48.1,
+        "light_host": 28.47,
+        "light_spread": 28.25
+      },
+      "gpu_interval": {}
+    },
+    "admission-1-candidate-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/candidate.dylib",
+        "--library-revision",
+        "18302ebaf0755509",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-1-candidate-2",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-0-baseline-2"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache",
+        "RETINA_BOUND_ORDERED_PLANNERS": "1"
+      },
+      "before": {
+        "load": [
+          24.763671875,
+          22.494140625,
+          22.1884765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          23.39453125,
+          22.29248046875,
+          22.12060546875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "18302ebaf0755509b577e5cd64057c13555189d6ff9e41354f8300c8141927ae",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1443.491707999783,
+        1430.712625000524
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1455.0520839993624,
+          "dispatch_wait_ms": 2.1049160004622536,
+          "return_since_batch_start_ms": 1457.586416000595
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 2266.7325000002165,
+          "dispatch_wait_ms": 2.2550000003320747,
+          "return_since_batch_start_ms": 2269.3034160001844
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2009.6557080005368,
+          "dispatch_wait_ms": 1457.6137500007462,
+          "return_since_batch_start_ms": 3467.6564159999543
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2404.5268749996467,
+          "dispatch_wait_ms": 2269.321958000546,
+          "return_since_batch_start_ms": 4674.11541599995
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2658.9687499999854,
+          "dispatch_wait_ms": 3467.674416000591,
+          "return_since_batch_start_ms": 6126.860041000327
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 2459.220749999986,
+          "dispatch_wait_ms": 4674.138583000058,
+          "return_since_batch_start_ms": 7133.622916000604
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1871.0449170002903,
+          "dispatch_wait_ms": 6126.876833000097,
+          "return_since_batch_start_ms": 7998.135791000095
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1517.4590829992667,
+          "dispatch_wait_ms": 7133.645249999972,
+          "return_since_batch_start_ms": 8651.374083000519
+        }
+      ],
+      "p95_region_ms": 2589.0569499999856,
+      "p99_region_ms": 2644.9863899999855,
+      "chunks_per_second": 946.89,
+      "cpu_ms_per_region": 2439.48,
+      "peak_rss_through_generation_bytes": 2508423168,
+      "generation_sample_count": 34,
+      "generation_sample_peak_rss_bytes": 2485600256,
+      "generation_sample_median_rss_bytes": 2302156800.0,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_planner_admission_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 21.22,
+        "wait_copy": 218.23,
+        "vegetation_plan": 1063.44,
+        "structure_plan": 69.14,
+        "ore_plan": 0.24,
+        "assembly": 45.26,
+        "light_host": 22.78,
+        "light_spread": 26.3
+      },
+      "gpu_interval": {}
+    },
+    "admission-2-candidate-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/candidate.dylib",
+        "--library-revision",
+        "18302ebaf0755509",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-2-candidate-2",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-0-baseline-2"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache",
+        "RETINA_BOUND_ORDERED_PLANNERS": "1"
+      },
+      "before": {
+        "load": [
+          23.39453125,
+          22.29248046875,
+          22.12060546875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          21.94677734375,
+          22.03125,
+          22.0302734375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "18302ebaf0755509b577e5cd64057c13555189d6ff9e41354f8300c8141927ae",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1603.069959000095,
+        1435.6096669998806
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 2201.50270799968,
+          "dispatch_wait_ms": 2.0889160005026497,
+          "return_since_batch_start_ms": 2204.040000000532
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1266.9041670005754,
+          "dispatch_wait_ms": 2.2331660002237186,
+          "return_since_batch_start_ms": 1269.421500000135
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2144.440416999714,
+          "dispatch_wait_ms": 1269.4366249997984,
+          "return_since_batch_start_ms": 3414.0772079999806
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2509.0927080000256,
+          "dispatch_wait_ms": 2204.0670830001545,
+          "return_since_batch_start_ms": 4713.508958000602
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2441.2606659998346,
+          "dispatch_wait_ms": 3414.0997499998775,
+          "return_since_batch_start_ms": 5855.618083000081
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 2196.3923749999594,
+          "dispatch_wait_ms": 4713.5277910001605,
+          "return_since_batch_start_ms": 6910.135832999913
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1937.386582999352,
+          "dispatch_wait_ms": 5855.640708000465,
+          "return_since_batch_start_ms": 7793.260750000627
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1409.8648749995846,
+          "dispatch_wait_ms": 6910.156375000042,
+          "return_since_batch_start_ms": 8320.21154100039
+        }
+      ],
+      "p95_region_ms": 2485.3514932999587,
+      "p99_region_ms": 2504.344465060012,
+      "chunks_per_second": 984.58,
+      "cpu_ms_per_region": 2345.78,
+      "peak_rss_through_generation_bytes": 2498543616,
+      "generation_sample_count": 33,
+      "generation_sample_peak_rss_bytes": 2471772160,
+      "generation_sample_median_rss_bytes": 2286960640,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_planner_admission_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 19.08,
+        "wait_copy": 214.04,
+        "vegetation_plan": 1023.61,
+        "structure_plan": 68.07,
+        "ore_plan": 0.24,
+        "assembly": 42.92,
+        "light_host": 21.51,
+        "light_spread": 25.39
+      },
+      "gpu_interval": {}
+    },
+    "admission-3-baseline-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-3-baseline-2",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-0-baseline-2"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          21.94677734375,
+          22.03125,
+          22.0302734375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          20.58349609375,
+          21.73388671875,
+          21.92431640625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1452.6513330001762,
+        1427.834167000583
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1623.9994589996058,
+          "dispatch_wait_ms": 2.0315000001573935,
+          "return_since_batch_start_ms": 1626.4708329999849
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1427.8642500003116,
+          "dispatch_wait_ms": 2.1892909999223775,
+          "return_since_batch_start_ms": 1430.3337500005
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 1862.7506250004444,
+          "dispatch_wait_ms": 1430.3509580004174,
+          "return_since_batch_start_ms": 3293.3394159999807
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2093.8465840008575,
+          "dispatch_wait_ms": 1626.4898330000506,
+          "return_since_batch_start_ms": 3720.6287500002873
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 1970.0507079996896,
+          "dispatch_wait_ms": 3293.357250000554,
+          "return_since_batch_start_ms": 5263.612875000035
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 1999.5337500004098,
+          "dispatch_wait_ms": 3720.648625000649,
+          "return_since_batch_start_ms": 5720.403625000472
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1455.5166660002214,
+          "dispatch_wait_ms": 5263.637541000207,
+          "return_since_batch_start_ms": 6719.384875000287
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1163.9280419994975,
+          "dispatch_wait_ms": 5720.42379100003,
+          "return_since_batch_start_ms": 6884.585625
+        }
+      ],
+      "p95_region_ms": 2060.837092100701,
+      "p99_region_ms": 2087.244685620826,
+      "chunks_per_second": 1189.88,
+      "cpu_ms_per_region": 2575.04,
+      "peak_rss_through_generation_bytes": 3245637632,
+      "generation_sample_count": 27,
+      "generation_sample_peak_rss_bytes": 3226304512,
+      "generation_sample_median_rss_bytes": 2804891648,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 21.92,
+        "wait_copy": 188.8,
+        "vegetation_plan": 1432.51,
+        "structure_plan": 62.77,
+        "ore_plan": 0.27,
+        "assembly": 47.82,
+        "light_host": 26.93,
+        "light_spread": 28.83
+      },
+      "gpu_interval": {}
+    },
+    "admission-foreground-0-baseline-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-foreground-0-baseline-2",
+        "--diagnostics",
+        "--gpu-interval",
+        "--foreground-biome-probes",
+        "--preservation-check"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          20.58349609375,
+          21.73388671875,
+          21.92431640625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          25.70751953125,
+          22.7041015625,
+          22.259765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1627.2616670003117,
+        1667.80262499924
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 2464.3154579998736,
+          "dispatch_wait_ms": 2.183917000365909,
+          "return_since_batch_start_ms": 2466.8633330002194
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 2695.797749999656,
+          "dispatch_wait_ms": 2.3103330004232703,
+          "return_since_batch_start_ms": 2698.3604170000035
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2577.027041999827,
+          "dispatch_wait_ms": 2466.8906249999054,
+          "return_since_batch_start_ms": 5044.161000000713
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2683.0955420000464,
+          "dispatch_wait_ms": 2698.388125000747,
+          "return_since_batch_start_ms": 5381.72645800023
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2623.651083000368,
+          "dispatch_wait_ms": 5044.186500000251,
+          "return_since_batch_start_ms": 7668.1546670006355
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 2505.7708329995876,
+          "dispatch_wait_ms": 5381.747250000444,
+          "return_since_batch_start_ms": 7887.8197920003
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 3678.720417000477,
+          "dispatch_wait_ms": 7668.17195800013,
+          "return_since_batch_start_ms": 11347.11100000004
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 3659.4070420005664,
+          "dispatch_wait_ms": 7887.8420000000915,
+          "return_since_batch_start_ms": 11547.487458000433
+        }
+      ],
+      "p95_region_ms": 3671.9607357505083,
+      "p99_region_ms": 3677.3684807504833,
+      "chunks_per_second": 709.41,
+      "cpu_ms_per_region": 3606.14,
+      "peak_rss_through_generation_bytes": 3322101760,
+      "generation_sample_count": 45,
+      "generation_sample_peak_rss_bytes": 3297034240,
+      "generation_sample_median_rss_bytes": 2912059392,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": null,
+      "reopen": {
+        "elapsed_ms": 2492.078708000008,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "foreground": {
+        "batch_size": 8,
+        "corpus_batches": 2048,
+        "error": null,
+        "fixture_sha256": "e90120ac8c2b603c769a3bde6244c0eda37f3f8d053282553b98c04cb11ffd0f",
+        "foreground_tail_ns": 0,
+        "gpu_sample_counter_scope": "Legacy pipeline.completed counts completed terrain/query samples; a sample can require multiple physical submissions. CPU/constant shortcuts may have zero. This never gates generation.",
+        "idle_answers_sha256": "b02c4efb4033e4773d13c5f941961bc2d1ccf0cd056a2b16b1282a495f2f21da",
+        "idle_completed_gpu_samples_delta": 256,
+        "pause_after_query_seconds": 0.01,
+        "reference_completed_gpu_samples_delta": 256,
+        "reference_setup_ns": 508485791,
+        "region_window_end_ns": 4663122690041,
+        "region_window_start_ns": 4651575038583,
+        "schema": "retina.foreground-biome-probes.v1",
+        "scope": "Uncached remote-coordinate stress workload. Exact same-backend biome values checked against batched answer reference; idle small-call and concurrent small-call values also verify batch-shape invariance. Same query thread is warmed before measurement. One foreground call at a time with think time after completion; request count varies with region duration. Latency includes native call/queue, excludes result comparison. Reference setup is separate from idle latency; both precede every measured native delta. Region completion/CPU window excludes foreground drain tail; native timing/profile snapshots and optional GPU interval end after drain. Not a player/FPS/Java workload. Reservoir sampling is deterministic and bounded; all answers remain checked.",
+        "status": "pass",
+        "unique_points": 16384,
+        "idle": {
+          "count": 256,
+          "descriptive_p95_ns": 1979364.25,
+          "maximum_ns": 2528250,
+          "mean_ns": 1650732.09375,
+          "median_ns": 1619521.0,
+          "minimum_ns": 1207542,
+          "reservoir_sampled": false,
+          "retained_samples": 256,
+          "total_ns": 422587416,
+          "descriptive_p99_ns": 2055095.4999999995
+        },
+        "concurrent": {
+          "count": 758,
+          "descriptive_p95_ns": 7730850.05,
+          "maximum_ns": 37190917,
+          "mean_ns": 3288864.251978892,
+          "median_ns": 2513687.5,
+          "minimum_ns": 1015042,
+          "reservoir_sampled": false,
+          "retained_samples": 758,
+          "total_ns": 2492959103,
+          "descriptive_p99_ns": 19526084.869999997
+        }
+      },
+      "counters": {
+        "column_join_nanos": 570376931,
+        "dependency_evaluation_nanos": 18483301376,
+        "dependency_pool_wait_nanos": 536297208,
+        "memo_join_nanos": 6448383824,
+        "region_pool_wait_nanos": 59991458,
+        "teardown_boundary_columns_nanos": 222307251,
+        "teardown_commands_nanos": 55348792,
+        "teardown_nanos": 785844336,
+        "teardown_other_nanos": 9150291,
+        "teardown_outputs_nanos": 15741250,
+        "teardown_terrain_nanos": 173709,
+        "teardown_versions_nanos": 1456,
+        "terrain_job_join_nanos": 1345103819,
+        "terrain_live_index_absent": 85,
+        "terrain_live_index_expired": 39,
+        "terrain_live_index_hits": 5
+      },
+      "ms_per_region": {
+        "queue": 98.46,
+        "wait_copy": 369.73,
+        "vegetation_plan": 2497.25,
+        "structure_plan": 92.86,
+        "ore_plan": 0.51,
+        "assembly": 60.16,
+        "light_host": 51.31,
+        "light_spread": 36.03
+      },
+      "gpu_interval": {
+        "aborted_observations": 0,
+        "capture_capacity": 4096,
+        "dropped_records_during_window": 0,
+        "end_host_ns": 16576528417,
+        "end_sequence": 3670,
+        "fully_contained_completed": 1193,
+        "fully_contained_pass_sum_ns": 1532098983,
+        "fully_contained_pass_sum_saturated": false,
+        "fully_contained_pass_union_ns": 1445811596,
+        "fully_contained_without_valid_timestamps": 0,
+        "host_wall_ns": 11553893625,
+        "incoming_completed": 0,
+        "interval_peak_tracked_submissions": 4,
+        "invalid_timestamp_pairs": 21,
+        "outgoing_pending": 0,
+        "schema_version": 1,
+        "scope": "Opt-in terrain, material-emission and lighting submissions on the shared device. Enable before warmup to observe incoming work. Work submitted before capture is enabled, ore/feature/vine jobs, copies, driver compilation and untimestamped work are not covered. Host sequence marks classify whole submissions; device timestamps use a separate clock. Boundary-crossing and aborted submissions are excluded from pass aggregates. Pending work is not awaited. Union removes overlapping pass timestamps, not host time. Neither gaps, pass sums nor unions are an idle/utilization percentage. Zero passes can mean unavailable timestamps. Dropped records make coverage incomplete. Peaks count tracked submissions, not hardware occupancy.",
+        "start_host_ns": 5022634792,
+        "start_sequence": 1283,
+        "tracked_active_at_end": 0,
+        "tracked_active_at_start": 0,
+        "window_id": 1
+      }
+    },
+    "admission-foreground-1-candidate-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/candidate.dylib",
+        "--library-revision",
+        "18302ebaf0755509",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-foreground-1-candidate-2",
+        "--diagnostics",
+        "--gpu-interval",
+        "--foreground-biome-probes",
+        "--preservation-check",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-foreground-0-baseline-2"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache",
+        "RETINA_BOUND_ORDERED_PLANNERS": "1"
+      },
+      "before": {
+        "load": [
+          25.70751953125,
+          22.7041015625,
+          22.259765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          36.90185546875,
+          25.6845703125,
+          23.35302734375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "18302ebaf0755509b577e5cd64057c13555189d6ff9e41354f8300c8141927ae",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1873.341459000585,
+        1613.6764580005547
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 3903.971000000638,
+          "dispatch_wait_ms": 2.7593340000748867,
+          "return_since_batch_start_ms": 3907.4475420002273
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 2099.4206250006755,
+          "dispatch_wait_ms": 3.0457089997071307,
+          "return_since_batch_start_ms": 2102.793125000062
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 4048.0560840005637,
+          "dispatch_wait_ms": 2102.816249999705,
+          "return_since_batch_start_ms": 6151.095459000317
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 4187.1910410000055,
+          "dispatch_wait_ms": 3907.4731250002515,
+          "return_since_batch_start_ms": 8094.958167000186
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 3891.391250000197,
+          "dispatch_wait_ms": 6151.120542000172,
+          "return_since_batch_start_ms": 10042.839749999985
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 3341.2934580001092,
+          "dispatch_wait_ms": 8094.977749999998,
+          "return_since_batch_start_ms": 11436.481042000196
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 2781.0244169995713,
+          "dispatch_wait_ms": 10042.863042000135,
+          "return_since_batch_start_ms": 12824.233624999579
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 2595.075124999312,
+          "dispatch_wait_ms": 11436.507084000368,
+          "return_since_batch_start_ms": 14031.833584000196
+        }
+      ],
+      "p95_region_ms": 4138.493806050201,
+      "p99_region_ms": 4177.451594010045,
+      "chunks_per_second": 583.66,
+      "cpu_ms_per_region": 3671.13,
+      "peak_rss_through_generation_bytes": 2609528832,
+      "generation_sample_count": 55,
+      "generation_sample_peak_rss_bytes": 2587869184,
+      "generation_sample_median_rss_bytes": 2309406720,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": {
+        "elapsed_ms": 983.7585420000323,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "foreground": {
+        "batch_size": 8,
+        "corpus_batches": 2048,
+        "error": null,
+        "fixture_sha256": "e90120ac8c2b603c769a3bde6244c0eda37f3f8d053282553b98c04cb11ffd0f",
+        "foreground_tail_ns": 0,
+        "gpu_sample_counter_scope": "Legacy pipeline.completed counts completed terrain/query samples; a sample can require multiple physical submissions. CPU/constant shortcuts may have zero. This never gates generation.",
+        "idle_answers_sha256": "b02c4efb4033e4773d13c5f941961bc2d1ccf0cd056a2b16b1282a495f2f21da",
+        "idle_completed_gpu_samples_delta": 256,
+        "pause_after_query_seconds": 0.01,
+        "reference_completed_gpu_samples_delta": 256,
+        "reference_setup_ns": 857543667,
+        "region_window_end_ns": 4689176530833,
+        "region_window_start_ns": 4675141070916,
+        "schema": "retina.foreground-biome-probes.v1",
+        "scope": "Uncached remote-coordinate stress workload. Exact same-backend biome values checked against batched answer reference; idle small-call and concurrent small-call values also verify batch-shape invariance. Same query thread is warmed before measurement. One foreground call at a time with think time after completion; request count varies with region duration. Latency includes native call/queue, excludes result comparison. Reference setup is separate from idle latency; both precede every measured native delta. Region completion/CPU window excludes foreground drain tail; native timing/profile snapshots and optional GPU interval end after drain. Not a player/FPS/Java workload. Reservoir sampling is deterministic and bounded; all answers remain checked.",
+        "status": "pass",
+        "unique_points": 16384,
+        "idle": {
+          "count": 256,
+          "descriptive_p95_ns": 3894115.0,
+          "maximum_ns": 4741209,
+          "mean_ns": 2724222.984375,
+          "median_ns": 2603895.5,
+          "minimum_ns": 1863000,
+          "reservoir_sampled": false,
+          "retained_samples": 256,
+          "total_ns": 697401084,
+          "descriptive_p99_ns": 4628529.65
+        },
+        "concurrent": {
+          "count": 853,
+          "descriptive_p95_ns": 13143582.999999989,
+          "maximum_ns": 46161792,
+          "mean_ns": 4199319.035169988,
+          "median_ns": 2651334.0,
+          "minimum_ns": 1444000,
+          "reservoir_sampled": false,
+          "retained_samples": 853,
+          "total_ns": 3582019137,
+          "descriptive_p99_ns": 25220251.840000007
+        }
+      },
+      "counters": {
+        "column_join_nanos": 653421943,
+        "dependency_evaluation_nanos": 12640207917,
+        "dependency_pool_wait_nanos": 108470624,
+        "memo_join_nanos": 7044031753,
+        "region_planner_admission_nanos": 9012613500,
+        "region_pool_wait_nanos": 2713167,
+        "teardown_boundary_columns_nanos": 157829333,
+        "teardown_commands_nanos": 59856291,
+        "teardown_nanos": 705818751,
+        "teardown_other_nanos": 8771794,
+        "teardown_outputs_nanos": 17103916,
+        "teardown_terrain_nanos": 67084,
+        "teardown_versions_nanos": 1418,
+        "terrain_job_join_nanos": 2194718132,
+        "terrain_live_index_absent": 85,
+        "terrain_live_index_expired": 51,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 157.65,
+        "wait_copy": 485.97,
+        "vegetation_plan": 1716.76,
+        "structure_plan": 105.67,
+        "ore_plan": 60.82,
+        "assembly": 63.29,
+        "light_host": 32.86,
+        "light_spread": 28.34
+      },
+      "gpu_interval": {
+        "aborted_observations": 0,
+        "capture_capacity": 4096,
+        "dropped_records_during_window": 0,
+        "end_host_ns": 21314921375,
+        "end_sequence": 3932,
+        "fully_contained_completed": 1325,
+        "fully_contained_pass_sum_ns": 1578356941,
+        "fully_contained_pass_sum_saturated": false,
+        "fully_contained_pass_union_ns": 1516445388,
+        "fully_contained_without_valid_timestamps": 0,
+        "host_wall_ns": 14041543458,
+        "incoming_completed": 0,
+        "interval_peak_tracked_submissions": 3,
+        "invalid_timestamp_pairs": 24,
+        "outgoing_pending": 0,
+        "schema_version": 1,
+        "scope": "Opt-in terrain, material-emission and lighting submissions on the shared device. Enable before warmup to observe incoming work. Work submitted before capture is enabled, ore/feature/vine jobs, copies, driver compilation and untimestamped work are not covered. Host sequence marks classify whole submissions; device timestamps use a separate clock. Boundary-crossing and aborted submissions are excluded from pass aggregates. Pending work is not awaited. Union removes overlapping pass timestamps, not host time. Neither gaps, pass sums nor unions are an idle/utilization percentage. Zero passes can mean unavailable timestamps. Dropped records make coverage incomplete. Peaks count tracked submissions, not hardware occupancy.",
+        "start_host_ns": 7273377917,
+        "start_sequence": 1281,
+        "tracked_active_at_end": 0,
+        "tracked_active_at_start": 0,
+        "window_id": 1
+      }
+    },
+    "admission-foreground-2-candidate-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/candidate.dylib",
+        "--library-revision",
+        "18302ebaf0755509",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-foreground-2-candidate-2",
+        "--diagnostics",
+        "--gpu-interval",
+        "--foreground-biome-probes",
+        "--preservation-check",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-foreground-0-baseline-2"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache",
+        "RETINA_BOUND_ORDERED_PLANNERS": "1"
+      },
+      "before": {
+        "load": [
+          36.90185546875,
+          25.6845703125,
+          23.35302734375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          30.99072265625,
+          25.0703125,
+          23.1865234375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "18302ebaf0755509b577e5cd64057c13555189d6ff9e41354f8300c8141927ae",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1688.9958750007281,
+        1550.592417000189
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1495.1217090001592,
+          "dispatch_wait_ms": 2.072416000373778,
+          "return_since_batch_start_ms": 1497.5712499999645
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 2529.543792000368,
+          "dispatch_wait_ms": 2.1916660007264,
+          "return_since_batch_start_ms": 2532.015291000789
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2430.065417000151,
+          "dispatch_wait_ms": 1497.595125000771,
+          "return_since_batch_start_ms": 3927.9244160006783
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 3246.9980830001077,
+          "dispatch_wait_ms": 2532.036583000263,
+          "return_since_batch_start_ms": 5779.239875000712
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 3716.927124999529,
+          "dispatch_wait_ms": 3927.9464159999407,
+          "return_since_batch_start_ms": 7645.094666000659
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 3362.9880409998805,
+          "dispatch_wait_ms": 5779.262250000102,
+          "return_since_batch_start_ms": 9142.521875000057
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 2559.874165999645,
+          "dispatch_wait_ms": 7645.117333000599,
+          "return_since_batch_start_ms": 10205.227833000208
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1776.9108339998638,
+          "dispatch_wait_ms": 9142.541041000186,
+          "return_since_batch_start_ms": 10919.634208000389
+        }
+      ],
+      "p95_region_ms": 3593.048445599652,
+      "p99_region_ms": 3692.1513891195536,
+      "chunks_per_second": 750.2,
+      "cpu_ms_per_region": 3094.76,
+      "peak_rss_through_generation_bytes": 2542813184,
+      "generation_sample_count": 43,
+      "generation_sample_peak_rss_bytes": 2518335488,
+      "generation_sample_median_rss_bytes": 2298920960,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": {
+        "elapsed_ms": 844.2946249997476,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "foreground": {
+        "batch_size": 8,
+        "corpus_batches": 2048,
+        "error": null,
+        "fixture_sha256": "e90120ac8c2b603c769a3bde6244c0eda37f3f8d053282553b98c04cb11ffd0f",
+        "foreground_tail_ns": 987750,
+        "gpu_sample_counter_scope": "Legacy pipeline.completed counts completed terrain/query samples; a sample can require multiple physical submissions. CPU/constant shortcuts may have zero. This never gates generation.",
+        "idle_answers_sha256": "b02c4efb4033e4773d13c5f941961bc2d1ccf0cd056a2b16b1282a495f2f21da",
+        "idle_completed_gpu_samples_delta": 256,
+        "pause_after_query_seconds": 0.01,
+        "reference_completed_gpu_samples_delta": 256,
+        "reference_setup_ns": 484473208,
+        "region_window_end_ns": 4707939674750,
+        "region_window_start_ns": 4697019903625,
+        "schema": "retina.foreground-biome-probes.v1",
+        "scope": "Uncached remote-coordinate stress workload. Exact same-backend biome values checked against batched answer reference; idle small-call and concurrent small-call values also verify batch-shape invariance. Same query thread is warmed before measurement. One foreground call at a time with think time after completion; request count varies with region duration. Latency includes native call/queue, excludes result comparison. Reference setup is separate from idle latency; both precede every measured native delta. Region completion/CPU window excludes foreground drain tail; native timing/profile snapshots and optional GPU interval end after drain. Not a player/FPS/Java workload. Reservoir sampling is deterministic and bounded; all answers remain checked.",
+        "status": "pass",
+        "unique_points": 16384,
+        "idle": {
+          "count": 256,
+          "descriptive_p95_ns": 1956063.0,
+          "maximum_ns": 2285917,
+          "mean_ns": 1560391.7578125,
+          "median_ns": 1583395.5,
+          "minimum_ns": 1184625,
+          "reservoir_sampled": false,
+          "retained_samples": 256,
+          "total_ns": 399460290,
+          "descriptive_p99_ns": 1993225.2999999998
+        },
+        "concurrent": {
+          "count": 733,
+          "descriptive_p95_ns": 6402583.599999996,
+          "maximum_ns": 38394375,
+          "mean_ns": 2807134.2974079126,
+          "median_ns": 1951792.0,
+          "minimum_ns": 924167,
+          "reservoir_sampled": false,
+          "retained_samples": 733,
+          "total_ns": 2057629440,
+          "descriptive_p99_ns": 19037053.559999987
+        }
+      },
+      "counters": {
+        "column_join_nanos": 378113609,
+        "dependency_evaluation_nanos": 9801635251,
+        "dependency_pool_wait_nanos": 181002331,
+        "memo_join_nanos": 5110354871,
+        "region_planner_admission_nanos": 7170305668,
+        "region_pool_wait_nanos": 131958,
+        "teardown_boundary_columns_nanos": 129581209,
+        "teardown_commands_nanos": 40683958,
+        "teardown_nanos": 561238585,
+        "teardown_other_nanos": 7673665,
+        "teardown_outputs_nanos": 13524666,
+        "teardown_terrain_nanos": 97916,
+        "teardown_versions_nanos": 1043,
+        "terrain_job_join_nanos": 1619893326,
+        "terrain_live_index_absent": 85,
+        "terrain_live_index_expired": 47,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 96.86,
+        "wait_copy": 346.68,
+        "vegetation_plan": 1335.46,
+        "structure_plan": 70.4,
+        "ore_plan": 0.4,
+        "assembly": 47.97,
+        "light_host": 23.83,
+        "light_spread": 26.0
+      },
+      "gpu_interval": {
+        "aborted_observations": 0,
+        "capture_capacity": 4096,
+        "dropped_records_during_window": 0,
+        "end_host_ns": 15900826166,
+        "end_sequence": 3678,
+        "fully_contained_completed": 1197,
+        "fully_contained_pass_sum_ns": 1410832116,
+        "fully_contained_pass_sum_saturated": false,
+        "fully_contained_pass_union_ns": 1354977171,
+        "fully_contained_without_valid_timestamps": 0,
+        "host_wall_ns": 10953371166,
+        "incoming_completed": 0,
+        "interval_peak_tracked_submissions": 4,
+        "invalid_timestamp_pairs": 23,
+        "outgoing_pending": 0,
+        "schema_version": 1,
+        "scope": "Opt-in terrain, material-emission and lighting submissions on the shared device. Enable before warmup to observe incoming work. Work submitted before capture is enabled, ore/feature/vine jobs, copies, driver compilation and untimestamped work are not covered. Host sequence marks classify whole submissions; device timestamps use a separate clock. Boundary-crossing and aborted submissions are excluded from pass aggregates. Pending work is not awaited. Union removes overlapping pass timestamps, not host time. Neither gaps, pass sums nor unions are an idle/utilization percentage. Zero passes can mean unavailable timestamps. Dropped records make coverage incomplete. Peaks count tracked submissions, not hardware occupancy.",
+        "start_host_ns": 4947455000,
+        "start_sequence": 1283,
+        "tracked_active_at_end": 0,
+        "tracked_active_at_start": 0,
+        "window_id": 1
+      }
+    },
+    "admission-foreground-3-baseline-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-foreground-3-baseline-2",
+        "--diagnostics",
+        "--gpu-interval",
+        "--foreground-biome-probes",
+        "--preservation-check",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/admission-foreground-0-baseline-2"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          30.99072265625,
+          25.0703125,
+          23.1865234375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          27.974609375,
+          24.69091796875,
+          23.08349609375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1671.1131250003746,
+        1556.6122919999543
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1956.6222909998032,
+          "dispatch_wait_ms": 2.239041999928304,
+          "return_since_batch_start_ms": 1959.3893330002174
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1945.3864579991205,
+          "dispatch_wait_ms": 2.3827080003684387,
+          "return_since_batch_start_ms": 1948.144124999999
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2489.9483330000294,
+          "dispatch_wait_ms": 1948.1652920003398,
+          "return_since_batch_start_ms": 4438.362417000462
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2803.718916999969,
+          "dispatch_wait_ms": 1959.41458300058,
+          "return_since_batch_start_ms": 4763.39950000056
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2380.5601670001124,
+          "dispatch_wait_ms": 4438.3996249998745,
+          "return_since_batch_start_ms": 6819.285499999751
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 2176.4902909999364,
+          "dispatch_wait_ms": 4763.449125000079,
+          "return_since_batch_start_ms": 6940.265250000266
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1709.9423330000718,
+          "dispatch_wait_ms": 6819.30333299988,
+          "return_since_batch_start_ms": 8529.471042000296
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1544.3365000000995,
+          "dispatch_wait_ms": 6940.285208000205,
+          "return_since_batch_start_ms": 8484.813750000285
+        }
+      ],
+      "p95_region_ms": 2693.8992125999903,
+      "p99_region_ms": 2781.7549761199734,
+      "chunks_per_second": 960.42,
+      "cpu_ms_per_region": 3193.8,
+      "peak_rss_through_generation_bytes": 3348316160,
+      "generation_sample_count": 34,
+      "generation_sample_peak_rss_bytes": 3348316160,
+      "generation_sample_median_rss_bytes": 2807799808.0,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": {
+        "elapsed_ms": 780.7134580007187,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "foreground": {
+        "batch_size": 8,
+        "corpus_batches": 2048,
+        "error": null,
+        "fixture_sha256": "e90120ac8c2b603c769a3bde6244c0eda37f3f8d053282553b98c04cb11ffd0f",
+        "foreground_tail_ns": 0,
+        "gpu_sample_counter_scope": "Legacy pipeline.completed counts completed terrain/query samples; a sample can require multiple physical submissions. CPU/constant shortcuts may have zero. This never gates generation.",
+        "idle_answers_sha256": "b02c4efb4033e4773d13c5f941961bc2d1ccf0cd056a2b16b1282a495f2f21da",
+        "idle_completed_gpu_samples_delta": 256,
+        "pause_after_query_seconds": 0.01,
+        "reference_completed_gpu_samples_delta": 256,
+        "reference_setup_ns": 483879625,
+        "region_window_end_ns": 4723989464875,
+        "region_window_start_ns": 4715459860958,
+        "schema": "retina.foreground-biome-probes.v1",
+        "scope": "Uncached remote-coordinate stress workload. Exact same-backend biome values checked against batched answer reference; idle small-call and concurrent small-call values also verify batch-shape invariance. Same query thread is warmed before measurement. One foreground call at a time with think time after completion; request count varies with region duration. Latency includes native call/queue, excludes result comparison. Reference setup is separate from idle latency; both precede every measured native delta. Region completion/CPU window excludes foreground drain tail; native timing/profile snapshots and optional GPU interval end after drain. Not a player/FPS/Java workload. Reservoir sampling is deterministic and bounded; all answers remain checked.",
+        "status": "pass",
+        "unique_points": 16384,
+        "idle": {
+          "count": 256,
+          "descriptive_p95_ns": 1968354.25,
+          "maximum_ns": 2939875,
+          "mean_ns": 1555559.5703125,
+          "median_ns": 1577145.5,
+          "minimum_ns": 890542,
+          "reservoir_sampled": false,
+          "retained_samples": 256,
+          "total_ns": 398223250,
+          "descriptive_p99_ns": 2029937.5
+        },
+        "concurrent": {
+          "count": 570,
+          "descriptive_p95_ns": 8537781.099999981,
+          "maximum_ns": 41875541,
+          "mean_ns": 2900617.187719298,
+          "median_ns": 2034604.0,
+          "minimum_ns": 1053500,
+          "reservoir_sampled": false,
+          "retained_samples": 570,
+          "total_ns": 1653351797,
+          "descriptive_p99_ns": 18765636.76999996
+        }
+      },
+      "counters": {
+        "column_join_nanos": 338461807,
+        "dependency_evaluation_nanos": 13773060042,
+        "dependency_pool_wait_nanos": 458884670,
+        "memo_join_nanos": 4012668486,
+        "region_pool_wait_nanos": 16544125,
+        "teardown_boundary_columns_nanos": 146605916,
+        "teardown_commands_nanos": 39854125,
+        "teardown_nanos": 613928043,
+        "teardown_other_nanos": 8580623,
+        "teardown_outputs_nanos": 15960791,
+        "teardown_terrain_nanos": 59167,
+        "teardown_versions_nanos": 958,
+        "terrain_job_join_nanos": 1383714767,
+        "terrain_live_index_absent": 85,
+        "terrain_live_index_expired": 39,
+        "terrain_live_index_hits": 3
+      },
+      "ms_per_region": {
+        "queue": 95.44,
+        "wait_copy": 312.71,
+        "vegetation_plan": 1853.96,
+        "structure_plan": 74.29,
+        "ore_plan": 0.59,
+        "assembly": 48.15,
+        "light_host": 34.0,
+        "light_spread": 29.69
+      },
+      "gpu_interval": {
+        "aborted_observations": 0,
+        "capture_capacity": 4096,
+        "dropped_records_during_window": 0,
+        "end_host_ns": 13438099125,
+        "end_sequence": 3298,
+        "fully_contained_completed": 1008,
+        "fully_contained_pass_sum_ns": 1337727318,
+        "fully_contained_pass_sum_saturated": false,
+        "fully_contained_pass_union_ns": 1263647912,
+        "fully_contained_without_valid_timestamps": 0,
+        "host_wall_ns": 8533036666,
+        "incoming_completed": 0,
+        "interval_peak_tracked_submissions": 4,
+        "invalid_timestamp_pairs": 26,
+        "outgoing_pending": 0,
+        "schema_version": 1,
+        "scope": "Opt-in terrain, material-emission and lighting submissions on the shared device. Enable before warmup to observe incoming work. Work submitted before capture is enabled, ore/feature/vine jobs, copies, driver compilation and untimestamped work are not covered. Host sequence marks classify whole submissions; device timestamps use a separate clock. Boundary-crossing and aborted submissions are excluded from pass aggregates. Pending work is not awaited. Union removes overlapping pass timestamps, not host time. Neither gaps, pass sums nor unions are an idle/utilization percentage. Zero passes can mean unavailable timestamps. Dropped records make coverage incomplete. Peaks count tracked submissions, not hardware occupancy.",
+        "start_host_ns": 4905062459,
+        "start_sequence": 1281,
+        "tracked_active_at_end": 0,
+        "tracked_active_at_start": 0,
+        "window_id": 1
+      }
+    },
+    "confirm-0-enabled": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/candidate.dylib",
+        "--library-revision",
+        "18302ebaf0755509",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "12",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/confirm-0-enabled"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache",
+        "RETINA_BOUND_ORDERED_PLANNERS": "1"
+      },
+      "before": {
+        "load": [
+          25.21728515625,
+          24.20703125,
+          22.9296875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          21.673828125,
+          23.46337890625,
+          22.69189453125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "18302ebaf0755509b577e5cd64057c13555189d6ff9e41354f8300c8141927ae",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1456.7907499995272,
+        1472.6133330004814
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 2307.4945410007786,
+          "dispatch_wait_ms": 2.229833000455983,
+          "return_since_batch_start_ms": 2310.1690000003146
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1172.0117080003547,
+          "dispatch_wait_ms": 2.364417000535468,
+          "return_since_batch_start_ms": 1174.6773330005453
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2153.1329160006862,
+          "dispatch_wait_ms": 1174.6950830001879,
+          "return_since_batch_start_ms": 3328.0604999999923
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2559.347333000005,
+          "dispatch_wait_ms": 2310.1886670001477,
+          "return_since_batch_start_ms": 4869.845500000338
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2761.49500000065,
+          "dispatch_wait_ms": 3328.079124999931,
+          "return_since_batch_start_ms": 6089.798832999804
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 2408.197124999788,
+          "dispatch_wait_ms": 4869.86295800034,
+          "return_since_batch_start_ms": 7278.28291700007
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1933.299750000515,
+          "dispatch_wait_ms": 6089.817916999891,
+          "return_since_batch_start_ms": 8023.401667000144
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1732.5036659995021,
+          "dispatch_wait_ms": 7278.306207999776,
+          "return_since_batch_start_ms": 9011.01962499979
+        },
+        {
+          "name": "8",
+          "x": 1,
+          "z": 2,
+          "ms": 1660.4923330005477,
+          "dispatch_wait_ms": 8023.4244170005695,
+          "return_since_batch_start_ms": 9684.170749999794
+        },
+        {
+          "name": "9",
+          "x": -1,
+          "z": 3,
+          "ms": 1506.314208000731,
+          "dispatch_wait_ms": 9011.03866700032,
+          "return_since_batch_start_ms": 10517.573500000253
+        },
+        {
+          "name": "10",
+          "x": 0,
+          "z": 3,
+          "ms": 1848.9208340006371,
+          "dispatch_wait_ms": 9684.224417000223,
+          "return_since_batch_start_ms": 11533.479958000498
+        },
+        {
+          "name": "11",
+          "x": 1,
+          "z": 3,
+          "ms": 1972.693791999518,
+          "dispatch_wait_ms": 10517.596749999939,
+          "return_since_batch_start_ms": 12490.531125000416
+        }
+      ],
+      "p95_region_ms": 2650.3137831502954,
+      "p99_region_ms": 2739.2587566305792,
+      "chunks_per_second": 983.78,
+      "cpu_ms_per_region": 2387.12,
+      "peak_rss_through_generation_bytes": 2536144896,
+      "generation_sample_count": 50,
+      "generation_sample_peak_rss_bytes": 2521120768,
+      "generation_sample_median_rss_bytes": 2417377280.0,
+      "corpus_sha256": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": null,
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_planner_admission_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 19.07,
+        "wait_copy": 205.31,
+        "vegetation_plan": 1028.2,
+        "structure_plan": 59.59,
+        "ore_plan": 13.39,
+        "assembly": 47.04,
+        "light_host": 23.52,
+        "light_spread": 25.39
+      },
+      "gpu_interval": {}
+    },
+    "confirm-1-disabled": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/candidate.dylib",
+        "--library-revision",
+        "18302ebaf0755509",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "12",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/confirm-1-disabled",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/confirm-0-enabled"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          21.673828125,
+          23.46337890625,
+          22.69189453125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          24.14501953125,
+          23.92822265625,
+          22.87109375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "18302ebaf0755509b577e5cd64057c13555189d6ff9e41354f8300c8141927ae",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1830.794208000043,
+        1715.0994579997132
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1931.623333999596,
+          "dispatch_wait_ms": 3.200750000360131,
+          "return_since_batch_start_ms": 1935.4304999997112
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1781.346291999398,
+          "dispatch_wait_ms": 3.419624999878579,
+          "return_since_batch_start_ms": 1785.7343340001535
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2689.974083999914,
+          "dispatch_wait_ms": 1785.7582500000717,
+          "return_since_batch_start_ms": 4476.12083399963
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2378.0029169993213,
+          "dispatch_wait_ms": 1935.458916999778,
+          "return_since_batch_start_ms": 4313.920542000233
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2734.6201250002196,
+          "dispatch_wait_ms": 4313.94066699977,
+          "return_since_batch_start_ms": 7048.819792000359
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 2711.438083999383,
+          "dispatch_wait_ms": 4476.145792000352,
+          "return_since_batch_start_ms": 7187.887834000321
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1954.8501249992114,
+          "dispatch_wait_ms": 7048.844666999685,
+          "return_since_batch_start_ms": 9004.140334000112
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1837.5585829999181,
+          "dispatch_wait_ms": 7187.911541999711,
+          "return_since_batch_start_ms": 9025.732916999914
+        },
+        {
+          "name": "8",
+          "x": 1,
+          "z": 2,
+          "ms": 1627.1542920003412,
+          "dispatch_wait_ms": 9004.1634170002,
+          "return_since_batch_start_ms": 10631.643208999776
+        },
+        {
+          "name": "9",
+          "x": -1,
+          "z": 3,
+          "ms": 1788.0914590004977,
+          "dispatch_wait_ms": 9025.756541999726,
+          "return_since_batch_start_ms": 10814.12979200013
+        },
+        {
+          "name": "10",
+          "x": 0,
+          "z": 3,
+          "ms": 1900.4239579999194,
+          "dispatch_wait_ms": 10631.6883340005,
+          "return_since_batch_start_ms": 12532.346791999771
+        },
+        {
+          "name": "11",
+          "x": 1,
+          "z": 3,
+          "ms": 2039.8039579995384,
+          "dispatch_wait_ms": 10814.154708999922,
+          "return_since_batch_start_ms": 12854.187875000207
+        }
+      ],
+      "p95_region_ms": 2721.8700024497593,
+      "p99_region_ms": 2732.0701004901275,
+      "chunks_per_second": 955.94,
+      "cpu_ms_per_region": 2990.04,
+      "peak_rss_through_generation_bytes": 3584917504,
+      "generation_sample_count": 51,
+      "generation_sample_peak_rss_bytes": 3564126208,
+      "generation_sample_median_rss_bytes": 3217489920,
+      "corpus_sha256": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": {
+        "identical_nbt_chunks": 12288,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_planner_admission_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 30.83,
+        "wait_copy": 217.08,
+        "vegetation_plan": 1851.11,
+        "structure_plan": 75.53,
+        "ore_plan": 0.47,
+        "assembly": 55.04,
+        "light_host": 36.74,
+        "light_spread": 30.98
+      },
+      "gpu_interval": {}
+    },
+    "confirm-2-disabled": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/candidate.dylib",
+        "--library-revision",
+        "18302ebaf0755509",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "12",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/confirm-2-disabled",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/confirm-0-enabled"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          24.14501953125,
+          23.92822265625,
+          22.87109375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          22.69287109375,
+          23.62109375,
+          22.78564453125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "18302ebaf0755509b577e5cd64057c13555189d6ff9e41354f8300c8141927ae",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1758.2467080001152,
+        1713.064666999344
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1658.2408340000256,
+          "dispatch_wait_ms": 2.5205410001944983,
+          "return_since_batch_start_ms": 1661.1548749997382
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1649.6292500005438,
+          "dispatch_wait_ms": 2.657875000295462,
+          "return_since_batch_start_ms": 1652.5137079997876
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2055.5998749996434,
+          "dispatch_wait_ms": 1652.5531659999615,
+          "return_since_batch_start_ms": 3708.5164159998385
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2164.8605000000316,
+          "dispatch_wait_ms": 1661.1736249997193,
+          "return_since_batch_start_ms": 3826.4259160005167
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2243.293083000026,
+          "dispatch_wait_ms": 3708.538625000074,
+          "return_since_batch_start_ms": 5952.129875000537
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 1960.8535829993343,
+          "dispatch_wait_ms": 3826.457125000161,
+          "return_since_batch_start_ms": 5787.506874999963
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1499.11583300036,
+          "dispatch_wait_ms": 5787.518791000366,
+          "return_since_batch_start_ms": 7286.834999999883
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1349.4303750003382,
+          "dispatch_wait_ms": 5952.147750000222,
+          "return_since_batch_start_ms": 7301.786791000268
+        },
+        {
+          "name": "8",
+          "x": 1,
+          "z": 2,
+          "ms": 1565.0892500007103,
+          "dispatch_wait_ms": 7286.862541000119,
+          "return_since_batch_start_ms": 8852.279916000043
+        },
+        {
+          "name": "9",
+          "x": -1,
+          "z": 3,
+          "ms": 1564.9391669994657,
+          "dispatch_wait_ms": 7301.835625000422,
+          "return_since_batch_start_ms": 8867.009790999873
+        },
+        {
+          "name": "10",
+          "x": 0,
+          "z": 3,
+          "ms": 2109.431959000176,
+          "dispatch_wait_ms": 8852.323166000133,
+          "return_since_batch_start_ms": 10962.186040999768
+        },
+        {
+          "name": "11",
+          "x": 1,
+          "z": 3,
+          "ms": 2274.936333000369,
+          "dispatch_wait_ms": 8867.034208000405,
+          "return_since_batch_start_ms": 11142.322458000308
+        }
+      ],
+      "p95_region_ms": 2257.5325455001803,
+      "p99_region_ms": 2271.455575500331,
+      "chunks_per_second": 1102.8,
+      "cpu_ms_per_region": 2595.89,
+      "peak_rss_through_generation_bytes": 3515613184,
+      "generation_sample_count": 44,
+      "generation_sample_peak_rss_bytes": 3494150144,
+      "generation_sample_median_rss_bytes": 3269820416.0,
+      "corpus_sha256": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": {
+        "identical_nbt_chunks": 12288,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_planner_admission_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 30.63,
+        "wait_copy": 203.51,
+        "vegetation_plan": 1572.92,
+        "structure_plan": 70.13,
+        "ore_plan": 0.43,
+        "assembly": 49.58,
+        "light_host": 32.5,
+        "light_spread": 27.99
+      },
+      "gpu_interval": {}
+    },
+    "confirm-3-enabled": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/candidate.dylib",
+        "--library-revision",
+        "18302ebaf0755509",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "12",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/confirm-3-enabled",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/confirm-0-enabled"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache",
+        "RETINA_BOUND_ORDERED_PLANNERS": "1"
+      },
+      "before": {
+        "load": [
+          22.69287109375,
+          23.62109375,
+          22.78564453125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          22.369140625,
+          23.50732421875,
+          22.759765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "18302ebaf0755509b577e5cd64057c13555189d6ff9e41354f8300c8141927ae",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1588.8130829998772,
+        1496.253207999871
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1270.3309580001587,
+          "dispatch_wait_ms": 2.217457999904582,
+          "return_since_batch_start_ms": 1272.9913329994815
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 2210.23920800053,
+          "dispatch_wait_ms": 2.364166000006662,
+          "return_since_batch_start_ms": 2212.987332999546
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 1964.1681250004694,
+          "dispatch_wait_ms": 1273.0099999998856,
+          "return_since_batch_start_ms": 3237.485165999715
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2495.6928330002484,
+          "dispatch_wait_ms": 2213.006625000162,
+          "return_since_batch_start_ms": 4708.957208000356
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2753.6572080007318,
+          "dispatch_wait_ms": 3237.50091599959,
+          "return_since_batch_start_ms": 5991.449666000335
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 2426.8042499998046,
+          "dispatch_wait_ms": 4708.978999999999,
+          "return_since_batch_start_ms": 7136.038499999813
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 2079.5924999993076,
+          "dispatch_wait_ms": 5991.469165999661,
+          "return_since_batch_start_ms": 8071.275665999565
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1813.628917000642,
+          "dispatch_wait_ms": 7136.059833000218,
+          "return_since_batch_start_ms": 8949.88850000027
+        },
+        {
+          "name": "8",
+          "x": 1,
+          "z": 2,
+          "ms": 1581.9165829998383,
+          "dispatch_wait_ms": 8071.298040999864,
+          "return_since_batch_start_ms": 9653.432791000341
+        },
+        {
+          "name": "9",
+          "x": -1,
+          "z": 3,
+          "ms": 1540.1660830002584,
+          "dispatch_wait_ms": 8949.910457999977,
+          "return_since_batch_start_ms": 10490.33345800035
+        },
+        {
+          "name": "10",
+          "x": 0,
+          "z": 3,
+          "ms": 1757.4087499997404,
+          "dispatch_wait_ms": 9653.458415999921,
+          "return_since_batch_start_ms": 11411.131541000032
+        },
+        {
+          "name": "11",
+          "x": 1,
+          "z": 3,
+          "ms": 1925.4965419995642,
+          "dispatch_wait_ms": 10490.35533299957,
+          "return_since_batch_start_ms": 12416.113332999885
+        }
+      ],
+      "p95_region_ms": 2611.776801750466,
+      "p99_region_ms": 2725.2811267506786,
+      "chunks_per_second": 989.67,
+      "cpu_ms_per_region": 2366.87,
+      "peak_rss_through_generation_bytes": 2516828160,
+      "generation_sample_count": 49,
+      "generation_sample_peak_rss_bytes": 2485305344,
+      "generation_sample_median_rss_bytes": 2447523840,
+      "corpus_sha256": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": {
+        "identical_nbt_chunks": 12288,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_planner_admission_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 18.99,
+        "wait_copy": 202.47,
+        "vegetation_plan": 1022.06,
+        "structure_plan": 59.16,
+        "ore_plan": 0.23,
+        "assembly": 46.76,
+        "light_host": 23.33,
+        "light_spread": 25.58
+      },
+      "gpu_interval": {}
+    },
+    "foreground-0-baseline-1": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/foreground-0-baseline-1",
+        "--diagnostics",
+        "--gpu-interval",
+        "--foreground-biome-probes"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          21.91748046875,
+          20.9697265625,
+          21.72509765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          21.41162109375,
+          20.9052734375,
+          21.6884765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 1,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1662.5600409997787,
+        1518.8565000007657
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1292.5101669998185,
+          "dispatch_wait_ms": 2.378333000706334,
+          "return_since_batch_start_ms": 1295.151375000387
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1049.7665839993715,
+          "dispatch_wait_ms": 1295.1690410000083,
+          "return_since_batch_start_ms": 2345.1495410008647
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 1428.3825829998023,
+          "dispatch_wait_ms": 2345.1670000004015,
+          "return_since_batch_start_ms": 3773.759291000715
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 1450.8064999999988,
+          "dispatch_wait_ms": 3773.777875000633,
+          "return_since_batch_start_ms": 5224.807750000764
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 1503.893875000358,
+          "dispatch_wait_ms": 5224.830083000597,
+          "return_since_batch_start_ms": 6728.951083000538
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 1264.9326659993676,
+          "dispatch_wait_ms": 6728.96691599999,
+          "return_since_batch_start_ms": 7994.124499999998
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1356.2213749992225,
+          "dispatch_wait_ms": 7994.148625000889,
+          "return_since_batch_start_ms": 9350.659790999998
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1225.5548749999434,
+          "dispatch_wait_ms": 9350.677666000593,
+          "return_since_batch_start_ms": 10576.466791000712
+        }
+      ],
+      "p95_region_ms": 1485.3132937502323,
+      "p99_region_ms": 1500.177758750333,
+      "chunks_per_second": 774.54,
+      "cpu_ms_per_region": 2945.49,
+      "peak_rss_through_generation_bytes": 2442100736,
+      "generation_sample_count": 41,
+      "generation_sample_peak_rss_bytes": 2418475008,
+      "generation_sample_median_rss_bytes": 2315665408,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": null,
+      "reopen": null,
+      "foreground": {
+        "batch_size": 8,
+        "corpus_batches": 2048,
+        "error": null,
+        "fixture_sha256": "e90120ac8c2b603c769a3bde6244c0eda37f3f8d053282553b98c04cb11ffd0f",
+        "foreground_tail_ns": 0,
+        "gpu_sample_counter_scope": "Legacy pipeline.completed counts completed terrain/query samples; a sample can require multiple physical submissions. CPU/constant shortcuts may have zero. This never gates generation.",
+        "idle_answers_sha256": "b02c4efb4033e4773d13c5f941961bc2d1ccf0cd056a2b16b1282a495f2f21da",
+        "idle_completed_gpu_samples_delta": 256,
+        "pause_after_query_seconds": 0.01,
+        "reference_completed_gpu_samples_delta": 256,
+        "reference_setup_ns": 544280834,
+        "region_window_end_ns": 4430798979708,
+        "region_window_start_ns": 4420222367500,
+        "schema": "retina.foreground-biome-probes.v1",
+        "scope": "Uncached remote-coordinate stress workload. Exact same-backend biome values checked against batched answer reference; idle small-call and concurrent small-call values also verify batch-shape invariance. Same query thread is warmed before measurement. One foreground call at a time with think time after completion; request count varies with region duration. Latency includes native call/queue, excludes result comparison. Reference setup is separate from idle latency; both precede every measured native delta. Region completion/CPU window excludes foreground drain tail; native timing/profile snapshots and optional GPU interval end after drain. Not a player/FPS/Java workload. Reservoir sampling is deterministic and bounded; all answers remain checked.",
+        "status": "pass",
+        "unique_points": 16384,
+        "idle": {
+          "count": 256,
+          "descriptive_p95_ns": 2001145.75,
+          "maximum_ns": 2189208,
+          "mean_ns": 1666816.234375,
+          "median_ns": 1652250.0,
+          "minimum_ns": 1248042,
+          "reservoir_sampled": false,
+          "retained_samples": 256,
+          "total_ns": 426704956,
+          "descriptive_p99_ns": 2071062.65
+        },
+        "concurrent": {
+          "count": 733,
+          "descriptive_p95_ns": 7567858.3999999985,
+          "maximum_ns": 19465209,
+          "mean_ns": 2625447.480218281,
+          "median_ns": 1861209.0,
+          "minimum_ns": 1004250,
+          "reservoir_sampled": false,
+          "retained_samples": 733,
+          "total_ns": 1924453003,
+          "descriptive_p99_ns": 14757526.319999995
+        }
+      },
+      "counters": {
+        "column_join_nanos": 316030443,
+        "dependency_evaluation_nanos": 8654518124,
+        "dependency_pool_wait_nanos": 2915499,
+        "memo_join_nanos": 4865845528,
+        "region_pool_wait_nanos": 56541,
+        "teardown_boundary_columns_nanos": 118750331,
+        "teardown_commands_nanos": 41328542,
+        "teardown_nanos": 542227542,
+        "teardown_other_nanos": 7010958,
+        "teardown_outputs_nanos": 12249624,
+        "teardown_terrain_nanos": 59499,
+        "teardown_versions_nanos": 1334,
+        "terrain_job_join_nanos": 1710625555,
+        "terrain_live_index_absent": 85,
+        "terrain_live_index_expired": 53,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 84.47,
+        "wait_copy": 333.53,
+        "vegetation_plan": 1190.51,
+        "structure_plan": 64.08,
+        "ore_plan": 0.33,
+        "assembly": 46.6,
+        "light_host": 28.56,
+        "light_spread": 30.17
+      },
+      "gpu_interval": {
+        "aborted_observations": 0,
+        "capture_capacity": 4096,
+        "dropped_records_during_window": 0,
+        "end_host_ns": 15561133750,
+        "end_sequence": 3694,
+        "fully_contained_completed": 1205,
+        "fully_contained_pass_sum_ns": 1471188623,
+        "fully_contained_pass_sum_saturated": false,
+        "fully_contained_pass_union_ns": 1419892670,
+        "fully_contained_without_valid_timestamps": 0,
+        "host_wall_ns": 10581019375,
+        "incoming_completed": 0,
+        "interval_peak_tracked_submissions": 3,
+        "invalid_timestamp_pairs": 24,
+        "outgoing_pending": 0,
+        "schema_version": 1,
+        "scope": "Opt-in terrain, material-emission and lighting submissions on the shared device. Enable before warmup to observe incoming work. Work submitted before capture is enabled, ore/feature/vine jobs, copies, driver compilation and untimestamped work are not covered. Host sequence marks classify whole submissions; device timestamps use a separate clock. Boundary-crossing and aborted submissions are excluded from pass aggregates. Pending work is not awaited. Union removes overlapping pass timestamps, not host time. Neither gaps, pass sums nor unions are an idle/utilization percentage. Zero passes can mean unavailable timestamps. Dropped records make coverage incomplete. Peaks count tracked submissions, not hardware occupancy.",
+        "start_host_ns": 4980114375,
+        "start_sequence": 1283,
+        "tracked_active_at_end": 0,
+        "tracked_active_at_start": 0,
+        "window_id": 1
+      }
+    },
+    "foreground-1-baseline-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/foreground-1-baseline-2",
+        "--diagnostics",
+        "--gpu-interval",
+        "--foreground-biome-probes",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/foreground-0-baseline-1"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          21.41162109375,
+          20.9052734375,
+          21.6884765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          22.46630859375,
+          21.18212890625,
+          21.77392578125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        2305.0086250004824,
+        1872.4351669998214
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 2238.6952079996263,
+          "dispatch_wait_ms": 3.0535830001099384,
+          "return_since_batch_start_ms": 2242.6616249995277
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 2382.051292000142,
+          "dispatch_wait_ms": 3.3418329994674423,
+          "return_since_batch_start_ms": 2386.012082999514
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2727.597834000335,
+          "dispatch_wait_ms": 2242.69112499951,
+          "return_since_batch_start_ms": 4970.567290999497
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2356.863083000462,
+          "dispatch_wait_ms": 2386.0395409992634,
+          "return_since_batch_start_ms": 4743.157582999629
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2218.945958000404,
+          "dispatch_wait_ms": 4743.173457999546,
+          "return_since_batch_start_ms": 6962.351332999788
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 2381.6833330001828,
+          "dispatch_wait_ms": 4970.59120799986,
+          "return_since_batch_start_ms": 7352.500540999245
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1616.6997499994977,
+          "dispatch_wait_ms": 6962.373249999473,
+          "return_since_batch_start_ms": 8579.321374999381
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1390.795459000401,
+          "dispatch_wait_ms": 7352.520665999691,
+          "return_since_batch_start_ms": 8743.578040999637
+        }
+      ],
+      "p95_region_ms": 2606.6565443002673,
+      "p99_region_ms": 2703.4095760603213,
+      "chunks_per_second": 936.9,
+      "cpu_ms_per_region": 3266.05,
+      "peak_rss_through_generation_bytes": 3447767040,
+      "generation_sample_count": 35,
+      "generation_sample_peak_rss_bytes": 3417735168,
+      "generation_sample_median_rss_bytes": 2763849728,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": {
+        "batch_size": 8,
+        "corpus_batches": 2048,
+        "error": null,
+        "fixture_sha256": "e90120ac8c2b603c769a3bde6244c0eda37f3f8d053282553b98c04cb11ffd0f",
+        "foreground_tail_ns": 0,
+        "gpu_sample_counter_scope": "Legacy pipeline.completed counts completed terrain/query samples; a sample can require multiple physical submissions. CPU/constant shortcuts may have zero. This never gates generation.",
+        "idle_answers_sha256": "b02c4efb4033e4773d13c5f941961bc2d1ccf0cd056a2b16b1282a495f2f21da",
+        "idle_completed_gpu_samples_delta": 256,
+        "pause_after_query_seconds": 0.01,
+        "reference_completed_gpu_samples_delta": 256,
+        "reference_setup_ns": 680539125,
+        "region_window_end_ns": 4447034716291,
+        "region_window_start_ns": 4438291013875,
+        "schema": "retina.foreground-biome-probes.v1",
+        "scope": "Uncached remote-coordinate stress workload. Exact same-backend biome values checked against batched answer reference; idle small-call and concurrent small-call values also verify batch-shape invariance. Same query thread is warmed before measurement. One foreground call at a time with think time after completion; request count varies with region duration. Latency includes native call/queue, excludes result comparison. Reference setup is separate from idle latency; both precede every measured native delta. Region completion/CPU window excludes foreground drain tail; native timing/profile snapshots and optional GPU interval end after drain. Not a player/FPS/Java workload. Reservoir sampling is deterministic and bounded; all answers remain checked.",
+        "status": "pass",
+        "unique_points": 16384,
+        "idle": {
+          "count": 256,
+          "descriptive_p95_ns": 2211709.0,
+          "maximum_ns": 2500167,
+          "mean_ns": 1843370.96875,
+          "median_ns": 1789896.0,
+          "minimum_ns": 1284792,
+          "reservoir_sampled": false,
+          "retained_samples": 256,
+          "total_ns": 471902968,
+          "descriptive_p99_ns": 2382248.0999999996
+        },
+        "concurrent": {
+          "count": 601,
+          "descriptive_p95_ns": 8223875.0,
+          "maximum_ns": 46471667,
+          "mean_ns": 2794082.49750416,
+          "median_ns": 1949417.0,
+          "minimum_ns": 1135250,
+          "reservoir_sampled": false,
+          "retained_samples": 601,
+          "total_ns": 1679243581,
+          "descriptive_p99_ns": 17320209.0
+        }
+      },
+      "counters": {
+        "column_join_nanos": 321741016,
+        "dependency_evaluation_nanos": 13954205918,
+        "dependency_pool_wait_nanos": 315458458,
+        "memo_join_nanos": 4315645308,
+        "region_pool_wait_nanos": 72676415,
+        "teardown_boundary_columns_nanos": 145485584,
+        "teardown_commands_nanos": 37866126,
+        "teardown_nanos": 608962626,
+        "teardown_other_nanos": 8335711,
+        "teardown_outputs_nanos": 14807500,
+        "teardown_terrain_nanos": 171750,
+        "teardown_versions_nanos": 1209,
+        "terrain_job_join_nanos": 1339940094,
+        "terrain_live_index_absent": 85,
+        "terrain_live_index_expired": 39,
+        "terrain_live_index_hits": 3
+      },
+      "ms_per_region": {
+        "queue": 93.51,
+        "wait_copy": 320.36,
+        "vegetation_plan": 1879.3,
+        "structure_plan": 77.42,
+        "ore_plan": 0.38,
+        "assembly": 48.31,
+        "light_host": 30.28,
+        "light_spread": 33.11
+      },
+      "gpu_interval": {
+        "aborted_observations": 0,
+        "capture_capacity": 4096,
+        "dropped_records_during_window": 0,
+        "end_host_ns": 15190005333,
+        "end_sequence": 3366,
+        "fully_contained_completed": 1041,
+        "fully_contained_pass_sum_ns": 1412913327,
+        "fully_contained_pass_sum_saturated": false,
+        "fully_contained_pass_union_ns": 1302839086,
+        "fully_contained_without_valid_timestamps": 0,
+        "host_wall_ns": 8746862875,
+        "incoming_completed": 0,
+        "interval_peak_tracked_submissions": 4,
+        "invalid_timestamp_pairs": 20,
+        "outgoing_pending": 0,
+        "schema_version": 1,
+        "scope": "Opt-in terrain, material-emission and lighting submissions on the shared device. Enable before warmup to observe incoming work. Work submitted before capture is enabled, ore/feature/vine jobs, copies, driver compilation and untimestamped work are not covered. Host sequence marks classify whole submissions; device timestamps use a separate clock. Boundary-crossing and aborted submissions are excluded from pass aggregates. Pending work is not awaited. Union removes overlapping pass timestamps, not host time. Neither gaps, pass sums nor unions are an idle/utilization percentage. Zero passes can mean unavailable timestamps. Dropped records make coverage incomplete. Peaks count tracked submissions, not hardware occupancy.",
+        "start_host_ns": 6443142458,
+        "start_sequence": 1283,
+        "tracked_active_at_end": 0,
+        "tracked_active_at_start": 0,
+        "window_id": 1
+      }
+    },
+    "foreground-2-baseline-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/foreground-2-baseline-2",
+        "--diagnostics",
+        "--gpu-interval",
+        "--foreground-biome-probes",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/foreground-0-baseline-1"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          22.46630859375,
+          21.18212890625,
+          21.77392578125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          21.619140625,
+          21.044921875,
+          21.71337890625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1399.4664159999957,
+        1224.9350420006522
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 2150.0861250005983,
+          "dispatch_wait_ms": 1.8556660006652237,
+          "return_since_batch_start_ms": 2152.357041000869
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 2390.2675839999574,
+          "dispatch_wait_ms": 2.0061250006619957,
+          "return_since_batch_start_ms": 2392.5480410007367
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 2438.056625000172,
+          "dispatch_wait_ms": 2152.3856250005338,
+          "return_since_batch_start_ms": 4590.767583000343
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 2655.7616659993073,
+          "dispatch_wait_ms": 2392.584958000043,
+          "return_since_batch_start_ms": 5048.584750000373
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 2318.6883749995104,
+          "dispatch_wait_ms": 4590.786958000535,
+          "return_since_batch_start_ms": 6909.691750000093
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 2315.745582999625,
+          "dispatch_wait_ms": 5048.607583000376,
+          "return_since_batch_start_ms": 7364.61429100018
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1908.4632499998406,
+          "dispatch_wait_ms": 6909.712958000455,
+          "return_since_batch_start_ms": 8818.408583000746
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1529.1274170003817,
+          "dispatch_wait_ms": 7364.638958000796,
+          "return_since_batch_start_ms": 8894.021291000172
+        }
+      ],
+      "p95_region_ms": 2579.56490164961,
+      "p99_region_ms": 2640.522313129368,
+      "chunks_per_second": 921.05,
+      "cpu_ms_per_region": 3378.29,
+      "peak_rss_through_generation_bytes": 3389652992,
+      "generation_sample_count": 35,
+      "generation_sample_peak_rss_bytes": 3368910848,
+      "generation_sample_median_rss_bytes": 2749202432,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": {
+        "batch_size": 8,
+        "corpus_batches": 2048,
+        "error": null,
+        "fixture_sha256": "e90120ac8c2b603c769a3bde6244c0eda37f3f8d053282553b98c04cb11ffd0f",
+        "foreground_tail_ns": 1142917,
+        "gpu_sample_counter_scope": "Legacy pipeline.completed counts completed terrain/query samples; a sample can require multiple physical submissions. CPU/constant shortcuts may have zero. This never gates generation.",
+        "idle_answers_sha256": "b02c4efb4033e4773d13c5f941961bc2d1ccf0cd056a2b16b1282a495f2f21da",
+        "idle_completed_gpu_samples_delta": 256,
+        "pause_after_query_seconds": 0.01,
+        "reference_completed_gpu_samples_delta": 256,
+        "reference_setup_ns": 461802500,
+        "region_window_end_ns": 4461539131708,
+        "region_window_start_ns": 4452644975875,
+        "schema": "retina.foreground-biome-probes.v1",
+        "scope": "Uncached remote-coordinate stress workload. Exact same-backend biome values checked against batched answer reference; idle small-call and concurrent small-call values also verify batch-shape invariance. Same query thread is warmed before measurement. One foreground call at a time with think time after completion; request count varies with region duration. Latency includes native call/queue, excludes result comparison. Reference setup is separate from idle latency; both precede every measured native delta. Region completion/CPU window excludes foreground drain tail; native timing/profile snapshots and optional GPU interval end after drain. Not a player/FPS/Java workload. Reservoir sampling is deterministic and bounded; all answers remain checked.",
+        "status": "pass",
+        "unique_points": 16384,
+        "idle": {
+          "count": 256,
+          "descriptive_p95_ns": 1916937.0,
+          "maximum_ns": 2014000,
+          "mean_ns": 1452128.4296875,
+          "median_ns": 1320667.0,
+          "minimum_ns": 1064042,
+          "reservoir_sampled": false,
+          "retained_samples": 256,
+          "total_ns": 371744878,
+          "descriptive_p99_ns": 1980577.4499999997
+        },
+        "concurrent": {
+          "count": 612,
+          "descriptive_p95_ns": 8447268.600000007,
+          "maximum_ns": 36092250,
+          "mean_ns": 2655357.6601307187,
+          "median_ns": 1890396.0,
+          "minimum_ns": 1046500,
+          "reservoir_sampled": false,
+          "retained_samples": 612,
+          "total_ns": 1625078888,
+          "descriptive_p99_ns": 14813514.38999999
+        }
+      },
+      "counters": {
+        "column_join_nanos": 370161677,
+        "dependency_evaluation_nanos": 13963347958,
+        "dependency_pool_wait_nanos": 339256372,
+        "memo_join_nanos": 4645947573,
+        "region_pool_wait_nanos": 78418290,
+        "teardown_boundary_columns_nanos": 154341042,
+        "teardown_commands_nanos": 42065916,
+        "teardown_nanos": 663828666,
+        "teardown_other_nanos": 8708878,
+        "teardown_outputs_nanos": 15757625,
+        "teardown_terrain_nanos": 62084,
+        "teardown_versions_nanos": 1209,
+        "terrain_job_join_nanos": 1135018890,
+        "terrain_live_index_absent": 85,
+        "terrain_live_index_expired": 29,
+        "terrain_live_index_hits": 2
+      },
+      "ms_per_region": {
+        "queue": 76.49,
+        "wait_copy": 290.4,
+        "vegetation_plan": 1883.77,
+        "structure_plan": 75.71,
+        "ore_plan": 0.39,
+        "assembly": 52.31,
+        "light_host": 28.94,
+        "light_spread": 29.86
+      },
+      "gpu_interval": {
+        "aborted_observations": 0,
+        "capture_capacity": 4096,
+        "dropped_records_during_window": 0,
+        "end_host_ns": 13130750459,
+        "end_sequence": 3326,
+        "fully_contained_completed": 1021,
+        "fully_contained_pass_sum_ns": 1301247215,
+        "fully_contained_pass_sum_saturated": false,
+        "fully_contained_pass_union_ns": 1235120880,
+        "fully_contained_without_valid_timestamps": 0,
+        "host_wall_ns": 8898882459,
+        "incoming_completed": 0,
+        "interval_peak_tracked_submissions": 4,
+        "invalid_timestamp_pairs": 19,
+        "outgoing_pending": 0,
+        "schema_version": 1,
+        "scope": "Opt-in terrain, material-emission and lighting submissions on the shared device. Enable before warmup to observe incoming work. Work submitted before capture is enabled, ore/feature/vine jobs, copies, driver compilation and untimestamped work are not covered. Host sequence marks classify whole submissions; device timestamps use a separate clock. Boundary-crossing and aborted submissions are excluded from pass aggregates. Pending work is not awaited. Union removes overlapping pass timestamps, not host time. Neither gaps, pass sums nor unions are an idle/utilization percentage. Zero passes can mean unavailable timestamps. Dropped records make coverage incomplete. Peaks count tracked submissions, not hardware occupancy.",
+        "start_host_ns": 4231868000,
+        "start_sequence": 1283,
+        "tracked_active_at_end": 0,
+        "tracked_active_at_start": 0,
+        "window_id": 1
+      }
+    },
+    "foreground-3-baseline-1": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/foreground-3-baseline-1",
+        "--diagnostics",
+        "--gpu-interval",
+        "--foreground-biome-probes",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/foreground-0-baseline-1"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          21.619140625,
+          21.044921875,
+          21.71337890625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          22.7578125,
+          21.30859375,
+          21.7900390625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 1,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1690.3111250003349,
+        1613.4671660001914
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1317.913208000391,
+          "dispatch_wait_ms": 2.2579579999728594,
+          "return_since_batch_start_ms": 1320.4909579999367
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1134.379791000356,
+          "dispatch_wait_ms": 1320.5142080005317,
+          "return_since_batch_start_ms": 2455.1403750001555
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 1616.167874999519,
+          "dispatch_wait_ms": 2455.165874999693,
+          "return_since_batch_start_ms": 4071.592457999941
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 1575.8357499998965,
+          "dispatch_wait_ms": 4071.6123749998587,
+          "return_since_batch_start_ms": 5647.69270800025
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 1643.9375840000139,
+          "dispatch_wait_ms": 5647.7108750004845,
+          "return_since_batch_start_ms": 7291.90670800017
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 1244.3651659996249,
+          "dispatch_wait_ms": 7291.921375000129,
+          "return_since_batch_start_ms": 8536.445124999773
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1186.8029580000439,
+          "dispatch_wait_ms": 8536.463833000198,
+          "return_since_batch_start_ms": 9723.478040999908
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 977.5425839998206,
+          "dispatch_wait_ms": 9723.49904099974,
+          "return_since_batch_start_ms": 10701.22637500026
+        }
+      ],
+      "p95_region_ms": 1634.2181858498407,
+      "p99_region_ms": 1641.9937043699792,
+      "chunks_per_second": 765.51,
+      "cpu_ms_per_region": 3004.54,
+      "peak_rss_through_generation_bytes": 2489794560,
+      "generation_sample_count": 42,
+      "generation_sample_peak_rss_bytes": 2459779072,
+      "generation_sample_median_rss_bytes": 2218688512.0,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": {
+        "batch_size": 8,
+        "corpus_batches": 2048,
+        "error": null,
+        "fixture_sha256": "e90120ac8c2b603c769a3bde6244c0eda37f3f8d053282553b98c04cb11ffd0f",
+        "foreground_tail_ns": 0,
+        "gpu_sample_counter_scope": "Legacy pipeline.completed counts completed terrain/query samples; a sample can require multiple physical submissions. CPU/constant shortcuts may have zero. This never gates generation.",
+        "idle_answers_sha256": "b02c4efb4033e4773d13c5f941961bc2d1ccf0cd056a2b16b1282a495f2f21da",
+        "idle_completed_gpu_samples_delta": 256,
+        "pause_after_query_seconds": 0.01,
+        "reference_completed_gpu_samples_delta": 256,
+        "reference_setup_ns": 502718000,
+        "region_window_end_ns": 4478961670916,
+        "region_window_start_ns": 4468260329375,
+        "schema": "retina.foreground-biome-probes.v1",
+        "scope": "Uncached remote-coordinate stress workload. Exact same-backend biome values checked against batched answer reference; idle small-call and concurrent small-call values also verify batch-shape invariance. Same query thread is warmed before measurement. One foreground call at a time with think time after completion; request count varies with region duration. Latency includes native call/queue, excludes result comparison. Reference setup is separate from idle latency; both precede every measured native delta. Region completion/CPU window excludes foreground drain tail; native timing/profile snapshots and optional GPU interval end after drain. Not a player/FPS/Java workload. Reservoir sampling is deterministic and bounded; all answers remain checked.",
+        "status": "pass",
+        "unique_points": 16384,
+        "idle": {
+          "count": 256,
+          "descriptive_p95_ns": 1972395.5,
+          "maximum_ns": 2361167,
+          "mean_ns": 1625199.20703125,
+          "median_ns": 1617354.0,
+          "minimum_ns": 1219916,
+          "reservoir_sampled": false,
+          "retained_samples": 256,
+          "total_ns": 416050997,
+          "descriptive_p99_ns": 2029256.1
+        },
+        "concurrent": {
+          "count": 749,
+          "descriptive_p95_ns": 7187516.600000003,
+          "maximum_ns": 18864333,
+          "mean_ns": 2429088.5981308413,
+          "median_ns": 1825000.0,
+          "minimum_ns": 1003875,
+          "reservoir_sampled": false,
+          "retained_samples": 749,
+          "total_ns": 1819387360,
+          "descriptive_p99_ns": 13589172.159999996
+        }
+      },
+      "counters": {
+        "column_join_nanos": 314408321,
+        "dependency_evaluation_nanos": 8833055459,
+        "dependency_pool_wait_nanos": 257082,
+        "memo_join_nanos": 4985931246,
+        "region_pool_wait_nanos": 86416,
+        "teardown_boundary_columns_nanos": 118267374,
+        "teardown_commands_nanos": 35835042,
+        "teardown_nanos": 538203962,
+        "teardown_other_nanos": 7101249,
+        "teardown_outputs_nanos": 12823293,
+        "teardown_terrain_nanos": 58127,
+        "teardown_versions_nanos": 1374,
+        "terrain_job_join_nanos": 1697786613,
+        "terrain_live_index_absent": 85,
+        "terrain_live_index_expired": 53,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 80.65,
+        "wait_copy": 330.27,
+        "vegetation_plan": 1211.61,
+        "structure_plan": 68.41,
+        "ore_plan": 0.26,
+        "assembly": 46.07,
+        "light_host": 27.37,
+        "light_spread": 29.05
+      },
+      "gpu_interval": {
+        "aborted_observations": 0,
+        "capture_capacity": 4096,
+        "dropped_records_during_window": 0,
+        "end_host_ns": 15761957084,
+        "end_sequence": 3726,
+        "fully_contained_completed": 1221,
+        "fully_contained_pass_sum_ns": 1473873726,
+        "fully_contained_pass_sum_saturated": false,
+        "fully_contained_pass_union_ns": 1415390560,
+        "fully_contained_without_valid_timestamps": 0,
+        "host_wall_ns": 10705400792,
+        "incoming_completed": 0,
+        "interval_peak_tracked_submissions": 3,
+        "invalid_timestamp_pairs": 35,
+        "outgoing_pending": 0,
+        "schema_version": 1,
+        "scope": "Opt-in terrain, material-emission and lighting submissions on the shared device. Enable before warmup to observe incoming work. Work submitted before capture is enabled, ore/feature/vine jobs, copies, driver compilation and untimestamped work are not covered. Host sequence marks classify whole submissions; device timestamps use a separate clock. Boundary-crossing and aborted submissions are excluded from pass aggregates. Pending work is not awaited. Union removes overlapping pass timestamps, not host time. Neither gaps, pass sums nor unions are an idle/utilization percentage. Zero passes can mean unavailable timestamps. Dropped records make coverage incomplete. Peaks count tracked submissions, not hardware occupancy.",
+        "start_host_ns": 5056556292,
+        "start_sequence": 1283,
+        "tracked_active_at_end": 0,
+        "tracked_active_at_start": 0,
+        "window_id": 1
+      }
+    },
+    "generation-0-baseline-1": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/generation-0-baseline-1"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          23.1025390625,
+          21.14404296875,
+          21.8349609375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          21.5810546875,
+          20.876953125,
+          21.73095703125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 1,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1212.1705419995124,
+        1036.651792000157
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 853.3251250000831,
+          "dispatch_wait_ms": 1.8530839997765725,
+          "return_since_batch_start_ms": 855.3532500000074
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 715.8770830001231,
+          "dispatch_wait_ms": 855.376666999291,
+          "return_since_batch_start_ms": 1571.4429589997962
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 961.0543749995486,
+          "dispatch_wait_ms": 1571.4575839992904,
+          "return_since_batch_start_ms": 2532.69199999977
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 982.0059580006273,
+          "dispatch_wait_ms": 2532.705666999391,
+          "return_since_batch_start_ms": 3514.8952089994054
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 1038.2044580001093,
+          "dispatch_wait_ms": 3514.9101669994707,
+          "return_since_batch_start_ms": 4553.261874999407
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 819.2359999993641,
+          "dispatch_wait_ms": 4553.276124999684,
+          "return_since_batch_start_ms": 5372.691499999746
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 743.2987089996459,
+          "dispatch_wait_ms": 5372.714374999305,
+          "return_since_batch_start_ms": 6116.189958999712
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 651.4822920007646,
+          "dispatch_wait_ms": 6116.202791999967,
+          "return_since_batch_start_ms": 6767.8194999998595
+        }
+      ],
+      "p95_region_ms": 1018.5349830002906,
+      "p99_region_ms": 1034.2705630001456,
+      "chunks_per_second": 1210.42,
+      "cpu_ms_per_region": 1731.01,
+      "peak_rss_through_generation_bytes": 2434613248,
+      "generation_sample_count": 27,
+      "generation_sample_peak_rss_bytes": 2404597760,
+      "generation_sample_median_rss_bytes": 2228338688,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": null,
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 17.8,
+        "wait_copy": 194.53,
+        "vegetation_plan": 740.97,
+        "structure_plan": 56.0,
+        "ore_plan": 0.18,
+        "assembly": 31.7,
+        "light_host": 24.42,
+        "light_spread": 26.41
+      },
+      "gpu_interval": {}
+    },
+    "generation-1-baseline-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/generation-1-baseline-2",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/generation-0-baseline-1"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          21.5810546875,
+          20.876953125,
+          21.73095703125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          21.39501953125,
+          20.85009765625,
+          21.71044921875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1191.4059589998942,
+        1019.0533340000911
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1123.4803329998613,
+          "dispatch_wait_ms": 1.7169579996334505,
+          "return_since_batch_start_ms": 1125.4671659999076
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1270.5412909999723,
+          "dispatch_wait_ms": 1.7941249998330022,
+          "return_since_batch_start_ms": 1272.5219579997429
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 1315.8325840004181,
+          "dispatch_wait_ms": 1125.486040999931,
+          "return_since_batch_start_ms": 2441.5153330000976
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 1381.6804160005631,
+          "dispatch_wait_ms": 1272.5413749994914,
+          "return_since_batch_start_ms": 2654.432665999593
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 1347.63033299987,
+          "dispatch_wait_ms": 2441.5347909998673,
+          "return_since_batch_start_ms": 3789.3634160000147
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 1420.3124579998985,
+          "dispatch_wait_ms": 2654.447791000166,
+          "return_since_batch_start_ms": 4074.901250000039
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1167.9209169997193,
+          "dispatch_wait_ms": 3789.382832999763,
+          "return_since_batch_start_ms": 4957.49266599978
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 906.9457499999771,
+          "dispatch_wait_ms": 4074.916540999766,
+          "return_since_batch_start_ms": 4982.006833000014
+        }
+      ],
+      "p95_region_ms": 1406.791243300131,
+      "p99_region_ms": 1417.608215059945,
+      "chunks_per_second": 1644.29,
+      "cpu_ms_per_region": 1785.41,
+      "peak_rss_through_generation_bytes": 3493658624,
+      "generation_sample_count": 20,
+      "generation_sample_peak_rss_bytes": 3462791168,
+      "generation_sample_median_rss_bytes": 2860359680.0,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 17.57,
+        "wait_copy": 172.09,
+        "vegetation_plan": 1045.75,
+        "structure_plan": 57.62,
+        "ore_plan": 0.24,
+        "assembly": 32.81,
+        "light_host": 25.73,
+        "light_spread": 29.0
+      },
+      "gpu_interval": {}
+    },
+    "generation-2-baseline-2": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "2",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/generation-2-baseline-2",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/generation-0-baseline-1"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          21.39501953125,
+          20.85009765625,
+          21.71044921875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          20.50439453125,
+          20.67431640625,
+          21.6376953125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 2,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1363.0772500000603,
+        1053.9185419993373
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1141.0208750003221,
+          "dispatch_wait_ms": 1.8728750001173466,
+          "return_since_batch_start_ms": 1143.1946249995235
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 1151.4345839996167,
+          "dispatch_wait_ms": 1.9782090002991026,
+          "return_since_batch_start_ms": 1153.604125000129
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 1415.8943749998798,
+          "dispatch_wait_ms": 1143.2097500000964,
+          "return_since_batch_start_ms": 2559.3492090001746
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 1417.7455000008194,
+          "dispatch_wait_ms": 1153.6222499998985,
+          "return_since_batch_start_ms": 2571.5809169996646
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 1571.0512080004264,
+          "dispatch_wait_ms": 2559.3672919994788,
+          "return_since_batch_start_ms": 4130.59662500018
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 1439.0777090002302,
+          "dispatch_wait_ms": 2571.60233400009,
+          "return_since_batch_start_ms": 4010.8833750000485
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1159.5389170006456,
+          "dispatch_wait_ms": 4010.8947090002403,
+          "return_since_batch_start_ms": 5170.5795839998245
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1050.9142920000158,
+          "dispatch_wait_ms": 4130.6147919995055,
+          "return_since_batch_start_ms": 5181.731374999799
+        }
+      ],
+      "p95_region_ms": 1524.8604833503578,
+      "p99_region_ms": 1561.8130630704127,
+      "chunks_per_second": 1580.9,
+      "cpu_ms_per_region": 1807.75,
+      "peak_rss_through_generation_bytes": 3468443648,
+      "generation_sample_count": 21,
+      "generation_sample_peak_rss_bytes": 3446620160,
+      "generation_sample_median_rss_bytes": 2827993088,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 31.24,
+        "wait_copy": 196.59,
+        "vegetation_plan": 1122.22,
+        "structure_plan": 68.7,
+        "ore_plan": 0.22,
+        "assembly": 32.46,
+        "light_host": 33.97,
+        "light_spread": 29.91
+      },
+      "gpu_interval": {}
+    },
+    "generation-3-baseline-1": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-480/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "metal",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "8",
+        "--warmups",
+        "2",
+        "--readiness",
+        "shader-ready",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/generation-3-baseline-1",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-480/generation-0-baseline-1"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          20.50439453125,
+          20.67431640625,
+          21.6376953125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          21.91748046875,
+          20.9697265625,
+          21.72509765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "Metal: Apple M4 Max",
+      "parallel": 1,
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "readiness_effective": "shader-ready",
+      "warmups_ms": [
+        1518.436291999933,
+        1464.9197920007282
+      ],
+      "regions": [
+        {
+          "name": "0",
+          "x": -1,
+          "z": 0,
+          "ms": 1150.7318329995542,
+          "dispatch_wait_ms": 1.9762500005526817,
+          "return_since_batch_start_ms": 1152.9508330004319
+        },
+        {
+          "name": "1",
+          "x": 0,
+          "z": 0,
+          "ms": 974.4649590002155,
+          "dispatch_wait_ms": 1152.9815419999068,
+          "return_since_batch_start_ms": 2127.7106249999633
+        },
+        {
+          "name": "2",
+          "x": 1,
+          "z": 0,
+          "ms": 1360.3304170001138,
+          "dispatch_wait_ms": 2127.737583000453,
+          "return_since_batch_start_ms": 3488.388292000309
+        },
+        {
+          "name": "3",
+          "x": -1,
+          "z": 1,
+          "ms": 1333.3058340003845,
+          "dispatch_wait_ms": 3488.4115419999944,
+          "return_since_batch_start_ms": 4821.967374999986
+        },
+        {
+          "name": "4",
+          "x": 0,
+          "z": 1,
+          "ms": 1376.1459159995866,
+          "dispatch_wait_ms": 4821.991792000517,
+          "return_since_batch_start_ms": 6198.327750000317
+        },
+        {
+          "name": "5",
+          "x": 1,
+          "z": 1,
+          "ms": 1119.418790999589,
+          "dispatch_wait_ms": 6198.344917000213,
+          "return_since_batch_start_ms": 7317.958708000333
+        },
+        {
+          "name": "6",
+          "x": -1,
+          "z": 2,
+          "ms": 1056.5928329997405,
+          "dispatch_wait_ms": 7317.97883300078,
+          "return_since_batch_start_ms": 8374.775250000312
+        },
+        {
+          "name": "7",
+          "x": 0,
+          "z": 2,
+          "ms": 1056.6356660001475,
+          "dispatch_wait_ms": 8374.800208000124,
+          "return_since_batch_start_ms": 9431.832541999938
+        }
+      ],
+      "p95_region_ms": 1370.610491349771,
+      "p99_region_ms": 1375.0388310696235,
+      "chunks_per_second": 868.52,
+      "cpu_ms_per_region": 2452.48,
+      "peak_rss_through_generation_bytes": 2413985792,
+      "generation_sample_count": 37,
+      "generation_sample_peak_rss_bytes": 2389262336,
+      "generation_sample_median_rss_bytes": 2271559680,
+      "corpus_sha256": "804b33ebdd19d975a4f3b2b69c466def2c19338f664643b25eb0985600d4a388",
+      "comparison": {
+        "identical_nbt_chunks": 8192,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "foreground": null,
+      "counters": {
+        "column_join_nanos": 0,
+        "dependency_evaluation_nanos": 0,
+        "dependency_pool_wait_nanos": 0,
+        "memo_join_nanos": 0,
+        "region_pool_wait_nanos": 0,
+        "teardown_boundary_columns_nanos": 0,
+        "teardown_commands_nanos": 0,
+        "teardown_nanos": 0,
+        "teardown_other_nanos": 0,
+        "teardown_outputs_nanos": 0,
+        "teardown_terrain_nanos": 0,
+        "teardown_versions_nanos": 0,
+        "terrain_job_join_nanos": 0,
+        "terrain_live_index_absent": 0,
+        "terrain_live_index_expired": 0,
+        "terrain_live_index_hits": 0
+      },
+      "ms_per_region": {
+        "queue": 19.14,
+        "wait_copy": 202.77,
+        "vegetation_plan": 1019.34,
+        "structure_plan": 63.33,
+        "ore_plan": 0.29,
+        "assembly": 46.3,
+        "light_host": 29.42,
+        "light_spread": 30.31
+      },
+      "gpu_interval": {}
+    }
+  }
+}
