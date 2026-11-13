@@ -144,7 +144,9 @@ pub(crate) fn interpreter_body(
     prefix: &str,
     compact: bool,
 ) -> String {
+    // Keep linear spline selection as the GPU parity oracle.
     interpreter_body_impl(capacity, depth, prefix, compact, false)
+        .replace("if p.w==1.0 {", "if false {")
 }
 fn interpreter_body_impl(
     capacity: usize,
@@ -437,7 +439,16 @@ impl RegistryProgram {
             }
             for n in &program.nodes {
                 words.extend([n.op, n.a, n.b, n.c]);
-                words.extend(n.p.map(f32::to_bits));
+                let mut params = n.p.map(f32::to_bits);
+                if n.op == 25 {
+                    // This parameter is unused in saved spline instructions.
+                    // Unordered tables retain the original linear scan.
+                    let knots = &p.points[n.b as usize..(n.b + n.c) as usize];
+                    let ordered = knots.len() >= 8
+                        && knots.windows(2).all(|pair| pair[0][0] <= pair[1][0]);
+                    params[3] = if ordered { 1.0f32.to_bits() } else { 0 };
+                }
+                words.extend(params);
             }
             words.extend(program.registers(&p.points).slots);
         }
