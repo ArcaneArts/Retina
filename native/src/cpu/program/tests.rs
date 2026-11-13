@@ -424,6 +424,9 @@ fn actual_vanilla_programs_match_eager_scheduling_with_reused_context_and_caches
         let profile = definition.dimension(dimension).unwrap().profile().unwrap();
         let registry = profile.registry_program.clone().unwrap();
         let p = Prepared::new(Arc::new(registry)).unwrap();
+        if dimension == "minecraft:the_nether" {
+            assert!(p.plans[3..3 + profile.biomes.len()].iter().all(|plan| plan.material.is_some()));
+        }
         let mut lazy = p.evaluator(123456789, 63, &[]);
         let mut eager = p.evaluator(123456789, 63, &[]);
         eager.eager = true;
@@ -453,6 +456,37 @@ fn actual_vanilla_programs_match_eager_scheduling_with_reused_context_and_caches
             }
         }
     }
+}
+
+#[test]
+fn prepared_material_rules_preserve_signed_zero_and_reject_unsupported_outputs() {
+    let mut r = one(40);
+    r.material_layers = true;
+    r.programs.push(Program {
+        nodes: vec![
+            n(0, 0, 0, 0, [-0.0; 4]),
+            n(47, 0, 0, 0, [32.0, 0.0, 0.0, 0.0]),
+            n(40, 1, 0, 0, [0.0; 4]),
+        ],
+        roots: vec![2, 0, 2],
+    });
+    let p = Prepared::new(Arc::new(r.clone())).unwrap();
+    assert!(p.plans[3].material.is_some());
+    let mut reference = p.evaluator(1, 63, &[]);
+    reference.eager = true;
+    let mut prepared = p.evaluator(1, 63, &[]);
+    for y in [31.0, 32.0, f32::NAN] {
+        let point = [0.0, y, 0.0];
+        let context = Context::default();
+        let actual = prepared.run(3, point, context).unwrap().map(f32::to_bits);
+        let expected = reference.run(3, point, context).unwrap().map(f32::to_bits);
+        assert_eq!(actual, expected);
+        assert_eq!(actual[1], (-0.0_f32).to_bits());
+    }
+
+    r.programs[3].roots.push(1);
+    let p = Prepared::new(Arc::new(r)).unwrap();
+    assert!(p.plans[3].material.is_none());
 }
 #[test]
 fn invalid_operations_are_rejected_before_evaluation() {

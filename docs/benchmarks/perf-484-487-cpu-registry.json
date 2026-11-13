@@ -1,0 +1,2955 @@
+{
+  "baseline": "96e00482eeacac8b15014649808cd53ea82be450",
+  "inventory": {
+    "overworld": {
+      "terrain": {
+        "graphs": 3,
+        "nodes": 159,
+        "max_nodes": 118,
+        "root_patterns": {
+          "[3, 4, 5, 6, 7, 117]": 1,
+          "[19, 20]": 1,
+          "[19]": 1
+        },
+        "opcodes": {
+          "0": 56,
+          "2": 2,
+          "1": 5,
+          "3": 1,
+          "11": 6,
+          "4": 8,
+          "6": 3,
+          "25": 53,
+          "24": 1,
+          "29": 6,
+          "28": 10,
+          "16": 2,
+          "9": 2,
+          "23": 2,
+          "8": 2
+        }
+      },
+      "materials": {
+        "graphs": 56,
+        "nodes": 2834,
+        "max_nodes": 102,
+        "root_patterns": {
+          "[90, 90]": 2,
+          "[42, 42]": 27,
+          "[54, 54]": 4,
+          "[48, 48]": 1,
+          "[49, 49]": 5,
+          "[46, 46]": 2,
+          "[63, 63]": 1,
+          "[57, 57]": 1,
+          "[45, 45]": 1,
+          "[58, 58]": 1,
+          "[41, 41]": 1,
+          "[53, 53]": 3,
+          "[61, 61]": 2,
+          "[52, 52]": 1,
+          "[51, 51]": 1,
+          "[55, 55]": 1,
+          "[59, 59]": 1,
+          "[101, 101]": 1
+        },
+        "opcodes": {
+          "0": 470,
+          "48": 112,
+          "40": 719,
+          "54": 56,
+          "45": 170,
+          "47": 17,
+          "1": 18,
+          "44": 35,
+          "42": 3,
+          "41": 1106,
+          "46": 112,
+          "50": 5,
+          "43": 8,
+          "49": 3
+        }
+      },
+      "fields": {
+        "graphs": 5,
+        "nodes": 358,
+        "max_nodes": 337,
+        "root_patterns": {
+          "[336]": 1,
+          "[4]": 1,
+          "[7]": 1,
+          "[3]": 2
+        },
+        "opcodes": {
+          "0": 92,
+          "3": 9,
+          "2": 2,
+          "1": 34,
+          "11": 7,
+          "4": 26,
+          "6": 32,
+          "25": 118,
+          "24": 5,
+          "14": 1,
+          "15": 1,
+          "26": 1,
+          "23": 16,
+          "9": 3,
+          "22": 4,
+          "8": 4,
+          "12": 1,
+          "13": 2
+        }
+      }
+    },
+    "the_nether": {
+      "terrain": {
+        "graphs": 3,
+        "nodes": 18,
+        "max_nodes": 8,
+        "root_patterns": {
+          "[1, 2, 0, 0, 0, 0]": 1,
+          "[6, 7]": 1,
+          "[6]": 1
+        },
+        "opcodes": {
+          "0": 4,
+          "1": 2,
+          "29": 6,
+          "28": 2,
+          "16": 2,
+          "4": 2
+        }
+      },
+      "materials": {
+        "graphs": 5,
+        "nodes": 230,
+        "max_nodes": 54,
+        "root_patterns": {
+          "[48, 48]": 2,
+          "[38, 38]": 2,
+          "[53, 53]": 1
+        },
+        "opcodes": {
+          "0": 37,
+          "48": 10,
+          "40": 59,
+          "43": 16,
+          "47": 19,
+          "45": 10,
+          "1": 10,
+          "44": 10,
+          "41": 54,
+          "50": 5
+        }
+      },
+      "fields": {
+        "graphs": 1,
+        "nodes": 10,
+        "max_nodes": 10,
+        "root_patterns": {
+          "[9]": 1
+        },
+        "opcodes": {
+          "0": 4,
+          "3": 2,
+          "26": 1,
+          "24": 2,
+          "6": 1
+        }
+      }
+    }
+  },
+  "runs": {
+    "baseline-short": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "2",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/baseline-short"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          25.7392578125,
+          25.72607421875,
+          23.896484375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          26.1103515625,
+          25.44287109375,
+          23.92626953125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        26832.554708000316
+      ],
+      "regions_ms": [
+        25259.03,
+        25707.41
+      ],
+      "terrain_ms_per_region": 3768.31,
+      "chunks_per_second": 40.18,
+      "cpu_ms_per_region": 67164.39,
+      "peak_rss_through_generation_bytes": 1644625920,
+      "generation_sample_count": 202,
+      "generation_sample_median_rss_bytes": 1624064000.0,
+      "corpus_sha256": "5e5b7529b155b4714e10379c410c71939845ae3778487f7d00513155ba9876a6",
+      "comparison": null,
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0
+      }
+    },
+    "candidate-diagnostics-baseline": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/profile.dylib",
+        "--library-revision",
+        "27eede25eb24292b",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate-diagnostics-baseline",
+        "--diagnostics"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          22.919921875,
+          23.2646484375,
+          23.26953125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          19.43115234375,
+          22.07666015625,
+          22.81591796875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "27eede25eb24292bea94d97e72f8b42182e1e2d73f0701d6b88d58cc641a10b6",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        28035.19837500062
+      ],
+      "regions_ms": [
+        27491.67
+      ],
+      "terrain_ms_per_region": 3499.94,
+      "chunks_per_second": 37.24,
+      "cpu_ms_per_region": 71978.03,
+      "peak_rss_through_generation_bytes": 1611628544,
+      "generation_sample_count": 108,
+      "generation_sample_median_rss_bytes": 1543036928.0,
+      "corpus_sha256": "c7828f23a3c293e2c69ea01c5072938c4b05f808b153d52d334b0ff97632891b",
+      "comparison": null,
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 1034918417,
+        "cpu_density_air_proofs": 65569120,
+        "cpu_density_scalar_points": 46173104,
+        "cpu_density_solid_proofs": 150832368,
+        "cpu_masks_nanos": 23685188457,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 3892537,
+        "cpu_vm_calls": 246649828,
+        "cpu_vm_cell_hits": 42326952,
+        "cpu_vm_cell_lookups": 52916819,
+        "cpu_vm_cell_vertices_reused": 234131059,
+        "cpu_vm_computed_nodes": 3216974622,
+        "cpu_vm_constant_hits": 484903573,
+        "cpu_vm_corner_clears": 5,
+        "cpu_vm_corner_hits": 71433129,
+        "cpu_vm_corner_lookups": 75325666,
+        "cpu_vm_field_calls": 3892537,
+        "cpu_vm_field_node_visits": 85635814,
+        "cpu_vm_horizontal_clears": 29,
+        "cpu_vm_horizontal_hits": 26866318,
+        "cpu_vm_horizontal_lookups": 35110312,
+        "cpu_vm_interpolations": 52916819,
+        "cpu_vm_material_calls": 173659315,
+        "cpu_vm_material_node_visits": 7006371554,
+        "cpu_vm_node_visits": 8147093048,
+        "cpu_vm_noise3_calls": 234893660,
+        "cpu_vm_noise_profiles": 27927971,
+        "cpu_vm_plain_corner_hits": 71433129,
+        "cpu_vm_plain_corner_lookups": 75325666,
+        "cpu_vm_ready_hits": 1084751495,
+        "cpu_vm_samplers": 966,
+        "cpu_vm_terrain_calls": 69097976,
+        "cpu_vm_terrain_node_visits": 1055085680
+      }
+    },
+    "candidate-diagnostics-candidate": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate.dylib",
+        "--library-revision",
+        "90105ab830cdc9b0",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate-diagnostics-candidate",
+        "--diagnostics",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate-diagnostics-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          19.43115234375,
+          22.07666015625,
+          22.81591796875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          16.54443359375,
+          21.056640625,
+          22.41259765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "90105ab830cdc9b07d07178779a62153ef197181bbb4c7baa3ae114f3d7cfa7c",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        18118.362750000415
+      ],
+      "regions_ms": [
+        16136.49
+      ],
+      "terrain_ms_per_region": 2117.86,
+      "chunks_per_second": 63.45,
+      "cpu_ms_per_region": 39007.04,
+      "peak_rss_through_generation_bytes": 1595768832,
+      "generation_sample_count": 63,
+      "generation_sample_median_rss_bytes": 1521401856,
+      "corpus_sha256": "c7828f23a3c293e2c69ea01c5072938c4b05f808b153d52d334b0ff97632891b",
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 889107124,
+        "cpu_density_air_proofs": 65569120,
+        "cpu_density_scalar_points": 46173104,
+        "cpu_density_solid_proofs": 150832368,
+        "cpu_masks_nanos": 12674370789,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 3863731,
+        "cpu_vm_calls": 246570217,
+        "cpu_vm_cell_hits": 42327989,
+        "cpu_vm_cell_lookups": 52887761,
+        "cpu_vm_cell_vertices_reused": 234162906,
+        "cpu_vm_computed_nodes": 346002324,
+        "cpu_vm_constant_hits": 137389856,
+        "cpu_vm_corner_clears": 5,
+        "cpu_vm_corner_hits": 71259707,
+        "cpu_vm_corner_lookups": 75123438,
+        "cpu_vm_field_calls": 3863731,
+        "cpu_vm_field_node_visits": 85002082,
+        "cpu_vm_horizontal_clears": 35,
+        "cpu_vm_horizontal_hits": 26825448,
+        "cpu_vm_horizontal_lookups": 35065506,
+        "cpu_vm_interpolations": 52887761,
+        "cpu_vm_material_calls": 173659315,
+        "cpu_vm_material_node_visits": 1057578993,
+        "cpu_vm_material_rule_calls": 173659315,
+        "cpu_vm_node_visits": 2197010605,
+        "cpu_vm_noise3_calls": 234191820,
+        "cpu_vm_noise_profiles": 27925347,
+        "cpu_vm_plain_corner_hits": 71259707,
+        "cpu_vm_plain_corner_lookups": 75123438,
+        "cpu_vm_ready_hits": 278230884,
+        "cpu_vm_samplers": 953,
+        "cpu_vm_terrain_calls": 69047171,
+        "cpu_vm_terrain_node_visits": 1054429530
+      }
+    },
+    "custom-overworld-baseline": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/world-definition-acceptance-20261027/terralith_overworld_benchmark/retina.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:overworld",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/custom-overworld-baseline",
+        "--preservation-check"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          15.375,
+          20.24365234375,
+          21.3017578125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          15.41943359375,
+          20.0048828125,
+          21.197265625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "f8bef017cbb08e030768973cc439d79c29409a300b3ba39f60ff2a2f1aabc679",
+      "dimension": "minecraft:overworld",
+      "seed": 123456789,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [],
+      "regions_ms": [
+        12224.52
+      ],
+      "terrain_ms_per_region": 10140.43,
+      "chunks_per_second": 83.75,
+      "cpu_ms_per_region": 31101.33,
+      "peak_rss_through_generation_bytes": 919683072,
+      "generation_sample_count": 48,
+      "generation_sample_median_rss_bytes": 677117952.0,
+      "corpus_sha256": "55546c8d08cb99c5d1d0e2ef7620d90a800e2be614e8004d2c264b54e73e305e",
+      "comparison": null,
+      "reopen": {
+        "elapsed_ms": 1203.5035839999182,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "lighting_coverage": {
+        "lit_interior": 900,
+        "unlit_edge": 124,
+        "sky_sections": 16072,
+        "block_sections": 2658
+      },
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0
+      }
+    },
+    "custom-overworld-candidate": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate.dylib",
+        "--library-revision",
+        "0698e2af7400254a",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/world-definition-acceptance-20261027/terralith_overworld_benchmark/retina.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:overworld",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/custom-overworld-candidate",
+        "--preservation-check",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/custom-overworld-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          15.3056640625,
+          19.90478515625,
+          21.15478515625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          14.49560546875,
+          19.57861328125,
+          21.02392578125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "0698e2af7400254ad85e507fbbcbeda36e976e532913874ca4fb7358786cc5d7",
+      "definition_sha256": "f8bef017cbb08e030768973cc439d79c29409a300b3ba39f60ff2a2f1aabc679",
+      "dimension": "minecraft:overworld",
+      "seed": 123456789,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [],
+      "regions_ms": [
+        11703.03
+      ],
+      "terrain_ms_per_region": 9679.74,
+      "chunks_per_second": 87.48,
+      "cpu_ms_per_region": 29799.58,
+      "peak_rss_through_generation_bytes": 919896064,
+      "generation_sample_count": 46,
+      "generation_sample_median_rss_bytes": 676667392.0,
+      "corpus_sha256": "55546c8d08cb99c5d1d0e2ef7620d90a800e2be614e8004d2c264b54e73e305e",
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "reopen": {
+        "elapsed_ms": 1141.975542000182,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "lighting_coverage": {
+        "lit_interior": 900,
+        "unlit_edge": 124,
+        "sky_sections": 16072,
+        "block_sections": 2658
+      },
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_field_node_visits": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_material_node_visits": 0,
+        "cpu_vm_material_rule_calls": 0,
+        "cpu_vm_material_rule_steps": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0,
+        "cpu_vm_terrain_node_visits": 0
+      }
+    },
+    "final-diagnostics-baseline": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/profile.dylib",
+        "--library-revision",
+        "27eede25eb24292b",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/final-diagnostics-baseline",
+        "--diagnostics"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          14.21533203125,
+          19.43603515625,
+          20.96484375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          13.017578125,
+          18.72705078125,
+          20.6640625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "27eede25eb24292bea94d97e72f8b42182e1e2d73f0701d6b88d58cc641a10b6",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [],
+      "regions_ms": [
+        23534.2
+      ],
+      "terrain_ms_per_region": 3397.0,
+      "chunks_per_second": 43.51,
+      "cpu_ms_per_region": 61780.05,
+      "peak_rss_through_generation_bytes": 1311866880,
+      "generation_sample_count": 93,
+      "generation_sample_median_rss_bytes": 680214528,
+      "corpus_sha256": "c7828f23a3c293e2c69ea01c5072938c4b05f808b153d52d334b0ff97632891b",
+      "comparison": null,
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 948635917,
+        "cpu_density_air_proofs": 65569120,
+        "cpu_density_scalar_points": 46173104,
+        "cpu_density_solid_proofs": 150832368,
+        "cpu_masks_nanos": 20149240502,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 3890383,
+        "cpu_vm_calls": 246648684,
+        "cpu_vm_cell_hits": 42326923,
+        "cpu_vm_cell_lookups": 52914343,
+        "cpu_vm_cell_vertices_reused": 234136044,
+        "cpu_vm_computed_nodes": 3216947170,
+        "cpu_vm_constant_hits": 484893491,
+        "cpu_vm_corner_clears": 5,
+        "cpu_vm_corner_hits": 71401586,
+        "cpu_vm_corner_lookups": 75291969,
+        "cpu_vm_field_calls": 3890383,
+        "cpu_vm_field_node_visits": 85588426,
+        "cpu_vm_horizontal_clears": 33,
+        "cpu_vm_horizontal_hits": 26872962,
+        "cpu_vm_horizontal_lookups": 35117448,
+        "cpu_vm_interpolations": 52914343,
+        "cpu_vm_material_calls": 173659315,
+        "cpu_vm_material_node_visits": 7006371554,
+        "cpu_vm_node_visits": 8147022336,
+        "cpu_vm_noise3_calls": 234843276,
+        "cpu_vm_noise_profiles": 27928299,
+        "cpu_vm_plain_corner_hits": 71401586,
+        "cpu_vm_plain_corner_lookups": 75291969,
+        "cpu_vm_ready_hits": 1084743597,
+        "cpu_vm_samplers": 959,
+        "cpu_vm_terrain_calls": 69098986,
+        "cpu_vm_terrain_node_visits": 1055062356
+      }
+    },
+    "final-diagnostics-candidate": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate.dylib",
+        "--library-revision",
+        "0698e2af7400254a",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/final-diagnostics-candidate",
+        "--diagnostics",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/final-diagnostics-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          13.017578125,
+          18.72705078125,
+          20.6640625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          17.02490234375,
+          19.26318359375,
+          20.810546875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "0698e2af7400254ad85e507fbbcbeda36e976e532913874ca4fb7358786cc5d7",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [],
+      "regions_ms": [
+        20539.04
+      ],
+      "terrain_ms_per_region": 2754.31,
+      "chunks_per_second": 49.85,
+      "cpu_ms_per_region": 41929.27,
+      "peak_rss_through_generation_bytes": 1311817728,
+      "generation_sample_count": 81,
+      "generation_sample_median_rss_bytes": 660193280,
+      "corpus_sha256": "c7828f23a3c293e2c69ea01c5072938c4b05f808b153d52d334b0ff97632891b",
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 1024849173,
+        "cpu_density_air_proofs": 65569120,
+        "cpu_density_scalar_points": 46173104,
+        "cpu_density_solid_proofs": 150832368,
+        "cpu_masks_nanos": 15240837457,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 3852765,
+        "cpu_vm_calls": 246537457,
+        "cpu_vm_cell_hits": 42328671,
+        "cpu_vm_cell_lookups": 52874218,
+        "cpu_vm_cell_vertices_reused": 234176554,
+        "cpu_vm_computed_nodes": 345854686,
+        "cpu_vm_constant_hits": 137310655,
+        "cpu_vm_corner_clears": 5,
+        "cpu_vm_corner_hits": 71182476,
+        "cpu_vm_corner_lookups": 75035241,
+        "cpu_vm_field_calls": 3852765,
+        "cpu_vm_field_node_visits": 84760830,
+        "cpu_vm_horizontal_clears": 38,
+        "cpu_vm_horizontal_hits": 26809530,
+        "cpu_vm_horizontal_lookups": 35048712,
+        "cpu_vm_interpolations": 52874218,
+        "cpu_vm_material_calls": 173659315,
+        "cpu_vm_material_node_visits": 0,
+        "cpu_vm_material_rule_calls": 173659315,
+        "cpu_vm_material_rule_steps": 1057578993,
+        "cpu_vm_node_visits": 1138896496,
+        "cpu_vm_noise3_calls": 233926300,
+        "cpu_vm_noise_profiles": 27924763,
+        "cpu_vm_plain_corner_hits": 71182476,
+        "cpu_vm_plain_corner_lookups": 75035241,
+        "cpu_vm_ready_hits": 278107803,
+        "cpu_vm_samplers": 928,
+        "cpu_vm_terrain_calls": 69025377,
+        "cpu_vm_terrain_node_visits": 1054135666
+      }
+    },
+    "profile-nether-baseline": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/profile-nether-baseline",
+        "--diagnostics"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          26.1103515625,
+          25.44287109375,
+          23.92626953125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          25.40673828125,
+          25.412109375,
+          23.970703125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [],
+      "regions_ms": [
+        27049.78
+      ],
+      "terrain_ms_per_region": 4401.17,
+      "chunks_per_second": 37.85,
+      "cpu_ms_per_region": 71155.19,
+      "peak_rss_through_generation_bytes": 1309933568,
+      "generation_sample_count": 107,
+      "generation_sample_median_rss_bytes": 648609792,
+      "corpus_sha256": "c7828f23a3c293e2c69ea01c5072938c4b05f808b153d52d334b0ff97632891b",
+      "comparison": null,
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 1093297336,
+        "cpu_density_air_proofs": 65569120,
+        "cpu_density_scalar_points": 46173104,
+        "cpu_density_solid_proofs": 150832368,
+        "cpu_masks_nanos": 23456078001,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_blended_profiles": 3880725,
+        "cpu_vm_calls": 246621772,
+        "cpu_vm_cell_hits": 42327167,
+        "cpu_vm_cell_lookups": 52902959,
+        "cpu_vm_cell_vertices_reused": 234147539,
+        "cpu_vm_computed_nodes": 3216820334,
+        "cpu_vm_constant_hits": 484826221,
+        "cpu_vm_corner_clears": 5,
+        "cpu_vm_corner_hits": 71331321,
+        "cpu_vm_corner_lookups": 75212046,
+        "cpu_vm_field_calls": 3880725,
+        "cpu_vm_horizontal_clears": 37,
+        "cpu_vm_horizontal_hits": 26861806,
+        "cpu_vm_horizontal_lookups": 35105416,
+        "cpu_vm_interpolations": 52902959,
+        "cpu_vm_material_calls": 173659315,
+        "cpu_vm_node_visits": 8146569144,
+        "cpu_vm_noise3_calls": 234609148,
+        "cpu_vm_noise_profiles": 27927715,
+        "cpu_vm_plain_corner_hits": 71331321,
+        "cpu_vm_plain_corner_lookups": 75212046,
+        "cpu_vm_ready_hits": 1084641527,
+        "cpu_vm_samplers": 942,
+        "cpu_vm_terrain_calls": 69081732
+      }
+    },
+    "profile-nether-candidate": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/profile.dylib",
+        "--library-revision",
+        "27eede25eb24292b",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/profile-nether-candidate",
+        "--diagnostics",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/profile-nether-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          25.40673828125,
+          25.412109375,
+          23.970703125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          25.33056640625,
+          25.35498046875,
+          23.98876953125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "27eede25eb24292bea94d97e72f8b42182e1e2d73f0701d6b88d58cc641a10b6",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [],
+      "regions_ms": [
+        27031.55
+      ],
+      "terrain_ms_per_region": 3541.8,
+      "chunks_per_second": 37.88,
+      "cpu_ms_per_region": 69044.02,
+      "peak_rss_through_generation_bytes": 1308049408,
+      "generation_sample_count": 107,
+      "generation_sample_median_rss_bytes": 654721024,
+      "corpus_sha256": "c7828f23a3c293e2c69ea01c5072938c4b05f808b153d52d334b0ff97632891b",
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 1085991207,
+        "cpu_density_air_proofs": 65569120,
+        "cpu_density_scalar_points": 46173104,
+        "cpu_density_solid_proofs": 150832368,
+        "cpu_masks_nanos": 23299398626,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 3855099,
+        "cpu_vm_calls": 246540019,
+        "cpu_vm_cell_hits": 42327900,
+        "cpu_vm_cell_lookups": 52873037,
+        "cpu_vm_cell_vertices_reused": 234171111,
+        "cpu_vm_computed_nodes": 3216484422,
+        "cpu_vm_constant_hits": 484637668,
+        "cpu_vm_corner_clears": 5,
+        "cpu_vm_corner_hits": 71183415,
+        "cpu_vm_corner_lookups": 75038514,
+        "cpu_vm_field_calls": 3855099,
+        "cpu_vm_field_node_visits": 84812178,
+        "cpu_vm_horizontal_clears": 39,
+        "cpu_vm_horizontal_hits": 26812020,
+        "cpu_vm_horizontal_lookups": 35051694,
+        "cpu_vm_interpolations": 52873037,
+        "cpu_vm_material_calls": 173659315,
+        "cpu_vm_material_node_visits": 7006371554,
+        "cpu_vm_node_visits": 8145306922,
+        "cpu_vm_noise3_calls": 233983628,
+        "cpu_vm_noise_profiles": 27925091,
+        "cpu_vm_plain_corner_hits": 71183415,
+        "cpu_vm_plain_corner_lookups": 75038514,
+        "cpu_vm_ready_hits": 1084339408,
+        "cpu_vm_samplers": 942,
+        "cpu_vm_terrain_calls": 69025605,
+        "cpu_vm_terrain_node_visits": 1054123190
+      }
+    },
+    "profile-overworld": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/profile.dylib",
+        "--library-revision",
+        "27eede25eb24292b",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:overworld",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/profile-overworld",
+        "--diagnostics"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          25.33056640625,
+          25.35498046875,
+          23.98876953125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          23.380859375,
+          24.92724609375,
+          23.8603515625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "27eede25eb24292bea94d97e72f8b42182e1e2d73f0701d6b88d58cc641a10b6",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:overworld",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [],
+      "regions_ms": [
+        11171.58
+      ],
+      "terrain_ms_per_region": 8805.41,
+      "chunks_per_second": 91.65,
+      "cpu_ms_per_region": 27615.25,
+      "peak_rss_through_generation_bytes": 886128640,
+      "generation_sample_count": 44,
+      "generation_sample_median_rss_bytes": 519839744.0,
+      "corpus_sha256": "37ace99e0317b6b1dd0df814a56ff82c9c6f8ec336ff237236c856df450b5b67",
+      "comparison": null,
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 2839055833,
+        "cpu_density_air_proofs": 1397575,
+        "cpu_density_scalar_points": 11859034,
+        "cpu_density_solid_proofs": 32217627,
+        "cpu_masks_nanos": 6966408792,
+        "cpu_material_zero_proofs": 18859962,
+        "cpu_vm_auxiliary_calls": 343456,
+        "cpu_vm_auxiliary_node_visits": 15698510,
+        "cpu_vm_blended_profiles": 2739367,
+        "cpu_vm_calls": 55910837,
+        "cpu_vm_cell_hits": 50856670,
+        "cpu_vm_cell_lookups": 64754417,
+        "cpu_vm_cell_vertices_reused": 284485275,
+        "cpu_vm_computed_nodes": 714262304,
+        "cpu_vm_constant_hits": 159310338,
+        "cpu_vm_corner_clears": 343,
+        "cpu_vm_corner_hits": 123033354,
+        "cpu_vm_corner_lookups": 136514719,
+        "cpu_vm_field_calls": 13481365,
+        "cpu_vm_field_node_visits": 606360242,
+        "cpu_vm_horizontal_clears": 7,
+        "cpu_vm_horizontal_hits": 13332807,
+        "cpu_vm_horizontal_lookups": 15378150,
+        "cpu_vm_interpolations": 64754417,
+        "cpu_vm_material_calls": 23993112,
+        "cpu_vm_material_node_visits": 669526832,
+        "cpu_vm_node_visits": 1911862352,
+        "cpu_vm_noise3_calls": 190624702,
+        "cpu_vm_noise_profiles": 40987747,
+        "cpu_vm_plain_corner_hits": 123033354,
+        "cpu_vm_plain_corner_lookups": 136514719,
+        "cpu_vm_ready_hits": 236758238,
+        "cpu_vm_samplers": 297,
+        "cpu_vm_terrain_calls": 18092904,
+        "cpu_vm_terrain_node_visits": 620276768
+      }
+    },
+    "repeat-0-baseline": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "4",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/repeat-0-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          18.8046875,
+          20.544921875,
+          21.55322265625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          14.2177734375,
+          18.517578125,
+          20.62646484375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        26201.419583000643
+      ],
+      "regions_ms": [
+        25327.25,
+        22424.03,
+        24691.63,
+        26951.1
+      ],
+      "terrain_ms_per_region": 3449.73,
+      "chunks_per_second": 41.21,
+      "cpu_ms_per_region": 63885.63,
+      "peak_rss_through_generation_bytes": 1850392576,
+      "generation_sample_count": 392,
+      "generation_sample_median_rss_bytes": 1632616448.0,
+      "corpus_sha256": "49ac7c223db17cc38f76d2f83a9760449d9501d48bf7518f281ea25904ed2884",
+      "comparison": null,
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0
+      }
+    },
+    "repeat-1-candidate": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate.dylib",
+        "--library-revision",
+        "0698e2af7400254a",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "4",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/repeat-1-candidate",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/repeat-0-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          14.2177734375,
+          18.517578125,
+          20.62646484375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          35.47216796875,
+          23.322265625,
+          22.1826171875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "0698e2af7400254ad85e507fbbcbeda36e976e532913874ca4fb7358786cc5d7",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        15275.725667000188
+      ],
+      "regions_ms": [
+        15739.9,
+        18775.1,
+        17693.53,
+        29006.91
+      ],
+      "terrain_ms_per_region": 2045.32,
+      "chunks_per_second": 50.43,
+      "cpu_ms_per_region": 43369.98,
+      "peak_rss_through_generation_bytes": 1838284800,
+      "generation_sample_count": 320,
+      "generation_sample_median_rss_bytes": 1658896384.0,
+      "corpus_sha256": "49ac7c223db17cc38f76d2f83a9760449d9501d48bf7518f281ea25904ed2884",
+      "comparison": {
+        "identical_nbt_chunks": 4096,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_field_node_visits": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_material_node_visits": 0,
+        "cpu_vm_material_rule_calls": 0,
+        "cpu_vm_material_rule_steps": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0,
+        "cpu_vm_terrain_node_visits": 0
+      }
+    },
+    "repeat-2-candidate": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate.dylib",
+        "--library-revision",
+        "0698e2af7400254a",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "4",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/repeat-2-candidate",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/repeat-0-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          35.47216796875,
+          23.322265625,
+          22.1826171875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          24.9609375,
+          23.7392578125,
+          22.51171875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "0698e2af7400254ad85e507fbbcbeda36e976e532913874ca4fb7358786cc5d7",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        18836.617791999743
+      ],
+      "regions_ms": [
+        22659.94,
+        21502.32,
+        21156.3,
+        19130.22
+      ],
+      "terrain_ms_per_region": 2618.42,
+      "chunks_per_second": 48.5,
+      "cpu_ms_per_region": 47014.06,
+      "peak_rss_through_generation_bytes": 1854750720,
+      "generation_sample_count": 334,
+      "generation_sample_median_rss_bytes": 1642659840.0,
+      "corpus_sha256": "49ac7c223db17cc38f76d2f83a9760449d9501d48bf7518f281ea25904ed2884",
+      "comparison": {
+        "identical_nbt_chunks": 4096,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_field_node_visits": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_material_node_visits": 0,
+        "cpu_vm_material_rule_calls": 0,
+        "cpu_vm_material_rule_steps": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0,
+        "cpu_vm_terrain_node_visits": 0
+      }
+    },
+    "repeat-3-baseline": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "4",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/repeat-3-baseline",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/repeat-0-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          24.9609375,
+          23.7392578125,
+          22.51171875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          16.70068359375,
+          20.880859375,
+          21.55126953125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        31640.56491700012
+      ],
+      "regions_ms": [
+        28293.49,
+        27951.88,
+        30476.76,
+        28988.42
+      ],
+      "terrain_ms_per_region": 3819.47,
+      "chunks_per_second": 35.4,
+      "cpu_ms_per_region": 73876.09,
+      "peak_rss_through_generation_bytes": 1849163776,
+      "generation_sample_count": 456,
+      "generation_sample_median_rss_bytes": 1635188736.0,
+      "corpus_sha256": "49ac7c223db17cc38f76d2f83a9760449d9501d48bf7518f281ea25904ed2884",
+      "comparison": {
+        "identical_nbt_chunks": 4096,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0
+      }
+    },
+    "short-0-baseline": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "2",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/short-0-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          16.54443359375,
+          21.056640625,
+          22.41259765625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          15.77978515625,
+          19.63720703125,
+          21.732421875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        27000.95204199988
+      ],
+      "regions_ms": [
+        26640.44,
+        26614.83
+      ],
+      "terrain_ms_per_region": 4184.85,
+      "chunks_per_second": 38.45,
+      "cpu_ms_per_region": 68654.97,
+      "peak_rss_through_generation_bytes": 1627291648,
+      "generation_sample_count": 210,
+      "generation_sample_median_rss_bytes": 1600675840.0,
+      "corpus_sha256": "5e5b7529b155b4714e10379c410c71939845ae3778487f7d00513155ba9876a6",
+      "comparison": null,
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0
+      }
+    },
+    "short-1-candidate": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate.dylib",
+        "--library-revision",
+        "90105ab830cdc9b0",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "2",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/short-1-candidate",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/short-0-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          15.77978515625,
+          19.63720703125,
+          21.732421875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          16.6416015625,
+          19.4931640625,
+          21.57177734375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "90105ab830cdc9b07d07178779a62153ef197181bbb4c7baa3ae114f3d7cfa7c",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        20884.362832999614
+      ],
+      "regions_ms": [
+        15762.33,
+        16543.52
+      ],
+      "terrain_ms_per_region": 2252.62,
+      "chunks_per_second": 63.39,
+      "cpu_ms_per_region": 39667.1,
+      "peak_rss_through_generation_bytes": 1634779136,
+      "generation_sample_count": 128,
+      "generation_sample_median_rss_bytes": 1615216640.0,
+      "corpus_sha256": "5e5b7529b155b4714e10379c410c71939845ae3778487f7d00513155ba9876a6",
+      "comparison": {
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_field_node_visits": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_material_node_visits": 0,
+        "cpu_vm_material_rule_calls": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0,
+        "cpu_vm_terrain_node_visits": 0
+      }
+    },
+    "short-2-candidate": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate.dylib",
+        "--library-revision",
+        "90105ab830cdc9b0",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "2",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/short-2-candidate",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/short-0-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          16.6416015625,
+          19.4931640625,
+          21.57177734375
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          25.42236328125,
+          22.1708984375,
+          22.44970703125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "90105ab830cdc9b07d07178779a62153ef197181bbb4c7baa3ae114f3d7cfa7c",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        31223.34624999985
+      ],
+      "regions_ms": [
+        23326.19,
+        15606.55
+      ],
+      "terrain_ms_per_region": 2978.55,
+      "chunks_per_second": 52.6,
+      "cpu_ms_per_region": 43321.79,
+      "peak_rss_through_generation_bytes": 1667923968,
+      "generation_sample_count": 154,
+      "generation_sample_median_rss_bytes": 1591410688.0,
+      "corpus_sha256": "5e5b7529b155b4714e10379c410c71939845ae3778487f7d00513155ba9876a6",
+      "comparison": {
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_field_node_visits": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_material_node_visits": 0,
+        "cpu_vm_material_rule_calls": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0,
+        "cpu_vm_terrain_node_visits": 0
+      }
+    },
+    "short-3-baseline": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:the_nether",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "2",
+        "--warmups",
+        "1",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/short-3-baseline",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/short-0-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          25.42236328125,
+          22.1708984375,
+          22.44970703125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          18.4951171875,
+          20.927734375,
+          21.96875
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:the_nether",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [
+        25321.266625000135
+      ],
+      "regions_ms": [
+        21067.75,
+        24609.15
+      ],
+      "terrain_ms_per_region": 3289.76,
+      "chunks_per_second": 44.83,
+      "cpu_ms_per_region": 58906.93,
+      "peak_rss_through_generation_bytes": 1633779712,
+      "generation_sample_count": 180,
+      "generation_sample_median_rss_bytes": 1609957376.0,
+      "corpus_sha256": "5e5b7529b155b4714e10379c410c71939845ae3778487f7d00513155ba9876a6",
+      "comparison": {
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "lighting_coverage": null,
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0
+      }
+    },
+    "vanilla-overworld-baseline": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/baseline.dylib",
+        "--library-revision",
+        "14794367a8a621c6",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:overworld",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/vanilla-overworld-baseline",
+        "--preservation-check"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          16.70068359375,
+          20.880859375,
+          21.55126953125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          16.17041015625,
+          20.55908203125,
+          21.42431640625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "14794367a8a621c6f48e598627842a01efeec5233af2b68061cadb76ac17ea95",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:overworld",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [],
+      "regions_ms": [
+        10320.29
+      ],
+      "terrain_ms_per_region": 8104.08,
+      "chunks_per_second": 99.2,
+      "cpu_ms_per_region": 25458.12,
+      "peak_rss_through_generation_bytes": 894746624,
+      "generation_sample_count": 40,
+      "generation_sample_median_rss_bytes": 519020544.0,
+      "corpus_sha256": "37ace99e0317b6b1dd0df814a56ff82c9c6f8ec336ff237236c856df450b5b67",
+      "comparison": null,
+      "reopen": {
+        "elapsed_ms": 725.5354580001949,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "lighting_coverage": {
+        "lit_interior": 900,
+        "unlit_edge": 124,
+        "sky_sections": 15401,
+        "block_sections": 3803
+      },
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0
+      }
+    },
+    "vanilla-overworld-candidate": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "/Users/cyberpwn/.codex/worktrees/retina-484-487/scripts/native-region-benchmark.py",
+        "--library",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/candidate.dylib",
+        "--library-revision",
+        "0698e2af7400254a",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+        "--backend",
+        "cpu",
+        "--dimension",
+        "minecraft:overworld",
+        "--parallel",
+        "1",
+        "--assembly-threads",
+        "4",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--grid-width",
+        "3",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--readiness",
+        "driver-warm",
+        "--scope",
+        "lit-mca",
+        "--lighting",
+        "enabled",
+        "--mca-compression",
+        "zlib",
+        "--out",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/vanilla-overworld-candidate",
+        "--preservation-check",
+        "--compare",
+        "/Users/cyberpwn/.cache/retina/perf-484-active/cycle-487/vanilla-overworld-baseline"
+      ],
+      "env": {
+        "RAYON_NUM_THREADS": "2",
+        "RETINA_PIPELINE_CACHE_DIR": "/Users/cyberpwn/.cache/retina/perf-484-active/pipeline-cache"
+      },
+      "before": {
+        "load": [
+          16.17041015625,
+          20.55908203125,
+          21.42431640625
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          15.375,
+          20.24365234375,
+          21.3017578125
+        ],
+        "power": [
+          "Now drawing from 'AC Power'"
+        ],
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "backend": "CPU: native",
+      "library_sha256": "0698e2af7400254ad85e507fbbcbeda36e976e532913874ca4fb7358786cc5d7",
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "dimension": "minecraft:overworld",
+      "seed": 12345,
+      "coordinates": {
+        "grid_width": 3,
+        "origin_x": -1,
+        "origin_z": 0
+      },
+      "warmups_ms": [],
+      "regions_ms": [
+        9654.71
+      ],
+      "terrain_ms_per_region": 7572.54,
+      "chunks_per_second": 106.04,
+      "cpu_ms_per_region": 23700.49,
+      "peak_rss_through_generation_bytes": 899645440,
+      "generation_sample_count": 38,
+      "generation_sample_median_rss_bytes": 520175616.0,
+      "corpus_sha256": "37ace99e0317b6b1dd0df814a56ff82c9c6f8ec336ff237236c856df450b5b67",
+      "comparison": {
+        "identical_nbt_chunks": 1024,
+        "membership_identical": true
+      },
+      "reopen": {
+        "elapsed_ms": 706.2624999998661,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "lighting_coverage": {
+        "lit_interior": 900,
+        "unlit_edge": 124,
+        "sky_sections": 15401,
+        "block_sections": 3803
+      },
+      "counter_totals": {
+        "cpu_columns_nanos": 0,
+        "cpu_density_air_proofs": 0,
+        "cpu_density_scalar_points": 0,
+        "cpu_density_solid_proofs": 0,
+        "cpu_masks_nanos": 0,
+        "cpu_material_zero_proofs": 0,
+        "cpu_vm_auxiliary_calls": 0,
+        "cpu_vm_auxiliary_node_visits": 0,
+        "cpu_vm_blended_profiles": 0,
+        "cpu_vm_calls": 0,
+        "cpu_vm_cell_hits": 0,
+        "cpu_vm_cell_lookups": 0,
+        "cpu_vm_cell_vertices_reused": 0,
+        "cpu_vm_computed_nodes": 0,
+        "cpu_vm_constant_hits": 0,
+        "cpu_vm_corner_clears": 0,
+        "cpu_vm_corner_hits": 0,
+        "cpu_vm_corner_lookups": 0,
+        "cpu_vm_field_calls": 0,
+        "cpu_vm_field_node_visits": 0,
+        "cpu_vm_horizontal_clears": 0,
+        "cpu_vm_horizontal_hits": 0,
+        "cpu_vm_horizontal_lookups": 0,
+        "cpu_vm_interpolations": 0,
+        "cpu_vm_material_calls": 0,
+        "cpu_vm_material_node_visits": 0,
+        "cpu_vm_material_rule_calls": 0,
+        "cpu_vm_material_rule_steps": 0,
+        "cpu_vm_node_visits": 0,
+        "cpu_vm_noise3_calls": 0,
+        "cpu_vm_noise_profiles": 0,
+        "cpu_vm_plain_corner_hits": 0,
+        "cpu_vm_plain_corner_lookups": 0,
+        "cpu_vm_ready_hits": 0,
+        "cpu_vm_samplers": 0,
+        "cpu_vm_terrain_calls": 0,
+        "cpu_vm_terrain_node_visits": 0
+      }
+    }
+  }
+}

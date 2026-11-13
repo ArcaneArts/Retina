@@ -98,6 +98,9 @@ counters! {
     lighting_material_pack_nanos, lighting_submit_nanos,
     lighting_shared_input_bytes, lighting_shared_input_regions,
     lighting_shared_input_fallbacks, lighting_tile_input_capacity_bytes,
+    cpu_vm_terrain_node_visits, cpu_vm_material_node_visits,
+    cpu_vm_auxiliary_node_visits, cpu_vm_field_node_visits,
+    cpu_vm_material_rule_calls, cpu_vm_material_rule_steps,
 }
 use Counter::*;
 
