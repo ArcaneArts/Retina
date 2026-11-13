@@ -1,0 +1,1403 @@
+{
+  "baseline": "26e1a4ca4c1f0eb4ec074c6fe998efb7995c81be",
+  "scope": "Adjacent lit MCA regions, zlib, headless, Metal unless indicated.",
+  "reproduction": "RAYON_NUM_THREADS=2 python3 scripts/native-region-benchmark.py --library <retained-build> --definition <frozen-definition> --dimension minecraft:the_nether --backend metal --parallel 1 --assembly-threads 4 --scope lit-mca --lighting enabled --mca-compression zlib --readiness shader-ready --origin-x -1 --origin-z 0 --grid-width 3 --warmups 2 --count <measured-count> [--compare <baseline-output>] --out <fresh-dir>",
+  "runs": {
+    "aa-nether-0-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 231.54,
+      "cpu_ms_per_region": 2965.45,
+      "p95_region_ms": 4687.78,
+      "peak_generation_rss_bytes": 2006646784,
+      "sha256_corpus_nbt": "7106d795572269009575a29a1550c39f8b9b9f575a0502b1283b4de730a20413",
+      "comparison": null,
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        26.48,
+        30.54
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "aa-nether-1-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 438.81,
+      "cpu_ms_per_region": 3078.93,
+      "p95_region_ms": 2542.74,
+      "peak_generation_rss_bytes": 1998667776,
+      "sha256_corpus_nbt": "7106d795572269009575a29a1550c39f8b9b9f575a0502b1283b4de730a20413",
+      "comparison": {
+        "identical_nbt_chunks": 3072,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        30.54,
+        33.67
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "aa-nether-2-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 305.09,
+      "cpu_ms_per_region": 3020.37,
+      "p95_region_ms": 3633.37,
+      "peak_generation_rss_bytes": 1916272640,
+      "sha256_corpus_nbt": "7106d795572269009575a29a1550c39f8b9b9f575a0502b1283b4de730a20413",
+      "comparison": {
+        "identical_nbt_chunks": 3072,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        33.67,
+        35.98
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "aa-nether-3-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 314.11,
+      "cpu_ms_per_region": 3058.88,
+      "p95_region_ms": 4059.25,
+      "peak_generation_rss_bytes": 2017378304,
+      "sha256_corpus_nbt": "7106d795572269009575a29a1550c39f8b9b9f575a0502b1283b4de730a20413",
+      "comparison": {
+        "identical_nbt_chunks": 3072,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        35.98,
+        36.14
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "ab-nether-0-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 415.49,
+      "cpu_ms_per_region": 3268.21,
+      "p95_region_ms": 3220.09,
+      "peak_generation_rss_bytes": 2231271424,
+      "sha256_corpus_nbt": "c30ec15d6e349b7e8f04b46636f9097b5ae79dc30a5887c8b11b70bd37adff60",
+      "comparison": null,
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        37.31,
+        35.16
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "ab-nether-1-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "db80421e3b600380b36bb679852b9cecd01d03e21f8d27b9248ff1133498b20b",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 564.26,
+      "cpu_ms_per_region": 3230.34,
+      "p95_region_ms": 2101.36,
+      "peak_generation_rss_bytes": 2417328128,
+      "sha256_corpus_nbt": "c30ec15d6e349b7e8f04b46636f9097b5ae79dc30a5887c8b11b70bd37adff60",
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "column_writer_target_hits": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        35.16,
+        35.06
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "ab-nether-2-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "db80421e3b600380b36bb679852b9cecd01d03e21f8d27b9248ff1133498b20b",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 376.89,
+      "cpu_ms_per_region": 3232.03,
+      "p95_region_ms": 3372.65,
+      "peak_generation_rss_bytes": 2139635712,
+      "sha256_corpus_nbt": "c30ec15d6e349b7e8f04b46636f9097b5ae79dc30a5887c8b11b70bd37adff60",
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "column_writer_target_hits": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        35.06,
+        35.81
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "ab-nether-3-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 426.07,
+      "cpu_ms_per_region": 3280.35,
+      "p95_region_ms": 3000.15,
+      "peak_generation_rss_bytes": 2136735744,
+      "sha256_corpus_nbt": "c30ec15d6e349b7e8f04b46636f9097b5ae79dc30a5887c8b11b70bd37adff60",
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        35.81,
+        34.42
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "cpu-nether-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "CPU: native",
+      "seed": 12345,
+      "warmups": 0,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 23.48,
+      "cpu_ms_per_region": 83192.09,
+      "p95_region_ms": 45611.68,
+      "peak_generation_rss_bytes": 1007403008,
+      "sha256_corpus_nbt": "5e5b7529b155b4714e10379c410c71939845ae3778487f7d00513155ba9876a6",
+      "comparison": null,
+      "reopen": {
+        "elapsed_ms": 1168.709333986044,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        66.18,
+        45.93
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "cpu-nether-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "0eecb63ea19d537fde43c614fd97c6f16f8927d74f397234f1781e5d73953b37",
+      "backend": "CPU: native",
+      "seed": 12345,
+      "warmups": 0,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 27.66,
+      "cpu_ms_per_region": 82946.59,
+      "p95_region_ms": 39098.05,
+      "peak_generation_rss_bytes": 1106804736,
+      "sha256_corpus_nbt": "5e5b7529b155b4714e10379c410c71939845ae3778487f7d00513155ba9876a6",
+      "comparison": {
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      "reopen": {
+        "elapsed_ms": 1147.81529083848,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "empty_structure_column_skips": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        45.93,
+        31.55
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "custom-baseline": {
+      "definition_sha256": "cfbeb47fba800998c74be31c0497f00e91c9e380b337364f48db363aee16188c",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 42,
+      "warmups": 1,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 3557.38,
+      "cpu_ms_per_region": 163.92,
+      "p95_region_ms": 334.27,
+      "peak_generation_rss_bytes": 644481024,
+      "sha256_corpus_nbt": "413905ebb934197221919027e9a3433e77ac39038a968fbb7614525b1ea59300",
+      "comparison": null,
+      "reopen": {
+        "elapsed_ms": 2.0814170129597187,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        33.86,
+        33.65
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "custom-candidate": {
+      "definition_sha256": "cfbeb47fba800998c74be31c0497f00e91c9e380b337364f48db363aee16188c",
+      "library_sha256": "0eecb63ea19d537fde43c614fd97c6f16f8927d74f397234f1781e5d73953b37",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 42,
+      "warmups": 1,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 3528.25,
+      "cpu_ms_per_region": 178.67,
+      "p95_region_ms": 291.63,
+      "peak_generation_rss_bytes": 638468096,
+      "sha256_corpus_nbt": "413905ebb934197221919027e9a3433e77ac39038a968fbb7614525b1ea59300",
+      "comparison": {
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      "reopen": {
+        "elapsed_ms": 2.415624912828207,
+        "generated": 0,
+        "identical_nbt_chunks": 1024,
+        "preserved": 1024,
+        "scope": "Same process, closed/reopened world definition; outside measured generation"
+      },
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "empty_structure_column_skips": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        33.65,
+        33.65
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "diag-alternate-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 429.51,
+      "cpu_ms_per_region": 3117.74,
+      "p95_region_ms": 2586.83,
+      "peak_generation_rss_bytes": 2117189632,
+      "sha256_corpus_nbt": "83e94dfe3665c0af55a1ca0e466365925dbeffbd7dfa6690b2ce5e3ba0fed40b",
+      "comparison": null,
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 9001116,
+        "column_builds": 6226563,
+        "column_join_nanos": 254285090,
+        "column_lock_nanos": 374441834,
+        "column_requests": 7709944,
+        "column_tiles": 38487,
+        "prefix_evaluations": 5342476,
+        "version_cache_boundary_hits": 14715,
+        "version_cache_exported_bytes": 45818720,
+        "version_cache_exterior_exported_bytes": 27605888,
+        "version_cache_exterior_hits": 39164
+      },
+      "host_load_1m": [
+        45.58,
+        45.95
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "diag-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 210.88,
+      "cpu_ms_per_region": 3334.15,
+      "p95_region_ms": 5240.31,
+      "peak_generation_rss_bytes": 1763590144,
+      "sha256_corpus_nbt": "83e94dfe3665c0af55a1ca0e466365925dbeffbd7dfa6690b2ce5e3ba0fed40b",
+      "comparison": null,
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 9001116,
+        "column_builds": 6226563,
+        "column_join_nanos": 620393613,
+        "column_lock_nanos": 868155530,
+        "column_requests": 7709944,
+        "column_tiles": 38487,
+        "prefix_evaluations": 5342476,
+        "version_cache_boundary_hits": 14715,
+        "version_cache_exported_bytes": 45818720,
+        "version_cache_exterior_exported_bytes": 27605888,
+        "version_cache_exterior_hits": 39164
+      },
+      "host_load_1m": [
+        36.14,
+        47.61
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "diag-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "db80421e3b600380b36bb679852b9cecd01d03e21f8d27b9248ff1133498b20b",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 323.23,
+      "cpu_ms_per_region": 3282.46,
+      "p95_region_ms": 3451.99,
+      "peak_generation_rss_bytes": 1773715456,
+      "sha256_corpus_nbt": "83e94dfe3665c0af55a1ca0e466365925dbeffbd7dfa6690b2ce5e3ba0fed40b",
+      "comparison": {
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 9001116,
+        "column_builds": 6226563,
+        "column_join_nanos": 406034453,
+        "column_lock_nanos": 685500227,
+        "column_requests": 7709944,
+        "column_tiles": 38487,
+        "column_writer_target_hits": 2472192,
+        "prefix_evaluations": 5342476,
+        "version_cache_boundary_hits": 14715,
+        "version_cache_exported_bytes": 45818720,
+        "version_cache_exterior_exported_bytes": 27605888,
+        "version_cache_exterior_hits": 39164
+      },
+      "host_load_1m": [
+        35.11,
+        37.31
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "diag-empty-structures": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "0eecb63ea19d537fde43c614fd97c6f16f8927d74f397234f1781e5d73953b37",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 457.77,
+      "cpu_ms_per_region": 3031.64,
+      "p95_region_ms": 2489.1,
+      "peak_generation_rss_bytes": 1812414464,
+      "sha256_corpus_nbt": "83e94dfe3665c0af55a1ca0e466365925dbeffbd7dfa6690b2ce5e3ba0fed40b",
+      "comparison": {
+        "identical_nbt_chunks": 2048,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 8215650,
+        "column_builds": 5441097,
+        "column_join_nanos": 163538755,
+        "column_lock_nanos": 395445063,
+        "column_requests": 8182383,
+        "column_tiles": 38487,
+        "empty_structure_column_skips": 1257905,
+        "prefix_evaluations": 4557010,
+        "version_cache_boundary_hits": 14715,
+        "version_cache_exported_bytes": 52034120,
+        "version_cache_exterior_exported_bytes": 33821288,
+        "version_cache_exterior_hits": 39164
+      },
+      "host_load_1m": [
+        45.95,
+        49.86
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "empty-structures-0-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 496.96,
+      "cpu_ms_per_region": 3135.43,
+      "p95_region_ms": 2299.39,
+      "peak_generation_rss_bytes": 2120417280,
+      "sha256_corpus_nbt": "c30ec15d6e349b7e8f04b46636f9097b5ae79dc30a5887c8b11b70bd37adff60",
+      "comparison": null,
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        49.86,
+        48.45
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "empty-structures-1-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "0eecb63ea19d537fde43c614fd97c6f16f8927d74f397234f1781e5d73953b37",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 490.62,
+      "cpu_ms_per_region": 3085.44,
+      "p95_region_ms": 2347.83,
+      "peak_generation_rss_bytes": 2133950464,
+      "sha256_corpus_nbt": "c30ec15d6e349b7e8f04b46636f9097b5ae79dc30a5887c8b11b70bd37adff60",
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "empty_structure_column_skips": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        48.45,
+        47.24
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "empty-structures-2-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "0eecb63ea19d537fde43c614fd97c6f16f8927d74f397234f1781e5d73953b37",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 518.65,
+      "cpu_ms_per_region": 3085.38,
+      "p95_region_ms": 2185.69,
+      "peak_generation_rss_bytes": 2136260608,
+      "sha256_corpus_nbt": "c30ec15d6e349b7e8f04b46636f9097b5ae79dc30a5887c8b11b70bd37adff60",
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "empty_structure_column_skips": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        47.24,
+        42.47
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "empty-structures-3-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 567.65,
+      "cpu_ms_per_region": 3096.19,
+      "p95_region_ms": 2005.61,
+      "peak_generation_rss_bytes": 2148794368,
+      "sha256_corpus_nbt": "c30ec15d6e349b7e8f04b46636f9097b5ae79dc30a5887c8b11b70bd37adff60",
+      "comparison": {
+        "identical_nbt_chunks": 6144,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        42.47,
+        39.42
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "empty-structures-repeat-0-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 477.02,
+      "cpu_ms_per_region": 2768.82,
+      "p95_region_ms": 2650.96,
+      "peak_generation_rss_bytes": 2053931008,
+      "sha256_corpus_nbt": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": null,
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        69.4,
+        73.23
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "empty-structures-repeat-1-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "0eecb63ea19d537fde43c614fd97c6f16f8927d74f397234f1781e5d73953b37",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 550.8,
+      "cpu_ms_per_region": 2826.46,
+      "p95_region_ms": 2206.57,
+      "peak_generation_rss_bytes": 2144518144,
+      "sha256_corpus_nbt": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": {
+        "identical_nbt_chunks": 12288,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "empty_structure_column_skips": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        73.23,
+        67.53
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "empty-structures-repeat-2-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "0eecb63ea19d537fde43c614fd97c6f16f8927d74f397234f1781e5d73953b37",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 394.86,
+      "cpu_ms_per_region": 2820.51,
+      "p95_region_ms": 3992.51,
+      "peak_generation_rss_bytes": 2164473856,
+      "sha256_corpus_nbt": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": {
+        "identical_nbt_chunks": 12288,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "empty_structure_column_skips": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        67.53,
+        78.12
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "empty-structures-repeat-3-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 413.4,
+      "cpu_ms_per_region": 2834.86,
+      "p95_region_ms": 3257.26,
+      "peak_generation_rss_bytes": 2093301760,
+      "sha256_corpus_nbt": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": {
+        "identical_nbt_chunks": 12288,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        78.12,
+        66.18
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "repair-source-metal": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 0,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 462.92,
+      "cpu_ms_per_region": 3222.33,
+      "p95_region_ms": 2206.65,
+      "peak_generation_rss_bytes": 1442824192,
+      "sha256_corpus_nbt": "cf7038b6183687455a27edecb1b27499816d8821ca248014b1434deebbbf0962",
+      "comparison": null,
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        29.64,
+        29.51
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "target-writers-repeat-0-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 572.94,
+      "cpu_ms_per_region": 2786.27,
+      "p95_region_ms": 2389.2,
+      "peak_generation_rss_bytes": 2178039808,
+      "sha256_corpus_nbt": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": null,
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        39.42,
+        43.21
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "target-writers-repeat-1-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "db80421e3b600380b36bb679852b9cecd01d03e21f8d27b9248ff1133498b20b",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 549.68,
+      "cpu_ms_per_region": 2841.09,
+      "p95_region_ms": 2414.8,
+      "peak_generation_rss_bytes": 1916813312,
+      "sha256_corpus_nbt": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": {
+        "identical_nbt_chunks": 12288,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "column_writer_target_hits": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        43.21,
+        46.28
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "target-writers-repeat-2-candidate": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "db80421e3b600380b36bb679852b9cecd01d03e21f8d27b9248ff1133498b20b",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 513.54,
+      "cpu_ms_per_region": 2847.8,
+      "p95_region_ms": 2968.79,
+      "peak_generation_rss_bytes": 2238267392,
+      "sha256_corpus_nbt": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": {
+        "identical_nbt_chunks": 12288,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "column_writer_target_hits": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        46.28,
+        45.37
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    },
+    "target-writers-repeat-3-baseline": {
+      "definition_sha256": "bcce2aa8b88499fcaddbbc2ecffb7fc45806608ced4cc61ad154a0582aef4a68",
+      "library_sha256": "1d29b4422ca7d9704c5934ed58f88cdfc2d719cce438c34fc8fadef68e2fad5a",
+      "backend": "Metal: Apple M4 Max",
+      "seed": 12345,
+      "warmups": 2,
+      "coordinates": [
+        "g,r,i,d,_,w,i,d,t,h",
+        "o,r,i,g,i,n,_,x",
+        "o,r,i,g,i,n,_,z"
+      ],
+      "chunks_per_second": 489.18,
+      "cpu_ms_per_region": 2766.51,
+      "p95_region_ms": 2973.85,
+      "peak_generation_rss_bytes": 1947729920,
+      "sha256_corpus_nbt": "4b568b191f24656318a9405cdd96188e4fb176e852e42799db1a3c937a873c1c",
+      "comparison": {
+        "identical_nbt_chunks": 12288,
+        "membership_identical": true
+      },
+      "reopen": null,
+      "counters": {
+        "anchor_ready_hits": 0,
+        "column_builds": 0,
+        "column_join_nanos": 0,
+        "column_lock_nanos": 0,
+        "column_requests": 0,
+        "column_tiles": 0,
+        "prefix_evaluations": 0,
+        "version_cache_boundary_hits": 0,
+        "version_cache_exported_bytes": 0,
+        "version_cache_exterior_exported_bytes": 0,
+        "version_cache_exterior_hits": 0
+      },
+      "host_load_1m": [
+        45.37,
+        69.4
+      ],
+      "host_power": "Now drawing from 'AC Power'",
+      "host_mode": [
+        "powermode            0"
+      ],
+      "thermal_warning_reported": false
+    }
+  },
+  "repair-cpu": {
+    "baseline": {
+      "slot": 528,
+      "generated": 1,
+      "preserved": 1023,
+      "new_chunk_sha256": "2dc7234405da38605231fa95508509dd255f944d93618c6d59d7e1a81aff80c1"
+    },
+    "candidate": {
+      "slot": 528,
+      "generated": 1,
+      "preserved": 1023,
+      "new_chunk_sha256": "2dc7234405da38605231fa95508509dd255f944d93618c6d59d7e1a81aff80c1"
+    }
+  },
+  "repair-full-metal": {
+    "command": [
+      "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+      "/private/tmp/retina-484-479/scripts/native-region-benchmark.py",
+      "--library",
+      "/private/tmp/retina-484-data/cycle-479/baseline.dylib",
+      "--library-revision",
+      "1d29b4422ca7d970",
+      "--definition",
+      "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/modern.dat",
+      "--dimension",
+      "minecraft:the_nether",
+      "--backend",
+      "metal",
+      "--assembly-threads",
+      "4",
+      "--parallel",
+      "1",
+      "--origin-x",
+      "-1",
+      "--origin-z",
+      "0",
+      "--grid-width",
+      "3",
+      "--count",
+      "1",
+      "--warmups",
+      "0",
+      "--scope",
+      "lit-mca",
+      "--lighting",
+      "enabled",
+      "--mca-compression",
+      "zlib",
+      "--readiness",
+      "shader-ready",
+      "--out",
+      "/private/tmp/retina-484-data/cycle-479/repair-full-metal"
+    ],
+    "env": {
+      "RAYON_NUM_THREADS": "2",
+      "RETINA_PIPELINE_CACHE_DIR": "/private/tmp/retina-484-data/cache"
+    },
+    "before": {
+      "load": [
+        31.5546875,
+        47.46044921875,
+        44.4345703125
+      ],
+      "power": "Now drawing from 'AC Power'",
+      "mode": [
+        "powermode            0"
+      ],
+      "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded",
+      "cpu": [
+        "257.3 qemu-system-x86_64",
+        "196.0 /System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine",
+        "104.5 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
+        "96.9 /Users/cyberpwn/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc",
+        "95.7 /Applications/Cantrip.app/Contents/Resources/runtime/node",
+        "74.8 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder"
+      ]
+    },
+    "after": {
+      "load": [
+        31.5546875,
+        47.46044921875,
+        44.4345703125
+      ],
+      "power": "Now drawing from 'AC Power'",
+      "mode": [
+        "powermode            0"
+      ],
+      "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded",
+      "cpu": [
+        "274.6 qemu-system-x86_64",
+        "198.9 /System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine",
+        "102.9 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
+        "101.4 /Applications/Cantrip.app/Contents/Resources/runtime/node",
+        "98.3 /Users/cyberpwn/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc",
+        "92.1 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder"
+      ]
+    },
+    "elapsed_s": 1.3656249167397618,
+    "status": 1
+  },
+  "repair-metal": {
+    "baseline": {
+      "slot": 528,
+      "generated": 1,
+      "preserved": 1023,
+      "new_chunk_sha256": "2dc7234405da38605231fa95508509dd255f944d93618c6d59d7e1a81aff80c1"
+    },
+    "candidate": {
+      "slot": 528,
+      "generated": 1,
+      "preserved": 1023,
+      "new_chunk_sha256": "2dc7234405da38605231fa95508509dd255f944d93618c6d59d7e1a81aff80c1"
+    }
+  }
+}
