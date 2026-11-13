@@ -3,6 +3,64 @@
 pub(super) const UNIFORM: u32 = 1 << 31;
 const BLOCKS: usize = 4096;
 
+/// Reserve the tile-local input prefix and stage shared mixed sections once.
+/// Shared offsets stay valid when later submissions replace the tile prefix.
+pub(super) fn shared_input<B: crate::material_blocks::Read>(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    chunks: &[B],
+    descriptors: &mut [Vec<u32>],
+    repeated: &[bool],
+    prefix_bytes: u64,
+) -> Option<(wgpu::Buffer, u64)> {
+    let mixed = descriptors
+        .iter()
+        .zip(repeated)
+        .filter(|&(_, repeat)| *repeat)
+        .flat_map(|(facts, _)| facts)
+        .filter(|&&word| word & UNIFORM == 0)
+        .count();
+    if mixed == 0 {
+        return None;
+    }
+    let payload_bytes = (mixed * BLOCKS * size_of::<u16>()) as u64;
+    let size = prefix_bytes + payload_bytes;
+    let limits = device.limits();
+    if size > limits.max_buffer_size.min(limits.max_storage_buffer_binding_size.into()) {
+        return None;
+    }
+    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("Retina shared lighting materials"),
+        size,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+    let length = std::num::NonZeroU64::new(payload_bytes)?;
+    let mut staging = queue.write_buffer_with(&buffer, prefix_bytes, length)?;
+    let section_bytes = BLOCKS * size_of::<u16>();
+    let mut written = 0;
+    for ((chunk, facts), &repeat) in chunks.iter().zip(descriptors).zip(repeated) {
+        if !repeat {
+            continue;
+        }
+        for (section, descriptor) in facts.iter_mut().enumerate() {
+            if *descriptor & UNIFORM != 0 {
+                continue;
+            }
+            let crate::material_blocks::View::Dense(values) = chunk.section(section) else {
+                unreachable!("mixed descriptor requires a dense section");
+            };
+            let next = written + section_bytes;
+            staging
+                .slice(written..next)
+                .copy_from_slice(bytemuck::cast_slice(values));
+            *descriptor = ((prefix_bytes + written as u64) / 4) as u32;
+            written = next;
+        }
+    }
+    Some((buffer, payload_bytes))
+}
+
 pub(super) fn classify<B: crate::material_blocks::Read + ?Sized>(blocks: &B) -> Vec<u32> {
     (0..blocks.len() / BLOCKS).map(|index| match blocks.section(index) {
         crate::material_blocks::View::Uniform(id) => UNIFORM | u32::from(id),
@@ -16,7 +74,8 @@ pub(super) fn classify<B: crate::material_blocks::Read + ?Sized>(blocks: &B) -> 
 }
 
 /// Input order remains chunk, section, y, z, x. Dense descriptors are word
-/// offsets into this same allocation; uniform descriptors carry the exact ID.
+/// offsets into the tile payload or immutable halo in the same buffer.
+/// Uniform descriptors carry the exact ID.
 pub(super) fn pack<'a, B: crate::material_blocks::Read + ?Sized + 'a>(
     words: &mut Vec<u32>,
     chunks: impl ExactSizeIterator<Item = (&'a B, &'a [u32])>,
@@ -28,7 +87,7 @@ pub(super) fn pack<'a, B: crate::material_blocks::Read + ?Sized + 'a>(
     for (chunk, (blocks, descriptors)) in chunks.enumerate() {
         for section in 0..sections {
             let descriptor = descriptors[section];
-            words[chunk * sections + section] = if descriptor & UNIFORM != 0 {
+            words[chunk * sections + section] = if descriptor != 0 {
                 descriptor
             } else {
                 let crate::material_blocks::View::Dense(values) = blocks.section(section) else {
