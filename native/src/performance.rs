@@ -93,6 +93,8 @@ counters! {
     output_index_packed_outputs, output_index_packed_writes, output_index_packed_cells,
     output_index_packed_buffer_bytes, output_index_ordered_outputs, output_index_ordered_writes,
     output_index_uniform_bitmap_bytes,
+    final_material_compact_nanos, final_material_allocated_bytes,
+    final_material_dense_equivalent_bytes, final_material_uniform_sections,
 }
 use Counter::*;
 

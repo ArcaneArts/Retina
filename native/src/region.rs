@@ -568,10 +568,22 @@ fn generate_region_inner(
                         geometry::fit_post_processing(request, storage_request, &mut data.tag);
                     }
                     if lighting.is_some() {
-                        return Ok(PreparedRecord::Blocks(
-                            MaterialChunk::Dense(blocks),
-                            structure_data.map(|d| d.tag),
-                        ));
+                        use crate::performance::Counter::*;
+                        let started = session.performance.start();
+                        let materials = MaterialChunk::from_dense_sections(&blocks);
+                        session.performance.elapsed(final_material_compact_nanos, started);
+                        if crate::performance::enabled() {
+                            let (bytes, uniform) = materials.allocation();
+                            session.performance.add(final_material_allocated_bytes, bytes as u64);
+                            session.performance.add(
+                                final_material_dense_equivalent_bytes,
+                                (blocks.len() * size_of::<u16>()) as u64,
+                            );
+                            session.performance.add(final_material_uniform_sections, uniform as u64);
+                        }
+                        // Release the full chunk allocation from the region working set.
+                        scratch.blocks = blocks;
+                        return Ok(PreparedRecord::Blocks(materials, structure_data.map(|d| d.tag)));
                     }
                     timings.time(timings::NBT, || {
                         encode_chunk(
