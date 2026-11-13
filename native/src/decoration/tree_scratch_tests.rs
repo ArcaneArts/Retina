@@ -99,6 +99,7 @@ fn reused_tree_scratch_preserves_commands_rng_and_bounds() {
                 None,
                 None,
                 None,
+                None,
                 &mut TreeScratch::default(),
             );
             tree(
@@ -110,6 +111,7 @@ fn reused_tree_scratch_preserves_commands_rng_and_bounds() {
                 z,
                 &mut b,
                 &mut actual,
+                None,
                 None,
                 None,
                 None,
@@ -185,6 +187,7 @@ fn tree_scratch_benchmark() {
                         8,
                         &mut rng,
                         &mut blocks,
+                        None,
                         None,
                         None,
                         None,

@@ -517,6 +517,7 @@ fn fixtures(
             &mut blocks,
             None,
             None,
+            None,
             Some(&mut worker),
             &mut scratch,
         );
@@ -669,6 +670,7 @@ fn full_cpu(
                 -520,
                 &mut Rng::new(c.seed),
                 &mut blocks,
+                None,
                 None,
                 None,
                 None,

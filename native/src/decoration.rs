@@ -2732,6 +2732,7 @@ mod tests {
                 None,
                 Some((64, &placement::Overlay::default())),
                 None,
+                None,
                 &mut TreeScratch::default(),
             );
             let top = blocks
@@ -2884,6 +2885,7 @@ mod tests {
                 16,
                 &mut Rng::new(seed),
                 &mut blocks,
+                None,
                 None,
                 None,
                 None,
