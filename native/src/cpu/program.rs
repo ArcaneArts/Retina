@@ -4,6 +4,7 @@
 pub(crate) mod bounds;
 mod statistics;
 mod material_zero;
+mod material_rules;
 mod cell;
 use super::noise::*;
 use crate::program::{Instruction, Program, RegistryProgram, opcode::Opcode};
@@ -29,6 +30,7 @@ struct Plan {
     steps: Vec<Step>,
     boundable: bool,
     indices: Vec<usize>,
+    material: Option<material_rules::Plan>,
 }
 pub struct Prepared {
     registry: Arc<RegistryProgram>,
@@ -130,7 +132,12 @@ impl Prepared {
             for (position, step) in steps.iter().enumerate() {
                 indices[step.index] = position;
             }
-            let plan = Plan { steps, boundable, indices };
+            let material = if registry.material_layers && (3..3 + biomes).contains(&pid) {
+                material_rules::Plan::new(program, &constants)
+            } else {
+                None
+            };
+            let plan = Plan { steps, boundable, indices, material };
             if registry.material_layers && pid >= 3 && pid < 3 + biomes {
                 material_zero[pid - 3] = material_zero::prepare(program, &plan);
             }
@@ -467,7 +474,7 @@ impl Evaluator<'_> {
         depth: usize,
     ) -> [f32; 6] {
         self.record::<TRACK>(cpu_vm_calls, 1);
-        if TRACK {
+        let visits_counter = if TRACK {
             let root_count = self.prepared.registry.programs.len();
             let extra = if self
                 .prepared
@@ -480,21 +487,20 @@ impl Evaluator<'_> {
             } else {
                 0
             };
-            let scope = if pid < 3 {
-                cpu_vm_terrain_calls
+            let (calls, visits) = if pid < 3 {
+                (cpu_vm_terrain_calls, cpu_vm_terrain_node_visits)
             } else if pid < root_count - extra {
-                cpu_vm_material_calls
+                (cpu_vm_material_calls, cpu_vm_material_node_visits)
             } else if pid < root_count {
-                cpu_vm_auxiliary_calls
+                (cpu_vm_auxiliary_calls, cpu_vm_auxiliary_node_visits)
             } else {
-                cpu_vm_field_calls
+                (cpu_vm_field_calls, cpu_vm_field_node_visits)
             };
-            self.record::<TRACK>(scope, 1);
-        }
-        if self.frames.len() <= depth {
-            self.frames.resize_with(depth + 1, Frame::default);
-        }
-        let mut frame = std::mem::take(&mut self.frames[depth]);
+            self.record::<TRACK>(calls, 1);
+            Some(visits)
+        } else {
+            None
+        };
         let registry = &self.prepared.registry;
         let program: &Program = if pid < registry.programs.len() {
             &registry.programs[pid]
@@ -502,6 +508,20 @@ impl Evaluator<'_> {
             &registry.interpolations[pid - registry.programs.len()].input
         };
         let plan = &self.prepared.plans[pid];
+        #[cfg(test)]
+        let prepared = !self.eager;
+        #[cfg(not(test))]
+        let prepared = true;
+        if prepared && let Some(material) = &plan.material {
+            let (result, visits) = material.evaluate::<TRACK>(self, pid, point, context);
+            self.record::<TRACK>(cpu_vm_material_rule_steps, visits);
+            self.record::<TRACK>(cpu_vm_material_rule_calls, 1);
+            return result;
+        }
+        if self.frames.len() <= depth {
+            self.frames.resize_with(depth + 1, Frame::default);
+        }
+        let mut frame = std::mem::take(&mut self.frames[depth]);
         frame.begin(program.nodes.len());
         #[cfg(test)]
         let eager = self.eager;
@@ -518,8 +538,11 @@ impl Evaluator<'_> {
                     .map(|i| program.roots.get(i).copied().unwrap_or(0)),
             );
         }
+        let mut visits = 0;
         while let Some(&index) = frame.work.last() {
-            self.record::<TRACK>(cpu_vm_node_visits, 1);
+            if TRACK {
+                visits += 1;
+            }
             if !frame.missing(index) {
                 self.record::<TRACK>(cpu_vm_ready_hits, 1);
                 frame.work.pop();
@@ -633,18 +656,14 @@ impl Evaluator<'_> {
                                 + 1.0
                         }
                     }
-                    StoneDepth => {
+                    StoneDepth => truth(if registry.material_layers {
+                        material_rules::stone_depth(a == 1, b == 1, p, context)
+                    } else {
                         let [stone, surface, _, _] = context.surface;
-                        truth(if registry.material_layers {
-                            let depth = if a == 1 { stone } else { context.detail[0] };
-                            let secondary = ((context.detail[1] + 1.0) * 0.5 * p[1]) as i32 as f32;
-                            depth <= 1.0 + p[0] + if b == 1 { surface } else { 0.0 } + secondary
-                        } else {
-                            a == 1
-                                && stone
-                                    <= 1.0 + p[0] + if b == 1 { surface } else { 0.0 } + p[1] * 0.5
-                        })
-                    }
+                        a == 1
+                            && stone
+                                <= 1.0 + p[0] + if b == 1 { surface } else { 0.0 } + p[1] * 0.5
+                    }),
                     Water => {
                         let y = point[1] + if a == 1 { context.surface[0] } else { 0.0 };
                         truth(if registry.material_layers {
@@ -655,21 +674,8 @@ impl Evaluator<'_> {
                                 || y >= self.sea_level as f32 + p[0] + context.surface[1] * p[1]
                         })
                     }
-                    VerticalAnchor => truth(
-                        point[1] + if a == 1 { context.surface[0] } else { 0.0 }
-                            >= p[0] + context.surface[1] * p[1],
-                    ),
-                    VerticalChance => {
-                        let h = cell_hash(
-                            [point[0] as i32, point[2] as i32],
-                            (self.seed as u32).wrapping_add(pid as u32 * 7919),
-                            (self.seed >> 32) as u32,
-                        );
-                        truth(
-                            (h & 65535) as f32 / 65535.0
-                                < ((p[1] - point[1]) / (p[1] - p[0]).max(1.0)).clamp(0.0, 1.0),
-                        )
-                    }
+                    VerticalAnchor => truth(material_rules::vertical_anchor(a == 1, p, point, context)),
+                    VerticalChance => truth(material_rules::vertical_chance(self.seed, pid, p, point)),
                     Steep => truth(context.surface[2] > 3.0),
                     Hole => truth(context.surface[1] <= 0.0),
                     Temperature => {
@@ -733,6 +739,10 @@ impl Evaluator<'_> {
                 }
                 self.horizontal.insert(key, value);
             }
+        }
+        if let Some(counter) = visits_counter {
+            self.record::<TRACK>(cpu_vm_node_visits, visits);
+            self.record::<TRACK>(counter, visits);
         }
         let result = std::array::from_fn(|i| {
             frame.values[program.roots.get(i).copied().unwrap_or(0) as usize]

@@ -23,6 +23,9 @@ events! {
     cpu_vm_corner_lookups, cpu_vm_corner_hits,
     cpu_vm_plain_corner_lookups, cpu_vm_plain_corner_hits, cpu_vm_corner_clears,
     cpu_vm_noise_profiles, cpu_vm_blended_profiles, cpu_vm_noise3_calls,
+    cpu_vm_terrain_node_visits, cpu_vm_material_node_visits,
+    cpu_vm_auxiliary_node_visits, cpu_vm_field_node_visits,
+    cpu_vm_material_rule_calls, cpu_vm_material_rule_steps,
 }
 
 pub(super) struct Statistics {
