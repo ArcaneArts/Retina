@@ -1,0 +1,1994 @@
+{
+  "baseline": "135ca8cb76d3ec631d2e10bea1ab24a9e59f718c",
+  "definition_sha256": "96a1cc33d8dc6dda511be96a62dec6d915063504648745867242e4344dc8f527",
+  "notes": "RSS samples reflect the benchmark process only. Startup stage spans can overlap.",
+  "spline_inventory": {
+    "fixture_sha256": "e66f7da741cf64a01a3dfe7c58c8eedd3a3cc83813f74e8f670cee5796744034",
+    "groups": {
+      "programs": {
+        "graphs": 388,
+        "nodes": 88658,
+        "spline_nodes": 3007,
+        "spline_knots": 122355,
+        "max_knots": 793,
+        "histogram": {
+          "2": 1334,
+          "4": 3,
+          "7": 2,
+          "9": 12,
+          "17": 12,
+          "33": 2,
+          "34": 8,
+          "35": 1250,
+          "49": 3,
+          "94": 1,
+          "121": 2,
+          "169": 360,
+          "751": 8,
+          "793": 10
+        }
+      },
+      "interpolation": {
+        "graphs": 152,
+        "nodes": 93166,
+        "spline_nodes": 13578,
+        "spline_knots": 685389,
+        "max_knots": 793,
+        "histogram": {
+          "2": 5351,
+          "3": 33,
+          "4": 74,
+          "17": 22,
+          "33": 20,
+          "34": 31,
+          "35": 5588,
+          "49": 8,
+          "94": 1,
+          "121": 13,
+          "169": 2333,
+          "751": 52,
+          "793": 52
+        }
+      }
+    }
+  },
+  "spline_values_partial": {
+    "status": 1,
+    "first_region": {
+      "algorithm": "sha256",
+      "records": 1024,
+      "sha256": "d3759c726668f637fa9011fce85837a8c7f54d33c766dff020cf2a2f817aed1e",
+      "files": [
+        {
+          "file": "0.mca",
+          "records": 1024,
+          "sha256": "9f9d271bbcddda5a394feaa73d42ee4e1f3ca6268d6b423cd27d4bf8c377e959"
+        }
+      ]
+    },
+    "first_mca_observed_s": 21.188,
+    "note": "First publication from native stage; the original external sampler hung while reading process statistics. No RSS summary for this run."
+  },
+  "runs": {
+    "baseline-iris-cohorts": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "-u",
+        "/private/tmp/retina-484-481/scripts/native-region-benchmark.py",
+        "--library",
+        "/private/tmp/retina-484-data/cycle-479/baseline.dylib",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/tall.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--out",
+        "/private/tmp/retina-484-data/cycle-481/baseline-iris-cohorts",
+        "--library-revision",
+        "1d29b4422ca7d970",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "4",
+        "--parallel",
+        "1",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--scope",
+        "lit-mca",
+        "--readiness",
+        "driver-warm",
+        "--incremental-specialization",
+        "enabled",
+        "--await-specialization",
+        "--specialization-timeout",
+        "240",
+        "--startup-debug"
+      ],
+      "environment": "2",
+      "before": {
+        "load": [
+          29.56298828125,
+          35.78564453125,
+          39.64208984375
+        ],
+        "power": "Now drawing from 'AC Power'",
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded",
+        "cpu": [
+          "198.4 /System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine",
+          "178.5 qemu-system-x86_64",
+          "100.0 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
+          "95.7 /Applications/Cantrip.app/Contents/Resources/runtime/node",
+          "73.9 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder",
+          "56.6 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer"
+        ]
+      },
+      "after": {
+        "load": [
+          23.97802734375,
+          30.013671875,
+          36.05419921875
+        ],
+        "power": "Now drawing from 'AC Power'",
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded",
+        "cpu": [
+          "171.8 qemu-system-x86_64",
+          "109.5 /System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine",
+          "97.8 /Applications/Cantrip.app/Contents/Resources/runtime/node",
+          "97.8 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
+          "94.6 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder",
+          "49.3 /System/Library/Frameworks/Contacts.framework/Support/contactsd"
+        ]
+      },
+      "status": 1,
+      "first_mca_observed_s": 19.25,
+      "first_region": null,
+      "peak_sample_s_and_rss_kib": [
+        2.55,
+        3500416
+      ],
+      "sampled_s_and_rss_kib": [
+        [
+          4.85,
+          1034208
+        ],
+        [
+          15.14,
+          2552368
+        ],
+        [
+          29.96,
+          2195808
+        ],
+        [
+          60.13,
+          689360
+        ],
+        [
+          119.88,
+          204480
+        ],
+        [
+          179.93,
+          218176
+        ],
+        [
+          240.03,
+          187232
+        ]
+      ],
+      "phase_end_s_and_duration_s": {
+        "retina-gpu: shader module Retina GPU biomes and simplex": [
+          [
+            0.106,
+            0.006
+          ]
+        ],
+        "retina-gpu: shader module Retina GPU cave fields and mask": [
+          [
+            0.114,
+            0.008
+          ]
+        ],
+        "retina-gpu: shader module Retina guarded ore masks": [
+          [
+            0.115,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#9 entry=guarded": [
+          [
+            0.115,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#9 entry=guarded": [
+          [
+            0.115,
+            0.0
+          ]
+        ],
+        "retina-gpu: shader module Retina registered placement counts": [
+          [
+            0.116,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#14 entry=counts": [
+          [
+            0.116,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#14 entry=counts": [
+          [
+            0.116,
+            0.0
+          ]
+        ],
+        "retina-gpu: prepare specialized registry shader source": [
+          [
+            1.755,
+            0.295
+          ]
+        ],
+        "retina-gpu: shader module Retina specialized registry graphs": [
+          [
+            1.827,
+            0.01
+          ],
+          [
+            1.886,
+            0.012
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#26 entry=main": [
+          [
+            1.832,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#26 entry=main": [
+          [
+            1.832,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#30 entry=biome_sites": [
+          [
+            1.836,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#30 entry=biome_sites": [
+          [
+            1.836,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#34 entry=biome_queries": [
+          [
+            1.839,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#34 entry=biome_queries": [
+          [
+            1.839,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#38 entry=lake_candidates": [
+          [
+            1.842,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#38 entry=lake_candidates": [
+          [
+            1.842,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#42 entry=lake_density": [
+          [
+            1.846,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#42 entry=lake_density": [
+          [
+            1.846,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#46 entry=lake_nodes": [
+          [
+            1.847,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#46 entry=lake_nodes": [
+          [
+            1.847,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#50 entry=climate_nodes": [
+          [
+            1.85,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#50 entry=climate_nodes": [
+          [
+            1.85,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#54 entry=height_nodes": [
+          [
+            1.853,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#54 entry=height_nodes": [
+          [
+            1.853,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#58 entry=density_nodes": [
+          [
+            1.856,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#58 entry=density_nodes": [
+          [
+            1.856,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#62 entry=surface_columns": [
+          [
+            1.86,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#62 entry=surface_columns": [
+          [
+            1.86,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#66 entry=interpolation_nodes_1": [
+          [
+            1.863,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#66 entry=interpolation_nodes_1": [
+          [
+            1.864,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#70 entry=interpolation_nodes_2": [
+          [
+            1.867,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#70 entry=interpolation_nodes_2": [
+          [
+            1.867,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#74 entry=interpolation_nodes_3": [
+          [
+            1.87,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#74 entry=interpolation_nodes_3": [
+          [
+            1.871,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#78 entry=interpolation_nodes_4": [
+          [
+            1.873,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#78 entry=interpolation_nodes_4": [
+          [
+            1.874,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#83 entry=underground_queries": [
+          [
+            1.889,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#83 entry=underground_queries": [
+          [
+            1.889,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#87 entry=cave_nodes": [
+          [
+            1.893,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#87 entry=cave_nodes": [
+          [
+            1.894,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#91 entry=cave_exterior": [
+          [
+            1.898,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#91 entry=cave_exterior": [
+          [
+            1.899,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#95 entry=cave_mask": [
+          [
+            1.902,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#95 entry=cave_mask": [
+          [
+            1.903,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#99 entry=material_counts": [
+          [
+            1.906,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#99 entry=material_counts": [
+          [
+            1.906,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#103 entry=material_emit": [
+          [
+            1.909,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#103 entry=material_emit": [
+          [
+            1.909,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#107 entry=aquifer_mask": [
+          [
+            1.913,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#107 entry=aquifer_mask": [
+          [
+            1.913,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#111 entry=aquifer_surface": [
+          [
+            1.916,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#111 entry=aquifer_surface": [
+          [
+            1.916,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#115 entry=aquifer_centers": [
+          [
+            1.919,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#115 entry=aquifer_centers": [
+          [
+            1.919,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#119 entry=aquifer_barrier": [
+          [
+            1.922,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#119 entry=aquifer_barrier": [
+          [
+            1.922,
+            0.0
+          ]
+        ],
+        "retina-gpu: compile world pipelines specialized=false terrain=true program_bytes=92163 part=All": [
+          [
+            1.922,
+            0.106
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#123 entry=material_prefix_blocks": [
+          [
+            1.923,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#123 entry=material_prefix_blocks": [
+          [
+            1.923,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#127 entry=material_prefix_total": [
+          [
+            1.924,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#127 entry=material_prefix_total": [
+          [
+            1.924,
+            0.0
+          ]
+        ],
+        "retina-mca-0: shader module Retina packed GPU lighting": [
+          [
+            18.584,
+            0.002
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#133 entry=initialize": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#133 entry=initialize": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#137 entry=spread": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#137 entry=spread": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#141 entry=compact": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#141 entry=compact": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#145 entry=dispatch_args": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#145 entry=dispatch_args": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#149 entry=spread_sparse": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#149 entry=spread_sparse": [
+          [
+            18.587,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#153 entry=pack": [
+          [
+            18.588,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#153 entry=pack": [
+          [
+            18.588,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#157 entry=section_palettes": [
+          [
+            18.589,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#157 entry=section_palettes": [
+          [
+            18.59,
+            0.0
+          ]
+        ],
+        "host: first region generation profile=1 region=-1,0 cached=false": [
+          [
+            18.878,
+            17.495
+          ]
+        ]
+      },
+      "events": [
+        "    2.351s [Retina startup] Pipeline workload specialized=true source_bytes=127609169 entries=5 outlined_bodies=330 [horizontal_nodes, interpolation_nodes_1, interpolation_nodes_2, interpolation_nodes_3, interpolation_nodes_4]",
+        "  260.209s     if awaited.status not in (2,4): raise RuntimeError(f\"Specialization did not become ready: status={awaited.status}\")",
+        "  260.209s RuntimeError: Specialization did not become ready: status=1"
+      ],
+      "remaining_waits": [
+        "  231.555s [Retina startup] WAIT #131 shader module Retina specialized registry graphs [thread=retina-shader-compiler] elapsed=229.2s (operation still running) | pipelines=35/40 finished (87.5% of discovered) remaining=5 queued=5 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=213.0s stages_active=2",
+        "  241.560s [Retina startup] WAIT #23 compile world pipelines specialized=true terrain=false program_bytes=126882343 part=All [thread=retina-shader-compiler] elapsed=239.8s (operation still running) | pipelines=35/40 finished (87.5% of discovered) remaining=5 queued=5 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=223.0s stages_active=2",
+        "  241.560s [Retina startup] WAIT #131 shader module Retina specialized registry graphs [thread=retina-shader-compiler] elapsed=239.2s (operation still running) | pipelines=35/40 finished (87.5% of discovered) remaining=5 queued=5 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=223.0s stages_active=2",
+        "  251.565s [Retina startup] WAIT #23 compile world pipelines specialized=true terrain=false program_bytes=126882343 part=All [thread=retina-shader-compiler] elapsed=249.8s (operation still running) | pipelines=35/40 finished (87.5% of discovered) remaining=5 queued=5 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=233.0s stages_active=2",
+        "  251.565s [Retina startup] WAIT #131 shader module Retina specialized registry graphs [thread=retina-shader-compiler] elapsed=249.2s (operation still running) | pipelines=35/40 finished (87.5% of discovered) remaining=5 queued=5 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=233.0s stages_active=2"
+      ]
+    },
+    "baseline-iris-default": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "-u",
+        "/private/tmp/retina-484-481/scripts/native-region-benchmark.py",
+        "--library",
+        "/private/tmp/retina-484-data/cycle-479/baseline.dylib",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/tall.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--out",
+        "/private/tmp/retina-484-data/cycle-481/baseline-iris-default",
+        "--library-revision",
+        "1d29b4422ca7d970",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "4",
+        "--parallel",
+        "1",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--scope",
+        "lit-mca",
+        "--readiness",
+        "driver-warm",
+        "--incremental-specialization",
+        "disabled",
+        "--await-specialization",
+        "--specialization-timeout",
+        "240",
+        "--startup-debug"
+      ],
+      "environment": "2",
+      "before": {
+        "load": [
+          28.634765625,
+          40.193359375,
+          41.97216796875
+        ],
+        "power": "Now drawing from 'AC Power'",
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded",
+        "cpu": [
+          "156.4 /System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine",
+          "129.9 qemu-system-x86_64",
+          "105.3 node",
+          "105.2 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
+          "99.5 /Library/Java/JavaVirtualMachines/zulu-8.jdk/Contents/Home/bin/java",
+          "90.6 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer"
+        ]
+      },
+      "after": {
+        "load": [
+          29.56298828125,
+          35.78564453125,
+          39.64208984375
+        ],
+        "power": "Now drawing from 'AC Power'",
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded",
+        "cpu": [
+          "195.4 /System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine",
+          "171.9 qemu-system-x86_64",
+          "98.4 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/Support/fseventsd",
+          "92.4 /Applications/Cantrip.app/Contents/Resources/runtime/node",
+          "66.4 /System/Library/CoreServices/Finder.app/Contents/MacOS/Finder",
+          "47.0 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer"
+        ]
+      },
+      "status": 1,
+      "first_mca_observed_s": 21.34,
+      "first_region": null,
+      "peak_sample_s_and_rss_kib": [
+        26.52,
+        5609872
+      ],
+      "sampled_s_and_rss_kib": [
+        [
+          5.25,
+          3201232
+        ],
+        [
+          14.94,
+          3168624
+        ],
+        [
+          30.21,
+          3675872
+        ],
+        [
+          59.77,
+          539360
+        ],
+        [
+          119.86,
+          103472
+        ],
+        [
+          180.2,
+          114480
+        ],
+        [
+          239.74,
+          208896
+        ]
+      ],
+      "phase_end_s_and_duration_s": {
+        "retina-gpu: shader module Retina GPU biomes and simplex": [
+          [
+            0.222,
+            0.008
+          ]
+        ],
+        "retina-gpu: shader module Retina GPU cave fields and mask": [
+          [
+            0.233,
+            0.007
+          ]
+        ],
+        "retina-gpu: shader module Retina guarded ore masks": [
+          [
+            0.233,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#9 entry=guarded": [
+          [
+            0.235,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#9 entry=guarded": [
+          [
+            0.239,
+            0.003
+          ]
+        ],
+        "retina-gpu: shader module Retina registered placement counts": [
+          [
+            0.239,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#14 entry=counts": [
+          [
+            0.239,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#14 entry=counts": [
+          [
+            0.242,
+            0.004
+          ]
+        ],
+        "retina-gpu: prepare specialized registry shader source": [
+          [
+            2.872,
+            0.461
+          ]
+        ],
+        "retina-gpu: shader module Retina specialized registry graphs": [
+          [
+            2.967,
+            0.017
+          ],
+          [
+            3.163,
+            0.014
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#26 entry=main": [
+          [
+            2.988,
+            0.009
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#26 entry=main": [
+          [
+            2.997,
+            0.008
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#30 entry=biome_sites": [
+          [
+            3.004,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#30 entry=biome_sites": [
+          [
+            3.01,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#34 entry=biome_queries": [
+          [
+            3.017,
+            0.005
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#34 entry=biome_queries": [
+          [
+            3.021,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#38 entry=lake_candidates": [
+          [
+            3.031,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#38 entry=lake_candidates": [
+          [
+            3.036,
+            0.006
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#42 entry=lake_density": [
+          [
+            3.043,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#42 entry=lake_density": [
+          [
+            3.045,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#46 entry=lake_nodes": [
+          [
+            3.047,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#46 entry=lake_nodes": [
+          [
+            3.049,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#50 entry=climate_nodes": [
+          [
+            3.055,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#50 entry=climate_nodes": [
+          [
+            3.056,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#54 entry=height_nodes": [
+          [
+            3.064,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#54 entry=height_nodes": [
+          [
+            3.068,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#58 entry=density_nodes": [
+          [
+            3.075,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#58 entry=density_nodes": [
+          [
+            3.079,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#62 entry=surface_columns": [
+          [
+            3.089,
+            0.007
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#62 entry=surface_columns": [
+          [
+            3.095,
+            0.005
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#66 entry=interpolation_nodes_1": [
+          [
+            3.1,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#66 entry=interpolation_nodes_1": [
+          [
+            3.108,
+            0.007
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#70 entry=interpolation_nodes_2": [
+          [
+            3.114,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#70 entry=interpolation_nodes_2": [
+          [
+            3.119,
+            0.005
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#74 entry=interpolation_nodes_3": [
+          [
+            3.132,
+            0.007
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#74 entry=interpolation_nodes_3": [
+          [
+            3.135,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#78 entry=interpolation_nodes_4": [
+          [
+            3.141,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#78 entry=interpolation_nodes_4": [
+          [
+            3.148,
+            0.01
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#83 entry=underground_queries": [
+          [
+            3.169,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#83 entry=underground_queries": [
+          [
+            3.172,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#87 entry=cave_nodes": [
+          [
+            3.18,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#87 entry=cave_nodes": [
+          [
+            3.185,
+            0.005
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#91 entry=cave_exterior": [
+          [
+            3.191,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#91 entry=cave_exterior": [
+          [
+            3.194,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#95 entry=cave_mask": [
+          [
+            3.202,
+            0.005
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#95 entry=cave_mask": [
+          [
+            3.207,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#99 entry=material_counts": [
+          [
+            3.217,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#99 entry=material_counts": [
+          [
+            3.221,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#103 entry=material_emit": [
+          [
+            3.227,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#103 entry=material_emit": [
+          [
+            3.232,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#107 entry=aquifer_mask": [
+          [
+            3.242,
+            0.007
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#107 entry=aquifer_mask": [
+          [
+            3.246,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#111 entry=aquifer_surface": [
+          [
+            3.253,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#111 entry=aquifer_surface": [
+          [
+            3.262,
+            0.008
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#115 entry=aquifer_centers": [
+          [
+            3.267,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#115 entry=aquifer_centers": [
+          [
+            3.268,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#119 entry=aquifer_barrier": [
+          [
+            3.274,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#119 entry=aquifer_barrier": [
+          [
+            3.276,
+            0.001
+          ]
+        ],
+        "retina-gpu: compile world pipelines specialized=false terrain=true program_bytes=92163 part=All": [
+          [
+            3.276,
+            0.326
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#123 entry=material_prefix_blocks": [
+          [
+            3.279,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#123 entry=material_prefix_blocks": [
+          [
+            3.279,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#127 entry=material_prefix_total": [
+          [
+            3.28,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#127 entry=material_prefix_total": [
+          [
+            3.281,
+            0.0
+          ]
+        ],
+        "retina-mca-0: shader module Retina packed GPU lighting": [
+          [
+            20.821,
+            0.002
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#133 entry=initialize": [
+          [
+            20.823,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#133 entry=initialize": [
+          [
+            20.824,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#137 entry=spread": [
+          [
+            20.824,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#137 entry=spread": [
+          [
+            20.825,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#141 entry=compact": [
+          [
+            20.826,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#141 entry=compact": [
+          [
+            20.826,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#145 entry=dispatch_args": [
+          [
+            20.827,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#145 entry=dispatch_args": [
+          [
+            20.827,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#149 entry=spread_sparse": [
+          [
+            20.829,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#149 entry=spread_sparse": [
+          [
+            20.829,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#153 entry=pack": [
+          [
+            20.831,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#153 entry=pack": [
+          [
+            20.831,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#157 entry=section_palettes": [
+          [
+            20.833,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#157 entry=section_palettes": [
+          [
+            20.834,
+            0.001
+          ]
+        ],
+        "host: first region generation profile=1 region=-1,0 cached=false": [
+          [
+            21.251,
+            18.922
+          ]
+        ]
+      },
+      "events": [
+        "    3.887s [Retina startup] Pipeline workload specialized=true source_bytes=127609130 entries=10 outlined_bodies=330 [main, biome_sites, biome_queries, lake_candidates, lake_nodes, horizontal_nodes, interpolation_nodes_1, interpolation_nodes_2, interpolation_nodes_3, interpolation_nodes_4]",
+        "  263.739s     if awaited.status not in (2,4): raise RuntimeError(f\"Specialization did not become ready: status={awaited.status}\")",
+        "  263.739s RuntimeError: Specialization did not become ready: status=1"
+      ],
+      "remaining_waits": [
+        "  242.516s [Retina startup] WAIT #131 shader module Retina specialized registry graphs [thread=retina-shader-compiler] elapsed=238.6s (operation still running) | pipelines=35/45 finished (77.8% of discovered) remaining=10 queued=10 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=221.7s stages_active=2",
+        "  252.523s [Retina startup] WAIT #23 compile world pipelines specialized=true terrain=false program_bytes=126882304 part=All [thread=retina-shader-compiler] elapsed=249.6s (operation still running) | pipelines=35/45 finished (77.8% of discovered) remaining=10 queued=10 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=231.7s stages_active=2",
+        "  252.523s [Retina startup] WAIT #131 shader module Retina specialized registry graphs [thread=retina-shader-compiler] elapsed=248.6s (operation still running) | pipelines=35/45 finished (77.8% of discovered) remaining=10 queued=10 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=231.7s stages_active=2",
+        "  262.527s [Retina startup] WAIT #23 compile world pipelines specialized=true terrain=false program_bytes=126882304 part=All [thread=retina-shader-compiler] elapsed=259.6s (operation still running) | pipelines=35/45 finished (77.8% of discovered) remaining=10 queued=10 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=241.7s stages_active=2",
+        "  262.527s [Retina startup] WAIT #131 shader module Retina specialized registry graphs [thread=retina-shader-compiler] elapsed=258.6s (operation still running) | pipelines=35/45 finished (77.8% of discovered) remaining=10 queued=10 active=0 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=241.7s stages_active=2"
+      ]
+    },
+    "shared-splines-iris-cohorts": {
+      "command": [
+        "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3",
+        "-u",
+        "/private/tmp/retina-484-481/scripts/native-region-benchmark.py",
+        "--library",
+        "/private/tmp/retina-484-data/cycle-481/shared-splines.dylib",
+        "--definition",
+        "/Users/cyberpwn/.cache/retina/gpu-rust-investigation-2026-11-13/inputs/tall.dat",
+        "--dimension",
+        "minecraft:overworld",
+        "--out",
+        "/private/tmp/retina-484-data/cycle-481/shared-splines-iris-cohorts",
+        "--library-revision",
+        "cbd9a2c8c8a06878",
+        "--backend",
+        "metal",
+        "--assembly-threads",
+        "4",
+        "--parallel",
+        "1",
+        "--count",
+        "1",
+        "--warmups",
+        "0",
+        "--origin-x",
+        "-1",
+        "--origin-z",
+        "0",
+        "--scope",
+        "lit-mca",
+        "--readiness",
+        "driver-warm",
+        "--incremental-specialization",
+        "enabled",
+        "--program-execution",
+        "auto",
+        "--await-specialization",
+        "--specialization-timeout",
+        "200",
+        "--startup-debug"
+      ],
+      "environment": "2",
+      "before": {
+        "load": [
+          112.96630859375,
+          96.49951171875,
+          68.328125
+        ],
+        "power": "Now drawing from 'AC Power'",
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "after": {
+        "load": [
+          122.27392578125,
+          108.4296875,
+          79.96630859375
+        ],
+        "power": "Now drawing from 'AC Power'",
+        "mode": [
+          "powermode            0"
+        ],
+        "thermal": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+      },
+      "status": 1,
+      "first_mca_observed_s": 24.75,
+      "first_region": {
+        "algorithm": "sha256",
+        "records": 1024,
+        "sha256": "d3759c726668f637fa9011fce85837a8c7f54d33c766dff020cf2a2f817aed1e",
+        "files": [
+          {
+            "file": "0.mca",
+            "records": 1024,
+            "sha256": "9f9d271bbcddda5a394feaa73d42ee4e1f3ca6268d6b423cd27d4bf8c377e959"
+          }
+        ]
+      },
+      "peak_sample_s_and_rss_kib": [
+        81.17,
+        3607024
+      ],
+      "sampled_s_and_rss_kib": [
+        [
+          5.03,
+          2587664
+        ],
+        [
+          15.13,
+          3536944
+        ],
+        [
+          29.79,
+          3555184
+        ],
+        [
+          60.03,
+          3116176
+        ],
+        [
+          119.98,
+          1234896
+        ],
+        [
+          179.94,
+          36240
+        ]
+      ],
+      "phase_end_s_and_duration_s": {
+        "retina-gpu: driver phase naga::front::wgsl::parse": [
+          [
+            0.331,
+            0.007
+          ],
+          [
+            0.343,
+            0.01
+          ],
+          [
+            0.346,
+            0.0
+          ],
+          [
+            0.348,
+            0.0
+          ],
+          [
+            5.046,
+            0.009
+          ],
+          [
+            5.197,
+            0.014
+          ]
+        ],
+        "retina-gpu: driver phase naga::validate": [
+          [
+            0.332,
+            0.001
+          ],
+          [
+            0.345,
+            0.002
+          ],
+          [
+            0.346,
+            0.0
+          ],
+          [
+            0.348,
+            0.0
+          ],
+          [
+            5.048,
+            0.002
+          ],
+          [
+            5.2,
+            0.002
+          ]
+        ],
+        "retina-gpu: shader module Retina GPU biomes and simplex": [
+          [
+            0.332,
+            0.009
+          ]
+        ],
+        "retina-gpu: shader module Retina GPU cave fields and mask": [
+          [
+            0.345,
+            0.012
+          ]
+        ],
+        "retina-gpu: shader module Retina guarded ore masks": [
+          [
+            0.346,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#15 entry=guarded": [
+          [
+            0.346,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#15 entry=guarded": [
+          [
+            0.347,
+            0.001
+          ]
+        ],
+        "retina-gpu: shader module Retina registered placement counts": [
+          [
+            0.348,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#22 entry=counts": [
+          [
+            0.348,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#22 entry=counts": [
+          [
+            0.349,
+            0.0
+          ]
+        ],
+        "retina-gpu: prepare specialized registry shader source": [
+          [
+            5.014,
+            0.293
+          ]
+        ],
+        "retina-gpu: shader module Retina specialized registry graphs": [
+          [
+            5.048,
+            0.011
+          ],
+          [
+            5.2,
+            0.016
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#36 entry=main": [
+          [
+            5.053,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#36 entry=main": [
+          [
+            5.055,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#40 entry=biome_sites": [
+          [
+            5.059,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#40 entry=biome_sites": [
+          [
+            5.062,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#44 entry=biome_queries": [
+          [
+            5.068,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#44 entry=biome_queries": [
+          [
+            5.069,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#48 entry=lake_candidates": [
+          [
+            5.075,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#48 entry=lake_candidates": [
+          [
+            5.077,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#52 entry=lake_density": [
+          [
+            5.086,
+            0.005
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#52 entry=lake_density": [
+          [
+            5.09,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#56 entry=lake_nodes": [
+          [
+            5.09,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#56 entry=lake_nodes": [
+          [
+            5.092,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#60 entry=climate_nodes": [
+          [
+            5.098,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#60 entry=climate_nodes": [
+          [
+            5.1,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#64 entry=height_nodes": [
+          [
+            5.118,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#64 entry=height_nodes": [
+          [
+            5.13,
+            0.013
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#68 entry=density_nodes": [
+          [
+            5.135,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#68 entry=density_nodes": [
+          [
+            5.136,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#72 entry=surface_columns": [
+          [
+            5.142,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#72 entry=surface_columns": [
+          [
+            5.143,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#76 entry=interpolation_nodes_1": [
+          [
+            5.148,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#76 entry=interpolation_nodes_1": [
+          [
+            5.149,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#80 entry=interpolation_nodes_2": [
+          [
+            5.155,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#80 entry=interpolation_nodes_2": [
+          [
+            5.156,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#84 entry=interpolation_nodes_3": [
+          [
+            5.162,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#84 entry=interpolation_nodes_3": [
+          [
+            5.164,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#88 entry=interpolation_nodes_4": [
+          [
+            5.177,
+            0.006
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#88 entry=interpolation_nodes_4": [
+          [
+            5.183,
+            0.006
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#95 entry=underground_queries": [
+          [
+            5.206,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#95 entry=underground_queries": [
+          [
+            5.213,
+            0.006
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#99 entry=cave_nodes": [
+          [
+            5.225,
+            0.006
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#99 entry=cave_nodes": [
+          [
+            5.229,
+            0.004
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#103 entry=cave_exterior": [
+          [
+            5.236,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#103 entry=cave_exterior": [
+          [
+            5.239,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#107 entry=cave_mask": [
+          [
+            5.25,
+            0.005
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#107 entry=cave_mask": [
+          [
+            5.272,
+            0.003
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#111 entry=material_counts": [
+          [
+            5.295,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#111 entry=material_counts": [
+          [
+            5.297,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#115 entry=material_emit": [
+          [
+            5.302,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#115 entry=material_emit": [
+          [
+            5.303,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#121 entry=aquifer_mask": [
+          [
+            5.308,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#121 entry=aquifer_mask": [
+          [
+            5.31,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#125 entry=aquifer_surface": [
+          [
+            5.314,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#125 entry=aquifer_surface": [
+          [
+            5.316,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#129 entry=aquifer_centers": [
+          [
+            5.321,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#129 entry=aquifer_centers": [
+          [
+            5.323,
+            0.002
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#133 entry=aquifer_barrier": [
+          [
+            5.328,
+            0.001
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#133 entry=aquifer_barrier": [
+          [
+            5.33,
+            0.002
+          ]
+        ],
+        "retina-gpu: compile world pipelines specialized=false terrain=true program_bytes=92163 part=All": [
+          [
+            5.33,
+            0.294
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#137 entry=material_prefix_blocks": [
+          [
+            5.332,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#137 entry=material_prefix_blocks": [
+          [
+            5.332,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newLibraryWithSource pipeline_id=#141 entry=material_prefix_total": [
+          [
+            5.333,
+            0.0
+          ]
+        ],
+        "retina-gpu: driver phase MTLDevice::newComputePipelineState pipeline_id=#141 entry=material_prefix_total": [
+          [
+            5.334,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase naga::front::wgsl::parse": [
+          [
+            23.984,
+            0.002
+          ]
+        ],
+        "retina-mca-0: driver phase naga::validate": [
+          [
+            23.984,
+            0.0
+          ]
+        ],
+        "retina-mca-0: shader module Retina packed GPU lighting": [
+          [
+            23.984,
+            0.002
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#148 entry=initialize": [
+          [
+            23.985,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#148 entry=initialize": [
+          [
+            23.986,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#152 entry=spread": [
+          [
+            23.988,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#152 entry=spread": [
+          [
+            23.988,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#156 entry=compact": [
+          [
+            23.989,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#156 entry=compact": [
+          [
+            23.99,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#160 entry=dispatch_args": [
+          [
+            23.991,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#160 entry=dispatch_args": [
+          [
+            23.991,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#164 entry=spread_sparse": [
+          [
+            23.992,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#164 entry=spread_sparse": [
+          [
+            23.993,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#168 entry=pack": [
+          [
+            23.993,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#168 entry=pack": [
+          [
+            23.993,
+            0.001
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newLibraryWithSource pipeline_id=#172 entry=section_palettes": [
+          [
+            23.995,
+            0.0
+          ]
+        ],
+        "retina-mca-0: driver phase MTLDevice::newComputePipelineState pipeline_id=#172 entry=section_palettes": [
+          [
+            23.996,
+            0.001
+          ]
+        ],
+        "host: first region generation profile=1 region=-1,0 cached=false": [
+          [
+            24.425,
+            19.827
+          ]
+        ],
+        "retina-shader-compiler: driver phase naga::front::wgsl::parse": [
+          [
+            81.372,
+            76.075
+          ]
+        ],
+        "retina-shader-compiler: driver phase naga::validate": [
+          [
+            82.371,
+            0.999
+          ]
+        ],
+        "retina-shader-compiler: shader module Retina specialized registry graphs": [
+          [
+            82.372,
+            77.074
+          ]
+        ],
+        "retina-shader-compiler: driver phase MTLDevice::newLibraryWithSource pipeline_id=#177 entry=horizontal_nodes": [
+          [
+            82.723,
+            0.001
+          ]
+        ],
+        "retina-shader-compiler: driver phase MTLDevice::newComputePipelineState pipeline_id=#177 entry=horizontal_nodes": [
+          [
+            82.724,
+            0.001
+          ]
+        ]
+      },
+      "events": [
+        "    5.296s [Retina startup] Pipeline workload specialized=true source_bytes=32839101 entries=5 outlined_bodies=330 [horizontal_nodes, interpolation_nodes_1, interpolation_nodes_2, interpolation_nodes_3, interpolation_nodes_4]",
+        "  225.757s     if awaited.status not in (2,4): raise RuntimeError(f\"Specialization did not become ready: status={awaited.status}\")",
+        "  225.757s RuntimeError: Specialization did not become ready: status=1"
+      ],
+      "remaining_waits": [
+        "  214.670s [Retina startup] WAIT #181 compute pipeline interpolation_nodes_1 entry=interpolation_nodes_1 interpreter=false [thread=retina-shader-compiler] elapsed=131.9s (operation still running) | pipelines=36/40 finished (90.0% of discovered) remaining=4 queued=3 active=1 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=131.9s stages_active=3",
+        "  214.670s [Retina startup] WAIT #183 driver phase MTLDevice::newLibraryWithSource pipeline_id=#181 entry=interpolation_nodes_1 [thread=retina-shader-compiler] elapsed=130.5s (operation still running) | pipelines=36/40 finished (90.0% of discovered) remaining=4 queued=3 active=1 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=131.9s stages_active=3",
+        "  224.675s [Retina startup] WAIT #31 compile world pipelines specialized=true terrain=false program_bytes=32112275 part=All [thread=retina-shader-compiler] elapsed=219.6s (operation still running) | pipelines=36/40 finished (90.0% of discovered) remaining=4 queued=3 active=1 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=142.0s stages_active=3",
+        "  224.675s [Retina startup] WAIT #181 compute pipeline interpolation_nodes_1 entry=interpolation_nodes_1 interpreter=false [thread=retina-shader-compiler] elapsed=142.0s (operation still running) | pipelines=36/40 finished (90.0% of discovered) remaining=4 queued=3 active=1 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=142.0s stages_active=3",
+        "  224.675s [Retina startup] WAIT #183 driver phase MTLDevice::newLibraryWithSource pipeline_id=#181 entry=interpolation_nodes_1 [thread=retina-shader-compiler] elapsed=140.5s (operation still running) | pipelines=36/40 finished (90.0% of discovered) remaining=4 queued=3 active=1 abandoned=0 recent_rate=0.00/s window=10.0s last_finished=142.0s stages_active=3"
+      ]
+    }
+  }
+}
