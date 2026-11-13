@@ -124,6 +124,10 @@ initial branch creation, no-op repeat, and rejected divergence.
 `retina-bukkit-1.20.1-<commit>.jar`. All three carry the same versioned
 catalog and native libraries. The 26.3 release retains the Latest label.
 
+If a push does not start the workflow (for example, the promoted commit has
+`[skip ci]`), run `gh workflow run release-1.20.yml --ref release-1.20` to build
+and publish the promoted commit manually.
+
 Both publication workflows build from the triggering commit and stage
 the exact JARs for their line. Run acceptance locally. The build and
 validation commands for 1.20.1 are in the
