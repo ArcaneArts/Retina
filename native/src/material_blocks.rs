@@ -1,5 +1,4 @@
-//! Final material sections. Untouched uniform air stays a descriptor from End
-//! substrate replay through lighting transport and NBT publication.
+//! Final material sections shared by assembly, lighting and NBT publication.
 use crate::{COLUMNS, ChunkRequest, geology::CaveMask};
 
 pub(crate) const SECTION: usize = 4096;
@@ -98,13 +97,32 @@ pub(crate) enum Section {
     Uniform(u16),
     Dense(Box<[u16; SECTION]>),
 }
-pub(crate) enum Chunk {
-    Dense(Vec<u16>),
-    Sections(Vec<Section>),
-}
+pub(crate) struct Chunk(Vec<Section>);
+
 impl Chunk {
+    pub fn from_dense_sections(blocks: &[u16]) -> Self {
+        debug_assert!(blocks.len().is_multiple_of(SECTION));
+        Self(
+            blocks
+                .as_chunks::<SECTION>()
+                .0
+                .iter()
+                .map(|section| {
+                    let first = section[0];
+                    let difference = section
+                        .iter()
+                        .fold(0, |difference, &id| difference | (id ^ first));
+                    if difference == 0 {
+                        Section::Uniform(first)
+                    } else {
+                        Section::Dense(Box::new(*section))
+                    }
+                })
+                .collect(),
+        )
+    }
     pub fn uniform(height: u32, material: u16) -> Self {
-        Self::Sections(
+        Self(
             (0..height as usize / 16)
                 .map(|_| Section::Uniform(material))
                 .collect(),
@@ -134,13 +152,10 @@ impl Chunk {
         Ok(result)
     }
     fn column_range(&mut self, column: usize, mut first: usize, last: usize, id: u16) {
-        let Self::Sections(sections) = self else {
-            unreachable!()
-        };
         while first < last {
             let index = first / 16;
             let end = last.min((index + 1) * 16);
-            let section = &mut sections[index];
+            let section = &mut self.0[index];
             if let Section::Uniform(previous) = section {
                 if *previous == id {
                     first = end;
@@ -161,65 +176,45 @@ impl Chunk {
         if generation.min_y == storage.min_y && generation.height == storage.height {
             return;
         }
-        let Self::Sections(previous) = self else {
-            unreachable!()
-        };
         let mut output: Vec<_> = (0..storage.height / 16)
             .map(|_| Section::Uniform(air))
             .collect();
-        for (index, section) in std::mem::take(previous).into_iter().enumerate() {
+        for (index, section) in std::mem::take(&mut self.0).into_iter().enumerate() {
             let y = generation.min_y / 16 + index as i32 - storage.min_y / 16;
             if let Some(target) = usize::try_from(y).ok().and_then(|i| output.get_mut(i)) {
                 *target = section;
             }
         }
-        *previous = output;
+        self.0 = output;
     }
     pub fn allocation(&self) -> (usize, usize) {
-        match self {
-            Self::Dense(values) => (values.capacity() * 2, 0),
-            Self::Sections(sections) => (
-                sections.capacity() * std::mem::size_of::<Section>()
-                    + sections
-                        .iter()
-                        .filter(|s| matches!(s, Section::Dense(_)))
-                        .count()
-                        * SECTION
-                        * 2,
-                sections
-                    .iter()
-                    .filter(|s| matches!(s, Section::Uniform(_)))
-                    .count(),
-            ),
-        }
+        let uniform = self
+            .0
+            .iter()
+            .filter(|s| matches!(s, Section::Uniform(_)))
+            .count();
+        let bytes = self.0.capacity() * std::mem::size_of::<Section>()
+            + (self.0.len() - uniform) * SECTION * size_of::<u16>();
+        (bytes, uniform)
     }
 }
 impl Read for Chunk {
     #[inline]
     fn len(&self) -> usize {
-        match self {
-            Self::Dense(v) => v.len(),
-            Self::Sections(v) => v.len() * SECTION,
-        }
+        self.0.len() * SECTION
     }
     #[inline]
     fn value(&self, index: usize) -> u16 {
-        match self {
-            Self::Dense(v) => v[index],
-            Self::Sections(v) => match &v[index / SECTION] {
-                Section::Uniform(id) => *id,
-                Section::Dense(v) => v[index % SECTION],
-            },
+        match &self.0[index / SECTION] {
+            Section::Uniform(id) => *id,
+            Section::Dense(values) => values[index % SECTION],
         }
     }
     #[inline]
     fn section(&self, index: usize) -> View<'_> {
-        match self {
-            Self::Dense(v) => v.as_slice().section(index),
-            Self::Sections(v) => match &v[index] {
-                Section::Uniform(id) => View::Uniform(*id),
-                Section::Dense(v) => View::Dense(&v[..]),
-            },
+        match &self.0[index] {
+            Section::Uniform(id) => View::Uniform(*id),
+            Section::Dense(values) => View::Dense(&values[..]),
         }
     }
     #[inline]
@@ -233,28 +228,38 @@ impl Read for Chunk {
 impl Write for Chunk {
     #[inline]
     fn put(&mut self, index: usize, material: u16) {
-        match self {
-            Self::Dense(values) => values[index] = material,
-            Self::Sections(sections) => {
-                let section = &mut sections[index / SECTION];
-                if let Section::Uniform(previous) = section {
-                    if *previous == material {
-                        return;
-                    }
-                    *section = Section::Dense(Box::new([*previous; SECTION]));
-                }
-                let Section::Dense(values) = section else {
-                    unreachable!()
-                };
-                values[index % SECTION] = material;
+        let section = &mut self.0[index / SECTION];
+        if let Section::Uniform(previous) = section {
+            if *previous == material {
+                return;
             }
+            *section = Section::Dense(Box::new([*previous; SECTION]));
         }
+        let Section::Dense(values) = section else {
+            unreachable!()
+        };
+        values[index % SECTION] = material;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dense_conversion_keeps_uniform_ids_and_mixed_positions() {
+        let mut source = vec![12; SECTION * 3];
+        source[SECTION] = 0;
+        source[2 * SECTION - 1] = u16::MAX;
+        let chunk = Chunk::from_dense_sections(&source);
+        assert!(matches!(chunk.section(0), View::Uniform(12)));
+        assert!(matches!(chunk.section(1), View::Dense(_)));
+        assert!(matches!(chunk.section(2), View::Uniform(12)));
+        let mut expanded = Vec::new();
+        chunk.extend_dense(&mut expanded);
+        assert_eq!(expanded, source);
+    }
+
     #[test]
     fn uniform_sections_materialize_only_changed_sections_and_keep_world_y_on_padding() {
         let mut chunk = Chunk::uniform(256, 0);
