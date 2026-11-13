@@ -131,6 +131,7 @@ fn gpu_section_palettes_keep_order_bits_overflow_and_light() {
                     OutputFormat::Sections,
                     light_layout,
                     Some(palette_layout),
+                    None,
                 )
                 .unwrap();
             flights.push((

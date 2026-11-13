@@ -27,6 +27,9 @@ the actual dimension's `hasSkyLight` flag.
 
 Metadata stays resident per native profile. On Metal, [compact material input](COMPACT_LIGHT_INPUT.md)
 uses descriptors for uniform final sections and exact 16-bit IDs for mixed ones.
+Mixed halo sections used by several tiles are staged once in a region-owned
+buffer. Tiles update the descriptor and local material prefix in queue order.
+If the buffer exceeds the device's limits, each tile keeps its own input.
 Other backends retain dense material input by default. The lighting pass returns
 one byte per voxel of light data. Region output
 contains section-ordered Minecraft nibble arrays; diagnostic volumes keep their
@@ -98,17 +101,20 @@ is contained in the host row and should not be added to it. Host time includes
 waiting for the shared lighting mutex. These rows use the existing rolling region
 average. The Java/native timing ABI is version 8 with 33 stages.
 
-Lighting needs the region's final blocks available together. At a 384-block world
-height, retaining those blocks uses about 192 MiB. Interior light is streamed by
-tile rather than retaining the entire 91 MiB result; each standard tile is about
-10.2 MiB. Existing generation fields and reusable GPU tile buffers are additional.
+Lighting needs the region's final blocks available together. In the measured
+384-block vanilla Overworld, compact sections held about 82 MiB of material
+and descriptors. Interior light is streamed by tile. The dense interior result
+would use 91 MiB and each standard tile can use up to 10.2 MiB. Generation fields
+and GPU tile buffers are additional.
 Lighting submissions share the existing wgpu device/queue; only submission and
 recycling hold their mutex, while waits and Rust encoding can overlap.
 
-Rust reuses the unpadded tile input allocation throughout a region and retains the
-profile bind groups, timestamp query set and fixed-size timestamp resolve/readback
-buffers across lighting calls. Buffer growth invalidates the affected bind-group
-cache; readbacks are unmapped before reuse.
+Rust reuses the unpadded tile input allocation throughout a region and retains
+profile bind groups for tile-local input. Bind groups using a shared halo belong
+to that region. The timestamp query set and resolve/readback buffers are reusable.
+Buffer growth invalidates the affected bindings. Readbacks are unmapped before
+reuse. See the [shared halo benchmark](benchmarks/perf-484-482-lighting-halos.md)
+for transfer, timing, and memory measurements.
 
 This moves initial lighting work out of Minecraft's load path, which is especially
 useful when generation happens ahead of loading through DH. It is not a guaranteed

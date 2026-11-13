@@ -61,6 +61,7 @@ pub(crate) struct Gpu {
     bind_groups: HashMap<u32, (wgpu::BindGroup, wgpu::BindGroup)>,
     buffers: Option<Buffers>,
     compact_input: bool,
+    shared_input: bool,
     compact_output: bool,
     section_palettes: bool,
 }
@@ -89,6 +90,17 @@ struct Buffers {
     active: wgpu::Buffer,
     indirect: wgpu::Buffer,
     capacities: [u64; 4],
+}
+struct SharedInput {
+    buffer: wgpu::Buffer,
+    bind_groups: Option<SharedBindGroups>,
+}
+struct SharedBindGroups {
+    // Replacing the scratch buffers changes params. Growing output in place
+    // only changes output. Either change invalidates this region's bindings.
+    params: wgpu::Buffer,
+    output: wgpu::Buffer,
+    pair: (wgpu::BindGroup, wgpu::BindGroup),
 }
 struct Readback {
     buffer: wgpu::Buffer,
@@ -193,6 +205,8 @@ impl Gpu {
                 std::env::var("RETINA_LIGHTING_INPUT").ok().as_deref(),
                 backend,
             ),
+            shared_input: backend.starts_with("Metal:")
+                && std::env::var("RETINA_LIGHTING_SHARED_INPUT").as_deref() != Ok("0"),
             section_palettes: section_palettes_enabled(
                 std::env::var("RETINA_GPU_PALETTES").ok().as_deref(),
                 backend,
@@ -352,6 +366,7 @@ impl Gpu {
                 format,
                 None,
                 None,
+                None,
             )
         } else {
             self.submit_payload(
@@ -364,6 +379,7 @@ impl Gpu {
                 bytemuck::cast_slice(blocks),
                 false,
                 format,
+                None,
                 None,
                 None,
             )
@@ -382,6 +398,7 @@ impl Gpu {
         format: OutputFormat,
         layout: Option<output::Layout>,
         palettes: Option<palettes::Layout>,
+        shared: Option<&mut SharedInput>,
     ) -> Result<Pending, String> {
         self.prepare();
         let mut upload = 0;
@@ -420,8 +437,10 @@ impl Gpu {
         let light_bytes = layout.as_ref().map_or(dense_output, |v| v.bytes as u64);
         let palette_bytes = palettes.as_ref().map_or(0, |v| v.bytes() as u64);
         let output_maximum = dense_output + palette_bytes;
+        let material_end = blocks.len() as u64;
+        let input_bytes = (blocks.len() + layout_bytes.len() + palette_sources.len()) as u64;
         let sizes = [
-            (blocks.len() + layout_bytes.len() + palette_sources.len()) as u64,
+            if shared.is_some() { 0 } else { input_bytes },
             voxels,
             light_bytes + palette_bytes,
             bricks as u64 * 4,
@@ -538,12 +557,12 @@ impl Gpu {
         let slot = self.readback(sizes[2], output_maximum);
         let buffers = self.buffers.as_ref().unwrap();
         let pipelines = self.pipelines.as_ref().unwrap();
-        let bind_groups = self.bind_groups.entry(handle).or_insert_with(|| {
+        let create_pair = |materials: &wgpu::Buffer| {
             let resident = &self.profiles[&handle];
             let bind = |read: &wgpu::Buffer, write: &wgpu::Buffer| {
                 let buffers = [
                     &buffers.params,
-                    &buffers.blocks,
+                    materials,
                     &resident.0,
                     &resident.1,
                     read,
@@ -564,7 +583,23 @@ impl Gpu {
                 })
             };
             (bind(&buffers.a, &buffers.b), bind(&buffers.b, &buffers.a))
-        });
+        };
+        let (materials, bind_groups) = if let Some(shared) = shared {
+            if shared.bind_groups.as_ref().is_none_or(|groups| {
+                groups.params != buffers.params || groups.output != buffers.output
+            }) {
+                shared.bind_groups = Some(SharedBindGroups {
+                    params: buffers.params.clone(),
+                    output: buffers.output.clone(),
+                    pair: create_pair(&shared.buffer),
+                });
+            }
+            (&shared.buffer, &shared.bind_groups.as_ref().unwrap().pair)
+        } else {
+            let pair = self.bind_groups.entry(handle)
+                .or_insert_with(|| create_pair(&buffers.blocks));
+            (&buffers.blocks, &*pair)
+        };
         let (ab, ba) = (&bind_groups.0, &bind_groups.1);
         let params = [
             chunks * 16,
@@ -583,28 +618,28 @@ impl Gpu {
                 },
             profile.faces.div_ceil(32),
             (voxels / 4) as u32,
-            (blocks.len() / 4) as u32,
+            (material_end / 4) as u32,
             layout
                 .as_ref()
                 .map_or(0, |v| v.source_channels.len() as u32),
-            ((blocks.len() + layout_bytes.len()) / 4) as u32,
+            ((material_end + layout_bytes.len() as u64) / 4) as u32,
             (light_bytes / 4) as u32,
         ];
         self.queue
             .write_buffer(&buffers.params, 0, bytemuck::cast_slice(&params));
-        self.queue.write_buffer(&buffers.blocks, 0, blocks);
+        self.queue.write_buffer(materials, 0, blocks);
         if !layout_bytes.is_empty() {
             self.queue
-                .write_buffer(&buffers.blocks, blocks.len() as u64, layout_bytes);
+                .write_buffer(materials, material_end, layout_bytes);
         }
         if !palette_sources.is_empty() {
             self.queue.write_buffer(
-                &buffers.blocks,
-                (blocks.len() + layout_bytes.len()) as u64,
+                materials,
+                material_end + layout_bytes.len() as u64,
                 palette_sources,
             );
         }
-        upload += sizes[0] + 48;
+        upload += input_bytes + 48;
         let queries = slot.timing.as_ref().map(|t| &t.queries);
         let times = slot.timing.as_ref().map(|t| (&t.resolve, &t.readback));
         let mut encoder = self
@@ -799,6 +834,7 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
     job: &crate::timings::Timings,
     mut consume: impl FnMut(Tile) -> Result<(), String>,
 ) -> Result<(), String> {
+    use crate::performance::Counter::*;
     if engine.compute.is_none() { return cpu::region(engine,request,profile,chunks,job,consume); }
     let start = Instant::now();
     let mut consuming = Duration::ZERO;
@@ -815,12 +851,15 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
     let device = gpu.device.clone();
     let queue = gpu.queue.clone();
     let compact = gpu.compact_input && request.height % 16 == 0;
+    let share = compact && gpu.shared_input;
     let compact_output = gpu.compact_output && request.height % 16 == 0;
     let gpu_palettes = gpu.section_palettes;
     drop(gpu);
+    let session = engine.timings(request.reserved);
+    let metrics = &session.performance;
     // Classify final sections once per region, including the input-only ring.
     // Overlapping tiles reuse these facts instead of rescanning their halos.
-    let descriptors: Vec<_> = if compact || compact_output || gpu_palettes {
+    let mut descriptors: Vec<_> = if compact || compact_output || gpu_palettes {
         chunks.iter().map(|b| transport::classify(b)).collect()
     } else {
         Vec::new()
@@ -832,18 +871,75 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
     if !compact {
         input.reserve((core + 2).pow(2) * request.block_count());
     }
-    let mut tiles = (1..31)
+    let tiles = (1..31)
         .step_by(core)
-        .flat_map(|cz| (1..31).step_by(core).map(move |cx| (cx, cz)));
+        .flat_map(|cz| (1..31).step_by(core).map(move |cx| (cx, cz)))
+        .map(|(cx, cz)| {
+            let indices: Vec<_> = (cz - 1..cz + core + 1)
+                .flat_map(|z| (cx - 1..cx + core + 1).map(move |x| z * 32 + x))
+                .collect();
+            let layout = constants.as_ref().map(|c| {
+                c.tile((0..core).flat_map(|z| (0..core).map(move |x| (cz + z) * 32 + cx + x)))
+            });
+            let palette_layout = gpu_palettes.then(|| {
+                let materials: Vec<_> = indices.iter().map(|&i| descriptors[i].clone()).collect();
+                palettes::Layout::new(&materials, core + 2, 1, core)
+            });
+            (cx, cz, indices, layout, palette_layout)
+        })
+        .collect::<Vec<_>>();
+    let mut shared = if share {
+        let started = metrics.start();
+        let mut seen = [false; 1024];
+        let mut repeated = [false; 1024];
+        for (_, _, indices, _, _) in &tiles {
+            for &i in indices {
+                repeated[i] |= std::mem::replace(&mut seen[i], true);
+            }
+        }
+        // Reserve the largest actual tile payload and descriptor tables.
+        // Tile writes stay below the immutable halo that follows this prefix.
+        let prefix_words = tiles
+            .iter()
+            .map(|(_, _, indices, layout, palettes)| {
+                let local_mixed = indices
+                    .iter()
+                    .filter(|&&i| !repeated[i])
+                    .flat_map(|&i| &descriptors[i])
+                    .filter(|&&word| word & transport::UNIFORM == 0)
+                    .count();
+                let sections = indices.len() * (request.height as usize / 16);
+                let suffix = layout.as_ref().map_or(0, |v| v.source_channels.len())
+                    + palettes.as_ref().map_or(0, |v| v.sources.len());
+                sections + local_mixed * (crate::material_blocks::SECTION / 2) + suffix
+            })
+            .max()
+            .unwrap_or(0);
+        let input = transport::shared_input(
+            &device, &queue, chunks, &mut descriptors, &repeated, (prefix_words * 4) as u64,
+        );
+        metrics.elapsed(lighting_material_pack_nanos, started);
+        if let Some((buffer, upload)) = input {
+            metrics.add(lighting_shared_input_regions, 1);
+            metrics.add(lighting_shared_input_bytes, buffer.size());
+            metrics.add(lighting_material_upload_bytes, upload);
+            engine.pipeline.transfer(request.reserved, upload, 0);
+            Some(SharedInput { buffer, bind_groups: None })
+        } else {
+            metrics.add(lighting_shared_input_fallbacks, 1);
+            None
+        }
+    } else {
+        None
+    };
+    let mut tiles = tiles.into_iter();
     let mut flights = VecDeque::new();
     loop {
         // Submit ahead before CPU encoding; GPU scratch reuse is safe because
         // write_buffer + submit preserve queue order, and each flight owns its readback.
         while flights.len() < 2 {
-            let Some((cx, cz)) = tiles.next() else { break };
-            let indices: Vec<_> = (cz - 1..cz + core + 1)
-                .flat_map(|z| (cx - 1..cx + core + 1).map(move |x| z * 32 + x))
-                .collect();
+            let Some((cx, cz, indices, layout, palette_layout)) = tiles.next() else { break };
+            let started = metrics.start();
             let payload = if compact {
                 transport::pack(
                     &mut packed,
@@ -860,36 +956,28 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
                 }
                 bytemuck::cast_slice(&input)
             };
-            if crate::performance::enabled() {
-                engine.timings(request.reserved).performance.add(
-                    crate::performance::Counter::lighting_material_upload_bytes, payload.len() as u64);
-            }
-            let layout = constants.as_ref().map(|c| {
-                c.tile((0..core).flat_map(|z| (0..core).map(move |x| (cz + z) * 32 + cx + x)))
-            });
-            let palette_layout = gpu_palettes.then(|| {
-                let materials: Vec<_> = (cz - 1..cz + core + 1)
-                    .flat_map(|z| (cx - 1..cx + core + 1).map(move |x| z * 32 + x))
-                    .map(|i| descriptors[i].clone())
-                    .collect();
-                palettes::Layout::new(&materials, core + 2, 1, core)
-            });
-            let pending = engine.gpu()?.light_gpu
+            metrics.elapsed(lighting_material_pack_nanos, started);
+            metrics.add(lighting_material_upload_bytes, payload.len() as u64);
+            let mut gpu = engine.gpu()?.light_gpu
                 .lock()
-                .map_err(|_| "lighting GPU lock poisoned")?
-                .submit_payload(
-                    request.reserved,
-                    profile,
-                    (core + 2) as u32,
-                    request.height,
-                    1,
-                    core as u32,
-                    payload,
-                    compact,
-                    OutputFormat::Sections,
-                    layout,
-                    palette_layout,
-                )?;
+                .map_err(|_| "lighting GPU lock poisoned")?;
+            let started = metrics.start();
+            let pending = gpu.submit_payload(
+                request.reserved,
+                profile,
+                (core + 2) as u32,
+                request.height,
+                1,
+                core as u32,
+                payload,
+                compact,
+                OutputFormat::Sections,
+                layout,
+                palette_layout,
+                shared.as_mut(),
+            )?;
+            metrics.elapsed(lighting_submit_nanos, started);
+            metrics.add(lighting_tile_input_capacity_bytes, gpu.buffers.as_ref().unwrap().capacities[0]);
             flights.push_back((cx, cz, pending));
         }
         let Some((cx, cz, mut pending)) = flights.pop_front() else {
@@ -992,6 +1080,45 @@ mod tests {
                 }
             })
             .collect()
+    }
+
+    #[test]
+    #[ignore = "requires a supported Metal device"]
+    fn shared_halo_falls_back_at_the_device_binding_limit() {
+        let instance = wgpu::Instance::new(crate::gpu_backend::instance_descriptor(
+            wgpu::Backends::METAL,
+        ));
+        let adapter = pollster::block_on(instance.request_adapter(&Default::default())).unwrap();
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            required_limits: wgpu::Limits {
+                max_storage_buffer_binding_size: 128 * 1024,
+                ..Default::default()
+            },
+            ..Default::default()
+        })).unwrap();
+        let blocks = vec![fixture_blocks(1, 16, 3); 17];
+        let mut descriptors: Vec<_> = blocks.iter().map(transport::classify).collect();
+        let reference = descriptors.clone();
+        assert_eq!(device.limits().max_storage_buffer_binding_size, 128 * 1024);
+        assert!(transport::shared_input(
+            &device, &queue, &blocks, &mut descriptors, &[true; 17], 64,
+        ).is_none());
+        assert_eq!(descriptors, reference);
+
+        let profile = fixture_profile(true);
+        let mut gpu = Gpu::new(device, queue, "Metal: fixture", Default::default());
+        let reference = gpu.run(1, &profile, 1, 16, 0, 1, &blocks[0], OutputFormat::Sections)
+            .unwrap().bytes;
+        let (buffer, uploaded) = transport::shared_input(
+            &gpu.device, &gpu.queue, &blocks[..1], &mut descriptors[..1], &[true], 64,
+        ).unwrap();
+        assert_eq!(uploaded, 8192);
+        let mut shared = SharedInput { buffer, bind_groups: None };
+        let pending = gpu.submit_payload(
+            1, &profile, 1, 16, 0, 1, bytemuck::cast_slice(&descriptors[0]),
+            true, OutputFormat::Sections, None, None, Some(&mut shared),
+        ).unwrap();
+        assert_eq!(gpu.complete(pending).unwrap().bytes, reference);
     }
     #[test]
     #[ignore = "requires a supported GPU"]
@@ -1191,6 +1318,7 @@ mod tests {
                             false,
                             OutputFormat::Sections,
                             Some(layout),
+                            None,
                             None,
                         )
                         .unwrap();

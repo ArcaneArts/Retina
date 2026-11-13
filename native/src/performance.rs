@@ -95,6 +95,9 @@ counters! {
     output_index_uniform_bitmap_bytes,
     final_material_compact_nanos, final_material_allocated_bytes,
     final_material_dense_equivalent_bytes, final_material_uniform_sections,
+    lighting_material_pack_nanos, lighting_submit_nanos,
+    lighting_shared_input_bytes, lighting_shared_input_regions,
+    lighting_shared_input_fallbacks, lighting_tile_input_capacity_bytes,
 }
 use Counter::*;
 
