@@ -101,7 +101,20 @@ fn run_program(program:u32,point:vec3<f32>,request:Request,context:vec4<f32>)->a
             case 24u:{result=mix(values[b],values[c],values[a]);}
             case 25u:{
                 let x=values[a];var j=0u;
-                for(var k=1u;k<c;k++){if x>=bitcast<f32>(bytecode[bytecode[2]+(b+k)*4u]){j=k;}}
+                let points=bytecode[2]+b*4u;
+                if p.w==1.0 {
+                    // Find the last knot that passes the original comparison.
+                    // If none passes, the original scan leaves j at zero.
+                    var lo=1u;var hi=c;
+                    while lo<hi {
+                        let mid=lo+(hi-lo)/2u;
+                        if x>=bitcast<f32>(bytecode[points+mid*4u]) {lo=mid+1u;}
+                        else {hi=mid;}
+                    }
+                    j=lo-1u;
+                } else {
+                    for(var k=1u;k<c;k++){if x>=bitcast<f32>(bytecode[points+k*4u]){j=k;}}
+                }
                 let left=bytecode[2]+(b+j)*4u;let lx=bitcast<f32>(bytecode[left]);let ld=bitcast<f32>(bytecode[left+1u]);let lv=values[u32(bitcast<f32>(bytecode[left+2u]))];
                 if x<lx || j==c-1u {result=lv+(x-lx)*ld;}else {
                     let right=left+4u;let rx=bitcast<f32>(bytecode[right]);let rd=bitcast<f32>(bytecode[right+1u]);let rv=values[u32(bitcast<f32>(bytecode[right+2u]))];
