@@ -3,6 +3,7 @@ name: Release 26
 on:
   push:
     branches: [release-26]
+  workflow_dispatch:
 
 jobs:
   release:

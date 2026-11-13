@@ -93,8 +93,11 @@ that commit to `origin/release-26` without force. The current branch, tracked ed
 and untracked files remain untouched. Initial branch creation works; an unchanged
 release is a no-op; divergence is rejected by the real Git push.
 
-Only a push to `release-26` starts the workflow. Every job checks out that event's SHA;
-artifacts are named by SHA. A failed run can be rerun without another branch push.
+A push to `release-26` starts the workflow. If the push is skipped (for example,
+because the promoted commit has `[skip ci]`), run
+`gh workflow run release.yml --ref release-26` to build and publish that ref manually.
+Every job checks out the triggering SHA; artifacts are named by SHA. A failed run
+can be rerun without another branch push.
 The configured Minecraft version and full Git commit count form the version.
 Minecraft 26.3 at 511 commits produces version and tag `26.3-511`, title
 `Retina 26.3-511`, and asset `retina-26.3-511.jar`.
