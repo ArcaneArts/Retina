@@ -70,6 +70,9 @@ mimalloc = { version = "=0.1.52", optional = true, default-features = false, fea
 [target.'cfg(all(windows, target_arch = "x86_64"))'.dependencies]
 wgpu = { version = "=30.0.1", default-features = false, features = ["static-dxc"] }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }
 
@@ -78,7 +81,6 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_
 naga = { version = "=30.0.1", default-features = false, features = ["hlsl-out"] }
 # Exercise the real scoped Vulkan policy on the Metal development host too.
 wgpu-hal = { version = "=30.0.1", default-features = false, features = ["vulkan"] }
-libc = "0.2"
 serde_json = { version = "1", features = ["raw_value"] }
 
 [profile.release]

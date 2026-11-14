@@ -223,9 +223,10 @@ Retina creates `config/retina.toml` on first startup. Edit it and restart:
 allow_directx = true
 allow_metal = true
 allow_vulkan = true
-mca_parallelism = 8
-mca_compression = "none"
-mca_compression_level = 0
+mca_parallelism = 4
+mca_compression = "zlib"
+mca_compression_level = 1
+lazy_compression = true
 debug = false
 f3_overlay = true
 ```
@@ -235,9 +236,10 @@ f3_overlay = true
 | `allow_directx` | `true` | Allow DirectX 12 when selecting a GPU backend |
 | `allow_metal` | `true` | Allow Metal |
 | `allow_vulkan` | `true` | Allow Vulkan |
-| `mca_parallelism` | `8` | Maximum simultaneous native region generations across ordinary requests, DH, Chunky and repairs |
-| `mca_compression` | `"none"` | Chunk encoding for new Retina regions. Choose raw NBT, `"zlib"`, or `"lz4"` on 26.3 |
-| `mca_compression_level` | `0` | Zlib level for new chunks. Integers clamp to 0–9. Level 0 stores data without compressing it, and invalid values use 0 |
+| `mca_parallelism` | `4` | Maximum simultaneous native region generations across ordinary requests, DH, Chunky and repairs |
+| `mca_compression` | `"zlib"` | Choose `"none"` (raw NBT), `"zlib"`, or `"lz4"` on 26.3 |
+| `mca_compression_level` | `1` | Zlib level for new chunks. Integers clamp to 0–9. Level 0 stores data without compressing it. Invalid values use 1 |
+| `lazy_compression` | `true` | Publish raw NBT first, then compress idle MCA files on a single low-priority worker |
 | `debug` | `false` | Detailed startup, driver and generation diagnostics; preparation progress and errors remain visible when off |
 | `f3_overlay` | `true` | Retina statistics on the local modded client's F3 screen |
 
@@ -334,10 +336,12 @@ java -jar retina-26.3-<commit>.jar generate --world ./world \
 Radius 1 selects a 3 × 3 square of regions centered at 0,0.
 `--parallel 4` allows four regions in flight. The default is one. For custom
 generation or Minecraft 1.20.1, supply a mod-created `retina.dat`.
-The CLI uses raw NBT by default. For smaller files, pass
-`--compression zlib --compression-level 1` or use `--compression lz4` on 26.3.
-Zlib defaults to level 0. Keep any `c.*.mcc` files with the region directory
-when copying a world.
+The CLI writes raw NBT first and compresses closed regions with zlib level 1
+while generation continues. Pass `--lazy-compression false` to compress inline
+or `--compression none` to retain raw chunks. The CLI exits after generating
+the requested chunks, leaving any unfinished background work raw. It can
+revisit those regions on a subsequent run. Keep any `c.*.mcc` files with the
+region directory when copying a world.
 
 ```sh
 java -jar retina-26.3-<commit>.jar generate --world ./output \

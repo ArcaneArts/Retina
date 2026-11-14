@@ -39,7 +39,7 @@ public final class TerrainDebugEntry implements DebugScreenEntry {
         if (!RetinaConfiguration.get().f3Overlay()) return;
         var payload = remoteStats();
         if (level instanceof ServerLevel server && server.getChunkSource().getGenerator() instanceof RetinaChunkGenerator generator) {
-            payload = new TerrainStatsPayload(true, generator.backend(), generator.mode(), generator.metrics().snapshot(),art.arcane.retina.worldgen.NativeGpuDiagnostics.EMPTY,server.dimension().identifier().toString());
+            payload = new TerrainStatsPayload(true, generator.backend(), generator.mode(), generator.metrics().snapshot(),art.arcane.retina.worldgen.NativeGpuDiagnostics.EMPTY,server.dimension().identifier().toString(), art.arcane.retina.core.LazyRegionCompression.counts());
         }
         if (!payload.active()) return;
         displayer.addToGroup(Retina.id("generation"), art.arcane.retina.debug.TerrainDebugReport.lines(payload));

@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 /** Publish prepared MCA terrain without requesting a FULL Minecraft chunk. */
 public interface RegionIoBridge {
     boolean retina$regionMode();
+    void retina$sweepIdleRegions();
     CompletableFuture<Void> retina$generateAhead(ChunkPos position);
     CompletableFuture<Void> retina$prepareForeground(ChunkPos position);
 }

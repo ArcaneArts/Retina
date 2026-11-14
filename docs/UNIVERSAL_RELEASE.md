@@ -174,11 +174,12 @@ Bounds are inclusive region coordinates; a radius N selects a square of
 (2N+1)² regions centered at 0,0. Each region is 32×32 chunks. Overworld output goes
 to `region/`, Nether to `DIM-1/region/`, End to `DIM1/region/`, and custom dimensions
 to `dimensions/<namespace>/<path>/region/`. `--compression none|zlib|lz4` controls
-new records. The default is `none` (raw NBT). Minecraft 1.20.1 supports `none` and
-`zlib`. Set `--compression-level N` with zlib to control its level. The level
-defaults to 0, integers clamp to 0–9, and invalid values use 0. Oversized raw
-and zlib chunks have a `c.<chunk-x>.<chunk-z>.mcc` sidecar in the same directory.
-Existing records are preserved byte-for-byte.
+new records. The default is zlib level 1 with `--lazy-compression true`.
+Pass `--lazy-compression false` for inline encoding. Minecraft 1.20.1 supports
+`none` and `zlib`. `--compression-level N` clamps integers to 0–9 and defaults
+to 1 for missing or invalid values. Generation completes independently of
+background compression. Existing encoded records are preserved and oversized
+records can have `c.<chunk-x>.<chunk-z>.mcc` sidecars.
 
 `--parallel N` allows 1–16 concurrent region requests and defaults to 1.
 The JAR reports completed regions as they finish. Ctrl-C stops scheduling

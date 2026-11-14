@@ -53,11 +53,13 @@ public enum ConfigFormat implements ConfigCodec {
                 + "# Positive: explicit limit. Zero: available CPU processors.\n"
                 + "# Negative: ceil(processors / abs(value)), with a minimum of one.\n");
         writer.write("mca_parallelism" + separator + settings.mcaParallelism() + "\n\n");
-        writer.write("# MCA chunk compression: none (default, raw NBT), zlib, or lz4 on Minecraft 26.3.\n");
+        writer.write("# MCA chunk compression: zlib (default), none (raw NBT), or lz4 on Minecraft 26.3.\n");
         writer.write("# Minecraft 1.20.1 uses zlib when lz4 is selected. Raw NBT uses more disk space.\n");
         writer.write("mca_compression" + separator + "\"" + settings.mcaCompression().id() + "\"\n\n");
         writer.write("# Zlib level (0–9). Level 0 stores data without compressing it.\n");
         writer.write("mca_compression_level" + separator + settings.mcaCompressionLevel() + "\n\n");
+        writer.write("# Write raw MCA chunks first and encode them on one background thread after the file closes.\n");
+        writer.write("lazy_compression" + separator + settings.lazyCompression() + "\n\n");
         writer.write("# Detailed startup, shader/driver and generation diagnostics (restart required). Progress, warnings and errors remain enabled.\n");
         writer.write("debug" + separator + settings.debug() + "\n\n");
         writer.write("# Show Retina's F3 information on this modded client. Ignored on servers.\n");

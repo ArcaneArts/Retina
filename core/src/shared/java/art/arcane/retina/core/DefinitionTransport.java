@@ -20,4 +20,6 @@ interface DefinitionTransport {
     int[] structureRingPositions(TerrainRequest request, int set, int count);
     String diagnosticProfile(long handle, String key);
     void close(long handle);
+    void lazyRegion(Path path, int action, int x, int z, int compression, int level);
+    long[] lazyRegionCounts();
 }

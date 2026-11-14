@@ -68,7 +68,7 @@ final class LegacyDimension implements AutoCloseable {
         detachedChunks = new GenerationCache<>(64, parallel);
         biomeGrids = new GenerationCache<>(128, parallel);
         var compression = config.mcaCompression();
-        int codec = (compression == McaCompression.LZ4 ? McaCompression.ZLIB : compression).codec();
+        int codec = config.lazyCompression() ? McaCompression.NONE.codec() : (compression == McaCompression.LZ4 ? McaCompression.ZLIB : compression).codec();
         definition.bindDimension(key, codec, config.mcaCompressionLevel());
         locator = hasStructures ? new LegacyStructureLocator(definition, key, profile) : null;
         regions = new LegacyRegionCoordinator(definition, key, regionBudget);

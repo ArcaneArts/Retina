@@ -1,24 +1,43 @@
 # MCA chunk compression
 
-Retina writes raw NBT by default. To enable zlib compression in the mod, set
-`mca_compression = "zlib"` and `mca_compression_level = 1` in
-`config/retina.toml`. YAML uses the same keys and values. Restart after changing
-the settings. Both headless CLIs accept `--compression none|zlib|lz4` and
-`--compression-level N`. For example, use `--compression zlib --compression-level 1`
-to reproduce Retina's previous zlib setting.
+The mod defaults to these settings in `config/retina.toml`:
 
-Zlib level 0 is the default and uses stored blocks inside a zlib stream. Levels
-1–9 enable compression. Integers outside the range clamp to the nearest limit,
-so 10 becomes 9 and -1 becomes 0. Missing, non-integer, and unrecognized values
-use 0. Raw NBT and LZ4 ignore the level. The headless CLIs require a 26.3
-definition for LZ4. On 1.20.1, selecting LZ4 in the mod config logs a warning
-and uses zlib at the configured level.
+```toml
+mca_parallelism = 4
+mca_compression = "zlib"
+mca_compression_level = 1
+lazy_compression = true
+```
 
-Raw NBT skips compression and writes more bytes. Keep any `c.*.mcc` files with
-their region directory when copying the save. The Bukkit API plugin hands
-chunks to the server, which controls their disk encoding. On 26.3, set
-`region-file-compression=none` in `server.properties` for uncompressed server
-writes.
+YAML uses the same keys and values. Restart after changing settings. Existing
+explicit values continue to apply.
+
+Lazy compression publishes raw NBT immediately. One native background thread
+re-encodes raw records in idle MCA files. The worker runs at low OS priority and
+pauses between work slices. Saved regions take precedence over temporary Distant
+Horizons regions. Minecraft closes inactive files from its I/O queue after about
+15 seconds without file access. A new read or publication can interrupt a
+staged rewrite. Already encoded records and their timestamps are preserved.
+Leave enough free space for the raw backlog and one additional staged region.
+
+Both headless CLIs accept `--lazy-compression true|false`,
+`--compression none|zlib|lz4`, and `--compression-level N`. They start the worker
+as soon as the first published region is free. Generation completion does not
+wait for queued compression. Shutdown discards unfinished work and keeps the
+original region usable. Re-running the same bounds makes remaining raw chunks
+eligible. In-game counters and headless summaries show raw and encoded
+chunk writes for the session. Encoded counts include stored zlib level 0.
+
+Set `lazy_compression = false` or pass `--lazy-compression false` to encode as
+part of generation. Choose `none` to leave chunks raw. Zlib levels 1–9
+compress the chunk. Level 0 stores it inside a zlib stream. Integers clamp to
+0–9, and missing or invalid values use 1. Raw NBT and LZ4 ignore the level.
+LZ4 requires a 26.3 definition in headless mode. On 1.20.1, selecting LZ4 in
+the mod config logs a warning and uses zlib at the configured level.
+
+The Bukkit API plugin hands chunks to the server, which controls their disk
+encoding. Keep any `c.*.mcc` files with their region directory when copying a
+save.
 
 ## Format and save lifecycle
 
@@ -30,7 +49,9 @@ writes.
   and publication. Compressors and scratch buffers are reused within worker batches.
 - Type 3 holds raw chunk NBT. When a raw or zlib payload exceeds the inline
   255-sector limit, Retina writes a `.mcc` sidecar with that payload before
-  publishing its MCA record.
+  publishing its MCA record. Background compression can remove a raw sidecar
+  after its chunk has been saved inline. If the encoded chunk stays oversized,
+  the original sidecar is kept.
 - Temporary-region promotion copies records with their codec identifiers and
   any sidecars.
 - Existing destination records remain opaque and unchanged, including records
@@ -43,6 +64,25 @@ writes.
 
 The framing follows the primary [LZ4BlockOutputStream implementation](https://github.com/lz4/lz4-java/blob/master/src/java/net/jpountz/lz4/LZ4BlockOutputStream.java)
 and is exercised through Minecraft 26.3's actual `RegionFileStorage` reader.
+
+## Lazy compression benchmark on Metal
+
+The standalone CLI generated 32 Overworld regions per run on an Apple M4 Max
+using the 26.3 bundled vanilla definition, seed 123456789, and region bounds
+`24,-18` through `31,-15`. Runs used one region at a time and two native workers
+(`RAYON_NUM_THREADS=2 RETINA_REGION_THREADS=2`). The table reports medians from
+four runs per mode. Region p95 is the median of the per-run p95 values.
+
+| Mode | Generation | Chunks/s | Region median | Region p95 | Disk usage at exit |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Raw, lazy off | 17.62 s | 1,877 | 496 ms | 879 ms | 2,118 MiB |
+| Zlib 1, lazy on | 17.99 s | 1,837 | 502 ms | 815 ms | 1,194–1,770 MiB |
+| Zlib 1, lazy off | 18.24 s | 1,798 | 498 ms | 800 ms | 265 MiB |
+
+Lazy zlib 1 compressed 6–16 regions before exit and reclaimed 349–925 MiB.
+The ~2% median throughput difference against raw was smaller than run-to-run
+variation on this machine. A separate 32-region lazy zlib 5 run compressed two
+regions and reclaimed 121 MiB before generation finished.
 
 ## Measurements: 2026-10-19, Apple M4 Max / Metal
 

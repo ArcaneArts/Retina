@@ -123,7 +123,7 @@ impl WorldDefinition {
     pub fn seed(&self) -> i64 {
         self.document.seed
     }
-    pub(crate) fn check_compression(&self, compression: crate::region::codec::Compression) -> Result<(), String> {
+    pub fn check_compression(&self, compression: crate::region::codec::Compression) -> Result<(), String> {
         use crate::region::{ChunkStorageFormat, codec::Compression};
         if matches!(ChunkStorageFormat::for_data_version(self.data_version()), ChunkStorageFormat::Minecraft1201)
             && compression == Compression::Lz4

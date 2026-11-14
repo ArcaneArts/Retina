@@ -25,6 +25,12 @@ public final class TerrainDebugReport {
         lines.add(LABEL+"Regions: §a"+stats.regions()+LABEL+"   In flight: §e"+stats.inFlight());
         lines.add(LABEL+"Temporary regions: §a"+stats.previewRegions()+LABEL+"   Hits: §a"+stats.previewCacheHits()+LABEL+"   Promotions: §a"+stats.promotions()+LABEL+" (publication count, not production rate)");
         lines.add(LABEL+"Terrain chunks: §a"+stats.total()+LABEL+"   Failed: "+(stats.failures()>0?"§c":"§a")+stats.failures());
+        var compression = payload.compression();
+        if (mca && compression != null) {
+            lines.add(LABEL+"MCA chunk writes (session): "+DATA+compression.rawChunks()+" raw / "+compression.encodedChunks()+" encoded");
+            lines.add(LABEL+"Lazy compression: "+DATA+compression.lazyLiveChunks()+" saved / "+compression.lazyPreviewChunks()
+                    +" temporary, "+format("%.1f MiB reclaimed",compression.reclaimedBytes()/1048576.0));
+        }
         lines.add(GPU+"Backend: "+DATA+payload.backend());
         var gpu=payload.diagnostics();
         if(gpu.nodes()>0) {

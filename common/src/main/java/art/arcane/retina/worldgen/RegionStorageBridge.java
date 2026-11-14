@@ -16,5 +16,6 @@ public interface RegionStorageBridge {
     default RegionCoordinator retina$coordinator() { return null; }
     CompletableFuture<Optional<CompoundTag>> retina$loadAsync(ChunkPos position,
             Supplier<CompletableFuture<Optional<CompoundTag>>> read);
+    default void retina$closeIdleRegions() throws IOException { }
     void retina$closeRegion(ChunkPos position) throws IOException;
 }

@@ -69,6 +69,8 @@ abstract class LegacyClientPayloadMixin implements LegacyClientStats {
                 String.format(Locale.ROOT, "Completed terrain: %.1f chunks/s (%.1fs wall window)",
                         stats.chunksPerSecond(), stats.windowSeconds()),
                 "In flight: " + stats.inFlight() + "  Prepared regions: " + stats.previews() + "  Published: " + stats.publications(),
-                "Terrain chunks: " + stats.chunks() + "  Failed: " + stats.failures());
+                "Terrain chunks: " + stats.chunks() + "  Failed: " + stats.failures(),
+                "MCA chunk writes (session): " + stats.raw() + " raw / " + stats.encoded() + " encoded",
+                "Lazy compression: " + stats.lazyLive() + " saved / " + stats.lazyPreview() + " temporary");
     }
 }

@@ -116,7 +116,10 @@ public final class NativePreviewIntegrationTest {
                 Files.createFile(save.resolve("r.-1.0.mca")); // DH probes leave empty RegionFile placeholders.
                 var beforeMetrics=generator.metrics().snapshot();
                 var beforePromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
-                new RegionCoordinator(generator, save).prepare(position, bridge);
+                var initialCoordinator = new RegionCoordinator(generator, save);
+                initialCoordinator.prepare(position, bridge);
+                art.arcane.retina.core.LazyRegionCompression.cancel(save, true);
+                initialCoordinator.close();
                 var afterPromotion=NativeTerrain.instance().timings(generator.profile().nativeId());
                 require(afterPromotion.chunks()==beforePromotion.chunks() && afterPromotion.gpuJobs()==beforePromotion.gpuJobs()
                         && afterPromotion.workerNanos()==beforePromotion.workerNanos(), "promotion adds neither GPU nor Rust generation time");
@@ -150,7 +153,7 @@ public final class NativePreviewIntegrationTest {
                 require(readsReady.await(5, TimeUnit.SECONDS), "prepared reads enqueue after background assembly");
                 var concurrentMetrics=generator.metrics().snapshot();
                 require(concurrentMetrics.regionSamples()==3 && concurrentMetrics.regionStages().chunks()==3072, "parallel regions do not leak session counters into each other");
-                require(concurrentMetrics.regionStagePercent(NativeTimings.NBT)>0 && concurrentMetrics.regionStagePercent(NativeTimings.COMPRESS)>0, "concurrent job wall shares reach F3");
+                require(concurrentMetrics.regionStagePercent(NativeTimings.NBT)>0, "concurrent chunk encoding wall share reaches F3");
                 require(!Files.exists(save.resolve("r.2.0.mca")) && !Files.exists(save.resolve("r.3.0.mca")),
                         "background assembly leaves live save files untouched until their I/O jobs");
                 try (var storage = new RegionFileStorage(new RegionStorageInfo("retina-pipeline-test", Level.OVERWORLD, "chunk"), save, false)) {
@@ -159,6 +162,7 @@ public final class NativePreviewIntegrationTest {
                 }
                 long chunks = NativeTerrain.instance().timings(generator.profile().nativeId()).chunks();
                 coordinator.prepare(next, bridge); coordinator.prepare(following, bridge);
+                art.arcane.retina.core.LazyRegionCompression.cancel(save, true);
                 require(NativeTerrain.instance().timings(generator.profile().nativeId()).chunks() == chunks,
                         "publication consumes completed preparation without regenerating either region");
                 try (var storage = new RegionFileStorage(new RegionStorageInfo("retina-pipeline-test", Level.OVERWORLD, "chunk"), save, false)) {

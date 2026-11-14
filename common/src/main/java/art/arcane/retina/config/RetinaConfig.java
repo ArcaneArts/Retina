@@ -7,7 +7,7 @@ import java.util.Map;
 
 /** Loader- and file-format-independent settings. Changes take effect at process startup. */
 public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression mcaCompression,
-                           int mcaCompressionLevel, boolean allowDirectx, boolean allowMetal, boolean allowVulkan) {
+                           int mcaCompressionLevel, boolean lazyCompression, boolean allowDirectx, boolean allowMetal, boolean allowVulkan) {
     public enum McaCompression {
         NONE("none", 3), ZLIB("zlib", 2), LZ4("lz4", 4);
         private final String id;
@@ -23,22 +23,30 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
     }
 
     public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression compression,
+                        int level, boolean allowDirectx, boolean allowMetal, boolean allowVulkan) {
+        this(mcaParallelism, debug, f3Overlay, compression, level, true, allowDirectx, allowMetal, allowVulkan);
+    }
+
+    public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression compression,
                         boolean allowDirectx, boolean allowMetal, boolean allowVulkan) {
-        this(mcaParallelism, debug, f3Overlay, compression, 0, allowDirectx, allowMetal, allowVulkan);
+        this(mcaParallelism, debug, f3Overlay, compression, ZlibLevel.DEFAULT, allowDirectx, allowMetal, allowVulkan);
     }
 
     public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression compression) {
-        this(mcaParallelism, debug, f3Overlay, compression, 0, true, true, true);
+        this(mcaParallelism, debug, f3Overlay, compression, ZlibLevel.DEFAULT, true, true, true);
     }
 
     /** Supported worlds use Retina with either GPU or native CPU execution. */
     public boolean worldgenEnabled() { return true; }
 
+    public boolean usesLazyCompression() { return lazyCompression && mcaCompression != McaCompression.NONE; }
+    public int generationCodec() { return lazyCompression ? McaCompression.NONE.codec() : mcaCompression.codec(); }
+
     public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay) {
-        this(mcaParallelism, debug, f3Overlay, McaCompression.NONE);
+        this(mcaParallelism, debug, f3Overlay, McaCompression.ZLIB);
     }
 
-    public static final RetinaConfig DEFAULT = new RetinaConfig(8, false, true);
+    public static final RetinaConfig DEFAULT = new RetinaConfig(4, false, true);
 
     public int regionParallelism() {
         return regionParallelism(Runtime.getRuntime().availableProcessors());
@@ -54,7 +62,7 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
     public static RetinaConfig from(Map<String, ?> values) {
         return new RetinaConfig(integer(values, "mca_parallelism", DEFAULT.mcaParallelism),
                 bool(values, "debug", DEFAULT.debug), bool(values, "f3_overlay", DEFAULT.f3Overlay), compression(values),
-                compressionLevel(values.get("mca_compression_level")),
+                compressionLevel(values.get("mca_compression_level")), bool(values, "lazy_compression", true),
                 bool(values, "allow_directx", true), bool(values, "allow_metal", true), bool(values, "allow_vulkan", true));
     }
 
@@ -70,7 +78,7 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
                 || value instanceof Integer || value instanceof Long || value instanceof BigInteger) {
             return ZlibLevel.parse(value.toString());
         }
-        return 0;
+        return ZlibLevel.DEFAULT;
     }
 
     private static int integer(Map<String, ?> values, String key, int fallback) {

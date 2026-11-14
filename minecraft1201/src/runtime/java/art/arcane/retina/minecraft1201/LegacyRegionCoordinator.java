@@ -10,6 +10,10 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.storage.RegionFile;
+import art.arcane.retina.config.RetinaConfig;
+import art.arcane.retina.config.RetinaConfiguration;
+import art.arcane.retina.core.IdleRegionFiles;
+import art.arcane.retina.core.LazyRegionCompression;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -37,6 +41,7 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
         volatile boolean published;
         volatile boolean readByDetachedGenerator;
         private RegionFile reader;
+        private long lastReadNanos;
         private boolean discarded;
 
         Preview(NativeRegionBudget.Request ticket) {
@@ -45,7 +50,12 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
 
         synchronized CompoundTag read(ChunkPos position, String dimension) throws IOException {
             if (discarded) return null;
-            if (reader == null) reader = new RegionFile(path, directory, false);
+            lastReadNanos = System.nanoTime();
+            if (reader == null) {
+                reader = RetinaConfiguration.get().usesLazyCompression()
+                        ? LazyRegionCompression.open(path, () -> new RegionFile(path, directory, false))
+                        : new RegionFile(path, directory, false);
+            }
             try (var input = reader.getChunkDataInputStream(position)) {
                 if (input == null) throw new IOException("Missing Retina preview record " + position);
                 var tag = NbtIo.read(input);
@@ -56,8 +66,30 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
             }
         }
 
+        synchronized void coolAndQueue(int x, int z) {
+            if (!RetinaConfiguration.get().usesLazyCompression()) return;
+            try {
+                closeReader();
+                queueCompression(path, x, z, true);
+            } catch (IOException error) {
+                LegacyWorlds.LOG.warn("Cannot close Retina region preview {}", path, error);
+            }
+        }
+
+        private void closeReader() throws IOException {
+            if (reader != null) reader.close();
+            reader = null;
+        }
+
+        synchronized void closeIdleReader(long now) {
+            if (now - lastReadNanos < IdleRegionFiles.IDLE_NANOS) return;
+            try { closeReader(); }
+            catch (IOException error) { LegacyWorlds.LOG.warn("Cannot close Retina region preview {}", path, error); }
+        }
+
         synchronized void delete() {
             discarded = true;
+            if (path != null && RetinaConfiguration.get().usesLazyCompression()) LazyRegionCompression.cancel(path, false);
             try {
                 if (reader != null) reader.close();
             } catch (IOException error) {
@@ -201,12 +233,14 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
         var preview = activePreview(position);
         if (preview.published) return;
         storage.retina$closeRegion(position);
+        Path destination = storage.retina$folder().resolve(fileName(position));
         long started = System.nanoTime();
         metrics.begin();
         NativeWorldDefinition.RegionResult result;
         try {
             result = definition.publishRegion(dimension, position.getRegionX(), position.getRegionZ(),
-                    preview.path, storage.retina$folder().resolve(fileName(position)));
+                    preview.path, destination);
+            queueCompression(destination, position.getRegionX(), position.getRegionZ(), false);
             if (result.generated() > 0) metrics.completedPromotion(System.nanoTime() - started);
             else metrics.cancelled();
         } catch (RuntimeException | Error error) {
@@ -217,6 +251,13 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
         if (QA) LegacyWorlds.LOG.info(
                 "QA_EVT retina_1201_published {} {},{} generated={} preserved={}", dimension,
                 position.getRegionX(), position.getRegionZ(), result.generated(), result.preserved());
+    }
+
+    public void closeIdlePreviewReaders() {
+        long now = System.nanoTime();
+        synchronized (detached) {
+            detached.values().forEach(preview -> preview.closeIdleReader(now));
+        }
     }
 
     public int limit() { return budget.limit(); }
@@ -256,6 +297,8 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
         Preview discard = preview;
         synchronized (detached) {
             if (!closing && preview.readByDetachedGenerator && !preview.published) {
+                var position = new ChunkPos(key);
+                preview.coolAndQueue(position.x, position.z);
                 detached.put(key, preview);
                 discard = null;
                 if (detached.size() > retainedLimit) {
@@ -272,6 +315,14 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
         if (lease == null) return;
         try { lease.close(); }
         catch (Exception error) { LegacyWorlds.LOG.warn("Cannot release Retina region preview", error); }
+    }
+
+    private static void queueCompression(Path path, int x, int z, boolean preview) {
+        var config = RetinaConfiguration.get();
+        if (!config.usesLazyCompression()) return;
+        int codec = config.mcaCompression() == RetinaConfig.McaCompression.LZ4
+                ? RetinaConfig.McaCompression.ZLIB.codec() : config.mcaCompression().codec();
+        LazyRegionCompression.enqueue(path, x, z, codec, config.mcaCompressionLevel(), preview);
     }
 
     private static long key(ChunkPos position) {

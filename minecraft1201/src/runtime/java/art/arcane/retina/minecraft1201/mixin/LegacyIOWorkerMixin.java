@@ -35,6 +35,22 @@ abstract class LegacyIOWorkerMixin implements LegacyRegionIo {
 
     @Override public void retina$configure(LegacyRegionCoordinator regions) {
         retina$regions = regions;
+        if (art.arcane.retina.config.RetinaConfiguration.get().usesLazyCompression())
+            ((LegacyRegionStorage) (Object) storage).retina$enableLazyCompression();
+    }
+
+    @Override public synchronized void retina$sweepIdleRegions() {
+        if (retina$closing || retina$regions == null) return;
+        this.<Void>retina$submit(() -> {
+            try {
+                ((LegacyRegionStorage) (Object) storage).retina$closeIdleRegions();
+                retina$regions.closeIdlePreviewReaders();
+                return Either.left(null);
+            } catch (IOException error) {
+                org.slf4j.LoggerFactory.getLogger("retina").warn("Could not close idle Retina region", error);
+                return Either.right(error);
+            }
+        });
     }
 
     @Override public int retina$regionLimit() {

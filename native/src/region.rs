@@ -22,6 +22,7 @@ static ASSEMBLERS: OnceLock<Result<rayon::ThreadPool, String>> = OnceLock::new()
 mod material_cache;
 pub mod codec;
 mod geometry;
+pub mod lazy;
 mod legacy_metadata;
 mod storage;
 #[cfg(test)]
@@ -230,6 +231,8 @@ fn generate_region_inner(
     detail: Option<&mut timings::Snapshot>,
 ) -> Result<RegionReport, String> {
     static FIRST_REGION: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+    let _destination = lazy::pin(path)?;
+    let _preview = cached.map(lazy::pin).transpose()?;
     let diagnostic_start = crate::startup::debug_enabled().then(Instant::now);
     let _first_region = FIRST_REGION.swap(false, std::sync::atomic::Ordering::Relaxed).then(||
         crate::startup::Stage::new(format!("first region generation profile={} region={},{} cached={}", request.reserved, request.chunk_x.div_euclid(32), request.chunk_z.div_euclid(32), cached.is_some())));
@@ -679,7 +682,9 @@ fn generate_region_inner(
     report.assembly_nanos = (start.elapsed().as_nanos() as u64).saturating_sub(report.gpu_nanos);
     let start = Instant::now();
     let _io = timings.span(timings::IO);
+    let raw = records.raw_count();
     let published_bytes = storage::publish(file, (region_x, region_z), &slots, records, path)?;
+    lazy::record_write(raw, report.generated - raw);
     if let Some(pending) = pending_versions {
         pending.publish(engine, &session.performance);
     }

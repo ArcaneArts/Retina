@@ -22,8 +22,12 @@ def main():
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     command = [str(args.java.resolve()), '-jar', str(args.jar.resolve())]
+    raw = ['--compression', 'none', '--lazy-compression', 'false']
+
     runs = []
     def run(*arguments, code=0):
+        if arguments and arguments[0] == 'generate':
+            arguments = (*arguments, *raw)
         result = subprocess.run(command + list(arguments), capture_output=True, text=True, timeout=180)
         index = len(runs)
         (args.output / f'{index}.stdout').write_text(result.stdout)
@@ -57,7 +61,7 @@ def main():
             with region.open('rb') as stream:
                 first_sector = int.from_bytes(stream.read(3), 'big')
                 stream.seek(first_sector * 4096 + 4)
-                assert stream.read(1) == b'\x03', 'headless JAR defaults to raw NBT'
+                assert stream.read(1) == b'\x03', 'explicit raw mode writes raw NBT'
             records = mca_records(region)
             assert len(records) == 1024
             for slot in (0,1023):

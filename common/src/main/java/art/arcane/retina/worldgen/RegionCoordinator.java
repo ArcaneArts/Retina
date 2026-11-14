@@ -1,5 +1,7 @@
 package art.arcane.retina.worldgen;
 
+import art.arcane.retina.config.RetinaConfiguration;
+import art.arcane.retina.core.LazyRegionCompression;
 import art.arcane.retina.core.RegionLoadScheduler;
 
 import art.arcane.retina.Retina;
@@ -57,6 +59,10 @@ public final class RegionCoordinator {
     /** Stop queued generation before the I/O worker waits for its shutdown barrier. */
     public void stopAdmission() { publicationAdmission.close(); }
 
+    public void closeIdlePreviewReaders() {
+        if (previews != null) previews.closeIdleReaders();
+    }
+
     public void close() {
         stopAdmission();
         NetherUnloadQa.storageClosing(generator);
@@ -65,6 +71,12 @@ public final class RegionCoordinator {
     private static void release(AutoCloseable lease) {
         try { if (lease != null) lease.close(); }
         catch (Exception error) { Retina.LOGGER.warn("Could not release prepared Retina region", error); }
+    }
+
+    private static void queueCompression(ChunkPos position, Path destination) {
+        var config = RetinaConfiguration.get();
+        if (config.usesLazyCompression()) LazyRegionCompression.enqueue(destination, position.getRegionX(),
+                position.getRegionZ(), config.mcaCompression().codec(), config.mcaCompressionLevel(), false);
     }
 
     public void prepare(ChunkPos position, RegionStorageBridge storage) throws IOException {
@@ -80,6 +92,7 @@ public final class RegionCoordinator {
             if (cached != null) {
                 long elapsed = System.nanoTime() - started;
                 prepared.add(key);
+                queueCompression(position, destination);
                 if (cached.generated() > 0) {
                     generator.metrics().completedPromotion(elapsed);
                     Retina.debug("Published Retina region {} {},{}: {} cached chunks, {} preserved, {} ms",
@@ -99,6 +112,7 @@ public final class RegionCoordinator {
             } finally { releaseGeneration.run(); }
             long elapsed = System.nanoTime() - started;
             prepared.add(key);
+            queueCompression(position, destination);
             generator.metrics().completedRegion(report.generated(), elapsed, report.stages());
             if (report.generated() > 0) {
                 Retina.debug("Generated Retina region {} {},{}: {} chunks, {} preserved, {} ms",
