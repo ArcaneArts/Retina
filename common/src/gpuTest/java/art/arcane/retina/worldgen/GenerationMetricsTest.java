@@ -172,7 +172,8 @@ public final class GenerationMetricsTest {
         var diagnostics = new NativeGpuDiagnostics(2,123_000_000,43210,1500,900,12,7,3,1048576,2097152);
         for (var candidate : java.util.List.of(TerrainStatsPayload.INACTIVE,
                 new TerrainStatsPayload(true,"Metal","mca",snapshot,diagnostics),
-                new TerrainStatsPayload(true,"Metal","mca",snapshot,diagnostics,"minecraft:the_nether"))) {
+                new TerrainStatsPayload(true,"Metal","mca",snapshot,diagnostics,"minecraft:the_nether",
+                        new art.arcane.retina.core.LazyRegionCompression.Counts(1200, 800, 500, 300, 800000)))) {
             var buffer = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),net.minecraft.core.RegistryAccess.EMPTY);
             try {
                 TerrainStatsPayload.CODEC.encode(buffer,candidate);
@@ -188,6 +189,7 @@ public final class GenerationMetricsTest {
                 close(decoded.stats().completedChunksPerSecond(),candidate.stats().completedChunksPerSecond(),"aggregate completions survive transport");
                 close(decoded.stats().completionWindowSeconds(),candidate.stats().completionWindowSeconds(),"wall window survives transport");
                 require(decoded.diagnostics().equals(candidate.diagnostics()) && !buffer.isReadable(),"packet preserves GPU diagnostics and consumes schema");
+                require(java.util.Objects.equals(decoded.compression(),candidate.compression()),"packet preserves MCA compression counters");
                 require(TerrainDebugReport.lines(decoded).equals(TerrainDebugReport.lines(candidate)),"client decodes the exact same timing display");
                 require(TerrainDebugReport.lines(decoded).getFirst().equals("§b§lRetina§r"),"F3 uses the unified generator name");
             } finally { buffer.release(); }

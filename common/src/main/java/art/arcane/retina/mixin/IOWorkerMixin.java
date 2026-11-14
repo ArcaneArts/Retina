@@ -27,6 +27,20 @@ public abstract class IOWorkerMixin implements RegionIoBridge {
     @Shadow @Final private PriorityConsecutiveExecutor consecutiveExecutor;
     @Unique private boolean retina$closing;
 
+    @Override public synchronized void retina$sweepIdleRegions() {
+        if (retina$closing) return;
+        var bridge = (RegionStorageBridge) (Object) storage;
+        consecutiveExecutor.scheduleWithResult(1, result -> {
+            try {
+                bridge.retina$closeIdleRegions();
+                result.complete(null);
+            } catch (java.io.IOException error) {
+                art.arcane.retina.Retina.LOGGER.warn("Could not close idle Retina region", error);
+                result.completeExceptionally(error);
+            }
+        });
+    }
+
     @Override public boolean retina$regionMode() {
         return ((RegionStorageBridge)(Object)storage).retina$coordinator() != null;
     }

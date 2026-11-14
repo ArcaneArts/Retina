@@ -7,5 +7,6 @@ import java.util.concurrent.CompletableFuture;
 public interface LegacyRegionIo {
     void retina$configure(LegacyRegionCoordinator regions);
     int retina$regionLimit();
+    void retina$sweepIdleRegions();
     CompletableFuture<Void> retina$generateAhead(ChunkPos position);
 }

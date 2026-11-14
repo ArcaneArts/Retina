@@ -475,10 +475,12 @@ Output paths are `region/` for the Overworld, `DIM-1/region/` for the Nether,
 other supported dimensions. Unsafe filesystem components cannot form output
 paths. Newly compiled supported End definitions execute through the same saved
 definition path as the other dimensions.
-Use `--compression none` (default), `--compression zlib` or `--compression lz4`
+Use `--compression none`, `--compression zlib` (default) or `--compression lz4`
 to select the output codec independently of the snapshot. LZ4 requires Minecraft
-26.3. `--compression-level N` sets the zlib level, which defaults to 0. Integers
-clamp to 0–9 and invalid values use 0. `RAYON_NUM_THREADS` and
+26.3. `--compression-level N` sets the zlib level, which defaults to 1. Integers
+clamp to 0–9 and invalid values use 1. `--lazy-compression true` (default) writes
+raw and compresses closed files in the background until generation finishes.
+Use `--lazy-compression false` to encode every new chunk before publication. `RAYON_NUM_THREADS` and
 `RETINA_REGION_THREADS` control CPU execution pools; the latter bounds the combined
 native CPU dependency/terrain workers as described in [CPU controls](CPU_BACKEND.md).
 

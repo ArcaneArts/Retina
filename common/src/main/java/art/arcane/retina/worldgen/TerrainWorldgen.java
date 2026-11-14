@@ -1,6 +1,7 @@
 package art.arcane.retina.worldgen;
 
 import art.arcane.retina.platform.RetinaPlatform;
+import art.arcane.retina.core.LazyRegionCompression;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Mob;
@@ -60,6 +61,12 @@ public final class TerrainWorldgen {
     }
 
     private static void endTick(MinecraftServer server, RetinaPlatform platform) {
+        if (server.getTickCount() % 100 == 0 && art.arcane.retina.config.RetinaConfiguration.get().usesLazyCompression()) {
+            for (var level : server.getAllLevels()) {
+                if (level.getChunkSource().chunkScanner() instanceof RegionIoBridge bridge && bridge.retina$regionMode())
+                    bridge.retina$sweepIdleRegions();
+            }
+        }
         EndLifecycleQa.tick(server);
         EndTravelQa.tick(server);
         EndGatewayTravelQa.tick(server);
@@ -87,7 +94,7 @@ public final class TerrainWorldgen {
                 TerrainQa.check(player, retina);
             }
             var payload = generator instanceof RetinaChunkGenerator retina
-                    ? new TerrainStatsPayload(true, retina.backend(), retina.mode(), retina.metrics().snapshot(),NativeTerrain.instance().gpuDiagnostics(retina.profile()==null?0:retina.profile().nativeId()),player.level().dimension().identifier().toString())
+                    ? new TerrainStatsPayload(true, retina.backend(), retina.mode(), retina.metrics().snapshot(),NativeTerrain.instance().gpuDiagnostics(retina.profile()==null?0:retina.profile().nativeId()),player.level().dimension().identifier().toString(), LazyRegionCompression.counts())
                     : TerrainStatsPayload.INACTIVE;
             platform.sendTerrainStats(player, payload);
         }

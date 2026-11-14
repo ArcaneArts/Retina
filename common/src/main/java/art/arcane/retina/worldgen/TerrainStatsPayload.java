@@ -1,11 +1,18 @@
 package art.arcane.retina.worldgen;
 
 import art.arcane.retina.Retina;
+import art.arcane.retina.core.LazyRegionCompression;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
-public record TerrainStatsPayload(boolean active, String backend, String mode, GenerationMetrics.Snapshot stats, NativeGpuDiagnostics diagnostics, String dimension) implements CustomPacketPayload {
+public record TerrainStatsPayload(boolean active, String backend, String mode, GenerationMetrics.Snapshot stats, NativeGpuDiagnostics diagnostics, String dimension,
+                                  LazyRegionCompression.Counts compression) implements CustomPacketPayload {
+    public TerrainStatsPayload(boolean active, String backend, String mode, GenerationMetrics.Snapshot stats,
+                               NativeGpuDiagnostics diagnostics, String dimension) {
+        this(active, backend, mode, stats, diagnostics, dimension, null);
+    }
+
     public TerrainStatsPayload(boolean active,String backend,String mode,GenerationMetrics.Snapshot stats,NativeGpuDiagnostics diagnostics) {
         this(active,backend,mode,stats,diagnostics,"");
     }
@@ -15,7 +22,7 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
     public TerrainStatsPayload(boolean active,String backend,String mode,GenerationMetrics.Snapshot stats) {
         this(active,backend,mode,stats,NativeGpuDiagnostics.EMPTY);
     }
-    public static final Type<TerrainStatsPayload> TYPE = new Type<>(Retina.id("terrain_stats"));
+    public static final Type<TerrainStatsPayload> TYPE = new Type<>(Retina.id("terrain_stats_v2"));
     public static final StreamCodec<RegistryFriendlyByteBuf, TerrainStatsPayload> CODEC = CustomPacketPayload.codec(
             TerrainStatsPayload::write, TerrainStatsPayload::read);
     public static final TerrainStatsPayload INACTIVE = new TerrainStatsPayload(false, "", "",
@@ -46,15 +53,27 @@ public record TerrainStatsPayload(boolean active, String backend, String mode, G
         buffer.writeDouble(stats.completionWindowSeconds());
         diagnostics.write(buffer);
         buffer.writeUtf(dimension);
+        if (compression != null) {
+            buffer.writeVarLong(compression.rawChunks());
+            buffer.writeVarLong(compression.encodedChunks());
+            buffer.writeVarLong(compression.lazyLiveChunks());
+            buffer.writeVarLong(compression.lazyPreviewChunks());
+            buffer.writeVarLong(compression.reclaimedBytes());
+        }
     }
 
     private static TerrainStatsPayload read(RegistryFriendlyByteBuf buffer) {
         boolean active = buffer.readBoolean();
         String backend = buffer.readUtf(256);
         String mode = buffer.readUtf(16);
-        return new TerrainStatsPayload(active, backend, mode, new GenerationMetrics.Snapshot(
+        var stats = new GenerationMetrics.Snapshot(
                 buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(),
-                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), readTimings(buffer),buffer.readVarInt(),readTimings(buffer),buffer.readDouble(),buffer.readDouble(),buffer.readDouble()),NativeGpuDiagnostics.read(buffer),buffer.readUtf());
+                buffer.readVarInt(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readDouble(), buffer.readDouble(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), readTimings(buffer),buffer.readVarInt(),readTimings(buffer),buffer.readDouble(),buffer.readDouble(),buffer.readDouble());
+        var diagnostics = NativeGpuDiagnostics.read(buffer);
+        String dimension = buffer.readUtf();
+        var compression = buffer.isReadable() ? new LazyRegionCompression.Counts(
+                buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong(), buffer.readVarLong()) : null;
+        return new TerrainStatsPayload(active, backend, mode, stats, diagnostics, dimension, compression);
     }
 
     private static void writeTimings(RegistryFriendlyByteBuf buffer, NativeTimings timings) {

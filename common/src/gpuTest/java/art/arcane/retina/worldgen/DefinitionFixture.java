@@ -28,7 +28,7 @@ final class DefinitionFixture implements AutoCloseable {
     static DefinitionFixture create(CompoundTag document,String dimension) throws IOException {
         var directory=Files.createTempDirectory("retina-compiled-world-fixture-");
         try {
-            var result=open(WorldDefinitionFile.writeNew(directory,document),dimension,2);
+            var result=openConfigured(WorldDefinitionFile.writeNew(directory,document),dimension,null);
             result.ownedDirectory=directory;
             return result;
         } catch(Throwable failure) {
@@ -98,7 +98,7 @@ final class DefinitionFixture implements AutoCloseable {
             this.directory=directory;this.file=file;this.dimension=dimension;
         }
         DefinitionFixture open(NativeWorldDefinition.ProgramExecution execution) {
-            return DefinitionFixture.open(file,dimension,2,execution);
+            return openConfigured(file,dimension,execution);
         }
         Path file() {return file;}
         @Override public void close() {
@@ -127,14 +127,24 @@ final class DefinitionFixture implements AutoCloseable {
         return WorldDefinitionFile.writeNew(directory,assembly.build());
     }
 
+    private static DefinitionFixture openConfigured(Path file, String dimension, NativeWorldDefinition.ProgramExecution execution) {
+        var config = art.arcane.retina.config.RetinaConfiguration.get();
+        return open(file, dimension, config.generationCodec(), config.mcaCompressionLevel(), execution);
+    }
+
     static DefinitionFixture open(Path file,String dimension,int compression) {
         return open(file,dimension,compression,null);
     }
 
     static DefinitionFixture open(Path file,String dimension,int compression,NativeWorldDefinition.ProgramExecution execution) {
+        return open(file, dimension, compression, 0, execution);
+    }
+
+    private static DefinitionFixture open(Path file, String dimension, int compression, int level,
+                                          NativeWorldDefinition.ProgramExecution execution) {
         var world=NativeWorldDefinition.open(file);
         try {
-            if(execution==null)world.bindDimension(dimension,compression);
+            if(execution==null)world.bindDimension(dimension,compression,level);
             else world.bindDimension(dimension,compression,execution);
             return new DefinitionFixture(world,dimension,file);
         } catch(Throwable failure) {

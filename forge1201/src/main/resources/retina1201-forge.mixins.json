@@ -4,7 +4,7 @@
   "package": "art.arcane.retina.minecraft1201.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "retina1201.refmap.json",
-  "mixins": ["MinecraftServerMixin", "ServerLevelMixin", "LegacyChunkMapMixin", "LegacyIOWorkerMixin", "LegacyRegionFileStorageMixin", "LegacyServerPayloadMixin", "LegacyChunkyTaskMixin", "LegacyChunkyProviderMixin", "LegacyDistantHorizonsChunkyMixin"],
+  "mixins": ["MinecraftServerMixin", "ServerLevelMixin", "LegacyChunkMapMixin", "LegacyIOWorkerMixin", "LegacyRegionFileStorageMixin", "LegacyRegionFileMixin", "LegacyServerPayloadMixin", "LegacyChunkyTaskMixin", "LegacyChunkyProviderMixin", "LegacyDistantHorizonsChunkyMixin"],
   "client": ["LegacyClientPayloadMixin", "LegacyDebugOverlayMixin"],
   "injectors": { "defaultRequire": 1 }
 }

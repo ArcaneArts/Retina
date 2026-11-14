@@ -183,6 +183,41 @@ extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_metadataNa
 }
 
 #[unsafe(no_mangle)]
+extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_lazyRegionNative(
+    env: JNIEnv,
+    _class: JClass,
+    path: JByteArray,
+    action: jint,
+    x: jint,
+    z: jint,
+    codec: jint,
+    level: jint,
+) {
+    call(env, (), |env| {
+        let path = env.convert_byte_array(&path)?;
+        check(unsafe {
+            crate::region::lazy::retina_lazy_region(
+                path.as_ptr(), path.len() as u64, action, x, z, codec, level,
+            )
+        })
+    });
+}
+
+#[unsafe(no_mangle)]
+extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_lazyCountsNative(
+    env: JNIEnv,
+    _class: JClass,
+) -> jlongArray {
+    call(env, ptr::null_mut(), |env| {
+        let mut output = [0; 5];
+        unsafe { crate::region::lazy::retina_lazy_region_counts(output.as_mut_ptr()) };
+        let result = env.new_long_array(output.len() as i32)?;
+        env.set_long_array_region(&result, 0, &output.map(|value| value as jlong))?;
+        Ok(result.into_raw())
+    })
+}
+
+#[unsafe(no_mangle)]
 extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_bindNative(
     env: JNIEnv,
     _class: JClass,

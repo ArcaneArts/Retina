@@ -27,8 +27,9 @@ public final class RetinaCli {
             an existing definition instead of DIR/retina.dat (inspect or generate).
             Creation options: --catalog FILE, --snapshot (default vanilla-binary),
             --variant normal|normal-no-structures|normal-bonus-chest|normal-no-structures-bonus-chest|bukkit-api.
-            --compression none|zlib|lz4 (default none). LZ4 requires Minecraft 26.3.
-            --compression-level N applies to zlib. Integers clamp to 0–9; invalid or omitted values use 0.
+            --compression none|zlib|lz4 (default zlib). LZ4 requires Minecraft 26.3.
+            --lazy-compression true|false (default true). Write raw first and encode in the background.
+            --compression-level N applies to zlib. Integers clamp to 0–9; invalid or omitted values use 1.
             --dimension selects the dimension (default minecraft:overworld).
             --parallel N generates up to N regions at once (1–16, default 1).
             Coordinates are inclusive MCA regions (32x32 chunks); radius is a square about 0,0.
@@ -65,7 +66,7 @@ public final class RetinaCli {
         Set<String> allowed = new HashSet<>(Set.of("world"));
         if (!command.equals("inspect")) allowed.addAll(Set.of("seed", "catalog", "snapshot", "variant"));
         if (!command.equals("init")) allowed.add("definition");
-        if (command.equals("generate")) allowed.addAll(Set.of("dimension", "region-radius", "region-min", "region-max", "compression", "compression-level", "parallel"));
+        if (command.equals("generate")) allowed.addAll(Set.of("dimension", "region-radius", "region-min", "region-max", "compression", "compression-level", "lazy-compression", "parallel"));
         for (String key : options.keySet()) if (!allowed.contains(key)) throw new IllegalArgumentException("Unsupported option --" + key);
         String dimension = options.getOrDefault("dimension", "minecraft:overworld");
         Path directory = regionDirectory(root, dimension);
@@ -73,13 +74,18 @@ public final class RetinaCli {
         int parallel = Integer.parseInt(options.getOrDefault("parallel", "1"));
         if (parallel < 1 || parallel > MAX_PARALLEL_REGIONS)
             throw new IllegalArgumentException("Parallelism must be between 1 and " + MAX_PARALLEL_REGIONS);
-        int compression = switch (options.getOrDefault("compression", "none")) {
+        int compression = switch (options.getOrDefault("compression", "zlib")) {
             case "none" -> 3;
             case "zlib" -> 2;
             case "lz4" -> 4;
             default -> throw new IllegalArgumentException("Compression must be none, zlib or lz4");
         };
         int compressionLevel = ZlibLevel.parse(options.get("compression-level"));
+        boolean lazyCompression = switch (options.getOrDefault("lazy-compression", "true")) {
+            case "true" -> true;
+            case "false" -> false;
+            default -> throw new IllegalArgumentException("Lazy compression must be true or false");
+        };
         if (options.containsKey("catalog") && options.containsKey("snapshot"))
             throw new IllegalArgumentException("Use --catalog or --snapshot, not both");
         Path definition = options.containsKey("definition") ? Path.of(options.get("definition")) : root.resolve("retina.dat");
@@ -95,7 +101,7 @@ public final class RetinaCli {
             try (var world = openOrCreate(root, definition, options, command.equals("init"))) {
                 if (command.equals("init")) { System.out.println(world.metadata()); return 0; }
                 Files.createDirectories(directory);
-                return generate(world, dimension, directory, bounds, compression, compressionLevel, parallel);
+                return generate(world, dimension, directory, bounds, compression, compressionLevel, lazyCompression && compression != 3, parallel);
             }
         }
     }
@@ -134,7 +140,7 @@ public final class RetinaCli {
     private record CompletedRegion(int x, int z, NativeWorldDefinition.RegionResult report) { }
 
     private static int generate(NativeWorldDefinition world, String dimension, Path directory, int[] b,
-                                int compression, int compressionLevel, int parallel) throws Exception {
+                                int compression, int compressionLevel, boolean lazyCompression, int parallel) throws Exception {
         AtomicBoolean cancelled = new AtomicBoolean();
         CountDownLatch drained = new CountDownLatch(1);
         Thread hook = new Thread(() -> {
@@ -144,8 +150,11 @@ public final class RetinaCli {
         }, "retina-cli-shutdown");
         Runtime.getRuntime().addShutdownHook(hook);
         long regions = 0, generated = 0, preserved = 0, started = System.nanoTime();
+        boolean compressionStopped = !lazyCompression;
         try {
-            world.bindDimension(dimension, compression, compressionLevel);
+            if (compression == 4 && world.metadata().contains("\"minecraft_version\":\"1.20.1\""))
+                throw new IllegalArgumentException("MCA LZ4 output requires Minecraft 26.3");
+            world.bindDimension(dimension, lazyCompression ? 3 : compression, compressionLevel);
             long width = (long)b[2] - b[0] + 1;
             long total = width * ((long)b[3] - b[1] + 1);
             AtomicBoolean failed = new AtomicBoolean();
@@ -161,7 +170,9 @@ public final class RetinaCli {
                         completions.submit(() -> {
                             if (cancelled.get() || failed.get()) return null;
                             try {
-                                var report = world.generateRegion(dimension, x, z, directory.resolve("r." + x + "." + z + ".mca"));
+                                Path path = directory.resolve("r." + x + "." + z + ".mca");
+                                var report = world.generateRegion(dimension, x, z, path);
+                                if (lazyCompression) LazyRegionCompression.enqueue(path, x, z, compression, compressionLevel, false);
                                 return new CompletedRegion(x, z, report);
                             } catch (RuntimeException | Error error) {
                                 failed.set(true);
@@ -191,12 +202,24 @@ public final class RetinaCli {
                             result.x(), result.z(), regions, total, report.generated(), report.preserved(), report.bytes());
                 }
             }
-            System.out.printf(Locale.ROOT, "{\"status\":\"%s\",\"dimension\":\"%s\",\"regions\":%d,\"generated_chunks\":%d,\"preserved_chunks\":%d,\"seconds\":%.3f}%n",
-                    cancelled.get() ? "cancelled" : "complete", dimension, regions, generated, preserved, (System.nanoTime() - started) / 1e9);
+            double elapsed = (System.nanoTime() - started) / 1e9;
+            if (lazyCompression) {
+                LazyRegionCompression.cancel(directory, true);
+                compressionStopped = true;
+            }
+            var counts = LazyRegionCompression.counts();
+            System.out.printf(Locale.ROOT, """
+                    {"status":"%s","dimension":"%s","regions":%d,"generated_chunks":%d,"preserved_chunks":%d,"seconds":%.3f,"compression":{"raw_chunks":%d,"encoded_chunks":%d,"lazy_live_chunks":%d,"lazy_preview_chunks":%d,"reclaimed_bytes":%d}}
+                    """, cancelled.get() ? "cancelled" : "complete", dimension, regions, generated, preserved, elapsed,
+                    counts.rawChunks(), counts.encodedChunks(), counts.lazyLiveChunks(), counts.lazyPreviewChunks(), counts.reclaimedBytes());
             return cancelled.get() ? 130 : 0;
         } finally {
             // Close while the shutdown hook still holds process shutdown open.
-            try { world.close(); } finally {
+            try {
+                try {
+                    if (!compressionStopped) LazyRegionCompression.cancel(directory, true);
+                } finally { world.close(); }
+            } finally {
                 drained.countDown();
                 try { Runtime.getRuntime().removeShutdownHook(hook); } catch (IllegalStateException shuttingDown) { }
             }

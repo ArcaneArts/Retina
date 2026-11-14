@@ -4,7 +4,10 @@ mod output;
 
 use retina_worldgen::{
     TerrainEngine,
-    region::codec::CompressionSettings,
+    region::{
+        codec::{Compression, CompressionSettings},
+        lazy,
+    },
     world_definition::{WorldDefinition, runtime::WorldSession},
 };
 use std::{
@@ -16,6 +19,15 @@ use std::{
     },
     time::Instant,
 };
+
+struct CancelCompression<'a>(&'a std::path::Path);
+impl Drop for CancelCompression<'_> {
+    fn drop(&mut self) {
+        if let Err(error) = lazy::cancel(self.0, true) {
+            eprintln!("Retina lazy compression cleanup: {error}");
+        }
+    }
+}
 
 struct CacheFlush;
 impl Drop for CacheFlush {
@@ -97,8 +109,17 @@ fn generate(options: args::Generate, cancelled: &AtomicBool) -> Result<bool, Str
         options.count(),
         options.dimension
     );
-    let compression = CompressionSettings::new(options.compression, options.compression_level);
-    let world = WorldSession::bind_with_options(engine, definition, compression, None)?;
+    definition.check_compression(options.compression)?;
+    let target = CompressionSettings::new(options.compression, options.compression_level);
+    let lazy_enabled = options.lazy_compression && options.compression != Compression::None;
+    // This guard cancels staging while we still hold the run's storage lock.
+    let _compression = lazy_enabled.then_some(CancelCompression(&directory));
+    let initial = if lazy_enabled {
+        CompressionSettings::default()
+    } else {
+        target
+    };
+    let world = WorldSession::bind_with_options(engine, definition, initial, None)?;
     let dimension = world.dimension(&options.dimension)?;
     let mut regions = 0u64;
     let mut generated = 0u64;
@@ -118,6 +139,14 @@ fn generate(options: args::Generate, cancelled: &AtomicBool) -> Result<bool, Str
             let began = Instant::now();
             let path = directory.join(format!("r.{x}.{z}.mca"));
             let report = dimension.generate_region(x, z, &path)?;
+            if lazy_enabled {
+                if let Err(error) = lazy::enqueue(&path, (x, z), target, false) {
+                    eprintln!(
+                        "Retina lazy compression could not queue {}: {error}",
+                        path.display()
+                    );
+                }
+            }
             regions += 1;
             generated += report.generated as u64;
             preserved += report.preserved as u64;
@@ -131,11 +160,15 @@ fn generate(options: args::Generate, cancelled: &AtomicBool) -> Result<bool, Str
         }
     }
     let interrupted = cancelled.load(Ordering::SeqCst);
+    let elapsed = started.elapsed().as_secs_f64();
+    if lazy_enabled {
+        lazy::cancel(&directory, true)?;
+    }
     println!(
         "{}",
         serde_json::json!({"status":if interrupted {"cancelled"} else {"complete"},
         "dimension":options.dimension,"regions":regions,"generated_chunks":generated,
-        "preserved_chunks":preserved,"seconds":started.elapsed().as_secs_f64(),
+        "preserved_chunks":preserved,"seconds":elapsed,"compression":lazy::counts(),
         "backend":world.engine().backend(),"seed":world.definition().seed(),"data_version":world.definition().data_version()})
     );
     Ok(interrupted)

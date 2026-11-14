@@ -39,8 +39,8 @@ public final class RetinaCliTest {
         bad(() -> RetinaCli.bounds(Map.of("region-radius", "1", "region-min", "0,0")));
         if (!RetinaCli.parse(new String[]{"generate", "--seed", "-7", "--region-min=-1,0"})
                 .equals(Map.of("seed", "-7", "region-min", "-1,0"))) throw new AssertionError();
-        var levels = Map.of("6", 6, "-3", 0, "+0009", 9, "10", 9, "2.5", 0, "invalid", 0,
-                "9999999999999999999999", 9, "9999999999999999999999x", 0, "", 0);
+        var levels = Map.of("6", 6, "-3", 0, "+0009", 9, "10", 9, "2.5", 1, "invalid", 1,
+                "9999999999999999999999", 9, "9999999999999999999999x", 1, "", 1);
         levels.forEach((value, expected) -> {
             var parsed = RetinaCli.parse(new String[]{"generate", "--compression-level=" + value});
             if (ZlibLevel.parse(parsed.get("compression-level")) != expected)

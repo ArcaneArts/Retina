@@ -29,6 +29,17 @@ final class JniDefinitionTransport implements DefinitionTransport {
     }
 
     @Override
+    public void lazyRegion(Path path, int action, int x, int z, int codec, int level) {
+        lazyRegionNative(pathBytes(path), action, x, z, codec, level);
+    }
+
+    @Override
+    public long[] lazyRegionCounts() { return lazyCountsNative(); }
+
+    private static native void lazyRegionNative(byte[] path, int action, int x, int z, int codec, int level);
+    private static native long[] lazyCountsNative();
+
+    @Override
     public int bind(long handle, String key, int compression) {
         return bindNative(handle, bytes(key), compression, -1);
     }

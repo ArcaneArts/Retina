@@ -12,6 +12,9 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.storage.RegionFileStorage;
+import art.arcane.retina.config.RetinaConfiguration;
+import art.arcane.retina.core.IdleRegionFiles;
+import art.arcane.retina.core.LazyRegionCompression;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
 import java.io.IOException;
@@ -105,6 +108,7 @@ final class TemporaryRegions implements AutoCloseable {
         RegionFileStorage storage;
         int pins;
         int interests;
+        long lastReleaseNanos;
         final CompletableFuture<Void> disposed = new CompletableFuture<>();
         boolean retired;
         Entry(ChunkPos position) {
@@ -116,7 +120,10 @@ final class TemporaryRegions implements AutoCloseable {
             materialPath = entryFolder.resolve("r." + position.getRegionX() + "." + position.getRegionZ() + ".materials");
         }
         synchronized CompoundTag read(ChunkPos position) throws IOException {
-            if (storage == null) storage = new RegionFileStorage(new RegionStorageInfo("retina-preview", dimension, "chunk"), entryFolder, false);
+            if (storage == null) {
+                if (RetinaConfiguration.get().usesLazyCompression()) LazyRegionCompression.pin(path);
+                storage = new RegionFileStorage(new RegionStorageInfo("retina-preview", dimension, "chunk"), entryFolder, false);
+            }
             var tag = storage.read(position);
             if (tag == null) throw new IOException("Missing chunk in completed temporary MCA: " + position);
             return tag;
@@ -137,11 +144,23 @@ final class TemporaryRegions implements AutoCloseable {
             try { if (baseMaterials != null) baseMaterials.close(); }
             catch (IOException error) { Retina.LOGGER.warn("Could not close temporary Retina materials {}", materialPath, error); }
             baseMaterials = null;
-            try { if (storage != null) storage.close(); }
-            catch (IOException error) { Retina.LOGGER.warn("Could not close temporary Retina region {}", path, error); }
-            storage = null;
+            closeReader();
+        }
+        synchronized void closeReader() {
+            if (storage != null) {
+                try {
+                    storage.close();
+                } catch (IOException error) {
+                    if (RetinaConfiguration.get().usesLazyCompression()) LazyRegionCompression.cancel(path, false);
+                    Retina.LOGGER.warn("Could not close temporary Retina region {}", path, error);
+                } finally {
+                    if (RetinaConfiguration.get().usesLazyCompression()) LazyRegionCompression.release(path);
+                    storage = null;
+                }
+            }
         }
         synchronized void dispose() {
+            if (RetinaConfiguration.get().usesLazyCompression()) LazyRegionCompression.cancel(path, false);
             cool();
             try (var sidecars = Files.newDirectoryStream(entryFolder, "c.*.mcc")) {
                 for (var sidecar : sidecars) {
@@ -191,6 +210,10 @@ final class TemporaryRegions implements AutoCloseable {
                 released = true;
                 abandon();
                 entry.pins--; users--;
+                if (entry.pins == 0 && RetinaConfiguration.get().usesLazyCompression()) {
+                    entry.lastReleaseNanos = System.nanoTime();
+                    LazyRegionCompression.release(entry.path);
+                }
                 if (entry.pins == 0 && entry.generated.isCompletedExceptionally()) {
                     entries.remove(entry.key, entry); warm.remove(entry.key, entry); entry.retired = true;
                 }
@@ -199,6 +222,12 @@ final class TemporaryRegions implements AutoCloseable {
                 removeClosedFolder();
             }
         }
+    }
+
+    private void pin(Entry entry) {
+        if (entry.pins++ == 0 && RetinaConfiguration.get().usesLazyCompression()) LazyRegionCompression.pin(entry.path);
+        entry.interests++;
+        users++;
     }
 
     private Lease acquire(ChunkPos position) {
@@ -238,7 +267,7 @@ final class TemporaryRegions implements AutoCloseable {
                     if (generate) { entry = new Entry(position); entries.put(key, entry); }
                     else { metrics.previewCacheHit(); if (entry.generated.isDone()) warm.put(key, entry); }
                     if (foreground.getAsBoolean()) entry.admission.promote();
-                    entry.pins++; entry.interests++; users++;
+                    pin(entry);
                     trim(); trimWarm();
                 }
             }
@@ -274,6 +303,9 @@ final class TemporaryRegions implements AutoCloseable {
                     long elapsed = System.nanoTime() - start;
                     metrics.completedPreviewRegion(report.generated(), elapsed, report.stages(), columnCacheNanos);
                     PortalBackgroundQa.generated(dimension, entry.origin, report.generated());
+                    var config = RetinaConfiguration.get();
+                    if (config.usesLazyCompression()) LazyRegionCompression.enqueue(entry.path, entry.origin.getRegionX(),
+                            entry.origin.getRegionZ(), config.mcaCompression().codec(), config.mcaCompressionLevel(), true);
                     entry.generated.complete(report);
                     synchronized (this) { if (!entry.retired) warm.put(entry.key, entry); trimWarm(); }
                     if (Boolean.getBoolean("retina.qa")) Retina.LOGGER.info(
@@ -327,6 +359,13 @@ final class TemporaryRegions implements AutoCloseable {
             var entry = iterator.next();
             if (entry.pins != 0) continue;
             iterator.remove(); warm.remove(entry.key); entry.retired = true; entry.dispose();
+        }
+    }
+
+    synchronized void closeIdleReaders() {
+        long now = System.nanoTime();
+        for (var entry : warm.values()) {
+            if (entry.pins == 0 && now - entry.lastReleaseNanos >= IdleRegionFiles.IDLE_NANOS) entry.closeReader();
         }
     }
 
@@ -427,7 +466,8 @@ final class TemporaryRegions implements AutoCloseable {
             // Existing/partial MCA reads can bypass asynchronous preparation.
             // Promote any shared preview before publication waits for it too.
             entry.admission.promote();
-            entry.pins++; entry.interests++; users++; lease = new Lease(entry);
+            pin(entry);
+            lease = new Lease(entry);
         }
         try (lease) {
             lease.data();

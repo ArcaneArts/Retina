@@ -21,6 +21,9 @@ final class FfmDefinitionTransport implements DefinitionTransport {
         private static MethodHandle call(String name, FunctionDescriptor descriptor) {
             return LINKER.downcallHandle(NativeLibrary.symbols().findOrThrow(name), descriptor);
         }
+        static final MethodHandle LAZY_REGION = call("retina_lazy_region",
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT));
+        static final MethodHandle LAZY_COUNTS = call("retina_lazy_region_counts", FunctionDescriptor.ofVoid(ADDRESS));
         static final MethodHandle OPEN = call("retina_open_world_definition", FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, ADDRESS));
         static final MethodHandle METADATA = call("retina_world_definition_metadata", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, ADDRESS));
         static final MethodHandle BIND = call("retina_bind_world_dimension", FunctionDescriptor.of(JAVA_INT, JAVA_LONG, ADDRESS, JAVA_LONG, JAVA_INT, ADDRESS));
@@ -91,6 +94,24 @@ final class FfmDefinitionTransport implements DefinitionTransport {
     public String metadata(long handle) {
         try {
             return readBytes((pointer, length) -> (int) Calls.METADATA.invokeExact(handle, pointer, length));
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    @Override
+    public void lazyRegion(Path path, int action, int x, int z, int codec, int level) {
+        try (var arena = Arena.ofConfined()) {
+            byte[] bytes = path.toString().getBytes(StandardCharsets.UTF_8);
+            check((int) Calls.LAZY_REGION.invokeExact(arena.allocateFrom(JAVA_BYTE, bytes),
+                    (long) bytes.length, action, x, z, codec, level));
+        } catch (Throwable error) { throw failure(error); }
+    }
+
+    @Override
+    public long[] lazyRegionCounts() {
+        try (var arena = Arena.ofConfined()) {
+            var output = arena.allocate(JAVA_LONG, 5);
+            Calls.LAZY_COUNTS.invokeExact(output);
+            return output.toArray(JAVA_LONG);
         } catch (Throwable error) { throw failure(error); }
     }
 

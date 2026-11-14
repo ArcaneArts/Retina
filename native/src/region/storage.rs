@@ -1,7 +1,7 @@
 //! Bounded MCA preservation and atomic publication. The caller serializes world I/O.
 use super::{
     HEADER, SECTOR,
-    codec::{Compression, MAX_INLINE_BYTES, Record},
+    codec::{Compression, CompressionSettings, Encoder, MAX_INLINE_BYTES, Record},
 };
 use std::{
     fs::{self, File, OpenOptions},
@@ -139,6 +139,19 @@ impl Records {
             entries.push((record, external));
         }
         Ok(Self::Cached { source, entries })
+    }
+    pub fn raw_count(&self) -> u32 {
+        let count = match self {
+            Self::Generated(records) => records
+                .iter()
+                .filter(|record| record.codec == Compression::None)
+                .count(),
+            Self::Cached { entries, .. } => entries
+                .iter()
+                .filter(|(record, _)| record.codec & !EXTERNAL == Compression::None.id())
+                .count(),
+        };
+        count as u32
     }
     pub fn len(&self) -> usize {
         match self {
@@ -375,6 +388,166 @@ pub(super) fn publish(
     Ok(end)
 }
 
+/// Prepare a compact copy while the source can still be reopened. The caller may
+/// discard this at any point before commit. External payloads stay untouched
+/// unless they fit inline, so every published stub always matches its sidecar.
+pub(super) fn stage_compression(
+    path: &Path,
+    region: (i32, i32),
+    settings: CompressionSettings,
+    mut pace: impl FnMut(usize) -> bool,
+) -> Result<Option<Rewrite>, String> {
+    let metadata = fs::symlink_metadata(path).map_err(|e| e.to_string())?;
+    if !metadata.file_type().is_file() {
+        return Ok(None);
+    }
+    let mut source = Source::open(path, false)?;
+    let original_len = source.len();
+    let permissions = metadata.permissions();
+    let parent = path.parent().ok_or("MCA path needs a parent directory")?;
+    let mut records = Vec::new();
+    for slot in 0..1024 {
+        if let Some(record) = source.record(slot)? {
+            records.push((slot, record));
+        }
+    }
+    if !records
+        .iter()
+        .any(|(_, record)| record.codec & !EXTERNAL == Compression::None.id())
+    {
+        return Ok(None);
+    }
+    let mut header = source.header;
+    let (pending, file) = PendingFile::create(path, "recompress")?;
+    let mut output = BufWriter::with_capacity(BUFFER, file);
+    output.write_all(&header).map_err(|e| e.to_string())?;
+    let mut end = HEADER;
+    let mut converted = 0;
+    let mut retired_sidecars = Vec::new();
+    let mut raw = Vec::new();
+    let mut encoder = Encoder::default();
+    let zeroes = [0; SECTOR];
+    for (slot, record) in records {
+        if !pace(record.payload) {
+            return Ok(None);
+        }
+        let external = record.codec & EXTERNAL != 0;
+        let mut old_bytes = record.payload + 4;
+        let mut replacement = None;
+        if record.codec & !EXTERNAL == Compression::None.id() {
+            raw.clear();
+            let mut sidecar = None;
+            if external {
+                if record.payload != 1 {
+                    return Err(format!("invalid raw MCA sidecar stub at slot {slot}"));
+                }
+                let path = external_path(parent, region, slot);
+                let file =
+                    File::open(&path).map_err(|e| format!("read {}: {e}", path.display()))?;
+                let len = file.metadata().map_err(|e| e.to_string())?.len();
+                // Keep unusually large external chunks opaque. Bound background
+                // memory and never replace a sidecar that the original still needs.
+                const MAX_SIDECAR: u64 = 16 * 1024 * 1024;
+                if len <= MAX_SIDECAR {
+                    if !pace(len as usize) {
+                        return Ok(None);
+                    }
+                    file.take(MAX_SIDECAR + 1)
+                        .read_to_end(&mut raw)
+                        .map_err(|e| e.to_string())?;
+                    if raw.len() as u64 <= MAX_SIDECAR {
+                        sidecar = Some(path);
+                        old_bytes = raw.len() + SECTOR;
+                    }
+                }
+            } else {
+                source.copy(record.offset + 5, (record.payload - 1) as u64, &mut raw)?;
+            }
+            if !raw.is_empty() {
+                if let Ok(encoded) = encoder.record(settings, &mut raw) {
+                    if encoded.bytes.len() <= MAX_INLINE_BYTES
+                        && (encoded.bytes.len() + 5).div_ceil(SECTOR) <= old_bytes.div_ceil(SECTOR)
+                    {
+                        replacement = Some(encoded);
+                        if let Some(path) = sidecar {
+                            retired_sidecars.push(path);
+                        }
+                        converted += 1;
+                    }
+                }
+            }
+        }
+        let bytes = if let Some(encoded) = replacement {
+            output
+                .write_all(&((encoded.bytes.len() + 1) as u32).to_be_bytes())
+                .map_err(|e| e.to_string())?;
+            output
+                .write_all(&[encoded.codec.id()])
+                .map_err(|e| e.to_string())?;
+            output
+                .write_all(&encoded.bytes)
+                .map_err(|e| e.to_string())?;
+            encoded.bytes.len() + 5
+        } else {
+            source.copy(record.offset, (record.payload + 4) as u64, &mut output)?;
+            record.payload + 4
+        };
+        let sectors = bytes.div_ceil(SECTOR);
+        header[slot * 4..slot * 4 + 4]
+            .copy_from_slice(&((((end / SECTOR) as u32) << 8) | sectors as u32).to_be_bytes());
+        output
+            .write_all(&zeroes[..sectors * SECTOR - bytes])
+            .map_err(|e| e.to_string())?;
+        end += sectors * SECTOR;
+    }
+    if converted == 0 || !pace(0) {
+        return Ok(None);
+    }
+    let mut file = output.into_inner().map_err(|e| e.to_string())?;
+    file.rewind()
+        .and_then(|_| file.write_all(&header))
+        .and_then(|_| file.set_permissions(permissions))
+        .and_then(|_| file.sync_all())
+        .map_err(|e| e.to_string())?;
+    Ok(Some(Rewrite {
+        pending,
+        retired_sidecars,
+        converted,
+        saved_bytes: original_len.saturating_sub(end as u64),
+    }))
+}
+
+pub(super) struct Rewrite {
+    pending: PendingFile,
+    retired_sidecars: Vec<PathBuf>,
+    pub converted: u64,
+    pub saved_bytes: u64,
+}
+
+impl Rewrite {
+    /// Run while all owners are excluded. Publish only after the staged file is durable.
+    pub fn commit(mut self, path: &Path) -> Result<(u64, u64), String> {
+        self.pending.rename(path)?;
+        self.pending.published = true;
+        #[cfg(unix)]
+        if let Err(error) = File::open(path.parent().unwrap()).and_then(|dir| dir.sync_all()) {
+            // The replacement is visible. Keep old sidecars if directory durability failed.
+            eprintln!(
+                "Retina lazy compression could not sync {}: {error}",
+                path.display()
+            );
+            return Ok((self.converted, self.saved_bytes));
+        }
+        for sidecar in self.retired_sidecars {
+            let bytes = sidecar.metadata().map_or(0, |meta| meta.len());
+            if fs::remove_file(&sidecar).is_ok() {
+                self.saved_bytes += bytes;
+            }
+        }
+        Ok((self.converted, self.saved_bytes))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -482,6 +655,143 @@ mod tests {
             inline.len() + 1
         );
     }
+    #[test]
+    fn lazy_rewrite_preserves_timestamps_unknown_records_and_nbt() {
+        let directory = Directory::new();
+        let path = directory.0.join("r.0.0.mca");
+        let raw = vec![23; MAX_INLINE_BYTES + 1];
+        let encoded = vec![11; 7000];
+        let settings = CompressionSettings::new(Compression::Zlib, 1);
+        publish(
+            Source::open(&path, true).unwrap(),
+            (0, 0),
+            &[0, 1],
+            Records::Generated(vec![
+                Record {
+                    codec: Compression::None,
+                    bytes: raw.clone(),
+                },
+                Record {
+                    codec: Compression::Lz4,
+                    bytes: encoded.clone(),
+                },
+            ]),
+            &path,
+        )
+        .unwrap();
+
+        // An existing opaque record can use a codec that Retina never generates.
+        let mut before = fs::read(&path).unwrap();
+        let original_header = Source::open(&path, false).unwrap().header;
+        let record = Source::open(&path, false)
+            .unwrap()
+            .record(1)
+            .unwrap()
+            .unwrap();
+        before[record.offset as usize + 4] = 127;
+        fs::write(&path, &before).unwrap();
+        assert!(
+            stage_compression(&path, (0, 0), settings, |_| false)
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(fs::read(&path).unwrap(), before);
+        let sidecar = path.with_file_name("c.0.0.mcc");
+        assert!(sidecar.exists());
+        let rewrite = stage_compression(&path, (0, 0), settings, |_| true)
+            .unwrap()
+            .unwrap();
+        assert_eq!(fs::read(&path).unwrap(), before);
+        assert!(sidecar.exists());
+        let (converted, saved) = rewrite.commit(&path).unwrap();
+        assert_eq!(converted, 1);
+        assert_eq!(
+            saved,
+            (before.len() + raw.len() - fs::metadata(&path).unwrap().len() as usize) as u64
+        );
+        assert!(!sidecar.exists());
+        let mut source = Source::open(&path, false).unwrap();
+        assert_eq!(source.header[SECTOR..], original_header[SECTOR..]);
+        let compressed = source.record(0).unwrap().unwrap();
+        assert_eq!(compressed.codec, 2);
+        let mut payload = Vec::new();
+        source
+            .copy(
+                compressed.offset + 5,
+                (compressed.payload - 1) as u64,
+                &mut payload,
+            )
+            .unwrap();
+        let mut decoded = vec![0; raw.len()];
+        assert_eq!(
+            libdeflater::Decompressor::new()
+                .zlib_decompress(&payload, &mut decoded)
+                .unwrap(),
+            raw.len()
+        );
+        assert_eq!(decoded, raw);
+        let opaque = source.record(1).unwrap().unwrap();
+        assert_eq!(opaque.codec, 127);
+        payload.clear();
+        source
+            .copy(opaque.offset + 5, (opaque.payload - 1) as u64, &mut payload)
+            .unwrap();
+        assert_eq!(payload, encoded);
+        assert!(source.record(2).unwrap().is_none());
+        no_temps(&directory);
+    }
+
+    #[test]
+    fn lazy_worker_waits_for_pins_and_stops_before_directory_removal() {
+        use crate::region::lazy;
+        use std::time::{Duration, Instant};
+
+        let directory = Directory::new();
+        let path = directory.0.join("r.1.0.mca");
+        publish(
+            Source::open(&path, true).unwrap(),
+            (1, 0),
+            &[0],
+            Records::Generated(vec![Record {
+                codec: Compression::None,
+                bytes: vec![3; 32768],
+            }]),
+            &path,
+        )
+        .unwrap();
+        let pin = lazy::pin(&path).unwrap();
+        let setting = CompressionSettings::new(Compression::Zlib, 1);
+        lazy::enqueue(&path, (1, 0), setting, false).unwrap();
+        std::thread::sleep(Duration::from_millis(50));
+        assert_eq!(
+            Source::open(&path, false)
+                .unwrap()
+                .record(0)
+                .unwrap()
+                .unwrap()
+                .codec,
+            3
+        );
+        drop(pin);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while Source::open(&path, false)
+            .unwrap()
+            .record(0)
+            .unwrap()
+            .unwrap()
+            .codec
+            == 3
+        {
+            assert!(
+                Instant::now() < deadline,
+                "raw MCA was never recompressed after the pin closed"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        lazy::cancel(&directory.0, true).unwrap();
+        no_temps(&directory);
+    }
+
     #[test]
     fn oversized_zlib_preview_keeps_its_codec_on_promotion() {
         use crate::region::codec::{CompressionSettings, Encoder};

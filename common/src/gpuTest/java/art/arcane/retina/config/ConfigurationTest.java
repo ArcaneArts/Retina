@@ -25,7 +25,7 @@ public final class ConfigurationTest {
 
     public static void main(String[] args) throws Exception {
         var defaults = RetinaConfig.DEFAULT;
-        require(defaults.mcaParallelism() == 8 && !defaults.debug() && defaults.f3Overlay(), "requested defaults");
+        require(defaults.mcaParallelism() == 4 && !defaults.debug() && defaults.f3Overlay(), "requested defaults");
         int[][] cases = {{3,16,3}, {32,4,32}, {0,16,16}, {-1,16,16}, {-2,16,8}, {-3,16,6},
                 {-32,4,1}, {-1,1,1}, {0,0,1}, {Integer.MIN_VALUE,16,1},
                 {Integer.MAX_VALUE,4,Integer.MAX_VALUE}, {-2,Integer.MAX_VALUE,1073741824}};
@@ -43,16 +43,20 @@ public final class ConfigurationTest {
             for (var codec : RetinaConfig.McaCompression.values()) {
                 var selected = parse(format, "mca_compression" + separator + "\"" + codec.id() + "\"\n");
                 require(selected.mcaCompression() == codec, "explicit codec " + codec.id());
-                require(selected.mcaCompressionLevel() == 0, "default compression level " + codec.id());
+                require(selected.mcaCompressionLevel() == 1, "default compression level " + codec.id());
             }
-            require(defaults.mcaCompression() == RetinaConfig.McaCompression.NONE, "raw NBT default");
+            require(defaults.mcaCompression() == RetinaConfig.McaCompression.ZLIB && defaults.lazyCompression()
+                    && defaults.generationCodec() == 3, "lazy zlib defaults");
+            var eager = parse(format, "lazy_compression" + separator + "false");
+            require(!eager.lazyCompression() && eager.generationCodec() == 2, "eager zlib override");
+            rejected(format, "lazy_compression" + separator + "\"true\"");
             String level = "mca_compression_level" + separator;
             require(parse(format, level + "4").mcaCompressionLevel() == 4, "in-range level");
             require(parse(format, level + "10").mcaCompressionLevel() == 9, "clamp high level");
             require(parse(format, level + "-5").mcaCompressionLevel() == 0, "clamp negative level");
             require(parse(format, level + "\"99999999999999999999999\"").mcaCompressionLevel() == 9, "clamp large level");
             for (String invalid : new String[]{"3.5", "true", "\"bogus\"", "\"\""}) {
-                require(parse(format, level + invalid).mcaCompressionLevel() == 0, "invalid level " + invalid);
+                require(parse(format, level + invalid).mcaCompressionLevel() == 1, "invalid level " + invalid);
             }
             for (String bad : new String[]{"\"gzip\"", "\"LZ4\"", "4", "true", "\"\""}) {
                 rejected(format, "mca_compression" + separator + bad + "\n");
@@ -111,7 +115,7 @@ public final class ConfigurationTest {
             require(ConfigFile.loadDirectory(directory).mcaParallelism() == -2, "YML extension supported");
             Path plugin = folder.resolve("plugins/Retina/config.yml");
             require(ConfigFile.loadOrCreate(plugin, ConfigFormat.YAML).equals(defaults), "host-selected YAML path");
-            require(Files.readString(plugin).contains("mca_parallelism: 8"), "YAML defaults use YAML syntax");
+            require(Files.readString(plugin).contains("mca_parallelism: 4"), "YAML defaults use YAML syntax");
             Files.writeString(plugin, "mca_parallelism: 5\ndebug: true\nf3_overlay: false\n");
             RetinaConfiguration.initialize(plugin, ConfigFormat.YAML);
             require(RetinaConfiguration.get().equals(new RetinaConfig(5, true, false)), "host-selected YAML runtime settings");
