@@ -44,6 +44,9 @@ world affects future chunks; it does not convert already generated terrain.
 
 ## Files and dimensions
 
+The server controls compression for chunks delivered through the Bukkit API.
+On 26.3, use `region-file-compression=none` in `server.properties` for raw NBT.
+
 On the first generation-dependent callback, including biome enumeration, the
 plugin attempts to open the logical root's `retina.dat`. Only actual absence
 selects a bundled catalog, materializes the world's complete 64-bit seed,

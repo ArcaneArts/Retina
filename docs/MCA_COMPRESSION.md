@@ -1,14 +1,17 @@
-# Optional LZ4 MCA compression
+# MCA chunk compression
 
-Retina supports `mca_compression = "zlib"` (the default) and `"lz4"` in its
-startup configuration. YAML uses the same values. Both ordinary and flat profile
-exports carry the setting into Rust; absent settings and older exported profiles
-retain zlib. The F3 stage is named **MCA compression**, since session statistics
-can include either codec.
+Retina writes raw NBT by default. Set `mca_compression = "zlib"` in
+`config/retina.toml` for smaller files or `"lz4"` on 26.3 for faster
+compression. Restart after changing the setting. YAML uses the same values.
+An existing explicit setting still applies. On 1.20.1, selecting LZ4 in the mod
+config logs a warning and uses zlib. Both headless CLIs accept
+`--compression none|zlib|lz4`, and require a 26.3 definition for LZ4.
 
-LZ4 is an opt-in speed/storage tradeoff. The measurements below support faster
-compression and warm-cache Minecraft reads, but do not establish a consistent
-large whole-generator improvement. Zlib remains the default.
+Raw NBT skips compression and writes more bytes. Keep any `c.*.mcc` files with
+their region directory when copying the save. The Bukkit API plugin hands
+chunks to the server, which controls their disk encoding. On 26.3, set
+`region-file-compression=none` in `server.properties` for uncompressed server
+writes.
 
 ## Format and save lifecycle
 
@@ -18,9 +21,10 @@ large whole-generator improvement. Zlib remains the default.
   This is not the generic LZ4 Frame format.
 - Each record carries its codec through parallel assembly, lighting, compression,
   and publication. Compressors and scratch buffers are reused within worker batches.
-- Temporary-region promotion copies compressed records and their codec identifiers.
-  It checks cached record bounds and supported codec IDs without decompressing or
-  recompressing trusted native cache contents. It accepts native zlib and LZ4 records.
+- Type 3 holds raw chunk NBT. When a payload exceeds the inline 255-sector
+  limit, Retina writes a raw `.mcc` sidecar before publishing its MCA record.
+- Temporary-region promotion copies records with their codec identifiers and
+  any raw sidecars.
 - Existing destination records remain opaque and unchanged, including records
   written by Minecraft and external `.mcc` references. Changing the setting does
   not rewrite already generated chunks. Partial repairs can create mixed-codec regions.

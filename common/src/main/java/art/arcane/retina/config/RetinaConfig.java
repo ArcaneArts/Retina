@@ -7,10 +7,12 @@ import java.util.Map;
 public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression mcaCompression,
                            boolean allowDirectx, boolean allowMetal, boolean allowVulkan) {
     public enum McaCompression {
-        ZLIB("zlib"), LZ4("lz4");
+        NONE("none", 3), ZLIB("zlib", 2), LZ4("lz4", 4);
         private final String id;
-        McaCompression(String id) { this.id = id; }
+        private final int codec;
+        McaCompression(String id, int codec) { this.id = id; this.codec = codec; }
         public String id() { return id; }
+        public int codec() { return codec; }
     }
 
     public RetinaConfig {
@@ -25,7 +27,7 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
     public boolean worldgenEnabled() { return true; }
 
     public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay) {
-        this(mcaParallelism, debug, f3Overlay, McaCompression.ZLIB);
+        this(mcaParallelism, debug, f3Overlay, McaCompression.NONE);
     }
 
     public static final RetinaConfig DEFAULT = new RetinaConfig(8, false, true);
@@ -51,7 +53,7 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
         if (!values.containsKey("mca_compression")) return DEFAULT.mcaCompression;
         Object value = values.get("mca_compression");
         for (var codec : McaCompression.values()) if (codec.id().equals(value)) return codec;
-        throw new IllegalArgumentException("mca_compression must be \"zlib\" or \"lz4\"");
+        throw new IllegalArgumentException("mca_compression must be \"none\", \"zlib\" or \"lz4\"");
     }
 
     private static int integer(Map<String, ?> values, String key, int fallback) {

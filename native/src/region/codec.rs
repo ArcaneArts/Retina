@@ -9,13 +9,14 @@ const MAGIC: &[u8; 8] = b"LZ4Block";
 const RAW_TOKEN: u8 = 0x16; // Raw method, log2(64 KiB) - 10.
 const LZ4_TOKEN: u8 = 0x26;
 const CHECKSUM_SEED: u32 = 0x9747_b28c;
-const MAX_INLINE_BYTES: usize = 255 * super::SECTOR - 5;
+pub(super) const MAX_INLINE_BYTES: usize = 255 * super::SECTOR - 5;
 
 #[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Compression {
-    #[default]
     Zlib,
+    #[default]
+    None,
     Lz4,
 }
 
@@ -23,6 +24,7 @@ impl Compression {
     pub(super) fn id(self) -> u8 {
         match self {
             Self::Zlib => 2,
+            Self::None => 3,
             Self::Lz4 => 4,
         }
     }
@@ -30,6 +32,7 @@ impl Compression {
     pub(super) fn from_id(id: u8) -> Result<Self, String> {
         match id {
             2 => Ok(Self::Zlib),
+            3 => Ok(Self::None),
             4 => Ok(Self::Lz4),
             _ => Err(format!("unsupported cached MCA compression type {id}")),
         }
@@ -49,6 +52,16 @@ pub(super) struct Encoder {
 }
 
 impl Encoder {
+    pub fn record(&mut self, codec: Compression, input: &mut Vec<u8>) -> Result<Record, String> {
+        if codec == Compression::None {
+            return Ok(Record {
+                codec,
+                bytes: std::mem::take(input),
+            });
+        }
+        self.encode(codec, input)
+    }
+
     pub fn encode(&mut self, codec: Compression, input: &[u8]) -> Result<Record, String> {
         self.compress(codec, input)?;
         let codec = if self.output.len() > MAX_INLINE_BYTES && codec == Compression::Lz4 {
@@ -70,6 +83,7 @@ impl Encoder {
 
     fn compress(&mut self, codec: Compression, input: &[u8]) -> Result<(), String> {
         match codec {
+            Compression::None => unreachable!("raw NBT bypasses compression"),
             Compression::Zlib => {
                 let encoder = self
                     .zlib
@@ -176,6 +190,9 @@ mod tests {
     use super::*;
 
     fn decode(record: &Record, size: usize) -> Vec<u8> {
+        if record.codec == Compression::None {
+            return record.bytes.clone();
+        }
         if record.codec == Compression::Zlib {
             let mut raw = vec![0; size];
             assert_eq!(
@@ -255,8 +272,8 @@ mod tests {
             random(131073, 255),
             vec![0; 4096],
         ] {
-            for codec in [Compression::Zlib, Compression::Lz4] {
-                let record = encoder.encode(codec, &input).unwrap();
+            for codec in [Compression::None, Compression::Zlib, Compression::Lz4] {
+                let record = encoder.record(codec, &mut input.clone()).unwrap();
                 assert_eq!(record.codec, codec);
                 assert_eq!(decode(&record, input.len()), input);
             }
@@ -283,7 +300,8 @@ mod tests {
     fn codec_ids_reject_external_or_unknown_cached_records() {
         assert_eq!(Compression::from_id(2).unwrap(), Compression::Zlib);
         assert_eq!(Compression::from_id(4).unwrap(), Compression::Lz4);
-        for id in [0, 1, 3, 127, 130, 132] {
+        assert_eq!(Compression::default(), Compression::from_id(3).unwrap());
+        for id in [0, 1, 127, 130, 131, 132] {
             assert!(Compression::from_id(id).is_err());
         }
         assert!(serde_json::from_str::<Compression>("\"gzip\"").is_err());

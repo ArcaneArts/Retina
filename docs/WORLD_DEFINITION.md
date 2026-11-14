@@ -475,8 +475,9 @@ Output paths are `region/` for the Overworld, `DIM-1/region/` for the Nether,
 other supported dimensions. Unsafe filesystem components cannot form output
 paths. Newly compiled supported End definitions execute through the same saved
 definition path as the other dimensions.
-Use `--compression zlib` (default) or `--compression lz4` to select output
-compression independently of the snapshot. `RAYON_NUM_THREADS` and
+Use `--compression none` (default), `--compression zlib` or `--compression lz4`
+to select the output codec independently of the snapshot. LZ4 requires Minecraft
+26.3. `RAYON_NUM_THREADS` and
 `RETINA_REGION_THREADS` control CPU execution pools; the latter bounds the combined
 native CPU dependency/terrain workers as described in [CPU controls](CPU_BACKEND.md).
 

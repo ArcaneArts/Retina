@@ -1,5 +1,6 @@
 package art.arcane.retina.minecraft1201;
 
+import art.arcane.retina.config.RetinaConfig.McaCompression;
 import art.arcane.retina.config.RetinaConfiguration;
 import art.arcane.retina.core.GenerationCache;
 import art.arcane.retina.core.NativeRegionBudget;
@@ -65,7 +66,8 @@ final class LegacyDimension implements AutoCloseable {
         chunks = new GenerationCache<>(64, parallel);
         detachedChunks = new GenerationCache<>(64, parallel);
         biomeGrids = new GenerationCache<>(128, parallel);
-        definition.bindDimension(key, 2);
+        var compression = RetinaConfiguration.get().mcaCompression();
+        definition.bindDimension(key, (compression == McaCompression.LZ4 ? McaCompression.ZLIB : compression).codec());
         locator = hasStructures ? new LegacyStructureLocator(definition, key, profile) : null;
         regions = new LegacyRegionCoordinator(definition, key, regionBudget);
     }

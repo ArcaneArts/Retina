@@ -64,8 +64,12 @@ public final class LegacyRegionCoordinator implements AutoCloseable {
                 LegacyWorlds.LOG.warn("Cannot close Retina region preview {}", path, error);
             }
             try {
-                if (path != null) Files.deleteIfExists(path);
-                if (directory != null) Files.deleteIfExists(directory);
+                if (directory != null) {
+                    try (var files = Files.newDirectoryStream(directory)) {
+                        for (var file : files) Files.deleteIfExists(file);
+                    }
+                    Files.deleteIfExists(directory);
+                }
             } catch (IOException error) {
                 LegacyWorlds.LOG.warn("Cannot delete Retina region preview {}", directory, error);
             }

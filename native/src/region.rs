@@ -288,7 +288,7 @@ fn generate_region_inner(
     let start = Instant::now();
     let mut pending_versions = None;
     let records: Result<storage::Records, String> = if let Some(cached) = cached {
-        timings.time(timings::IO, || storage::Records::cached(cached, &slots))
+        timings.time(timings::IO, || storage::Records::cached(cached, (region_x, region_z), &slots))
     } else {
         let profile = engine.profile(request.reserved)?;
         let data_version = engine.profile_data_version(request.reserved)?.unwrap_or(data_version);
@@ -470,7 +470,7 @@ fn generate_region_inner(
                         if lighting.is_some() { return Ok(PreparedRecord::Blocks(blocks, Some(data.tag))); }
                         timings.time(timings::NBT, || encode_chunk(storage_request, columns, &blocks,
                             data_version, biome, Some(p), Some(mask), Some(&data.tag), None, scratch));
-                        return timings.time(timings::COMPRESS, || scratch.encoder.encode(compression, &scratch.nbt.0).map(PreparedRecord::Compressed));
+                        return scratch.record(compression, &timings).map(PreparedRecord::Encoded);
                     }
                     let mut blocks = std::mem::take(&mut scratch.blocks);
                     blocks.resize(request.block_count(), 0);
@@ -600,9 +600,7 @@ fn generate_region_inner(
                         )
                     });
                     scratch.blocks = blocks;
-                    timings.time(timings::COMPRESS, || {
-                        scratch.encoder.encode(compression, &scratch.nbt.0).map(PreparedRecord::Compressed)
-                    })
+                    scratch.record(compression, &timings).map(PreparedRecord::Encoded)
                 })
                 .collect();
             parallel_nanos += parallel_start.elapsed().as_nanos() as u64;
@@ -612,7 +610,7 @@ fn generate_region_inner(
                     .into_iter()
                     .map(|record| match record {
                         PreparedRecord::Blocks(blocks, data) => (blocks, data),
-                        PreparedRecord::Compressed(_) => unreachable!(),
+                        PreparedRecord::Encoded(_) => unreachable!(),
                     })
                     .unzip();
                 let mut records: Vec<Option<Record>> = (0..requests.len()).map(|_| None).collect();
@@ -638,9 +636,7 @@ fn generate_region_inner(
                                     scratch,
                                 )
                             });
-                            timings.time(timings::COMPRESS, || {
-                                scratch.encoder.encode(compression, &scratch.nbt.0).map(|record| (i, record))
-                            })
+                            scratch.record(compression, &timings).map(|record| (i, record))
                         })
                         .collect::<Result<Vec<_>, String>>()
                 };
@@ -669,7 +665,7 @@ fn generate_region_inner(
                 Ok(records
                     .into_iter()
                     .map(|record| match record {
-                        PreparedRecord::Compressed(bytes) => bytes,
+                        PreparedRecord::Encoded(record) => record,
                         PreparedRecord::Blocks(_, _) => unreachable!(),
                     })
                     .collect())
@@ -683,7 +679,7 @@ fn generate_region_inner(
     report.assembly_nanos = (start.elapsed().as_nanos() as u64).saturating_sub(report.gpu_nanos);
     let start = Instant::now();
     let _io = timings.span(timings::IO);
-    let published_bytes = storage::publish(file, &slots, records, path)?;
+    let published_bytes = storage::publish(file, (region_x, region_z), &slots, records, path)?;
     if let Some(pending) = pending_versions {
         pending.publish(engine, &session.performance);
     }
@@ -893,7 +889,7 @@ impl PaletteScratch {
     }
 }
 enum PreparedRecord {
-    Compressed(Record),
+    Encoded(Record),
     Blocks(MaterialChunk, Option<serde_json::Value>),
 }
 struct ChunkScratch {
@@ -903,6 +899,14 @@ struct ChunkScratch {
     occupied: Vec<bool>,
     biomes: PaletteScratch,
     encoder: Encoder,
+}
+impl ChunkScratch {
+    fn record(&mut self, codec: codec::Compression, timings: &RegionTimers<'_>) -> Result<Record, String> {
+        if codec == codec::Compression::None {
+            return self.encoder.record(codec, &mut self.nbt.0);
+        }
+        timings.time(timings::COMPRESS, || self.encoder.record(codec, &mut self.nbt.0))
+    }
 }
 impl Default for ChunkScratch {
     fn default() -> Self {

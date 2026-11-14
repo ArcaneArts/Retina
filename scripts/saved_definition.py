@@ -48,7 +48,7 @@ class SavedDefinition:
                 self.metadata = json.loads(c.string_at(pointer, length.value))
             finally:
                 library.retina_free_bytes(pointer, length)
-            codec = {"zlib": 2, "lz4": 4}[compression]
+            codec = {"zlib": 2, "none": 3, "lz4": 4}[compression]
             profile = c.c_uint32()
             if execution is None:
                 library.retina_bind_world_dimension.argtypes = [c.c_uint64, c.c_char_p, c.c_uint64, c.c_uint32, c.POINTER(c.c_uint32)]

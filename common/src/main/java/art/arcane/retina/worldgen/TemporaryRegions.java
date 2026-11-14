@@ -143,6 +143,21 @@ final class TemporaryRegions implements AutoCloseable {
         }
         synchronized void dispose() {
             cool();
+            try (var sidecars = Files.newDirectoryStream(entryFolder, "c.*.mcc")) {
+                for (var sidecar : sidecars) {
+                    String[] parts = sidecar.getFileName().toString().split("\\.");
+                    if (parts.length != 4) continue;
+                    int x, z;
+                    try {
+                        x = Integer.parseInt(parts[1]);
+                        z = Integer.parseInt(parts[2]);
+                    } catch (NumberFormatException ignored) { continue; }
+                    if (Math.floorDiv(x, 32) == origin.getRegionX() && Math.floorDiv(z, 32) == origin.getRegionZ())
+                        Files.deleteIfExists(sidecar);
+                }
+            } catch (IOException error) {
+                Retina.LOGGER.warn("Could not remove external chunks for temporary Retina region {}", path, error);
+            }
             try { Files.deleteIfExists(path); Files.deleteIfExists(columnPath); Files.deleteIfExists(materialPath); }
             catch (IOException error) { Retina.LOGGER.warn("Could not remove temporary Retina region {}", path, error); }
             disposed.complete(null);

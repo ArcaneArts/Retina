@@ -72,8 +72,8 @@ public final class LegacyWorlds {
         var settings = RetinaConfiguration.get();
         NativeLibrary.configureDebug(settings.debug());
         NativeLibrary.allowGpuBackends(settings.allowDirectx(), settings.allowMetal(), settings.allowVulkan());
-        if (settings.mcaCompression() != RetinaConfig.McaCompression.ZLIB)
-            LOG.warn("Retina 1.20.1 uses zlib for chunk storage");
+        if (settings.mcaCompression() == RetinaConfig.McaCompression.LZ4)
+            LOG.warn("Minecraft 1.20.1 cannot read LZ4 MCA records. Retina will use zlib");
     }
 
     public static synchronized void initialize(MinecraftServer server) {

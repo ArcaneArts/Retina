@@ -66,7 +66,7 @@ final class DimensionContext implements AutoCloseable {
         biomeTiles = new BiomeTileCache(plugin.getConfig().getInt("biome-cache", 256), concurrent,
                 owner.root, key, plugin.getConfig().getInt("biome-disk-cache", 16384), biomes.size(), owner.log,
                 points -> owner.definition.biomePoints(key, points));
-        owner.definition.bindDimension(key, 2);
+        owner.definition.bindDimension(key, 3); // Bukkit requests raw chunk NBT and controls its own MCA writes.
         plugin.getLogger().info("Bound " + info.getName() + " -> " + owner.root + " / " + key
                 + " blocks=" + blocks.size() + " biomes=" + biomes.size() + " bounds=" + minimum + ".." + (minimum + height));
     }

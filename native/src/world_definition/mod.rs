@@ -126,9 +126,9 @@ impl WorldDefinition {
     pub(crate) fn check_compression(&self, compression: crate::region::codec::Compression) -> Result<(), String> {
         use crate::region::{ChunkStorageFormat, codec::Compression};
         if matches!(ChunkStorageFormat::for_data_version(self.data_version()), ChunkStorageFormat::Minecraft1201)
-            && compression != Compression::Zlib
+            && compression == Compression::Lz4
         {
-            return Err("Minecraft 1.20.1 region output requires zlib compression".into());
+            return Err("Minecraft 1.20.1 region output supports none or zlib compression".into());
         }
         Ok(())
     }
