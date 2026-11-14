@@ -147,7 +147,7 @@ fn gpu_section_palettes_keep_order_bits_overflow_and_light() {
                 let result = gpu.complete(flight).unwrap();
                 let tile = Tile {
                     slots: Vec::new(),
-                    bytes: result.bytes,
+                    bytes: &result.bytes,
                     chunk_bytes: (height + 32) * 256,
                     layout: result.layout,
                     palettes: result.palettes,

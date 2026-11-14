@@ -272,8 +272,11 @@ fn run_impl<const FRONTIERS: bool>(
     Ok(ResultLight {
         bytes,
         device_nanos: None,
+        #[cfg(test)]
         upload: 0,
+        #[cfg(test)]
         layout: None,
+        #[cfg(test)]
         palettes: None,
     })
 }
@@ -284,7 +287,7 @@ pub(super) fn region<B: Read>(
     profile: &Profile,
     chunks: &[B],
     job: &crate::timings::Timings,
-    mut consume: impl FnMut(Tile) -> Result<(), String>,
+    mut consume: impl FnMut(Tile<'_>) -> Result<(), String>,
 ) -> Result<(), String> {
     if chunks.len() != 1024
         || chunks
@@ -305,14 +308,8 @@ pub(super) fn region<B: Read>(
                 .flat_map(|z| (0..core).map(move |x| (cz + z) * 32 + cx + x))
                 .collect();
             let layout = constants.tile(slots.iter().copied());
-            let tile = if layout.source_channels.is_empty() {
-                Tile {
-                    slots,
-                    bytes: Vec::new(),
-                    chunk_bytes,
-                    layout: Some(layout),
-                    palettes: None,
-                }
+            let (bytes, layout) = if layout.source_channels.is_empty() {
+                (Vec::new(), Some(layout))
             } else {
                 let side = core + 2;
                 let blocks = request.block_count();
@@ -330,16 +327,10 @@ pub(super) fn region<B: Read>(
                         chunks[z * 32 + x].value(index % blocks)
                     },
                 )?;
-                Tile {
-                    slots,
-                    bytes: result.bytes,
-                    chunk_bytes,
-                    layout: None,
-                    palettes: None,
-                }
+                (result.bytes, None)
             };
             let began = Instant::now();
-            consume(tile)?;
+            consume(Tile { slots, bytes: &bytes, chunk_bytes, layout, palettes: None })?;
             consuming += began.elapsed();
         }
     }

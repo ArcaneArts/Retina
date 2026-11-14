@@ -616,7 +616,7 @@ fn generate_region_inner(
                     })
                     .unzip();
                 let mut records: Vec<Option<Record>> = (0..requests.len()).map(|_| None).collect();
-                let encode = |indices: &[usize], light: Option<&crate::lighting::Tile>| {
+                let encode = |indices: &[usize], light: Option<&crate::lighting::Tile<'_>>| {
                     indices
                         .par_iter()
                         .enumerate()

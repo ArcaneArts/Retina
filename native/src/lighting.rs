@@ -122,7 +122,7 @@ impl Pending {
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-    ) -> Result<ResultLight, String> {
+    ) -> Result<Option<[u64; 3]>, String> {
         device
             .poll(wgpu::PollType::Wait {
                 submission_index: Some(self.submission.clone()),
@@ -133,13 +133,6 @@ impl Pending {
         if let Some(mapping) = &mut self.timing_map {
             mapping.check()?;
         }
-        let bytes = self
-            .slot
-            .buffer
-            .slice(..self.size)
-            .get_mapped_range()
-            .map_err(|e| e.to_string())?
-            .to_vec();
         let device_nanos = if let Some(t) = &self.slot.timing {
             let data = t
                 .readback
@@ -160,13 +153,15 @@ impl Pending {
             None
         };
         if let Some(observation) = &mut self.observation { observation.finish(); }
-        Ok(ResultLight {
-            bytes,
-            device_nanos,
-            upload: self.upload,
-            layout: self.layout.take(),
-            palettes: self.palettes.take(),
-        })
+        Ok(device_nanos)
+    }
+
+    fn mapped_bytes(&self) -> Result<wgpu::BufferView, String> {
+        self.slot
+            .buffer
+            .slice(..self.size)
+            .get_mapped_range()
+            .map_err(|e| e.to_string())
     }
 }
 #[derive(Clone,Copy)]
@@ -177,8 +172,11 @@ pub(crate) enum OutputFormat {
 pub(crate) struct ResultLight {
     pub bytes: Vec<u8>,
     pub device_nanos: Option<[u64; 3]>,
+    #[cfg(test)]
     pub upload: u64,
+    #[cfg(test)]
     layout: Option<output::Layout>,
+    #[cfg(test)]
     palettes: Option<(usize, palettes::Layout)>,
 }
 impl Gpu {
@@ -778,7 +776,19 @@ impl Gpu {
         })
     }
     fn complete(&mut self, mut pending: Pending) -> Result<ResultLight, String> {
-        let result = pending.finish(&self.device, &self.queue);
+        let result = pending.finish(&self.device, &self.queue).and_then(|device_nanos| {
+            let bytes = pending.mapped_bytes()?.to_vec();
+            Ok(ResultLight {
+                bytes,
+                device_nanos,
+                #[cfg(test)]
+                upload: pending.upload,
+                #[cfg(test)]
+                layout: pending.layout.take(),
+                #[cfg(test)]
+                palettes: pending.palettes.take(),
+            })
+        });
         // Always unmap, including map/poll failures. An abandoned pending slot
         // also unmaps on drop, so failure never poisons the next region.
         drop(pending.mapping);
@@ -790,21 +800,21 @@ impl Gpu {
     }
 }
 
-/// Chunk indices and section-packed bytes share one tile allocation.
-/// Consumers can encode a completed tile while later tiles execute on the GPU.
-pub(crate) struct Tile {
+/// Chunk indices and borrowed section-packed bytes for a completed tile.
+/// Consumers can encode it while later tiles execute on the GPU.
+pub(crate) struct Tile<'a> {
     pub slots: Vec<usize>,
-    pub bytes: Vec<u8>,
+    bytes: &'a [u8],
     pub chunk_bytes: usize,
     layout: Option<output::Layout>,
     palettes: Option<(usize, palettes::Layout)>,
 }
-impl Tile {
+impl Tile<'_> {
     pub(crate) fn chunk(&self, index: usize) -> ChunkLight<'_> {
         let mut result = if let Some(layout) = &self.layout {
             let count = self.chunk_bytes / 2048;
             ChunkLight::new(
-                &self.bytes,
+                self.bytes,
                 Some(&layout.descriptors[index * count..(index + 1) * count]),
             )
         } else {
@@ -832,7 +842,7 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
     profile: &Profile,
     chunks: &[B],
     job: &crate::timings::Timings,
-    mut consume: impl FnMut(Tile) -> Result<(), String>,
+    mut consume: impl FnMut(Tile<'_>) -> Result<(), String>,
 ) -> Result<(), String> {
     use crate::performance::Counter::*;
     if engine.compute.is_none() { return cpu::region(engine,request,profile,chunks,job,consume); }
@@ -983,21 +993,12 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
         let Some((cx, cz, mut pending)) = flights.pop_front() else {
             break;
         };
-        let result = pending.finish(&device, &queue)?;
-        drop(pending.mapping);
-        drop(pending.timing_map);
-        {
-            let mut gpu = engine.gpu()?.light_gpu
-                .lock()
-                .map_err(|_| "lighting GPU lock poisoned")?;
-            if gpu.readbacks.len() < 2 {
-                gpu.readbacks.push(pending.slot);
-            }
-        }
+        let device_nanos = pending.finish(&device, &queue)?;
+        let bytes = pending.mapped_bytes()?;
         engine
             .pipeline
-            .transfer(request.reserved, result.upload, result.bytes.len() as u64);
-        if let Some(nanos) = result.device_nanos {
+            .transfer(request.reserved, pending.upload, bytes.len() as u64);
+        if let Some(nanos) = device_nanos {
             for (i, value) in nanos.into_iter().enumerate() {
                 engine
                     .timings(request.reserved)
@@ -1009,14 +1010,28 @@ pub(crate) fn region<B: crate::material_blocks::Read>(
             .flat_map(|z| (0..core).map(move |x| (cz + z) * 32 + cx + x))
             .collect();
         let consuming_start = Instant::now();
-        consume(Tile {
+        let consumed = consume(Tile {
             slots,
-            bytes: result.bytes,
+            bytes: &bytes,
             chunk_bytes: count,
-            layout: result.layout,
-            palettes: result.palettes,
-        })?;
+            layout: pending.layout.take(),
+            palettes: pending.palettes.take(),
+        });
         consuming += consuming_start.elapsed();
+        // Encoding borrows the mapping. Drop the view before unmapping and
+        // returning the slot so a concurrent region may safely reuse it.
+        drop(bytes);
+        drop(pending.mapping);
+        drop(pending.timing_map);
+        {
+            let mut gpu = engine.gpu()?.light_gpu
+                .lock()
+                .map_err(|_| "lighting GPU lock poisoned")?;
+            if gpu.readbacks.len() < 2 {
+                gpu.readbacks.push(pending.slot);
+            }
+        }
+        consumed?;
     }
     // Encoding is accounted by its worker phase, not twice as lighting host time.
     let elapsed = start.elapsed().saturating_sub(consuming).as_nanos() as u64;
@@ -1330,7 +1345,7 @@ mod tests {
                             let result = gpu.complete(flight).unwrap();
                             let tile = Tile {
                                 slots: Vec::new(),
-                                bytes: result.bytes,
+                                bytes: &result.bytes,
                                 chunk_bytes,
                                 layout: result.layout,
                                 palettes: result.palettes,
