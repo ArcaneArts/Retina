@@ -4,6 +4,7 @@ mod output;
 
 use retina_worldgen::{
     TerrainEngine,
+    region::codec::CompressionSettings,
     world_definition::{WorldDefinition, runtime::WorldSession},
 };
 use std::{
@@ -96,7 +97,8 @@ fn generate(options: args::Generate, cancelled: &AtomicBool) -> Result<bool, Str
         options.count(),
         options.dimension
     );
-    let world = WorldSession::bind(engine, definition, options.compression)?;
+    let compression = CompressionSettings::new(options.compression, options.compression_level);
+    let world = WorldSession::bind_with_options(engine, definition, compression, None)?;
     let dimension = world.dimension(&options.dimension)?;
     let mut regions = 0u64;
     let mut generated = 0u64;

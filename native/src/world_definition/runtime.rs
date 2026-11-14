@@ -4,7 +4,7 @@ use super::WorldDefinition;
 pub use crate::specialize::Execution as ProgramExecution;
 use crate::{
     ChunkRequest, TerrainEngine,
-    region::{self, RegionReport, codec::Compression},
+    region::{self, RegionReport, codec::{Compression, CompressionSettings}},
 };
 use std::{collections::BTreeMap, path::Path, sync::Arc};
 
@@ -15,7 +15,7 @@ pub struct WorldSession {
     _runtime_profiles: Vec<Arc<crate::profile::WorldProfile>>,
     engine: Arc<TerrainEngine>,
     dimensions: BTreeMap<String, u32>,
-    compression: Compression,
+    compression: CompressionSettings,
     execution: Option<ProgramExecution>,
 }
 
@@ -43,7 +43,16 @@ impl WorldSession {
         compression: Compression,
         execution: Option<ProgramExecution>,
     ) -> Result<Arc<Self>, String> {
-        definition.check_compression(compression)?;
+        Self::bind_with_options(engine, definition, CompressionSettings::new(compression, 0), execution)
+    }
+
+    pub fn bind_with_options(
+        engine: Arc<TerrainEngine>,
+        definition: Arc<WorldDefinition>,
+        compression: CompressionSettings,
+        execution: Option<ProgramExecution>,
+    ) -> Result<Arc<Self>, String> {
+        definition.check_compression(compression.codec())?;
         // Construct the owner first so partial registration failure also retires IDs.
         let mut session = Self { engine, definition, _runtime_profiles: Vec::new(),
             dimensions: BTreeMap::new(), compression, execution };
@@ -73,6 +82,9 @@ impl WorldSession {
         &self.engine
     }
     pub fn compression(&self) -> Compression {
+        self.compression.codec()
+    }
+    pub(super) fn compression_settings(&self) -> CompressionSettings {
         self.compression
     }
     pub fn execution(&self) -> Option<ProgramExecution> {

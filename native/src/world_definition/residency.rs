@@ -1,7 +1,7 @@
 //! Saved profiles are owned by their world and active jobs, not the process.
 //! Slots never change meaning or reuse IDs, so old cache entries cannot alias
 //! the next opened world. Legacy registration exists only in unit-test migration oracles.
-use crate::{ChunkRequest, profile::WorldProfile, region::codec::Compression};
+use crate::{ChunkRequest, profile::WorldProfile, region::codec::CompressionSettings};
 use std::{collections::BTreeMap, sync::{Arc, Weak}};
 
 #[derive(Default)]
@@ -12,7 +12,7 @@ pub(crate) struct Profiles {
 
 struct Entry {
     owner: Owner,
-    compression: Compression,
+    compression: CompressionSettings,
     data_version: Option<i32>,
     storage: Option<super::wire::Bounds>,
     inputs: Option<GenerationInputs>,
@@ -93,7 +93,7 @@ impl Profiles {
             return Ok(id);
         }
         self.insert(Entry {
-            compression: profile.mca_compression,
+            compression: CompressionSettings::new(profile.mca_compression, 0),
             data_version: None,
             storage: None,
             inputs: None,
@@ -104,7 +104,7 @@ impl Profiles {
     pub fn world(
         &mut self,
         profile: &Arc<WorldProfile>,
-        compression: Compression,
+        compression: CompressionSettings,
         data_version: i32,
         storage: super::wire::Bounds,
         inputs: GenerationInputs,
@@ -150,10 +150,10 @@ impl Profiles {
         self.entry(id)?.profile().map(Some)
     }
 
-    pub fn compression(&self, id: u32) -> Result<Compression, String> {
+    pub fn compression(&self, id: u32) -> Result<CompressionSettings, String> {
         #[cfg(test)]
         if id == 0 {
-            return Ok(Compression::default());
+            return Ok(CompressionSettings::default());
         }
         let entry = self.entry(id)?;
         entry.profile()?;

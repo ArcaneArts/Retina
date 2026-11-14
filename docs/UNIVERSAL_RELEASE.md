@@ -175,8 +175,10 @@ Bounds are inclusive region coordinates; a radius N selects a square of
 to `region/`, Nether to `DIM-1/region/`, End to `DIM1/region/`, and custom dimensions
 to `dimensions/<namespace>/<path>/region/`. `--compression none|zlib|lz4` controls
 new records. The default is `none` (raw NBT). Minecraft 1.20.1 supports `none` and
-`zlib`. Oversized raw chunks have a `c.<chunk-x>.<chunk-z>.mcc` sidecar in the
-same directory. Existing records are preserved byte-for-byte.
+`zlib`. Set `--compression-level N` with zlib to control its level. The level
+defaults to 0, integers clamp to 0–9, and invalid values use 0. Oversized raw
+and zlib chunks have a `c.<chunk-x>.<chunk-z>.mcc` sidecar in the same directory.
+Existing records are preserved byte-for-byte.
 
 `--parallel N` allows 1–16 concurrent region requests and defaults to 1.
 The JAR reports completed regions as they finish. Ctrl-C stops scheduling

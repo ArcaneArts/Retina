@@ -1,11 +1,13 @@
 package art.arcane.retina.config;
 
+import art.arcane.retina.core.ZlibLevel;
+
 import java.math.BigInteger;
 import java.util.Map;
 
 /** Loader- and file-format-independent settings. Changes take effect at process startup. */
 public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression mcaCompression,
-                           boolean allowDirectx, boolean allowMetal, boolean allowVulkan) {
+                           int mcaCompressionLevel, boolean allowDirectx, boolean allowMetal, boolean allowVulkan) {
     public enum McaCompression {
         NONE("none", 3), ZLIB("zlib", 2), LZ4("lz4", 4);
         private final String id;
@@ -17,10 +19,16 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
 
     public RetinaConfig {
         java.util.Objects.requireNonNull(mcaCompression, "mcaCompression");
+        mcaCompressionLevel = Math.max(0, Math.min(9, mcaCompressionLevel));
+    }
+
+    public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression compression,
+                        boolean allowDirectx, boolean allowMetal, boolean allowVulkan) {
+        this(mcaParallelism, debug, f3Overlay, compression, 0, allowDirectx, allowMetal, allowVulkan);
     }
 
     public RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay, McaCompression compression) {
-        this(mcaParallelism, debug, f3Overlay, compression, true, true, true);
+        this(mcaParallelism, debug, f3Overlay, compression, 0, true, true, true);
     }
 
     /** Supported worlds use Retina with either GPU or native CPU execution. */
@@ -46,6 +54,7 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
     public static RetinaConfig from(Map<String, ?> values) {
         return new RetinaConfig(integer(values, "mca_parallelism", DEFAULT.mcaParallelism),
                 bool(values, "debug", DEFAULT.debug), bool(values, "f3_overlay", DEFAULT.f3Overlay), compression(values),
+                compressionLevel(values.get("mca_compression_level")),
                 bool(values, "allow_directx", true), bool(values, "allow_metal", true), bool(values, "allow_vulkan", true));
     }
 
@@ -54,6 +63,14 @@ public record RetinaConfig(int mcaParallelism, boolean debug, boolean f3Overlay,
         Object value = values.get("mca_compression");
         for (var codec : McaCompression.values()) if (codec.id().equals(value)) return codec;
         throw new IllegalArgumentException("mca_compression must be \"none\", \"zlib\" or \"lz4\"");
+    }
+
+    private static int compressionLevel(Object value) {
+        if (value instanceof String || value instanceof Byte || value instanceof Short
+                || value instanceof Integer || value instanceof Long || value instanceof BigInteger) {
+            return ZlibLevel.parse(value.toString());
+        }
+        return 0;
     }
 
     private static int integer(Map<String, ?> values, String key, int fallback) {

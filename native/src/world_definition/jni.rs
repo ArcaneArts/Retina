@@ -218,6 +218,26 @@ extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_bindNative
 }
 
 #[unsafe(no_mangle)]
+extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_bindWithCompressionLevelNative(
+    env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    key: JByteArray,
+    compression: jint,
+    level: jint,
+) -> jint {
+    call(env, 0, |env| {
+        let key = env.convert_byte_array(&key)?;
+        let profile = output(|out| unsafe {
+            retina_bind_world_dimension_compression_level(
+                handle as u64, key.as_ptr(), key.len() as u64, compression as u32, level, out,
+            )
+        })?;
+        Ok(profile as jint)
+    })
+}
+
+#[unsafe(no_mangle)]
 extern "system" fn Java_art_arcane_retina_core_JniDefinitionTransport_requestNative(
     env: JNIEnv,
     _class: JClass,

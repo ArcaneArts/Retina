@@ -28,6 +28,7 @@ public final class RetinaCli {
             Creation options: --catalog FILE, --snapshot (default vanilla-binary),
             --variant normal|normal-no-structures|normal-bonus-chest|normal-no-structures-bonus-chest|bukkit-api.
             --compression none|zlib|lz4 (default none). LZ4 requires Minecraft 26.3.
+            --compression-level N applies to zlib. Integers clamp to 0–9; invalid or omitted values use 0.
             --dimension selects the dimension (default minecraft:overworld).
             --parallel N generates up to N regions at once (1–16, default 1).
             Coordinates are inclusive MCA regions (32x32 chunks); radius is a square about 0,0.
@@ -64,7 +65,7 @@ public final class RetinaCli {
         Set<String> allowed = new HashSet<>(Set.of("world"));
         if (!command.equals("inspect")) allowed.addAll(Set.of("seed", "catalog", "snapshot", "variant"));
         if (!command.equals("init")) allowed.add("definition");
-        if (command.equals("generate")) allowed.addAll(Set.of("dimension", "region-radius", "region-min", "region-max", "compression", "parallel"));
+        if (command.equals("generate")) allowed.addAll(Set.of("dimension", "region-radius", "region-min", "region-max", "compression", "compression-level", "parallel"));
         for (String key : options.keySet()) if (!allowed.contains(key)) throw new IllegalArgumentException("Unsupported option --" + key);
         String dimension = options.getOrDefault("dimension", "minecraft:overworld");
         Path directory = regionDirectory(root, dimension);
@@ -78,6 +79,7 @@ public final class RetinaCli {
             case "lz4" -> 4;
             default -> throw new IllegalArgumentException("Compression must be none, zlib or lz4");
         };
+        int compressionLevel = ZlibLevel.parse(options.get("compression-level"));
         if (options.containsKey("catalog") && options.containsKey("snapshot"))
             throw new IllegalArgumentException("Use --catalog or --snapshot, not both");
         Path definition = options.containsKey("definition") ? Path.of(options.get("definition")) : root.resolve("retina.dat");
@@ -93,7 +95,7 @@ public final class RetinaCli {
             try (var world = openOrCreate(root, definition, options, command.equals("init"))) {
                 if (command.equals("init")) { System.out.println(world.metadata()); return 0; }
                 Files.createDirectories(directory);
-                return generate(world, dimension, directory, bounds, compression, parallel);
+                return generate(world, dimension, directory, bounds, compression, compressionLevel, parallel);
             }
         }
     }
@@ -132,7 +134,7 @@ public final class RetinaCli {
     private record CompletedRegion(int x, int z, NativeWorldDefinition.RegionResult report) { }
 
     private static int generate(NativeWorldDefinition world, String dimension, Path directory, int[] b,
-                                int compression, int parallel) throws Exception {
+                                int compression, int compressionLevel, int parallel) throws Exception {
         AtomicBoolean cancelled = new AtomicBoolean();
         CountDownLatch drained = new CountDownLatch(1);
         Thread hook = new Thread(() -> {
@@ -143,7 +145,7 @@ public final class RetinaCli {
         Runtime.getRuntime().addShutdownHook(hook);
         long regions = 0, generated = 0, preserved = 0, started = System.nanoTime();
         try {
-            world.bindDimension(dimension, compression);
+            world.bindDimension(dimension, compression, compressionLevel);
             long width = (long)b[2] - b[0] + 1;
             long total = width * ((long)b[3] - b[1] + 1);
             AtomicBoolean failed = new AtomicBoolean();
@@ -208,8 +210,13 @@ public final class RetinaCli {
             if (!argument.startsWith("--")) throw new IllegalArgumentException("Expected option: " + argument);
             int equals = argument.indexOf('=');
             String key = argument.substring(2, equals < 0 ? argument.length() : equals);
-            String value = equals < 0 ? (++i < args.length ? args[i] : "") : argument.substring(equals + 1);
-            if (value.isEmpty() || value.startsWith("--")) throw new IllegalArgumentException("Missing value for --" + key);
+            if (equals < 0 && i + 1 == args.length) throw new IllegalArgumentException("Missing value for --" + key);
+            String value = equals < 0 ? args[++i] : argument.substring(equals + 1);
+            boolean compressionLevel = key.equals("compression-level");
+            if ((value.startsWith("--") && (equals < 0 || !compressionLevel))
+                    || (value.isEmpty() && !compressionLevel)) {
+                throw new IllegalArgumentException("Missing value for --" + key);
+            }
             if (result.putIfAbsent(key, value) != null) throw new IllegalArgumentException("Duplicate option --" + key);
         }
         return result;

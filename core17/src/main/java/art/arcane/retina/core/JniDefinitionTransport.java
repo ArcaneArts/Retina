@@ -34,6 +34,11 @@ final class JniDefinitionTransport implements DefinitionTransport {
     }
 
     @Override
+    public int bind(long handle, String key, int compression, int compressionLevel) {
+        return bindWithCompressionLevelNative(handle, bytes(key), compression, compressionLevel);
+    }
+
+    @Override
     public int bind(long handle, String key, int compression, NativeWorldDefinition.ProgramExecution execution) {
         return bindNative(handle, bytes(key), compression, execution.ordinal());
     }
@@ -109,6 +114,7 @@ final class JniDefinitionTransport implements DefinitionTransport {
     private static native long createNative(byte[] catalog, byte[] variant, long seed, byte[] root);
     private static native byte[] metadataNative(long handle);
     private static native int bindNative(long handle, byte[] key, int compression, int execution);
+    private static native int bindWithCompressionLevelNative(long handle, byte[] key, int compression, int level);
     private static native long[] requestNative(long handle, byte[] key, int x, int z);
     private static native long[] regionNative(long handle, byte[] key, int x, int z, byte[] destination);
     private static native long[] publishRegionNative(long handle, byte[] key, int x, int z, byte[] preview, byte[] destination);

@@ -1,11 +1,18 @@
 # MCA chunk compression
 
-Retina writes raw NBT by default. Set `mca_compression = "zlib"` in
-`config/retina.toml` for smaller files or `"lz4"` on 26.3 for faster
-compression. Restart after changing the setting. YAML uses the same values.
-An existing explicit setting still applies. On 1.20.1, selecting LZ4 in the mod
-config logs a warning and uses zlib. Both headless CLIs accept
-`--compression none|zlib|lz4`, and require a 26.3 definition for LZ4.
+Retina writes raw NBT by default. To enable zlib compression in the mod, set
+`mca_compression = "zlib"` and `mca_compression_level = 1` in
+`config/retina.toml`. YAML uses the same keys and values. Restart after changing
+the settings. Both headless CLIs accept `--compression none|zlib|lz4` and
+`--compression-level N`. For example, use `--compression zlib --compression-level 1`
+to reproduce Retina's previous zlib setting.
+
+Zlib level 0 is the default and uses stored blocks inside a zlib stream. Levels
+1–9 enable compression. Integers outside the range clamp to the nearest limit,
+so 10 becomes 9 and -1 becomes 0. Missing, non-integer, and unrecognized values
+use 0. Raw NBT and LZ4 ignore the level. The headless CLIs require a 26.3
+definition for LZ4. On 1.20.1, selecting LZ4 in the mod config logs a warning
+and uses zlib at the configured level.
 
 Raw NBT skips compression and writes more bytes. Keep any `c.*.mcc` files with
 their region directory when copying the save. The Bukkit API plugin hands
@@ -15,21 +22,22 @@ writes.
 
 ## Format and save lifecycle
 
-- Type 2 retains libdeflate level-1 zlib. Type 4 uses LZ4 1.10.0 acceleration 1,
+- Type 2 is a zlib stream encoded by libdeflate. Type 4 uses LZ4 1.10.0 acceleration 1,
   independent 64 KiB blocks, the `LZ4Block` Java stream headers, little-endian
   lengths, the Java-compatible 28-bit XXH32 checksum, and a terminal header.
   This is not the generic LZ4 Frame format.
 - Each record carries its codec through parallel assembly, lighting, compression,
   and publication. Compressors and scratch buffers are reused within worker batches.
-- Type 3 holds raw chunk NBT. When a payload exceeds the inline 255-sector
-  limit, Retina writes a raw `.mcc` sidecar before publishing its MCA record.
+- Type 3 holds raw chunk NBT. When a raw or zlib payload exceeds the inline
+  255-sector limit, Retina writes a `.mcc` sidecar with that payload before
+  publishing its MCA record.
 - Temporary-region promotion copies records with their codec identifiers and
-  any raw sidecars.
+  any sidecars.
 - Existing destination records remain opaque and unchanged, including records
   written by Minecraft and external `.mcc` references. Changing the setting does
   not rewrite already generated chunks. Partial repairs can create mixed-codec regions.
 - If an LZ4 record exceeds the inline 255-sector limit, that chunk is retried with
-  zlib. If it still does not fit, generation fails before publishing the file.
+  zlib at level 1. If it still does not fit, generation fails before publishing the file.
 - The existing single atomic MCA publication, file/directory durability, outer-ring
   lighting policy, and column-cache format are unchanged.
 

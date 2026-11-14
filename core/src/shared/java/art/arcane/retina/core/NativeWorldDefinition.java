@@ -51,6 +51,11 @@ public final class NativeWorldDefinition implements AutoCloseable {
         return TRANSPORT.bind(openHandle(), key, compression);
     }
 
+    /** Sets the zlib level for new native region records. Values clamp to 0–9. */
+    public synchronized int bindDimension(String key, int compression, int compressionLevel) {
+        return TRANSPORT.bind(openHandle(), key, compression, compressionLevel);
+    }
+
     /** Dispatch preference is fixed for this binding without changing the saved definition. */
     public synchronized int bindDimension(String key, int compression, ProgramExecution execution) {
         long opened = openHandle();

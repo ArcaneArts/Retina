@@ -36,15 +36,24 @@ public final class ConfigurationTest {
         for (ConfigFormat format : ConfigFormat.values()) {
             require(parse(format, "# Empty configuration\n").equals(defaults), "missing keys use defaults");
             var writer = new StringWriter();
-            var custom = new RetinaConfig(-3, true, false, RetinaConfig.McaCompression.LZ4);
+            var custom = new RetinaConfig(-3, true, false, RetinaConfig.McaCompression.ZLIB, 6, true, true, true);
             format.write(writer, custom);
             require(parse(format, writer.toString()).equals(custom), format + " round trip");
             String separator = format == ConfigFormat.TOML ? " = " : ": ";
             for (var codec : RetinaConfig.McaCompression.values()) {
                 var selected = parse(format, "mca_compression" + separator + "\"" + codec.id() + "\"\n");
                 require(selected.mcaCompression() == codec, "explicit codec " + codec.id());
+                require(selected.mcaCompressionLevel() == 0, "default compression level " + codec.id());
             }
             require(defaults.mcaCompression() == RetinaConfig.McaCompression.NONE, "raw NBT default");
+            String level = "mca_compression_level" + separator;
+            require(parse(format, level + "4").mcaCompressionLevel() == 4, "in-range level");
+            require(parse(format, level + "10").mcaCompressionLevel() == 9, "clamp high level");
+            require(parse(format, level + "-5").mcaCompressionLevel() == 0, "clamp negative level");
+            require(parse(format, level + "\"99999999999999999999999\"").mcaCompressionLevel() == 9, "clamp large level");
+            for (String invalid : new String[]{"3.5", "true", "\"bogus\"", "\"\""}) {
+                require(parse(format, level + invalid).mcaCompressionLevel() == 0, "invalid level " + invalid);
+            }
             for (String bad : new String[]{"\"gzip\"", "\"LZ4\"", "4", "true", "\"\""}) {
                 rejected(format, "mca_compression" + separator + bad + "\n");
             }

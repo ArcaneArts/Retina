@@ -901,11 +901,11 @@ struct ChunkScratch {
     encoder: Encoder,
 }
 impl ChunkScratch {
-    fn record(&mut self, codec: codec::Compression, timings: &RegionTimers<'_>) -> Result<Record, String> {
-        if codec == codec::Compression::None {
-            return self.encoder.record(codec, &mut self.nbt.0);
+    fn record(&mut self, compression: codec::CompressionSettings, timings: &RegionTimers<'_>) -> Result<Record, String> {
+        if compression.codec() == codec::Compression::None {
+            return self.encoder.record(compression, &mut self.nbt.0);
         }
-        timings.time(timings::COMPRESS, || self.encoder.record(codec, &mut self.nbt.0))
+        timings.time(timings::COMPRESS, || self.encoder.record(compression, &mut self.nbt.0))
     }
 }
 impl Default for ChunkScratch {
