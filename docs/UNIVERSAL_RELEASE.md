@@ -167,7 +167,7 @@ java -jar retina-26.3-<commit>.jar generate --world ./world \
   --dimension minecraft:the_end --region-radius 0
 # Or create and generate in one command (only for a new definition):
 java -jar retina-26.3-<commit>.jar generate --world ./new-world --seed 12345 \
-  --dimension minecraft:overworld --region-min=-1,0 --region-max=0,1
+  --dimension minecraft:overworld --region-min=-1,0 --region-max=0,1 --parallel 4
 ```
 
 Bounds are inclusive region coordinates; a radius N selects a square of
@@ -175,6 +175,10 @@ Bounds are inclusive region coordinates; a radius N selects a square of
 to `region/`, Nether to `DIM-1/region/`, End to `DIM1/region/`, and custom dimensions
 to `dimensions/<namespace>/<path>/region/`. `--compression zlib|lz4` controls new
 records. Existing records are preserved byte-for-byte.
+
+`--parallel N` allows 1–16 concurrent region requests and defaults to 1.
+The JAR reports completed regions as they finish. Ctrl-C stops scheduling
+new regions and lets active region writes finish before releasing the world lock.
 
 The default catalog snapshot is `vanilla-binary`. Creation also accepts
 `--snapshot vanilla-recompiled`, `--catalog FILE`, and `--variant` for the catalog's

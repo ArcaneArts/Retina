@@ -4,6 +4,9 @@ import java.nio.channels.FileChannel;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.Manifest;
 import static java.nio.file.StandardOpenOption.*;
@@ -11,6 +14,7 @@ import static java.nio.file.StandardOpenOption.*;
 /** Standalone JDK-only entry point; mod loaders continue using their own entry points. */
 public final class RetinaCli {
     private RetinaCli() { }
+    private static final int MAX_PARALLEL_REGIONS = 16;
     private static final String HELP = """
             Retina headless generation (Java 25)
             java -jar retina.jar init --world DIR --seed LONG [--snapshot vanilla-binary|vanilla-recompiled]
@@ -24,10 +28,11 @@ public final class RetinaCli {
             Creation options: --catalog FILE, --snapshot (default vanilla-binary),
             --variant normal|normal-no-structures|normal-bonus-chest|normal-no-structures-bonus-chest|bukkit-api.
             Generation options: --compression zlib|lz4 (default zlib), --dimension (default minecraft:overworld).
+            --parallel N generates up to N regions at once (1–16, default 1).
             Coordinates are inclusive MCA regions (32x32 chunks); radius is a square about 0,0.
             Missing chunks are generated; existing records are preserved. Use offline worlds
             with matching definitions. Output is region data, not a complete playable save.
-            Ctrl-C finishes the active region before stopping. Progress: stderr; result JSON: stdout.
+            Ctrl-C finishes active regions before stopping. Progress: stderr; result JSON: stdout.
             A usable GPU is preferred; native CPU generation is automatic when unavailable.
             Select CPU explicitly with java -Dretina.gpuBackend=cpu -jar retina.jar generate ...
             Exit codes: 0 success, 1 operation failed, 2 invalid arguments.
@@ -58,11 +63,14 @@ public final class RetinaCli {
         Set<String> allowed = new HashSet<>(Set.of("world"));
         if (!command.equals("inspect")) allowed.addAll(Set.of("seed", "catalog", "snapshot", "variant"));
         if (!command.equals("init")) allowed.add("definition");
-        if (command.equals("generate")) allowed.addAll(Set.of("dimension", "region-radius", "region-min", "region-max", "compression"));
+        if (command.equals("generate")) allowed.addAll(Set.of("dimension", "region-radius", "region-min", "region-max", "compression", "parallel"));
         for (String key : options.keySet()) if (!allowed.contains(key)) throw new IllegalArgumentException("Unsupported option --" + key);
         String dimension = options.getOrDefault("dimension", "minecraft:overworld");
         Path directory = regionDirectory(root, dimension);
         int[] bounds = command.equals("generate") ? bounds(options) : null;
+        int parallel = Integer.parseInt(options.getOrDefault("parallel", "1"));
+        if (parallel < 1 || parallel > MAX_PARALLEL_REGIONS)
+            throw new IllegalArgumentException("Parallelism must be between 1 and " + MAX_PARALLEL_REGIONS);
         int compression = switch (options.getOrDefault("compression", "zlib")) {
             case "zlib" -> 2; case "lz4" -> 4;
             default -> throw new IllegalArgumentException("Compression must be zlib or lz4");
@@ -82,7 +90,7 @@ public final class RetinaCli {
             try (var world = openOrCreate(root, definition, options, command.equals("init"))) {
                 if (command.equals("init")) { System.out.println(world.metadata()); return 0; }
                 Files.createDirectories(directory);
-                return generate(world, dimension, directory, bounds, compression);
+                return generate(world, dimension, directory, bounds, compression, parallel);
             }
         }
     }
@@ -118,25 +126,65 @@ public final class RetinaCli {
         } finally { Files.deleteIfExists(temporary); }
     }
 
-    private static int generate(NativeWorldDefinition world, String dimension, Path directory, int[] b, int compression) throws Exception {
+    private record CompletedRegion(int x, int z, NativeWorldDefinition.RegionResult report) { }
+
+    private static int generate(NativeWorldDefinition world, String dimension, Path directory, int[] b,
+                                int compression, int parallel) throws Exception {
         AtomicBoolean cancelled = new AtomicBoolean();
         CountDownLatch drained = new CountDownLatch(1);
         Thread hook = new Thread(() -> {
             cancelled.set(true);
-            System.err.println("Cancellation requested; finishing the active region.");
+            System.err.println("Cancellation requested; finishing active regions.");
             try { drained.await(); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
         }, "retina-cli-shutdown");
         Runtime.getRuntime().addShutdownHook(hook);
         long regions = 0, generated = 0, preserved = 0, started = System.nanoTime();
         try {
             world.bindDimension(dimension, compression);
-            long total = ((long)b[2] - b[0] + 1) * ((long)b[3] - b[1] + 1);
-            outer: for (int z = b[1]; z <= b[3]; z++) for (int x = b[0]; x <= b[2]; x++) {
-                if (cancelled.get()) break outer;
-                var report = world.generateRegion(dimension, x, z, directory.resolve("r." + x + "." + z + ".mca"));
-                regions++; generated += report.generated(); preserved += report.preserved();
-                System.err.printf(Locale.ROOT, "Region %d,%d (%d/%d): generated %d, preserved %d, %d bytes%n",
-                        x, z, regions, total, report.generated(), report.preserved(), report.bytes());
+            long width = (long)b[2] - b[0] + 1;
+            long total = width * ((long)b[3] - b[1] + 1);
+            AtomicBoolean failed = new AtomicBoolean();
+            try (var workers = Executors.newFixedThreadPool((int)Math.min(total, parallel))) {
+                var completions = new ExecutorCompletionService<CompletedRegion>(workers);
+                long next = 0;
+                int pending = 0;
+                while (true) {
+                    // Keep only a worker-sized window in memory, even for very large ranges.
+                    while (pending < parallel && next < total && !cancelled.get() && !failed.get()) {
+                        int x = b[0] + (int)(next % width);
+                        int z = b[1] + (int)(next / width);
+                        completions.submit(() -> {
+                            if (cancelled.get() || failed.get()) return null;
+                            try {
+                                var report = world.generateRegion(dimension, x, z, directory.resolve("r." + x + "." + z + ".mca"));
+                                return new CompletedRegion(x, z, report);
+                            } catch (RuntimeException | Error error) {
+                                failed.set(true);
+                                throw error;
+                            }
+                        });
+                        next++;
+                        pending++;
+                    }
+                    if (pending == 0) break;
+                    CompletedRegion result;
+                    try {
+                        result = completions.take().get();
+                    } catch (ExecutionException error) {
+                        // The executor drains admitted native calls before the world and lock close.
+                        if (error.getCause() instanceof RuntimeException failure) throw failure;
+                        if (error.getCause() instanceof Error failure) throw failure;
+                        throw error;
+                    }
+                    pending--;
+                    if (result == null) continue;
+                    var report = result.report();
+                    regions++;
+                    generated += report.generated();
+                    preserved += report.preserved();
+                    System.err.printf(Locale.ROOT, "Region %d,%d (%d/%d): generated %d, preserved %d, %d bytes%n",
+                            result.x(), result.z(), regions, total, report.generated(), report.preserved(), report.bytes());
+                }
             }
             System.out.printf(Locale.ROOT, "{\"status\":\"%s\",\"dimension\":\"%s\",\"regions\":%d,\"generated_chunks\":%d,\"preserved_chunks\":%d,\"seconds\":%.3f}%n",
                     cancelled.get() ? "cancelled" : "complete", dimension, regions, generated, preserved, (System.nanoTime() - started) / 1e9);

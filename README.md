@@ -326,10 +326,11 @@ CPU automatically; use `-Dretina.gpuBackend=cpu` to select CPU explicitly:
 java -jar retina-26.3-<commit>.jar init --world ./world --seed 12345
 java -jar retina-26.3-<commit>.jar inspect --world ./world
 java -jar retina-26.3-<commit>.jar generate --world ./world \
-  --dimension minecraft:overworld --region-radius 1
+  --dimension minecraft:overworld --region-radius 1 --parallel 4
 ```
 
-Radius 1 selects a 3 × 3 square of regions centered at 0,0. For custom
+Radius 1 selects a 3 × 3 square of regions centered at 0,0.
+`--parallel 4` allows four regions in flight. The default is one. For custom
 generation or Minecraft 1.20.1, supply a mod-created `retina.dat`.
 The CLI uses the saved definition's game version, and 1.20.1 output uses zlib.
 
