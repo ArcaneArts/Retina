@@ -82,8 +82,8 @@ public final class WorldDefinitionContext implements AutoCloseable {
             var materials = data.getAsJsonArray("material_palette").asList().stream()
                     .map(index -> resolveMaterial(shared.get(index.getAsInt()).getAsJsonObject())).toArray(BlockState[]::new);
             var biomes = biomes(registry);
-            int codec = art.arcane.retina.config.RetinaConfiguration.get().mcaCompression().codec();
-            int profile = nativeWorld.bindDimension(key, codec);
+            var config = art.arcane.retina.config.RetinaConfiguration.get();
+            int profile = nativeWorld.bindDimension(key, config.mcaCompression().codec(), config.mcaCompressionLevel());
             return new BiomeTerrainProfile(profile, parameters().get("sea_level").getAsInt(), materials, biomes,
                     data.getAsJsonObject("profile_metadata").toString(), this);
         }

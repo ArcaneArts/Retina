@@ -39,6 +39,28 @@ impl Compression {
     }
 }
 
+/// Output codec and zlib level for a world binding.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CompressionSettings {
+    codec: Compression,
+    level: u8,
+}
+
+impl CompressionSettings {
+    pub fn new(codec: Compression, level: i32) -> Self {
+        let level = if codec == Compression::Zlib {
+            level.clamp(0, 9) as u8
+        } else {
+            0
+        };
+        Self { codec, level }
+    }
+
+    pub fn codec(self) -> Compression {
+        self.codec
+    }
+}
+
 pub(super) struct Record {
     pub codec: Compression,
     pub bytes: Vec<u8>,
@@ -46,34 +68,36 @@ pub(super) struct Record {
 
 #[derive(Default)]
 pub(super) struct Encoder {
-    zlib: Option<Compressor>,
+    zlib: Option<(u8, Compressor)>,
     lz4: Option<Lz4>,
     output: Vec<u8>,
 }
 
 impl Encoder {
-    pub fn record(&mut self, codec: Compression, input: &mut Vec<u8>) -> Result<Record, String> {
-        if codec == Compression::None {
+    pub fn record(
+        &mut self,
+        settings: CompressionSettings,
+        input: &mut Vec<u8>,
+    ) -> Result<Record, String> {
+        if settings.codec == Compression::None {
             return Ok(Record {
-                codec,
+                codec: settings.codec,
                 bytes: std::mem::take(input),
             });
         }
-        self.encode(codec, input)
+        self.encode(settings, input)
     }
 
-    pub fn encode(&mut self, codec: Compression, input: &[u8]) -> Result<Record, String> {
-        self.compress(codec, input)?;
-        let codec = if self.output.len() > MAX_INLINE_BYTES && codec == Compression::Lz4 {
-            // LZ4 can be larger than zlib. Preserve the existing inline writer's
-            // capacity without changing the requested codec for other chunks.
-            self.compress(Compression::Zlib, input)?;
-            Compression::Zlib
-        } else {
-            codec
-        };
-        if self.output.len() > MAX_INLINE_BYTES {
-            return Err("generated MCA record exceeds the inline Anvil sector limit".into());
+    fn encode(&mut self, settings: CompressionSettings, input: &[u8]) -> Result<Record, String> {
+        self.compress(settings, input)?;
+        let mut codec = settings.codec;
+        if self.output.len() > MAX_INLINE_BYTES && codec == Compression::Lz4 {
+            // Keep the existing zlib level 1 fallback for oversized LZ4 chunks.
+            self.compress(CompressionSettings::new(Compression::Zlib, 1), input)?;
+            if self.output.len() > MAX_INLINE_BYTES {
+                return Err("generated MCA record exceeds the inline Anvil sector limit".into());
+            }
+            codec = Compression::Zlib;
         }
         Ok(Record {
             codec,
@@ -81,13 +105,15 @@ impl Encoder {
         })
     }
 
-    fn compress(&mut self, codec: Compression, input: &[u8]) -> Result<(), String> {
-        match codec {
+    fn compress(&mut self, settings: CompressionSettings, input: &[u8]) -> Result<(), String> {
+        match settings.codec {
             Compression::None => unreachable!("raw NBT bypasses compression"),
             Compression::Zlib => {
-                let encoder = self
-                    .zlib
-                    .get_or_insert_with(|| Compressor::new(CompressionLvl::new(1).unwrap()));
+                if self.zlib.as_ref().map(|(level, _)| *level) != Some(settings.level) {
+                    let level = CompressionLvl::new(i32::from(settings.level)).unwrap();
+                    self.zlib = Some((settings.level, Compressor::new(level)));
+                }
+                let (_, encoder) = self.zlib.as_mut().unwrap();
                 self.output
                     .resize(encoder.zlib_compress_bound(input.len()), 0);
                 let size = encoder
@@ -273,7 +299,9 @@ mod tests {
             vec![0; 4096],
         ] {
             for codec in [Compression::None, Compression::Zlib, Compression::Lz4] {
-                let record = encoder.record(codec, &mut input.clone()).unwrap();
+                let record = encoder
+                    .record(CompressionSettings::new(codec, 0), &mut input.clone())
+                    .unwrap();
                 assert_eq!(record.codec, codec);
                 assert_eq!(decode(&record, input.len()), input);
             }
@@ -281,19 +309,36 @@ mod tests {
     }
 
     #[test]
+    fn zlib_level_clamps_and_reconfigures_the_reused_encoder() {
+        let mut encoder = Encoder::default();
+        let input = vec![42; MAX_INLINE_BYTES];
+        let zlib = |level| CompressionSettings::new(Compression::Zlib, level);
+        let stored = encoder.encode(zlib(-1), &input).unwrap();
+        let compressed = encoder.encode(zlib(10), &input).unwrap();
+        assert_eq!(stored.bytes[2] & 0b110, 0); // DEFLATE stored block.
+        assert!(stored.bytes.len() > MAX_INLINE_BYTES);
+        assert!(compressed.bytes.len() < input.len() / 2);
+        assert_eq!(
+            compressed.bytes,
+            encoder.encode(zlib(9), &input).unwrap().bytes
+        );
+        assert_eq!(stored.bytes, encoder.encode(zlib(0), &input).unwrap().bytes);
+        for record in [stored, compressed] {
+            assert_eq!(decode(&record, input.len()), input);
+        }
+    }
+
+    #[test]
     fn oversize_lz4_uses_zlib_and_unrepresentable_records_fail() {
         let input = random(1_500_000, 15);
         let mut encoder = Encoder::default();
-        encoder.compress(Compression::Lz4, &input).unwrap();
+        let settings = CompressionSettings::new(Compression::Lz4, 0);
+        encoder.compress(settings, &input).unwrap();
         assert!(encoder.output.len() > MAX_INLINE_BYTES);
-        let record = encoder.encode(Compression::Lz4, &input).unwrap();
+        let record = encoder.encode(settings, &input).unwrap();
         assert_eq!(record.codec, Compression::Zlib);
         assert_eq!(decode(&record, input.len()), input);
-        assert!(
-            encoder
-                .encode(Compression::Lz4, &random(1_100_000, 255))
-                .is_err()
-        );
+        assert!(encoder.encode(settings, &random(1_100_000, 255)).is_err());
     }
 
     #[test]

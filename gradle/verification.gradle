@@ -4,6 +4,7 @@ def nativeCargoCommand = rootProject.ext.nativeCargoCommand
 
 def configurationClasses = tasks.register('configurationClasses', JavaCompile) {
     source fileTree('src/main/java/art/arcane/retina/config'),
+            rootProject.file('core/src/shared/java/art/arcane/retina/core/ZlibLevel.java'),
             file('src/gpuTest/java/art/arcane/retina/config/ConfigurationTest.java')
     classpath = configurations.configurationLibraries
     destinationDirectory = layout.buildDirectory.dir('configuration-test/classes')

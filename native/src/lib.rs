@@ -719,7 +719,7 @@ impl TerrainEngine {
     pub(crate) fn register_world_profile(
         &self,
         profile: &Arc<WorldProfile>,
-        compression: region::codec::Compression,
+        compression: region::codec::CompressionSettings,
         data_version: i32,
         storage: world_definition::wire::Bounds,
         inputs: world_definition::residency::GenerationInputs,
@@ -732,7 +732,7 @@ impl TerrainEngine {
             .filter(|profile| profile.terrain_kind != profile::TerrainKind::Procedural))
     }
 
-    pub(crate) fn profile_compression(&self, id: u32) -> Result<region::codec::Compression, String> {
+    pub(crate) fn profile_compression(&self, id: u32) -> Result<region::codec::CompressionSettings, String> {
         self.profiles.read().map_err(|_| "profile lock poisoned")?.compression(id)
     }
 

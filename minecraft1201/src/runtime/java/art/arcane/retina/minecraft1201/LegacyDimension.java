@@ -62,12 +62,14 @@ final class LegacyDimension implements AutoCloseable {
                     .orElseThrow(() -> new IllegalStateException("Retina cannot bind saved biome " + id + " in " + key));
         }).toList();
         decoder = new LegacyChunkData.Decoder(registries, biomes.get(0));
-        int parallel = Math.min(4, RetinaConfiguration.get().regionParallelism());
+        var config = RetinaConfiguration.get();
+        int parallel = Math.min(4, config.regionParallelism());
         chunks = new GenerationCache<>(64, parallel);
         detachedChunks = new GenerationCache<>(64, parallel);
         biomeGrids = new GenerationCache<>(128, parallel);
-        var compression = RetinaConfiguration.get().mcaCompression();
-        definition.bindDimension(key, (compression == McaCompression.LZ4 ? McaCompression.ZLIB : compression).codec());
+        var compression = config.mcaCompression();
+        int codec = (compression == McaCompression.LZ4 ? McaCompression.ZLIB : compression).codec();
+        definition.bindDimension(key, codec, config.mcaCompressionLevel());
         locator = hasStructures ? new LegacyStructureLocator(definition, key, profile) : null;
         regions = new LegacyRegionCoordinator(definition, key, regionBudget);
     }

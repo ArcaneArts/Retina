@@ -3,7 +3,7 @@ use super::{
     WorldDefinition,
     runtime::{ProgramExecution, WorldSession},
 };
-use crate::{ChunkRequest, boundary, region::codec::Compression, shared_engine};
+use crate::{ChunkRequest, boundary, region::codec::{Compression, CompressionSettings}, shared_engine};
 use std::{
     collections::HashMap,
     sync::{Arc, LazyLock, Mutex, OnceLock},
@@ -34,15 +34,15 @@ fn world(handle: u64) -> Result<Arc<OpenWorld>, String> {
 impl OpenWorld {
     fn bind(
         &self,
-        compression: Compression,
+        compression: CompressionSettings,
         execution: Option<ProgramExecution>,
     ) -> Result<&Arc<WorldSession>, String> {
         // A rejected codec must not cache a failed session for this handle.
-        self.definition.check_compression(compression)?;
+        self.definition.check_compression(compression.codec())?;
         let session = self
             .session
             .get_or_init(|| {
-                WorldSession::bind_with_execution(
+                WorldSession::bind_with_options(
                     shared_engine()?.clone(),
                     self.definition.clone(),
                     compression,
@@ -51,7 +51,7 @@ impl OpenWorld {
             })
             .as_ref()
             .map_err(Clone::clone)?;
-        if session.compression() != compression {
+        if session.compression_settings() != compression {
             return Err("world is already bound with different output compression".into());
         }
         if execution.is_some() && session.execution() != execution {
@@ -225,7 +225,7 @@ pub unsafe extern "C" fn retina_bind_world_dimension(
     compression: u32,
     output: *mut u32,
 ) -> i32 {
-    boundary(|| unsafe { bind_dimension(handle, key, length, compression, None, output) })
+    boundary(|| unsafe { bind_dimension(handle, key, length, compression, 0, None, output) })
 }
 
 /// # Safety
@@ -247,8 +247,23 @@ pub unsafe extern "C" fn retina_bind_world_dimension_execution(
             2 => ProgramExecution::Specialized,
             _ => return Err(format!("unsupported program execution {execution}")),
         };
-        unsafe { bind_dimension(handle, key, length, compression, Some(mode), output) }
+        unsafe { bind_dimension(handle, key, length, compression, 0, Some(mode), output) }
     })
+}
+
+/// # Safety
+/// Same pointer contract as retina_bind_world_dimension. The zlib level is
+/// clamped to 0–9 and applies when the compression ID is 2.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn retina_bind_world_dimension_compression_level(
+    handle: u64,
+    key: *const u8,
+    length: u64,
+    compression: u32,
+    level: i32,
+    output: *mut u32,
+) -> i32 {
+    boundary(|| unsafe { bind_dimension(handle, key, length, compression, level, None, output) })
 }
 
 unsafe fn bind_dimension(
@@ -256,6 +271,7 @@ unsafe fn bind_dimension(
     key: *const u8,
     length: u64,
     compression: u32,
+    level: i32,
     execution: Option<ProgramExecution>,
     output: *mut u32,
 ) -> Result<(), String> {
@@ -272,7 +288,7 @@ unsafe fn bind_dimension(
         4 => Compression::Lz4,
         _ => return Err(format!("unsupported MCA compression {compression}")),
     };
-    let dimension = world.bind(compression, execution)?.dimension(key)?;
+    let dimension = world.bind(CompressionSettings::new(compression, level), execution)?.dimension(key)?;
     unsafe {
         *output = dimension.profile_id();
     }

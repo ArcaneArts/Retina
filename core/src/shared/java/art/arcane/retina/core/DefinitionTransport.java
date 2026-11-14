@@ -8,6 +8,7 @@ interface DefinitionTransport {
     long create(Path catalog, String variant, long seed, Path worldRoot);
     String metadata(long handle);
     int bind(long handle, String key, int compression);
+    int bind(long handle, String key, int compression, int compressionLevel);
     int bind(long handle, String key, int compression, NativeWorldDefinition.ProgramExecution execution);
     TerrainRequest request(long handle, String key, int x, int z);
     NativeWorldDefinition.RegionResult generateRegion(long handle, String key, int x, int z, Path destination);

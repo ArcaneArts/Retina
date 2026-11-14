@@ -425,7 +425,7 @@ fn published_definitions_allow_zero_depths_but_reject_negative_depths() {
 #[test]
 fn world_profiles_retire_after_the_last_owner_and_active_job_release_them() {
     use super::residency::Profiles;
-    use crate::region::codec::Compression;
+    use crate::region::codec::{Compression, CompressionSettings};
     use std::sync::Arc;
     let world = load(&document());
     let profile = world
@@ -436,11 +436,12 @@ fn world_profiles_retire_after_the_last_owner_and_active_job_release_them() {
         .clone();
     let lifetime = Arc::downgrade(&profile);
     let mut profiles = Profiles::default();
+    let compression = CompressionSettings::new(Compression::Zlib, 6);
     let id = profiles
-        .world(&profile, Compression::Lz4, world.data_version(), world.dimension("minecraft:overworld").unwrap().parameters().storage_bounds(),
+        .world(&profile, compression, world.data_version(), world.dimension("minecraft:overworld").unwrap().parameters().storage_bounds(),
             super::residency::GenerationInputs::new(world.seed() as u64, world.dimension("minecraft:overworld").unwrap().parameters()))
         .unwrap();
-    assert_eq!(profiles.compression(id).unwrap(), Compression::Lz4);
+    assert_eq!(profiles.compression(id).unwrap(), compression);
     assert_eq!(
         profiles.data_version(id).unwrap(),
         Some(world.data_version())
@@ -468,7 +469,7 @@ fn world_profiles_retire_after_the_last_owner_and_active_job_release_them() {
                 .unwrap()
                 .profile()
                 .unwrap(),
-            Compression::Zlib,
+            CompressionSettings::default(),
             replacement.data_version(),
             replacement.dimension("minecraft:overworld").unwrap().parameters().storage_bounds(),
             super::residency::GenerationInputs::new(replacement.seed() as u64, replacement.dimension("minecraft:overworld").unwrap().parameters()),
@@ -484,7 +485,7 @@ fn world_profiles_retire_after_the_last_owner_and_active_job_release_them() {
 #[test]
 fn file_bound_requests_cannot_change_generation_identity() {
     use super::residency::{GenerationInputs, Profiles};
-    use crate::{ChunkRequest, region::codec::Compression};
+    use crate::{ChunkRequest, region::codec::CompressionSettings};
     let directory = std::env::temp_dir().join(format!("retina-request-identity-{}", std::process::id()));
     std::fs::create_dir(&directory).unwrap();
     let path = directory.join("retina.dat");
@@ -492,7 +493,7 @@ fn file_bound_requests_cannot_change_generation_identity() {
     let world = WorldDefinition::read(&path).unwrap();
     let dimension = world.dimension("minecraft:overworld").unwrap();
     let mut profiles = Profiles::default();
-    let id = profiles.world(dimension.profile().unwrap(), Compression::Zlib, world.data_version(),
+    let id = profiles.world(dimension.profile().unwrap(), CompressionSettings::default(), world.data_version(),
         dimension.parameters().storage_bounds(), GenerationInputs::new(world.seed() as u64, dimension.parameters())).unwrap();
     let request = world.request("minecraft:overworld", id, -33, -65).unwrap();
     profiles.validate_request(&request).unwrap();

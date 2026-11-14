@@ -8,7 +8,7 @@ Usage:
   retina inspect --definition PATH
   retina inspect --world DIRECTORY
   retina generate --definition PATH --dimension NAMESPACE:PATH \\
-    --region-min=X,Z --region-max=X,Z --output DIRECTORY [--compression none|zlib|lz4]
+    --region-min=X,Z --region-max=X,Z --output DIRECTORY [--compression none|zlib|lz4] [--compression-level N]
 
 Region coordinates are inclusive at both ends. Each region is 32x32 chunks.
 Init materializes a reusable retina-catalog.dat into a seed-bound retina.dat.
@@ -16,6 +16,7 @@ It never replaces an existing definition. Inspect reads that authoritative file.
 Init and inspect do not initialize a generation backend.
 The saved definition supplies the exact seed and all generation settings.
 Chunk compression defaults to none (raw NBT). Minecraft 1.20.1 supports none and zlib.
+With zlib, the level defaults to 0. Integers clamp to 0–9; invalid values use 0.
 Existing chunk records are preserved; missing records are generated.
 Use an offline output directory with the matching generation definition.
 Ctrl-C/SIGTERM finishes the active region, stops, and exits with status 130.
@@ -32,6 +33,7 @@ pub struct Generate {
     pub max: [i32; 2],
     pub output: PathBuf,
     pub compression: Compression,
+    pub compression_level: i32,
 }
 
 #[derive(Debug)]
@@ -73,6 +75,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
     let mut max = None;
     let mut output = None;
     let mut compression = Compression::default();
+    let mut compression_level = 0;
     let mut seen = HashSet::new();
     while let Some(argument) = args.next() {
         if argument == "--help" || argument == "-h" {
@@ -92,6 +95,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
                 | "--region-max"
                 | "--output"
                 | "--compression"
+                | "--compression-level"
         ) {
             return Err(format!("unknown option {flag}"));
         }
@@ -102,7 +106,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
             .map(OsString::from)
             .or_else(|| args.next())
             .ok_or_else(|| format!("missing value for {flag}"))?;
-        if value.is_empty() {
+        if value.is_empty() && flag != "--compression-level" {
             return Err(format!("empty value for {flag}"));
         }
         match flag {
@@ -121,6 +125,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
                     _ => return Err("compression must be none, zlib or lz4".into()),
                 }
             }
+            "--compression-level" => compression_level = level(value.to_str().unwrap_or_default()),
             _ => unreachable!(),
         }
     }
@@ -136,7 +141,22 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
         max,
         output: output.ok_or("missing --output")?,
         compression,
+        compression_level,
     }))
+}
+
+fn level(value: &str) -> i32 {
+    let value = value.trim();
+    let digits = value.strip_prefix('+').unwrap_or(value);
+    if digits.is_empty() || !digits.bytes().all(|digit| digit.is_ascii_digit()) {
+        return 0;
+    }
+    let significant = digits.trim_start_matches('0');
+    if significant.len() > 1 {
+        9
+    } else {
+        significant.parse().unwrap_or_default()
+    }
 }
 
 fn definitions(init: bool, mut args: impl Iterator<Item = OsString>) -> Result<Command, String> {
@@ -234,6 +254,7 @@ mod tests {
             panic!()
         };
         assert_eq!(defaults.compression, Compression::None);
+        assert_eq!(defaults.compression_level, 0);
         let Command::Generate(options) = command("--compression lz4").unwrap() else {
             panic!()
         };
@@ -241,6 +262,27 @@ mod tests {
         assert_eq!(options.max, [1, 3]);
         assert_eq!(options.count(), 36);
         assert_eq!(options.compression, Compression::Lz4);
+    }
+    #[test]
+    fn zlib_level_accepts_out_of_range_and_invalid_values() {
+        for (input, expected) in [
+            ("3", 3),
+            ("-4", 0),
+            ("10", 9),
+            ("+0009", 9),
+            ("99999999999999999999999", 9),
+            ("99999999999999999999999x", 0),
+            ("2.5", 0),
+            ("invalid", 0),
+            ("", 0),
+        ] {
+            let Command::Generate(options) =
+                command(&format!("--compression zlib --compression-level={input}")).unwrap()
+            else {
+                panic!()
+            };
+            assert_eq!(options.compression_level, expected, "{input}");
+        }
     }
     #[test]
     fn definition_commands_preserve_paths_signed_seeds_and_variant() {

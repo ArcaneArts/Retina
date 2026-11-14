@@ -126,16 +126,16 @@ impl Records {
             let record = source
                 .record(slot)?
                 .ok_or_else(|| format!("invalid cached MCA location at slot {slot}"))?;
-            let external =
-                if record.codec == (EXTERNAL | Compression::None.id()) && record.payload == 1 {
-                    let parent = path
-                        .parent()
-                        .ok_or("cached MCA path needs a parent directory")?;
-                    Some(external_path(parent, region, slot))
-                } else {
-                    Compression::from_id(record.codec)?;
-                    None
-                };
+            let external = if record.codec & EXTERNAL != 0 && record.payload == 1 {
+                Compression::from_id(record.codec & !EXTERNAL)?;
+                let parent = path
+                    .parent()
+                    .ok_or("cached MCA path needs a parent directory")?;
+                Some(external_path(parent, region, slot))
+            } else {
+                Compression::from_id(record.codec)?;
+                None
+            };
             entries.push((record, external));
         }
         Ok(Self::Cached { source, entries })
@@ -159,7 +159,7 @@ impl Records {
         match self {
             Self::Generated(records) => {
                 let record = &records[index];
-                record.codec == Compression::None && record.bytes.len() > MAX_INLINE_BYTES
+                record.codec != Compression::Lz4 && record.bytes.len() > MAX_INLINE_BYTES
             }
             Self::Cached { entries, .. } => entries[index].1.is_some(),
         }
@@ -211,8 +211,12 @@ impl Records {
         output: &mut impl Write,
     ) -> Result<(), String> {
         if external {
+            let codec = match self {
+                Self::Generated(records) => EXTERNAL | records[index].codec.id(),
+                Self::Cached { entries, .. } => entries[index].0.codec,
+            };
             return output
-                .write_all(&[0, 0, 0, 1, EXTERNAL | Compression::None.id()])
+                .write_all(&[0, 0, 0, 1, codec])
                 .map_err(|e| e.to_string());
         }
         match self {
@@ -478,6 +482,49 @@ mod tests {
             inline.len() + 1
         );
     }
+    #[test]
+    fn oversized_zlib_preview_keeps_its_codec_on_promotion() {
+        use crate::region::codec::{CompressionSettings, Encoder};
+
+        let directory = Directory::new();
+        let preview = directory.0.join("preview");
+        fs::create_dir(&preview).unwrap();
+        let cached = preview.join("r.0.0.mca");
+        let saved = directory.0.join("r.0.0.mca");
+        let mut nbt = vec![42; MAX_INLINE_BYTES];
+        let settings = CompressionSettings::new(Compression::Zlib, 0);
+        let record = Encoder::default().record(settings, &mut nbt).unwrap();
+        let expected = record.bytes.clone();
+        publish(
+            Source::open(&cached, true).unwrap(),
+            (0, 0),
+            &[0],
+            Records::Generated(vec![record]),
+            &cached,
+        )
+        .unwrap();
+        publish(
+            Source::open(&saved, true).unwrap(),
+            (0, 0),
+            &[0],
+            Records::cached(&cached, (0, 0), &[0]).unwrap(),
+            &saved,
+        )
+        .unwrap();
+        let stub = Source::open(&saved, false)
+            .unwrap()
+            .record(0)
+            .unwrap()
+            .unwrap();
+        assert_eq!((stub.codec, stub.payload), (0x82, 1));
+        assert_eq!(
+            fs::read(saved.with_file_name("c.0.0.mcc")).unwrap(),
+            expected
+        );
+        no_temps(&directory);
+        assert!(preview.join("c.0.0.mcc").exists());
+    }
+
     fn no_temps(directory: &Directory) {
         assert!(fs::read_dir(&directory.0).unwrap().all(|entry| {
             !entry
@@ -577,7 +624,7 @@ mod tests {
         no_temps(&directory);
     }
     #[test]
-    fn failed_record_writes_propagate_and_oversized_records_preserve_destination() {
+    fn failed_record_writes_propagate_and_oversized_lz4_records_preserve_destination() {
         struct FailsAfter(usize);
         impl Write for FailsAfter {
             fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
@@ -616,7 +663,10 @@ mod tests {
                 Source::open(&path, true).unwrap(),
                 (0, 0),
                 &[1],
-                records(256 * SECTOR),
+                Records::Generated(vec![Record {
+                    codec: Compression::Lz4,
+                    bytes: vec![0; 256 * SECTOR],
+                }]),
                 &path
             )
             .is_err()
@@ -656,7 +706,7 @@ mod tests {
         bad[HEADER + 4] = 0x82;
         fs::write(&path, &bad).unwrap();
         assert!(Source::open(&path, false).unwrap().record(0).is_ok()); // Existing external records are opaque.
-        assert!(Records::cached(&path, (0, 0), &[0]).is_err()); // Preview codec contract is unchanged.
+        assert!(Records::cached(&path, (0, 0), &[0]).is_err()); // An external stub cannot contain inline payload.
         fs::write(&path, &good).unwrap();
         let destination = directory.0.join("occupied");
         fs::create_dir(&destination).unwrap();
