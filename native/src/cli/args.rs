@@ -8,13 +8,14 @@ Usage:
   retina inspect --definition PATH
   retina inspect --world DIRECTORY
   retina generate --definition PATH --dimension NAMESPACE:PATH \\
-    --region-min=X,Z --region-max=X,Z --output DIRECTORY [--compression zlib|lz4]
+    --region-min=X,Z --region-max=X,Z --output DIRECTORY [--compression none|zlib|lz4]
 
 Region coordinates are inclusive at both ends. Each region is 32x32 chunks.
 Init materializes a reusable retina-catalog.dat into a seed-bound retina.dat.
 It never replaces an existing definition. Inspect reads that authoritative file.
 Init and inspect do not initialize a generation backend.
 The saved definition supplies the exact seed and all generation settings.
+Chunk compression defaults to none (raw NBT). Minecraft 1.20.1 supports none and zlib.
 Existing chunk records are preserved; missing records are generated.
 Use an offline output directory with the matching generation definition.
 Ctrl-C/SIGTERM finishes the active region, stops, and exits with status 130.
@@ -71,7 +72,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
     let mut min = None;
     let mut max = None;
     let mut output = None;
-    let mut compression = Compression::Zlib;
+    let mut compression = Compression::default();
     let mut seen = HashSet::new();
     while let Some(argument) = args.next() {
         if argument == "--help" || argument == "-h" {
@@ -114,9 +115,10 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
             "--region-max" => max = Some(coordinate(&value)?),
             "--compression" => {
                 compression = match value.to_str() {
+                    Some("none") => Compression::None,
                     Some("zlib") => Compression::Zlib,
                     Some("lz4") => Compression::Lz4,
-                    _ => return Err("compression must be zlib or lz4".into()),
+                    _ => return Err("compression must be none, zlib or lz4".into()),
                 }
             }
             _ => unreachable!(),
@@ -228,6 +230,10 @@ mod tests {
     }
     #[test]
     fn inclusive_negative_range_and_codec() {
+        let Command::Generate(defaults) = command("").unwrap() else {
+            panic!()
+        };
+        assert_eq!(defaults.compression, Compression::None);
         let Command::Generate(options) = command("--compression lz4").unwrap() else {
             panic!()
         };

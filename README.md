@@ -224,7 +224,7 @@ allow_directx = true
 allow_metal = true
 allow_vulkan = true
 mca_parallelism = 8
-mca_compression = "zlib"
+mca_compression = "none"
 debug = false
 f3_overlay = true
 ```
@@ -235,7 +235,7 @@ f3_overlay = true
 | `allow_metal` | `true` | Allow Metal |
 | `allow_vulkan` | `true` | Allow Vulkan |
 | `mca_parallelism` | `8` | Maximum simultaneous native region generations across ordinary requests, DH, Chunky and repairs |
-| `mca_compression` | `"zlib"` | New chunk compression. Minecraft 1.20.1 uses zlib. On 26.3, `lz4` trades larger files for faster compression |
+| `mca_compression` | `"none"` | Store raw NBT for new Retina chunks. Use `"zlib"` for smaller saves or `"lz4"` on 26.3. Raw output uses more disk space |
 | `debug` | `false` | Detailed startup, driver and generation diagnostics; preparation progress and errors remain visible when off |
 | `f3_overlay` | `true` | Retina statistics on the local modded client's F3 screen |
 
@@ -332,7 +332,9 @@ java -jar retina-26.3-<commit>.jar generate --world ./world \
 Radius 1 selects a 3 × 3 square of regions centered at 0,0.
 `--parallel 4` allows four regions in flight. The default is one. For custom
 generation or Minecraft 1.20.1, supply a mod-created `retina.dat`.
-The CLI uses the saved definition's game version, and 1.20.1 output uses zlib.
+The CLI uses raw NBT by default. Pass `--compression zlib` for smaller files
+or `--compression lz4` for 26.3 output. Keep any `c.*.mcc` files with the
+region directory when copying a world.
 
 ```sh
 java -jar retina-26.3-<commit>.jar generate --world ./output \

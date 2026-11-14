@@ -72,7 +72,7 @@ def main():
     parser.add_argument("--scope", choices=("native-region", "lit-mca"), default="lit-mca",
                         help="Label the measured completion boundary; this harness does not measure live activation")
     parser.add_argument("--lighting", choices=("enabled", "disabled", "dense"), default="enabled")
-    parser.add_argument("--mca-compression", choices=("zlib", "lz4"), default="zlib", help="MCA output codec; LZ4 validation needs Python lz4 and xxhash")
+    parser.add_argument("--mca-compression", choices=("none", "zlib", "lz4"), default="zlib", help="MCA output codec; LZ4 validation needs Python lz4 and xxhash")
     parser.add_argument("--library-revision", help="Revision or immutable label that produced --library")
     parser.add_argument("--readiness", choices=("driver-warm", "shader-ready", "optimized-interpreter"), default="driver-warm",
                         help="Whether measurement may overlap specialization or waits for a ready/final status")
@@ -420,10 +420,10 @@ def main():
             groups.argtypes = [c.c_uint32, c.POINTER(SpecializationSnapshot)]
             snapshot = SpecializationSnapshot(); check(groups(profile, c.byref(snapshot)))
             data["specialization_groups"] = {name: getattr(snapshot, name) for name, _ in SpecializationSnapshot._fields_}
-        names = [name for name, _, _ in coords]
-        data["corpus"] = corpus_manifest(args.out, names)
+        coordinates = {name: (x, z) for name, x, z in coords}
+        data["corpus"] = corpus_manifest(args.out, coordinates, coordinates)
         if args.compare:
-            data["comparison"] = compare_corpora(args.compare, args.out, names)
+            data["comparison"] = compare_corpora(args.compare, args.out, coordinates, coordinates)
             data["identical_nbt_chunks"] = data["comparison"]["identical_nbt_chunks"]
         if cpu and args.await_specialization:
             data["specialization_warmup_check"] = {"applicable": False, "reason": "Native CPU has no GPU specialization"}
@@ -439,14 +439,15 @@ def main():
             wait_after_measurement_ms=(time.perf_counter()-wait_start)*1000
             _,x,z=coords[0]
             regenerated=generate(("compiled_check",x,z))
-            old, new = mca_records(args.out/f"{coords[0][0]}.mca"), mca_records(args.out/"compiled_check.mca")
+            old = mca_records(args.out/f"{coords[0][0]}.mca", (x, z))
+            new = mca_records(args.out/"compiled_check.mca", (x, z))
             if old != new: raise AssertionError("Compilation changed region NBT")
             data["specialization_warmup_check"]={"status_before_wait":status_before_wait,"wait_after_measurement_ms":wait_after_measurement_ms,
                 "compile_ms":awaited.compile_nanos/1e6,"identical_nbt_chunks":1024,"regenerated_region":regenerated}
     if args.preservation_check:
         name, x, z = coords[0]
         path = args.out / f"{name}.mca"
-        original = mca_records(path)
+        original = mca_records(path, (x, z))
         started = time.perf_counter()
         with SavedDefinition(lib, args.definition, args.dimension, args.mca_compression, args.program_execution) as reopened:
             req = reopened.request(x * 32, z * 32)
@@ -456,7 +457,7 @@ def main():
             check(lib.retina_generate_region(c.byref(req), encoded, len(encoded), reopened.metadata["data_version"],
                                              fallback, len(fallback), c.byref(report)))
         elapsed = (time.perf_counter() - started) * 1000
-        if report.generated != 0 or report.preserved != 1024 or mca_records(path) != original:
+        if report.generated != 0 or report.preserved != 1024 or mca_records(path, (x, z)) != original:
             raise AssertionError("Definition reopen did not preserve every existing chunk")
         data["preservation_check"] = {"scope": "Same process, closed/reopened world definition; outside measured generation",
                                       "elapsed_ms": elapsed, "generated": report.generated,

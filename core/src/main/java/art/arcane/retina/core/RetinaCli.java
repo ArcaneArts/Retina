@@ -27,7 +27,8 @@ public final class RetinaCli {
             an existing definition instead of DIR/retina.dat (inspect or generate).
             Creation options: --catalog FILE, --snapshot (default vanilla-binary),
             --variant normal|normal-no-structures|normal-bonus-chest|normal-no-structures-bonus-chest|bukkit-api.
-            Generation options: --compression zlib|lz4 (default zlib), --dimension (default minecraft:overworld).
+            --compression none|zlib|lz4 (default none). LZ4 requires Minecraft 26.3.
+            --dimension selects the dimension (default minecraft:overworld).
             --parallel N generates up to N regions at once (1–16, default 1).
             Coordinates are inclusive MCA regions (32x32 chunks); radius is a square about 0,0.
             Missing chunks are generated; existing records are preserved. Use offline worlds
@@ -71,9 +72,11 @@ public final class RetinaCli {
         int parallel = Integer.parseInt(options.getOrDefault("parallel", "1"));
         if (parallel < 1 || parallel > MAX_PARALLEL_REGIONS)
             throw new IllegalArgumentException("Parallelism must be between 1 and " + MAX_PARALLEL_REGIONS);
-        int compression = switch (options.getOrDefault("compression", "zlib")) {
-            case "zlib" -> 2; case "lz4" -> 4;
-            default -> throw new IllegalArgumentException("Compression must be zlib or lz4");
+        int compression = switch (options.getOrDefault("compression", "none")) {
+            case "none" -> 3;
+            case "zlib" -> 2;
+            case "lz4" -> 4;
+            default -> throw new IllegalArgumentException("Compression must be none, zlib or lz4");
         };
         if (options.containsKey("catalog") && options.containsKey("snapshot"))
             throw new IllegalArgumentException("Use --catalog or --snapshot, not both");

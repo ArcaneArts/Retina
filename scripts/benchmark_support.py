@@ -59,7 +59,7 @@ def percentile(values: Iterable[float], percent: float) -> float:
     return ordered[lower] * (1.0 - fraction) + ordered[upper] * fraction
 
 
-def mca_records(path: Path) -> dict[int, bytes]:
+def mca_records(path: Path, region: tuple[int, int] | None = None) -> dict[int, bytes]:
     data = path.read_bytes()
     if len(data) < 8192:
         raise ValueError(f"Truncated MCA header: {path}")
@@ -73,12 +73,28 @@ def mca_records(path: Path) -> dict[int, bytes]:
         if offset < 8192 or offset + 5 > len(data):
             raise ValueError(f"Invalid MCA location: {path}:{slot}")
         length = int.from_bytes(data[offset:offset + 4], "big")
-        if length < 2 or length > sectors * 4096 - 4 or offset + 4 + length > len(data):
+        if length < 1 or length > sectors * 4096 - 4 or offset + 4 + length > len(data):
             raise ValueError(f"Invalid MCA record length: {path}:{slot}")
         compression = data[offset + 4]
         payload = data[offset + 5:offset + 4 + length]
+        if compression & 0x80:
+            if length != 1:
+                raise ValueError(f"Invalid external MCA record: {path}:{slot}")
+            if region is None:
+                prefix, x, z = path.stem.split(".")
+                if prefix != "r":
+                    raise ValueError(f"External MCA record needs region coordinates: {path}")
+                region = (int(x), int(z))
+            x = region[0] * 32 + slot % 32
+            z = region[1] * 32 + slot // 32
+            payload = path.with_name(f"c.{x}.{z}.mcc").read_bytes()
+            compression &= 0x7f
+        if not payload:
+            raise ValueError(f"Empty MCA payload: {path}:{slot}")
         if compression == 2:
             records[slot] = zlib.decompress(payload)
+        elif compression == 3:
+            records[slot] = payload
         elif compression == 4:
             records[slot] = lz4_block_stream(payload)
         else:
@@ -114,13 +130,15 @@ def lz4_block_stream(payload: bytes) -> bytes:
     raise ValueError("Truncated LZ4Block stream")
 
 
-def corpus_manifest(directory: Path, names: Iterable[str]) -> dict[str, Any]:
+def corpus_manifest(directory: Path, names: Iterable[str],
+                    coordinates: dict[str, tuple[int, int]] | None = None) -> dict[str, Any]:
     digest = hashlib.sha256()
     files: list[dict[str, Any]] = []
     for name in sorted(names):
         file_digest = hashlib.sha256()
         count = 0
-        for slot, payload in sorted(mca_records(directory / f"{name}.mca").items()):
+        region = coordinates[name] if coordinates is not None else None
+        for slot, payload in sorted(mca_records(directory / f"{name}.mca", region).items()):
             chunk_hash = hashlib.sha256(payload).hexdigest()
             key = f"{name}.mca:{slot}"
             digest.update(key.encode())
@@ -215,11 +233,13 @@ def first_difference(old: Any, new: Any, path: str = "root") -> str | None:
     return None
 
 
-def compare_corpora(baseline: Path, candidate: Path, names: Iterable[str]) -> dict[str, Any]:
+def compare_corpora(baseline: Path, candidate: Path, names: Iterable[str],
+                    coordinates: dict[str, tuple[int, int]] | None = None) -> dict[str, Any]:
     identical = 0
     for name in sorted(names):
-        old = mca_records(baseline / f"{name}.mca")
-        new = mca_records(candidate / f"{name}.mca")
+        region = coordinates[name] if coordinates is not None else None
+        old = mca_records(baseline / f"{name}.mca", region)
+        new = mca_records(candidate / f"{name}.mca", region)
         if old.keys() != new.keys():
             raise AssertionError(
                 f"Changed MCA membership: {name}.mca missing={sorted(old.keys()-new.keys())} "

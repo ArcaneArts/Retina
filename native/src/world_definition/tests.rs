@@ -447,7 +447,7 @@ fn world_profiles_retire_after_the_last_owner_and_active_job_release_them() {
     );
     assert_eq!(
         profile.mca_compression,
-        Compression::Zlib,
+        Compression::None,
         "execution settings do not mutate the saved profile"
     );
     let active_job = profiles.get(id).unwrap().unwrap();

@@ -54,6 +54,10 @@ def main():
             assert fresh['generated_chunks'] == 1024 and fresh['preserved_chunks'] == 0, fresh
             x,z = map(int, coord.split(','))
             region = root / folder / f'r.{x}.{z}.mca'
+            with region.open('rb') as stream:
+                first_sector = int.from_bytes(stream.read(3), 'big')
+                stream.seek(first_sector * 4096 + 4)
+                assert stream.read(1) == b'\x03', 'headless JAR defaults to raw NBT'
             records = mca_records(region)
             assert len(records) == 1024
             for slot in (0,1023):

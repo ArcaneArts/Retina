@@ -340,7 +340,7 @@ tasks.register('regionTest', JavaExec) {
 
 tasks.register('mcaCodecTest', JavaExec) {
     group = 'verification'
-    description = 'Verify zlib/LZ4 regions through Minecraft readers, mixed-codec promotion and partial repairs.'
+    description = 'Verify raw NBT, zlib and LZ4 regions through Minecraft readers, mixed-codec promotion and partial repairs.'
     dependsOn 'gpuTestClasses'
     if (providers.gradleProperty('retinaNativePath').isPresent()) {
         systemProperty 'retina.native.path', providers.gradleProperty('retinaNativePath').get()

@@ -216,7 +216,7 @@ pub unsafe extern "C" fn retina_world_definition_metadata(
 
 /// # Safety
 /// key is length readable UTF-8 bytes; output is a writable u32 profile handle.
-/// compression is an MCA codec ID (2=zlib, 4=LZ4Block).
+/// compression is an MCA codec ID (2=zlib, 3=raw NBT, 4=LZ4Block).
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn retina_bind_world_dimension(
     handle: u64,
@@ -268,6 +268,7 @@ unsafe fn bind_dimension(
     world.definition.dimension(key)?.profile()?;
     let compression = match compression {
         2 => Compression::Zlib,
+        3 => Compression::None,
         4 => Compression::Lz4,
         _ => return Err(format!("unsupported MCA compression {compression}")),
     };

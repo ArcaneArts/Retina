@@ -6,12 +6,15 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.storage.RegionFileStorage;
+import net.minecraft.world.level.chunk.storage.RegionFile;
+import net.minecraft.world.level.chunk.storage.RegionFileVersion;
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 
 import java.nio.ByteBuffer;
@@ -40,23 +43,30 @@ public final class NativeMcaCodecTest {
                     new TerrainRequest(42,0,0,-16,64,0,0,.008F),-16,64,true,false);
             byte[] savedDefinition=Files.readAllBytes(file);
             try(var zlibWorld=DefinitionFixture.open(file,"minecraft:overworld",2);
+                var rawWorld=DefinitionFixture.open(file,"minecraft:overworld",3);
                 var lz4World=DefinitionFixture.open(file,"minecraft:overworld",4)) {
                 var terrain = NativeTerrain.instance();
                 var zlibRequest = zlibWorld.request(-32,-32);
                 var lz4Request = lz4World.request(-32,-32);
+                var rawRequest = rawWorld.request(-32,-32);
                 require(zlibRequest.seed()==42 && zlibRequest.minY()==-16 && zlibRequest.height()==64,"file supplies seed and geometry");
                 var zlib = directory.resolve("zlib").resolve(NAME);
                 var lz4 = directory.resolve("lz4").resolve(NAME);
-                for (var entry : List.of(java.util.Map.entry(zlib, zlibRequest), java.util.Map.entry(lz4, lz4Request))) {
+                var raw = directory.resolve("raw").resolve(NAME);
+                for (var entry : List.of(java.util.Map.entry(zlib, zlibRequest), java.util.Map.entry(lz4, lz4Request),
+                        java.util.Map.entry(raw, rawRequest))) {
                     var report = terrain.generateRegion(entry.getValue(), entry.getKey(), version, "minecraft:plains");
                     require(report.generated() == 1024 && report.preserved() == 0, "complete region generated");
                 }
                 var reference = read(zlib);
                 require(Arrays.equals(reference, read(lz4)), "all 1024 decoded chunks, including lighting, match across codecs");
+                require(Arrays.equals(reference, read(raw)), "Minecraft reads identical raw chunk NBT");
                 var originalLz4 = Files.readAllBytes(lz4);
                 var originalZlib = Files.readAllBytes(zlib);
+                var originalRaw = Files.readAllBytes(raw);
                 for (int i = 0; i < 1024; i++) {
                     require(record(originalZlib, i)[0] == 2 && record(originalLz4, i)[0] == 4, "MCA codec identity");
+                    require(record(originalRaw, i)[0] == 3, "raw MCA codec identity");
                     boolean interior = i % 32 > 0 && i % 32 < 31 && i / 32 > 0 && i / 32 < 31;
                     require(reference[i].getStringOr("Status", "").equals(interior ? "minecraft:light" : "minecraft:features"), "lighting status survives compression");
                 }
@@ -75,11 +85,11 @@ public final class NativeMcaCodecTest {
                     storage.write(pos(1), null); storage.write(pos(33), null);
                 }
                 byte[] before = Files.readAllBytes(mixed);
-                var promotion = terrain.publishCachedRegion(zlibRequest, mixed, lz4);
-                require(promotion.generated() == 2 && promotion.preserved() == 1022, "LZ4 promotion into existing zlib region");
+                var promotion = terrain.publishCachedRegion(zlibRequest, mixed, raw);
+                require(promotion.generated() == 2 && promotion.preserved() == 1022, "raw promotion into existing zlib region");
                 byte[] promoted = Files.readAllBytes(mixed);
                 for (int i = 0; i < 1024; i++) {
-                    require(Arrays.equals(record(promoted, i), record(i == 1 || i == 33 ? originalLz4 : before, i)), "promotion copies typed source records and preserves existing records byte-for-byte");
+                    require(Arrays.equals(record(promoted, i), record(i == 1 || i == 33 ? originalRaw : before, i)), "promotion copies typed source records and preserves existing records byte-for-byte");
                 }
                 var mixedTags = read(mixed);
                 require(mixedTags[0].getStringOr("retina_player_edit", "").equals("preserved"), "player edit retained");
@@ -111,6 +121,21 @@ public final class NativeMcaCodecTest {
                     require(Arrays.equals(destinationBeforeFailure, Files.readAllBytes(reverse)), "failed promotion preserves destination");
                 }
                 require(Arrays.equals(originalLz4, Files.readAllBytes(lz4)), "preview source never rewritten");
+
+                var external = directory.resolve("external").resolve(NAME);
+                Files.createDirectories(external.getParent());
+                var oversized = reference[5].copy();
+                oversized.putByteArray("retina_external_test", new byte[1_100_000]);
+                try (var region = new RegionFile(info, external, external.getParent(), RegionFileVersion.VERSION_NONE, false);
+                     var output = region.getChunkDataOutputStream(pos(5))) {
+                    NbtIo.write(oversized, output);
+                }
+                var promotedExternal = terrain.publishCachedRegion(rawRequest, reverse, external);
+                require(promotedExternal.generated() == 1 && promotedExternal.preserved() == 1023, "external raw promotion");
+                require(record(Files.readAllBytes(reverse), 5)[0] == (byte)0x83, "external raw codec identity");
+                try (var storage = new RegionFileStorage(info, reverse.getParent(), false)) {
+                    require(oversized.equals(storage.read(pos(5))), "Minecraft reads promoted raw sidecar");
+                }
 
                 try (var pool = Executors.newFixedThreadPool(8)) {
                     var tasks = IntStream.range(0, 8).<Callable<Integer>>mapToObj(i -> () -> {

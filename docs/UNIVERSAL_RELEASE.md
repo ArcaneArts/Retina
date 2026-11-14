@@ -173,8 +173,10 @@ java -jar retina-26.3-<commit>.jar generate --world ./new-world --seed 12345 \
 Bounds are inclusive region coordinates; a radius N selects a square of
 (2N+1)² regions centered at 0,0. Each region is 32×32 chunks. Overworld output goes
 to `region/`, Nether to `DIM-1/region/`, End to `DIM1/region/`, and custom dimensions
-to `dimensions/<namespace>/<path>/region/`. `--compression zlib|lz4` controls new
-records. Existing records are preserved byte-for-byte.
+to `dimensions/<namespace>/<path>/region/`. `--compression none|zlib|lz4` controls
+new records. The default is `none` (raw NBT). Minecraft 1.20.1 supports `none` and
+`zlib`. Oversized raw chunks have a `c.<chunk-x>.<chunk-z>.mcc` sidecar in the
+same directory. Existing records are preserved byte-for-byte.
 
 `--parallel N` allows 1–16 concurrent region requests and defaults to 1.
 The JAR reports completed regions as they finish. Ctrl-C stops scheduling

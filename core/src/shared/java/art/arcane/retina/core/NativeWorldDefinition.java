@@ -46,7 +46,7 @@ public final class NativeWorldDefinition implements AutoCloseable {
     /** Compact adapter output from the Rust-parsed file, not a generation input. */
     public String metadata() { return metadata; }
 
-    /** First binding initializes the shared native engine. Codec IDs: 2=zlib, 4=LZ4Block. */
+    /** First binding initializes the shared native engine. Codec IDs: 2=zlib, 3=raw NBT, 4=LZ4Block. */
     public synchronized int bindDimension(String key, int compression) {
         return TRANSPORT.bind(openHandle(), key, compression);
     }

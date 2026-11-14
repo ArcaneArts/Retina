@@ -40,7 +40,11 @@ public final class ConfigurationTest {
             format.write(writer, custom);
             require(parse(format, writer.toString()).equals(custom), format + " round trip");
             String separator = format == ConfigFormat.TOML ? " = " : ": ";
-            require(parse(format, "mca_compression" + separator + "\"zlib\"\n").equals(defaults), "explicit zlib default");
+            for (var codec : RetinaConfig.McaCompression.values()) {
+                var selected = parse(format, "mca_compression" + separator + "\"" + codec.id() + "\"\n");
+                require(selected.mcaCompression() == codec, "explicit codec " + codec.id());
+            }
+            require(defaults.mcaCompression() == RetinaConfig.McaCompression.NONE, "raw NBT default");
             for (String bad : new String[]{"\"gzip\"", "\"LZ4\"", "4", "true", "\"\""}) {
                 rejected(format, "mca_compression" + separator + bad + "\n");
             }
